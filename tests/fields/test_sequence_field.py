@@ -18,17 +18,17 @@ class TestSequenceField(MongoDBTestCase):
             Person(name="Person %s" % x).save()
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        self.assertEqual(ids, range(1, 11))
+        assert ids == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         Person.id.set_next_value(1000)
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 1000)
+        assert c["next"] == 1000
 
     def test_sequence_field_get_next_value(self):
         class Person(Document):
@@ -41,10 +41,10 @@ class TestSequenceField(MongoDBTestCase):
         for x in range(10):
             Person(name="Person %s" % x).save()
 
-        self.assertEqual(Person.id.get_next_value(), 11)
+        assert Person.id.get_next_value() == 11
         self.db["mongoengine.counters"].drop()
 
-        self.assertEqual(Person.id.get_next_value(), 1)
+        assert Person.id.get_next_value() == 1
 
         class Person(Document):
             id = SequenceField(primary_key=True, value_decorator=str)
@@ -56,10 +56,10 @@ class TestSequenceField(MongoDBTestCase):
         for x in range(10):
             Person(name="Person %s" % x).save()
 
-        self.assertEqual(Person.id.get_next_value(), "11")
+        assert Person.id.get_next_value() == "11"
         self.db["mongoengine.counters"].drop()
 
-        self.assertEqual(Person.id.get_next_value(), "1")
+        assert Person.id.get_next_value() == "1"
 
     def test_sequence_field_sequence_name(self):
         class Person(Document):
@@ -73,17 +73,17 @@ class TestSequenceField(MongoDBTestCase):
             Person(name="Person %s" % x).save()
 
         c = self.db["mongoengine.counters"].find_one({"_id": "jelly.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        self.assertEqual(ids, range(1, 11))
+        assert ids == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "jelly.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         Person.id.set_next_value(1000)
         c = self.db["mongoengine.counters"].find_one({"_id": "jelly.id"})
-        self.assertEqual(c["next"], 1000)
+        assert c["next"] == 1000
 
     def test_multiple_sequence_fields(self):
         class Person(Document):
@@ -98,24 +98,24 @@ class TestSequenceField(MongoDBTestCase):
             Person(name="Person %s" % x).save()
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        self.assertEqual(ids, range(1, 11))
+        assert ids == list(range(1, 11))
 
         counters = [i.counter for i in Person.objects]
-        self.assertEqual(counters, range(1, 11))
+        assert counters == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         Person.id.set_next_value(1000)
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 1000)
+        assert c["next"] == 1000
 
         Person.counter.set_next_value(999)
         c = self.db["mongoengine.counters"].find_one({"_id": "person.counter"})
-        self.assertEqual(c["next"], 999)
+        assert c["next"] == 999
 
     def test_sequence_fields_reload(self):
         class Animal(Document):
@@ -127,20 +127,20 @@ class TestSequenceField(MongoDBTestCase):
 
         a = Animal(name="Boi").save()
 
-        self.assertEqual(a.counter, 1)
+        assert a.counter == 1
         a.reload()
-        self.assertEqual(a.counter, 1)
+        assert a.counter == 1
 
         a.counter = None
-        self.assertEqual(a.counter, 2)
+        assert a.counter == 2
         a.save()
 
-        self.assertEqual(a.counter, 2)
+        assert a.counter == 2
 
         a = Animal.objects.first()
-        self.assertEqual(a.counter, 2)
+        assert a.counter == 2
         a.reload()
-        self.assertEqual(a.counter, 2)
+        assert a.counter == 2
 
     def test_multiple_sequence_fields_on_docs(self):
         class Animal(Document):
@@ -160,22 +160,22 @@ class TestSequenceField(MongoDBTestCase):
             Person(name="Person %s" % x).save()
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         c = self.db["mongoengine.counters"].find_one({"_id": "animal.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        self.assertEqual(ids, range(1, 11))
+        assert ids == list(range(1, 11))
 
         id = [i.id for i in Animal.objects]
-        self.assertEqual(id, range(1, 11))
+        assert id == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         c = self.db["mongoengine.counters"].find_one({"_id": "animal.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
     def test_sequence_field_value_decorator(self):
         class Person(Document):
@@ -190,13 +190,13 @@ class TestSequenceField(MongoDBTestCase):
             p.save()
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
         ids = [i.id for i in Person.objects]
-        self.assertEqual(ids, map(str, range(1, 11)))
+        assert ids == [str(i) for i in range(1, 11)]
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
-        self.assertEqual(c["next"], 10)
+        assert c["next"] == 10
 
     def test_embedded_sequence_field(self):
         class Comment(EmbeddedDocument):
@@ -218,10 +218,10 @@ class TestSequenceField(MongoDBTestCase):
             ],
         ).save()
         c = self.db["mongoengine.counters"].find_one({"_id": "comment.id"})
-        self.assertEqual(c["next"], 2)
+        assert c["next"] == 2
         post = Post.objects.first()
-        self.assertEqual(1, post.comments[0].id)
-        self.assertEqual(2, post.comments[1].id)
+        assert 1 == post.comments[0].id
+        assert 2 == post.comments[1].id
 
     def test_inherited_sequencefield(self):
         class Base(Document):
@@ -241,16 +241,14 @@ class TestSequenceField(MongoDBTestCase):
         foo = Foo(name="Foo")
         foo.save()
 
-        self.assertTrue(
-            "base.counter" in self.db["mongoengine.counters"].find().distinct("_id")
-        )
-        self.assertFalse(
+        assert "base.counter" in self.db["mongoengine.counters"].find().distinct("_id")
+        assert not (
             ("foo.counter" or "bar.counter")
             in self.db["mongoengine.counters"].find().distinct("_id")
         )
-        self.assertNotEqual(foo.counter, bar.counter)
-        self.assertEqual(foo._fields["counter"].owner_document, Base)
-        self.assertEqual(bar._fields["counter"].owner_document, Base)
+        assert foo.counter != bar.counter
+        assert foo._fields["counter"].owner_document == Base
+        assert bar._fields["counter"].owner_document == Base
 
     def test_no_inherited_sequencefield(self):
         class Base(Document):
@@ -269,13 +267,12 @@ class TestSequenceField(MongoDBTestCase):
         foo = Foo(name="Foo")
         foo.save()
 
-        self.assertFalse(
-            "base.counter" in self.db["mongoengine.counters"].find().distinct("_id")
+        assert "base.counter" not in self.db["mongoengine.counters"].find().distinct(
+            "_id"
         )
-        self.assertTrue(
-            ("foo.counter" and "bar.counter")
-            in self.db["mongoengine.counters"].find().distinct("_id")
-        )
-        self.assertEqual(foo.counter, bar.counter)
-        self.assertEqual(foo._fields["counter"].owner_document, Foo)
-        self.assertEqual(bar._fields["counter"].owner_document, Bar)
+        existing_counters = self.db["mongoengine.counters"].find().distinct("_id")
+        assert "foo.counter" in existing_counters
+        assert "bar.counter" in existing_counters
+        assert foo.counter == bar.counter
+        assert foo._fields["counter"].owner_document == Foo
+        assert bar._fields["counter"].owner_document == Bar

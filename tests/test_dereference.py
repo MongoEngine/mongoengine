@@ -2,10 +2,8 @@
 import unittest
 
 from bson import DBRef, ObjectId
-from six import iteritems
 
 from mongoengine import *
-from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter
 
 
@@ -42,37 +40,37 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             len(group_obj._data["members"])
-            self.assertEqual(q, 1)
+            assert q == 1
 
             len(group_obj.members)
-            self.assertEqual(q, 2)
+            assert q == 2
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 2)
+                assert q == 2
 
         User.drop_collection()
         Group.drop_collection()
@@ -99,40 +97,40 @@ class FieldTest(unittest.TestCase):
         group.reload()  # Confirm reload works
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 2
+            assert group_obj._data["members"]._dereferenced
 
             # verifies that no additional queries gets executed
             # if we re-iterate over the ListField once it is
             # dereferenced
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 2
+            assert group_obj._data["members"]._dereferenced
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
 
-            self.assertEqual(q, 2)
+            assert q == 2
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 2)
+                assert q == 2
 
     def test_list_item_dereference_orphan_dbref(self):
         """Ensure that orphan DBRef items in ListFields are dereferenced.
@@ -159,21 +157,21 @@ class FieldTest(unittest.TestCase):
         # Group.members list is an orphan DBRef
         User.objects[0].delete()
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 2
+            assert group_obj._data["members"]._dereferenced
 
             # verifies that no additional queries gets executed
             # if we re-iterate over the ListField once it is
             # dereferenced
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 2
+            assert group_obj._data["members"]._dereferenced
 
         User.drop_collection()
         Group.drop_collection()
@@ -197,8 +195,8 @@ class FieldTest(unittest.TestCase):
         Group(members=User.objects).save()
         group = Group.objects.first()
 
-        self.assertEqual(Group._get_collection().find_one()["members"], [1])
-        self.assertEqual(group.members, [user])
+        assert Group._get_collection().find_one()["members"] == [1]
+        assert group.members == [user]
 
     def test_handle_old_style_references(self):
         """Ensure that DBRef items in ListFields are dereferenced.
@@ -231,8 +229,8 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         group = Group.objects.first()
-        self.assertEqual(group.members[0].name, "user 1")
-        self.assertEqual(group.members[-1].name, "String!")
+        assert group.members[0].name == "user 1"
+        assert group.members[-1].name == "String!"
 
     def test_migrate_references(self):
         """Example of migrating ReferenceField storage
@@ -253,12 +251,12 @@ class FieldTest(unittest.TestCase):
         group = Group(author=user, members=[user]).save()
 
         raw_data = Group._get_collection().find_one()
-        self.assertIsInstance(raw_data["author"], DBRef)
-        self.assertIsInstance(raw_data["members"][0], DBRef)
+        assert isinstance(raw_data["author"], DBRef)
+        assert isinstance(raw_data["members"][0], DBRef)
         group = Group.objects.first()
 
-        self.assertEqual(group.author, user)
-        self.assertEqual(group.members, [user])
+        assert group.author == user
+        assert group.members == [user]
 
         # Migrate the model definition
         class Group(Document):
@@ -273,12 +271,12 @@ class FieldTest(unittest.TestCase):
             g.save()
 
         group = Group.objects.first()
-        self.assertEqual(group.author, user)
-        self.assertEqual(group.members, [user])
+        assert group.author == user
+        assert group.members == [user]
 
         raw_data = Group._get_collection().find_one()
-        self.assertIsInstance(raw_data["author"], ObjectId)
-        self.assertIsInstance(raw_data["members"][0], ObjectId)
+        assert isinstance(raw_data["author"], ObjectId)
+        assert isinstance(raw_data["members"][0], ObjectId)
 
     def test_recursive_reference(self):
         """Ensure that ReferenceFields can reference their own documents.
@@ -309,43 +307,43 @@ class FieldTest(unittest.TestCase):
         Employee(name="Funky Gibbon", boss=bill, friends=friends).save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             peter = Employee.objects.with_id(peter.id)
-            self.assertEqual(q, 1)
+            assert q == 1
 
             peter.boss
-            self.assertEqual(q, 2)
+            assert q == 2
 
             peter.friends
-            self.assertEqual(q, 3)
+            assert q == 3
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             peter = Employee.objects.with_id(peter.id).select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
-            self.assertEqual(peter.boss, bill)
-            self.assertEqual(q, 2)
+            assert peter.boss == bill
+            assert q == 2
 
-            self.assertEqual(peter.friends, friends)
-            self.assertEqual(q, 2)
+            assert peter.friends == friends
+            assert q == 2
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             employees = Employee.objects(boss=bill).select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
             for employee in employees:
-                self.assertEqual(employee.boss, bill)
-                self.assertEqual(q, 2)
+                assert employee.boss == bill
+                assert q == 2
 
-                self.assertEqual(employee.friends, friends)
-                self.assertEqual(q, 2)
+                assert employee.friends == friends
+                assert q == 2
 
     def test_list_of_lists_of_references(self):
         class User(Document):
@@ -366,10 +364,10 @@ class FieldTest(unittest.TestCase):
         u3 = User.objects.create(name="u3")
 
         SimpleList.objects.create(users=[u1, u2, u3])
-        self.assertEqual(SimpleList.objects.all()[0].users, [u1, u2, u3])
+        assert SimpleList.objects.all()[0].users == [u1, u2, u3]
 
         Post.objects.create(user_lists=[[u1, u2], [u3]])
-        self.assertEqual(Post.objects.all()[0].user_lists, [[u1, u2], [u3]])
+        assert Post.objects.all()[0].user_lists == [[u1, u2], [u3]]
 
     def test_circular_reference(self):
         """Ensure you can handle circular references
@@ -403,9 +401,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(self_rel)
         daughter.save()
 
-        self.assertEqual(
-            "[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects()
-        )
+        assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
 
     def test_circular_reference_on_self(self):
         """Ensure you can handle circular references
@@ -432,9 +428,7 @@ class FieldTest(unittest.TestCase):
         daughter.relations.append(daughter)
         daughter.save()
 
-        self.assertEqual(
-            "[<Person: Mother>, <Person: Daughter>]", "%s" % Person.objects()
-        )
+        assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
 
     def test_circular_tree_reference(self):
         """Ensure you can handle circular references with more than one level
@@ -473,9 +467,9 @@ class FieldTest(unittest.TestCase):
         anna.other.name = "Anna's friends"
         anna.save()
 
-        self.assertEqual(
-            "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]",
-            "%s" % Person.objects(),
+        assert (
+            "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]"
+            == "%s" % Person.objects()
         )
 
     def test_generic_reference(self):
@@ -516,52 +510,52 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for m in group_obj.members:
-                self.assertIn("User", m.__class__.__name__)
+                assert "User" in m.__class__.__name__
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for m in group_obj.members:
-                self.assertIn("User", m.__class__.__name__)
+                assert "User" in m.__class__.__name__
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 for m in group_obj.members:
-                    self.assertIn("User", m.__class__.__name__)
+                    assert "User" in m.__class__.__name__
 
     def test_generic_reference_orphan_dbref(self):
         """Ensure that generic orphan DBRef items in ListFields are dereferenced.
@@ -604,18 +598,18 @@ class FieldTest(unittest.TestCase):
         # an orphan DBRef in the GenericReference ListField
         UserA.objects[0].delete()
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 4
+            assert group_obj._data["members"]._dereferenced
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
-            self.assertTrue(group_obj._data["members"]._dereferenced)
+            assert q == 4
+            assert group_obj._data["members"]._dereferenced
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -660,52 +654,52 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for m in group_obj.members:
-                self.assertIn("User", m.__class__.__name__)
+                assert "User" in m.__class__.__name__
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for m in group_obj.members:
-                self.assertIn("User", m.__class__.__name__)
+                assert "User" in m.__class__.__name__
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 for m in group_obj.members:
-                    self.assertIn("User", m.__class__.__name__)
+                    assert "User" in m.__class__.__name__
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -735,43 +729,43 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIsInstance(m, User)
+            for k, m in group_obj.members.items():
+                assert isinstance(m, User)
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIsInstance(m, User)
+            for k, m in group_obj.members.items():
+                assert isinstance(m, User)
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 2)
+                assert q == 2
 
-                for k, m in iteritems(group_obj.members):
-                    self.assertIsInstance(m, User)
+                for k, m in group_obj.members.items():
+                    assert isinstance(m, User)
 
         User.drop_collection()
         Group.drop_collection()
@@ -813,65 +807,65 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIn("User", m.__class__.__name__)
+            for k, m in group_obj.members.items():
+                assert "User" in m.__class__.__name__
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIn("User", m.__class__.__name__)
+            for k, m in group_obj.members.items():
+                assert "User" in m.__class__.__name__
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
-                for k, m in iteritems(group_obj.members):
-                    self.assertIn("User", m.__class__.__name__)
+                for k, m in group_obj.members.items():
+                    assert "User" in m.__class__.__name__
 
         Group.objects.delete()
         Group().save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 1)
-            self.assertEqual(group_obj.members, {})
+            assert q == 1
+            assert group_obj.members == {}
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -903,52 +897,52 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIsInstance(m, UserA)
+            for k, m in group_obj.members.items():
+                assert isinstance(m, UserA)
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 2)
+            assert q == 2
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIsInstance(m, UserA)
+            for k, m in group_obj.members.items():
+                assert isinstance(m, UserA)
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 2)
+            assert q == 2
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 2)
+                assert q == 2
 
                 [m for m in group_obj.members]
-                self.assertEqual(q, 2)
+                assert q == 2
 
-                for k, m in iteritems(group_obj.members):
-                    self.assertIsInstance(m, UserA)
+                for k, m in group_obj.members.items():
+                    assert isinstance(m, UserA)
 
         UserA.drop_collection()
         Group.drop_collection()
@@ -990,64 +984,64 @@ class FieldTest(unittest.TestCase):
         group.save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIn("User", m.__class__.__name__)
+            for k, m in group_obj.members.items():
+                assert "User" in m.__class__.__name__
 
         # Document select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first().select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 4)
+            assert q == 4
 
-            for k, m in iteritems(group_obj.members):
-                self.assertIn("User", m.__class__.__name__)
+            for k, m in group_obj.members.items():
+                assert "User" in m.__class__.__name__
 
         # Queryset select_related
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_objs = Group.objects.select_related()
-            self.assertEqual(q, 4)
+            assert q == 4
 
             for group_obj in group_objs:
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
                 [m for m in group_obj.members]
-                self.assertEqual(q, 4)
+                assert q == 4
 
-                for k, m in iteritems(group_obj.members):
-                    self.assertIn("User", m.__class__.__name__)
+                for k, m in group_obj.members.items():
+                    assert "User" in m.__class__.__name__
 
         Group.objects.delete()
         Group().save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             [m for m in group_obj.members]
-            self.assertEqual(q, 1)
+            assert q == 1
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -1075,8 +1069,8 @@ class FieldTest(unittest.TestCase):
         root.save()
 
         root = root.reload()
-        self.assertEqual(root.children, [company])
-        self.assertEqual(company.parents, [root])
+        assert root.children == [company]
+        assert company.parents == [root]
 
     def test_dict_in_dbref_instance(self):
         class Person(Document):
@@ -1102,8 +1096,8 @@ class FieldTest(unittest.TestCase):
         room_101.save()
 
         room = Room.objects.first().select_related()
-        self.assertEqual(room.staffs_with_position[0]["staff"], sarah)
-        self.assertEqual(room.staffs_with_position[1]["staff"], bob)
+        assert room.staffs_with_position[0]["staff"] == sarah
+        assert room.staffs_with_position[1]["staff"] == bob
 
     def test_document_reload_no_inheritance(self):
         class Foo(Document):
@@ -1133,8 +1127,8 @@ class FieldTest(unittest.TestCase):
         foo.save()
         foo.reload()
 
-        self.assertEqual(type(foo.bar), Bar)
-        self.assertEqual(type(foo.baz), Baz)
+        assert type(foo.bar) == Bar
+        assert type(foo.baz) == Baz
 
     def test_document_reload_reference_integrity(self):
         """
@@ -1166,13 +1160,13 @@ class FieldTest(unittest.TestCase):
         concurrent_change_user = User.objects.get(id=1)
         concurrent_change_user.name = "new-name"
         concurrent_change_user.save()
-        self.assertNotEqual(user.name, "new-name")
+        assert user.name != "new-name"
 
         msg = Message.objects.get(id=1)
         msg.reload()
-        self.assertEqual(msg.topic, topic)
-        self.assertEqual(msg.author, user)
-        self.assertEqual(msg.author.name, "new-name")
+        assert msg.topic == topic
+        assert msg.author == user
+        assert msg.author.name == "new-name"
 
     def test_list_lookup_not_checked_in_map(self):
         """Ensure we dereference list data correctly
@@ -1194,8 +1188,8 @@ class FieldTest(unittest.TestCase):
         Message(id=1, comments=[c1, c2]).save()
 
         msg = Message.objects.get(id=1)
-        self.assertEqual(0, msg.comments[0].id)
-        self.assertEqual(1, msg.comments[1].id)
+        assert 0 == msg.comments[0].id
+        assert 1 == msg.comments[1].id
 
     def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(self):
         """Ensure that DBRef items in ListFields are dereferenced.
@@ -1217,15 +1211,15 @@ class FieldTest(unittest.TestCase):
         Group(name="Test", members=User.objects).save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             group_obj.name = "new test"
             group_obj.save()
 
-            self.assertEqual(q, 2)
+            assert q == 2
 
     def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(self):
         """Ensure that DBRef items in ListFields are dereferenced.
@@ -1247,15 +1241,15 @@ class FieldTest(unittest.TestCase):
         Group(name="Test", members=User.objects).save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             group_obj.name = "new test"
             group_obj.save()
 
-            self.assertEqual(q, 2)
+            assert q == 2
 
     def test_generic_reference_save_doesnt_cause_extra_queries(self):
         class UserA(Document):
@@ -1287,15 +1281,15 @@ class FieldTest(unittest.TestCase):
         Group(name="test", members=members).save()
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             group_obj = Group.objects.first()
-            self.assertEqual(q, 1)
+            assert q == 1
 
             group_obj.name = "new test"
             group_obj.save()
 
-            self.assertEqual(q, 2)
+            assert q == 2
 
     def test_objectid_reference_across_databases(self):
         # mongoenginetest - Is default connection alias from setUp()
@@ -1319,10 +1313,10 @@ class FieldTest(unittest.TestCase):
 
         # Can't use query_counter across databases - so test the _data object
         book = Book.objects.first()
-        self.assertNotIsInstance(book._data["author"], User)
+        assert not isinstance(book._data["author"], User)
 
         book.select_related()
-        self.assertIsInstance(book._data["author"], User)
+        assert isinstance(book._data["author"], User)
 
     def test_non_ascii_pk(self):
         """
@@ -1346,7 +1340,7 @@ class FieldTest(unittest.TestCase):
         BrandGroup(title="top_brands", brands=[brand1, brand2]).save()
         brand_groups = BrandGroup.objects().all()
 
-        self.assertEqual(2, len([brand for bg in brand_groups for brand in bg.brands]))
+        assert 2 == len([brand for bg in brand_groups for brand in bg.brands])
 
     def test_dereferencing_embedded_listfield_referencefield(self):
         class Tag(Document):
@@ -1370,7 +1364,7 @@ class FieldTest(unittest.TestCase):
         Page(tags=[tag], posts=[post]).save()
 
         page = Page.objects.first()
-        self.assertEqual(page.tags[0], page.posts[0].tags[0])
+        assert page.tags[0] == page.posts[0].tags[0]
 
     def test_select_related_follows_embedded_referencefields(self):
         class Song(Document):
@@ -1390,12 +1384,12 @@ class FieldTest(unittest.TestCase):
         playlist = Playlist.objects.create(items=items)
 
         with query_counter() as q:
-            self.assertEqual(q, 0)
+            assert q == 0
 
             playlist = Playlist.objects.first().select_related()
             songs = [item.song for item in playlist.items]
 
-            self.assertEqual(q, 2)
+            assert q == 2
 
 
 if __name__ == "__main__":

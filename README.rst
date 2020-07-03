@@ -26,15 +26,15 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v3.4 and v3.6. Future versions
+MongoEngine is currently tested against MongoDB v3.4, v3.6 and v4.0. Future versions
 should be supported as well, but aren't actively tested at the moment. Make
 sure to open an issue or submit a pull request if you experience any problems
-with MongoDB version > 3.6.
+with MongoDB version > 4.0.
 
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
-`pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
+`pip <https://pip.pypa.io/>`_. You can then use ``python -m pip install -U mongoengine``.
 You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
 and thus you can use ``easy_install -U mongoengine``. Another option is
 `pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
@@ -42,13 +42,14 @@ to both create the virtual environment and install the package. Otherwise, you c
 download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
 run ``python setup.py install``.
 
+The support for Python2 was dropped with MongoEngine 0.20.0
+
 Dependencies
 ============
-All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
+All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
 At the very least, you'll need these two packages to use MongoEngine:
 
 - pymongo>=3.4
-- six>=1.10.0
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 
@@ -57,6 +58,10 @@ If you utilize a ``DateTimeField``, you might also use a more flexible date pars
 If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
 
 - Pillow>=2.0.0
+
+If you need to use signals:
+
+- blinker>=1.3
 
 Examples
 ========
@@ -91,12 +96,11 @@ Some simple examples of what MongoEngine code looks like:
 
     # Iterate over all posts using the BlogPost superclass
     >>> for post in BlogPost.objects:
-    ...     print '===', post.title, '==='
+    ...     print('===', post.title, '===')
     ...     if isinstance(post, TextPost):
-    ...         print post.content
+    ...         print(post.content)
     ...     elif isinstance(post, LinkPost):
-    ...         print 'Link:', post.url
-    ...     print
+    ...         print('Link:', post.url)
     ...
 
     # Count all blog posts and its subtypes
@@ -116,7 +120,8 @@ Some simple examples of what MongoEngine code looks like:
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``nose`` installed. Then, run ``python setup.py nosetests``.
+the standard port and have ``pytest`` installed. Then, run ``python setup.py test``
+or simply ``pytest``.
 
 To run the test suite on every supported Python and PyMongo version, you can
 use ``tox``. You'll need to make sure you have each supported Python version
@@ -125,20 +130,18 @@ installed in your environment and then:
 .. code-block:: shell
 
     # Install tox
-    $ pip install tox
+    $ python -m pip install tox
     # Run the test suites
     $ tox
 
-If you wish to run a subset of tests, use the nosetests convention:
+If you wish to run a subset of tests, use the pytest convention:
 
 .. code-block:: shell
 
     # Run all the tests in a particular test file
-    $ python setup.py nosetests --tests tests/fields/fields.py
+    $ pytest tests/fields/test_fields.py
     # Run only particular test class in that file
-    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest
-    # Use the -s option if you want to print some debug statements or use pdb
-    $ python setup.py nosetests --tests tests/fields/fields.py:FieldTest -s
+    $ pytest tests/fields/test_fields.py::TestField
 
 Community
 =========

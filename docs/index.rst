@@ -7,7 +7,7 @@ MongoDB. To install it, simply run
 
 .. code-block:: console
 
-    $ pip install -U mongoengine
+    $ python -m pip install -U mongoengine
 
 :doc:`tutorial`
   A quick tutorial building a tumblelog to get you up and running with
@@ -23,8 +23,17 @@ MongoDB. To install it, simply run
 :doc:`upgrade`
   How to upgrade MongoEngine.
 
+:doc:`faq`
+  Frequently Asked Questions
+
 :doc:`django`
   Using MongoEngine and Django
+
+MongoDB and driver support
+--------------------------
+
+MongoEngine is based on the PyMongo driver and tested against multiple versions of MongoDB.
+For further details, please refer to the `readme <https://github.com/MongoEngine/mongoengine#mongoengine>`_.
 
 Community
 ---------
@@ -73,6 +82,7 @@ formats for offline reading.
     apireference
     changelog
     upgrade
+    faq
     django
 
 Indices and tables
@@ -81,4 +91,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

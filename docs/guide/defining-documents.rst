@@ -352,7 +352,7 @@ Its value can take any of the following constants:
   Deletion is denied if there still exist references to the object being
   deleted.
 :const:`mongoengine.NULLIFY`
-  Any object's fields still referring to the object being deleted are removed
+  Any object's fields still referring to the object being deleted are set to None
   (using MongoDB's "unset" operation), effectively nullifying the relationship.
 :const:`mongoengine.CASCADE`
   Any object containing fields that are referring to the object being deleted
@@ -555,7 +555,6 @@ There are a few top level defaults for all indexes that can be set::
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
-            'index_drop_dups': True,
         }
 
 
@@ -573,11 +572,6 @@ There are a few top level defaults for all indexes that can be set::
     indexes exist in MongoDB each time a command is run. This can be disabled
     in systems where indexes are managed separately. Disabling this will improve
     performance.
-
-:attr:`index_drop_dups` (Optional)
-    Set the default value for if an index should drop duplicates
-    Since MongoDB 3.0 drop_dups is not supported anymore. Raises a Warning
-    and has no effect
 
 
 Compound Indexes and Indexing sub documents
@@ -744,7 +738,7 @@ Document inheritance
 
 To create a specialised type of a :class:`~mongoengine.Document` you have
 defined, you may subclass it and add any extra fields or methods you may need.
-As this is new class is not a direct subclass of
+As this new class is not a direct subclass of
 :class:`~mongoengine.Document`, it will not be stored in its own collection; it
 will use the same collection as its superclass uses. This allows for more
 convenient and efficient retrieval of related documents -- all you need do is
@@ -766,6 +760,27 @@ document.::
 
           Setting :attr:`allow_inheritance` to True should also be used in
           :class:`~mongoengine.EmbeddedDocument` class in case you need to subclass it
+
+When it comes to querying using :attr:`.objects()`, querying `Page.objects()` will query
+both `Page` and `DatedPage` whereas querying `DatedPage` will only query the `DatedPage` documents.
+Behind the scenes, MongoEngine deals with inheritance by adding a :attr:`_cls` attribute that contains
+the class name in every documents. When a document is loaded, MongoEngine checks
+it's :attr:`_cls` attribute and use that class to construct the instance.::
+
+    Page(title='a funky title').save()
+    DatedPage(title='another title', date=datetime.utcnow()).save()
+
+    print(Page.objects().count())         # 2
+    print(DatedPage.objects().count())    # 1
+
+    # print documents in their native form
+    # we remove 'id' to avoid polluting the output with unnecessary detail
+    qs = Page.objects.exclude('id').as_pymongo()
+    print(list(qs))
+    # [
+    #   {'_cls': u 'Page', 'title': 'a funky title'},
+    #   {'_cls': u 'Page.DatedPage', 'title': u 'another title', 'date': datetime.datetime(2019, 12, 13, 20, 16, 59, 993000)}
+    # ]
 
 Working with existing data
 --------------------------

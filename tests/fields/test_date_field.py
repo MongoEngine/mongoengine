@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
-import six
+
+import pytest
 
 try:
     import dateutil
@@ -8,7 +9,6 @@ except ImportError:
     dateutil = None
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 
@@ -23,7 +23,8 @@ class TestDateField(MongoDBTestCase):
             dt = DateField()
 
         md = MyDoc(dt="")
-        self.assertRaises(ValidationError, md.save)
+        with pytest.raises(ValidationError):
+            md.save()
 
     def test_date_from_whitespace_string(self):
         """
@@ -35,7 +36,8 @@ class TestDateField(MongoDBTestCase):
             dt = DateField()
 
         md = MyDoc(dt="   ")
-        self.assertRaises(ValidationError, md.save)
+        with pytest.raises(ValidationError):
+            md.save()
 
     def test_default_values_today(self):
         """Ensure that default field values are used when creating
@@ -47,9 +49,9 @@ class TestDateField(MongoDBTestCase):
 
         person = Person()
         person.validate()
-        self.assertEqual(person.day, person.day)
-        self.assertEqual(person.day, datetime.date.today())
-        self.assertEqual(person._data["day"], person.day)
+        assert person.day == person.day
+        assert person.day == datetime.date.today()
+        assert person._data["day"] == person.day
 
     def test_date(self):
         """Tests showing pymongo date fields
@@ -67,7 +69,7 @@ class TestDateField(MongoDBTestCase):
         log.date = datetime.date.today()
         log.save()
         log.reload()
-        self.assertEqual(log.date, datetime.date.today())
+        assert log.date == datetime.date.today()
 
         d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999)
         d2 = datetime.datetime(1970, 1, 1, 0, 0, 1)
@@ -75,27 +77,16 @@ class TestDateField(MongoDBTestCase):
         log.date = d1
         log.save()
         log.reload()
-        self.assertEqual(log.date, d1.date())
-        self.assertEqual(log.date, d2.date())
+        assert log.date == d1.date()
+        assert log.date == d2.date()
 
         d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999)
         d2 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9000)
         log.date = d1
         log.save()
         log.reload()
-        self.assertEqual(log.date, d1.date())
-        self.assertEqual(log.date, d2.date())
-
-        if not six.PY3:
-            # Pre UTC dates microseconds below 1000 are dropped
-            # This does not seem to be true in PY3
-            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999)
-            d2 = datetime.datetime(1969, 12, 31, 23, 59, 59)
-            log.date = d1
-            log.save()
-            log.reload()
-            self.assertEqual(log.date, d1.date())
-            self.assertEqual(log.date, d2.date())
+        assert log.date == d1.date()
+        assert log.date == d2.date()
 
     def test_regular_usage(self):
         """Tests for regular datetime fields"""
@@ -113,35 +104,35 @@ class TestDateField(MongoDBTestCase):
 
         for query in (d1, d1.isoformat(" ")):
             log1 = LogEntry.objects.get(date=query)
-            self.assertEqual(log, log1)
+            assert log == log1
 
         if dateutil:
             log1 = LogEntry.objects.get(date=d1.isoformat("T"))
-            self.assertEqual(log, log1)
+            assert log == log1
 
         # create additional 19 log entries for a total of 20
         for i in range(1971, 1990):
             d = datetime.datetime(i, 1, 1, 0, 0, 1)
             LogEntry(date=d).save()
 
-        self.assertEqual(LogEntry.objects.count(), 20)
+        assert LogEntry.objects.count() == 20
 
         # Test ordering
         logs = LogEntry.objects.order_by("date")
         i = 0
         while i < 19:
-            self.assertTrue(logs[i].date <= logs[i + 1].date)
+            assert logs[i].date <= logs[i + 1].date
             i += 1
 
         logs = LogEntry.objects.order_by("-date")
         i = 0
         while i < 19:
-            self.assertTrue(logs[i].date >= logs[i + 1].date)
+            assert logs[i].date >= logs[i + 1].date
             i += 1
 
         # Test searching
         logs = LogEntry.objects.filter(date__gte=datetime.datetime(1980, 1, 1))
-        self.assertEqual(logs.count(), 10)
+        assert logs.count() == 10
 
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to datetime
@@ -166,6 +157,8 @@ class TestDateField(MongoDBTestCase):
             log.validate()
 
         log.time = -1
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
         log.time = "ABC"
-        self.assertRaises(ValidationError, log.validate)
+        with pytest.raises(ValidationError):
+            log.validate()
