@@ -46,7 +46,8 @@ class BaseField(object):
     def __init__(self, db_field=None, name=None, required=False, default=None,
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, null=False, sparse=False, alertable=False,
-                 display_name=None, reportable=False,
+                 display_name=None, reportable=False, category='', subCategory='',
+                 isGroupable=False, hasSensitiveData=False, description='',
                  **kwargs):
         """
         :param db_field: The database field to store this field in
@@ -90,6 +91,11 @@ class BaseField(object):
         self.alertable = alertable
         self.reportable = reportable
         self.display_name = display_name
+        self.category = category
+        self.subCategory = subCategory
+        self.description = description
+        self.isGroupable=isGroupable
+        self.hasSensitiveData=hasSensitiveData
         self.null = null
         self.sparse = sparse
         self._owner_document = None
