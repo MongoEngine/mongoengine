@@ -439,7 +439,7 @@ class DateTimeField(BaseField):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
-            return value
+            return value.astimezone(PST_TIMEZONE).isoformat() if kwargs.get('fast', False) else value
         if isinstance(value, datetime.date):
             return PST_TIMEZONE.localize(datetime.datetime(
                 value.year, value.month, value.day, hour=0, minute=0, second=0, microsecond=0))
@@ -763,7 +763,7 @@ class ListField(ComplexBaseField):
         if val is None:
             return None
         to_mongo = getattr(self.field, 'to_mongo', None)
-        return [to_mongo(v) for v in val] if to_mongo else val
+        return [to_mongo(v, **kwargs) for v in val] if to_mongo else val
 
     def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used.
@@ -1090,7 +1090,7 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document, **kwargs):
         if type(document) is DocumentProxy:
-            return document.id
+            return str(document.id) if kwargs.get('fast', False) else document.id
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
@@ -1295,15 +1295,15 @@ class CachedReferenceField(BaseField):
         if isinstance(document, DBRef):
             document = self.document_type._from_son(self.document_type._get_db().dereference(document))
 
-        if isinstance(document, Document):
-            # We need the id from the saved object to create the DBRef
-            id_ = document.pk
-            if id_ is None:
-                self.error('You can only reference documents once they have'
-                           ' been saved to the database')
-        else:
+        # TODO: should raise here or will fail next statement
+        if not isinstance(document, Document):
             self.error('Only accept a document object')
-            # TODO: should raise here or will fail next statement
+
+        # We need the id from the saved object to create the DBRef
+        id_ = document.pk
+        if id_ is None:
+            self.error('You can only reference documents once they have'
+                       ' been saved to the database')
 
         value = SON((
             ("_id", id_field.to_mongo(id_, **kwargs)),

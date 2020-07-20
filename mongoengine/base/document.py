@@ -33,6 +33,8 @@ from six import string_types, iteritems, text_type
 
 __all__ = ('BaseDocument', 'NON_FIELD_ERRORS')
 
+from common.tests.profile_each_line import profile_each_line
+
 NON_FIELD_ERRORS = '__all__'
 
 
@@ -326,14 +328,14 @@ class BaseDocument(object):
 
         return self._data['_text_score']
 
-    def to_mongo(self, use_db_field=True, fields=None):
+    def to_mongo(self, use_db_field=True, fields=None, fast=False):
         """
         Return as SON data ready for use with MongoDB.
         """
         if not fields:
             fields = []
 
-        data = SON()
+        data = {} if fast else SON()
         data["_id"] = None
         data['_cls'] = self._class_name
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
@@ -363,7 +365,7 @@ class BaseDocument(object):
                     embedded_fields = []
 
                 value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields)
+                                        fields=embedded_fields, fast=fast)
 
             # Handle self generating fields
             if value is None and field._auto_gen:
