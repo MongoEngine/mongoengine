@@ -439,7 +439,7 @@ class DateTimeField(BaseField):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
-            return value.astimezone(PST_TIMEZONE).isoformat() if kwargs.get('fast', False) else value
+            return value.astimezone(PST_TIMEZONE).isoformat() if kwargs.get('serial_v2', False) else value
         if isinstance(value, datetime.date):
             return PST_TIMEZONE.localize(datetime.datetime(
                 value.year, value.month, value.day, hour=0, minute=0, second=0, microsecond=0))
@@ -1090,7 +1090,7 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document, **kwargs):
         if type(document) is DocumentProxy:
-            return str(document.id) if kwargs.get('fast', False) else document.id
+            return str(document.id) if kwargs.get('serial_v2', False) else document.id
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
