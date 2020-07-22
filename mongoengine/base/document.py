@@ -346,8 +346,8 @@ class BaseDocument(object):
             if root_fields and field_name not in root_fields:
                 continue
 
-            if no_prop:
-                print("hihihihihihihhihihihihihi")
+            if no_prop and type(getattr(self.__class__, field_name)) == property:
+                continue
 
             field = self._fields.get(field_name)
             if field and field.is_v2_field():
