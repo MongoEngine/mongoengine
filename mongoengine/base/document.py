@@ -345,14 +345,12 @@ class BaseDocument(object):
                 continue
 
             field = self._fields.get(field_name)
-            
             if field and field.is_v2_field():
                 value = self.v2_get(field)
             else:
                 value = self._data.get(field_name, None)
 
             if value is not None:
-
                 if fields:
                     key = '%s.' % field_name
                     embedded_fields = [
@@ -363,12 +361,15 @@ class BaseDocument(object):
                     embedded_fields = []
 
                 value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields, serial_v2=serial_v2)
+                                       fields=embedded_fields, serial_v2=serial_v2)
 
             # Handle self generating fields
-            if value is None and field._auto_gen:
-                value = field.generate()
-                self._data[field_name] = value
+            if value is None:
+                if field._auto_gen:
+                    value = field.generate()
+                    self._data[field_name] = value
+                elif serial_v2:
+                    data[field_name] = None
 
             if value is not None:
                 if use_db_field:
