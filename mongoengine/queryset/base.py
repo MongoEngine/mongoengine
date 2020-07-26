@@ -398,22 +398,14 @@ class BaseQuerySet:
         )
         return results[0] if return_one else results
 
-    def count(self, with_limit_and_skip=False):
+    def count(self, *args, **kwargs):
         """Count the selected elements in the query.
 
         :param with_limit_and_skip (optional): take any :meth:`limit` or
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        if (
-            self._limit == 0
-            and with_limit_and_skip is False
-            or self._none
-            or self._empty
-        ):
-            return 0
-        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
-        self._cursor_obj = None
+        count = self._collection_obj.count_documents(*args,**kwargs)
         return count
 
     def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
