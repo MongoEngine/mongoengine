@@ -340,13 +340,8 @@ class BaseDocument(object):
         # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
         root_fields = set([f.split('.')[0] for f in fields])
 
-        no_prop = getattr(self, 'context', {}).get('no_prop', False)
-
         for field_name in self:
             if root_fields and field_name not in root_fields:
-                continue
-
-            if no_prop and type(getattr(self.__class__, field_name)) == property:
                 continue
 
             field = self._fields.get(field_name)
