@@ -345,12 +345,14 @@ class BaseDocument(object):
                 continue
 
             field = self._fields.get(field_name)
+
             if field and field.is_v2_field():
                 value = self.v2_get(field)
             else:
                 value = self._data.get(field_name, None)
 
             if value is not None:
+
                 if fields:
                     key = '%s.' % field_name
                     embedded_fields = [
