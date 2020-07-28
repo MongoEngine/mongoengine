@@ -1302,10 +1302,6 @@ class CachedReferenceField(BaseField):
         if isinstance(document, DBRef):
             document = self.document_type._from_son(self.document_type._get_db().dereference(document))
 
-        # TODO: should raise here or will fail next statement
-        if not isinstance(document, Document):
-            self.error('Only accept a document object')
-
         if isinstance(document, Document):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
