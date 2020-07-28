@@ -441,8 +441,8 @@ class DateTimeField(BaseField):
         if isinstance(value, datetime.datetime):
             if kwargs.get('serial_v2', False):
                 return value.astimezone(PST_TIMEZONE).isoformat()
-            else:
-                return value
+
+            return value
         if isinstance(value, datetime.date):
             return PST_TIMEZONE.localize(datetime.datetime(
                 value.year, value.month, value.day, hour=0, minute=0, second=0, microsecond=0))
@@ -1095,8 +1095,9 @@ class ReferenceField(BaseField):
         if type(document) is DocumentProxy:
             if kwargs.get('serial_v2', False):
                 return str(document.id)
-            else:
-                return document.id
+
+            return document.id
+
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id
@@ -1305,11 +1306,15 @@ class CachedReferenceField(BaseField):
         if not isinstance(document, Document):
             self.error('Only accept a document object')
 
-        # We need the id from the saved object to create the DBRef
-        id_ = document.pk
-        if id_ is None:
-            self.error('You can only reference documents once they have'
-                       ' been saved to the database')
+        if isinstance(document, Document):
+            # We need the id from the saved object to create the DBRef
+            id_ = document.pk
+            if id_ is None:
+                self.error('You can only reference documents once they have'
+                           ' been saved to the database')
+        else:
+            self.error('Only accept a document object')
+            # TODO: should raise here or will fail next statement
 
         value = SON((
             ("_id", id_field.to_mongo(id_, **kwargs)),
