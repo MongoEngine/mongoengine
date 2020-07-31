@@ -439,6 +439,9 @@ class DateTimeField(BaseField):
         if value is None:
             return value
         if isinstance(value, datetime.datetime):
+            if kwargs.get('serial_v2', False):
+                return value.astimezone(PST_TIMEZONE).isoformat()
+
             return value
         if isinstance(value, datetime.date):
             return PST_TIMEZONE.localize(datetime.datetime(
@@ -763,7 +766,7 @@ class ListField(ComplexBaseField):
         if val is None:
             return None
         to_mongo = getattr(self.field, 'to_mongo', None)
-        return [to_mongo(v) for v in val] if to_mongo else val
+        return [to_mongo(v, **kwargs) for v in val] if to_mongo else val
 
     def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used.
@@ -1090,7 +1093,11 @@ class ReferenceField(BaseField):
 
     def to_mongo(self, document, **kwargs):
         if type(document) is DocumentProxy:
+            if kwargs.get('serial_v2', False):
+                return str(document.id)
+
             return document.id
+
         if isinstance(document, DBRef):
             if not self.dbref:
                 return document.id

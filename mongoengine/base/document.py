@@ -326,14 +326,14 @@ class BaseDocument(object):
 
         return self._data['_text_score']
 
-    def to_mongo(self, use_db_field=True, fields=None):
+    def to_mongo(self, use_db_field=True, fields=None, serial_v2=False):
         """
         Return as SON data ready for use with MongoDB.
         """
         if not fields:
             fields = []
 
-        data = SON()
+        data = {} if serial_v2 else SON()
         data["_id"] = None
         data['_cls'] = self._class_name
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
@@ -345,7 +345,7 @@ class BaseDocument(object):
                 continue
 
             field = self._fields.get(field_name)
-            
+
             if field and field.is_v2_field():
                 value = self.v2_get(field)
             else:
@@ -363,12 +363,15 @@ class BaseDocument(object):
                     embedded_fields = []
 
                 value = field.to_mongo(value, use_db_field=use_db_field,
-                                        fields=embedded_fields)
+                                       fields=embedded_fields, serial_v2=serial_v2)
 
             # Handle self generating fields
-            if value is None and field._auto_gen:
-                value = field.generate()
-                self._data[field_name] = value
+            if value is None:
+                if field._auto_gen:
+                    value = field.generate()
+                    self._data[field_name] = value
+                elif serial_v2:
+                    data[field_name] = None
 
             if value is not None:
                 if use_db_field:

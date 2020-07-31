@@ -485,6 +485,11 @@ class ObjectIdField(BaseField):
             except Exception as e:
                 # e.message attribute has been deprecated since Python 2.6
                 self.error(text_type(e))
+
+        if kwargs.get('serial_v2', False):
+            # stringify for JSON
+            return str(value)
+
         return value
 
     def prepare_query_value(self, op, value):
