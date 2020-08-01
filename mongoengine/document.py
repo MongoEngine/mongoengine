@@ -639,7 +639,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 write_concern=write_concern, _from_doc_delete=True
             )
         except pymongo.errors.OperationFailure as err:
-            message = "Could not delete document (%s)" % err.message
+            message = "Could not delete document (%s)" % err.args
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
