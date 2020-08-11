@@ -9,10 +9,31 @@ Development
 - When using pymongo >= 3.7, make use of Collection.count_documents instead of Collection.count
     and Cursor.count that got deprecated in pymongo >= 3.7.
     This should have a negative impact on performance of count see Issue #2219
+- Fix a bug that made the queryset drop the read_preference after clone().
+- Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
+
+Changes in 0.20.0
+=================
+- ATTENTION: Drop support for Python2
+- Add Mongo 4.0 to Travis
+- Fix error when setting a string as a ComplexDateTimeField #2253
+- Bump development Status classifier to Production/Stable #2232
+- Improve Queryset.get to avoid confusing MultipleObjectsReturned message in case multiple match are found #630
+- Fixed a bug causing inaccurate query results, while combining ``__raw__`` and regular filters for the same field #2264
+- Add support for the `elemMatch` projection operator in .fields() (e.g BlogPost.objects.fields(elemMatch__comments="test")) #2267
+- DictField validate failed without default connection (bug introduced in 0.19.0) #2239
+- Remove methods that were deprecated years ago:
+    - name parameter in Field constructor e.g `StringField(name="...")`, was replaced by db_field
+    - Queryset.slave_okay() was deprecated since pymongo3
+    - dropDups was dropped with MongoDB3
+    - ``Queryset._ensure_indexes`` and ``Queryset.ensure_indexes``, the right method to use is ``Document.ensure_indexes``
+- Added pre-commit for development/CI #2212
+- Renamed requirements-lint.txt to requirements-dev.txt #2212
+- Support for setting ReadConcern #2255
 
 Changes in 0.19.1
 =================
-- Requires Pillow < 7.0.0 as it dropped Python2 support
+- Tests require Pillow < 7.0.0 as it dropped Python2 support
 - DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
     pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
 

@@ -3,7 +3,6 @@ import unittest
 import warnings
 
 import pytest
-from six import iteritems
 
 from mongoengine import (
     BooleanField,
@@ -523,7 +522,6 @@ class TestInheritance(MongoDBTestCase):
 
         defaults = {
             "index_background": True,
-            "index_drop_dups": True,
             "index_opts": {"hello": "world"},
             "allow_inheritance": True,
             "queryset_class": "QuerySet",
@@ -550,7 +548,7 @@ class TestInheritance(MongoDBTestCase):
         class Human(Mammal):
             pass
 
-        for k, v in iteritems(defaults):
+        for k, v in defaults.items():
             for cls in [Animal, Fish, Guppy]:
                 assert cls._meta[k] == v
 

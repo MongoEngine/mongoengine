@@ -348,7 +348,7 @@ class ConnectionTest(unittest.TestCase):
 
     def test_disconnect_cleans_cached_collection_attribute_in_document(self):
         """Ensure that the disconnect() method works properly"""
-        conn1 = connect("mongoenginetest")
+        connect("mongoenginetest")
 
         class History(Document):
             pass
@@ -518,7 +518,7 @@ class ConnectionTest(unittest.TestCase):
         """Ensure connect() uses the username & password params if the URI
         doesn't explicitly specify them.
         """
-        c = connect(
+        connect(
             host="mongodb://localhost/mongoenginetest", username="user", password="pass"
         )
 
@@ -632,7 +632,7 @@ class ConnectionTest(unittest.TestCase):
         """Ensure connect() works when specifying a replicaSet via the
         MongoDB URI.
         """
-        c = connect(host="mongodb://localhost/test?replicaSet=local-rs")
+        connect(host="mongodb://localhost/test?replicaSet=local-rs")
         db = get_db()
         assert isinstance(db, pymongo.database.Database)
         assert db.name == "test"

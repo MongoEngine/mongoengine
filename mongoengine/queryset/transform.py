@@ -3,14 +3,12 @@ from collections import defaultdict
 from bson import ObjectId, SON
 from bson.dbref import DBRef
 import pymongo
-import six
-from six import iteritems
 
 from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidQueryError
 
-__all__ = ("query", "update")
+__all__ = ("query", "update", "STRING_OPERATORS")
 
 COMPARISON_OPERATORS = (
     "ne",
@@ -101,7 +99,7 @@ def query(_doc_cls=None, **kwargs):
             cleaned_fields = []
             for field in fields:
                 append_field = True
-                if isinstance(field, six.string_types):
+                if isinstance(field, str):
                     parts.append(field)
                     append_field = False
                 # is last and CachedReferenceField
@@ -169,9 +167,9 @@ def query(_doc_cls=None, **kwargs):
 
         key = ".".join(parts)
 
-        if op is None or key not in mongo_query:
+        if key not in mongo_query:
             mongo_query[key] = value
-        elif key in mongo_query:
+        else:
             if isinstance(mongo_query[key], dict) and isinstance(value, dict):
                 mongo_query[key].update(value)
                 # $max/minDistance needs to come last - convert to SON
@@ -180,7 +178,7 @@ def query(_doc_cls=None, **kwargs):
                     "$near" in value_dict or "$nearSphere" in value_dict
                 ):
                     value_son = SON()
-                    for k, v in iteritems(value_dict):
+                    for k, v in value_dict.items():
                         if k == "$maxDistance" or k == "$minDistance":
                             continue
                         value_son[k] = v
@@ -281,7 +279,7 @@ def update(_doc_cls=None, **update):
             appended_sub_field = False
             for field in fields:
                 append_field = True
-                if isinstance(field, six.string_types):
+                if isinstance(field, str):
                     # Convert the S operator to $
                     if field == "S":
                         field = "$"
@@ -435,7 +433,9 @@ def _geo_operator(field, op, value):
             value = {"$near": _infer_geometry(value)}
         else:
             raise NotImplementedError(
-                'Geo method "%s" has not been implemented for a %s ' % (op, field._name)
+                'Geo method "{}" has not been implemented for a {} '.format(
+                    op, field._name
+                )
             )
     return value
 

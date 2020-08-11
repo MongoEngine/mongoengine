@@ -4,12 +4,14 @@ import timeit
 def main():
     setup = """
 from pymongo import MongoClient
+
 connection = MongoClient()
 connection.drop_database('mongoengine_benchmark_test')
 """
 
     stmt = """
 from pymongo import MongoClient
+
 connection = MongoClient()
 
 db = connection.mongoengine_benchmark_test
@@ -56,6 +58,7 @@ myNoddys = noddy.find()
 
     setup = """
 from pymongo import MongoClient
+
 connection = MongoClient()
 connection.drop_database('mongoengine_benchmark_test')
 connection.close()
