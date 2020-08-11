@@ -352,24 +352,19 @@ class TestTransform(unittest.TestCase):
 
         class Drink(EmbeddedDocument):
             id = StringField()
-            meta = {
-                'strict': False
-            }
+            meta = {"strict": False}
 
         class Shop(Document):
             drinks = EmbeddedDocumentListField(Drink)
 
         Shop.drop_collection()
-        drinks = [Drink(id='drink_1'), Drink(id='drink_2')]
+        drinks = [Drink(id="drink_1"), Drink(id="drink_2")]
         Shop.objects.create(drinks=drinks)
         q_obj = transform.query(
-            Shop,
-            drinks__all=[{'$elemMatch': {'_id': x.id}} for x in drinks]
+            Shop, drinks__all=[{"$elemMatch": {"_id": x.id}} for x in drinks]
         )
         assert q_obj == {
-            'drinks': {
-                '$all': [{'$elemMatch': {'_id': x.id}} for x in drinks]
-            }
+            "drinks": {"$all": [{"$elemMatch": {"_id": x.id}} for x in drinks]}
         }
 
         Shop.drop_collection()
