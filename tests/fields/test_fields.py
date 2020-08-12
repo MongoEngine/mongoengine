@@ -336,7 +336,7 @@ class TestField(MongoDBTestCase):
         doc.save()
 
         # Unset all the fields
-        HandleNoneFields._get_collection().update(
+        HandleNoneFields._get_collection().update_one(
             {"_id": doc.id},
             {"$unset": {"str_fld": 1, "int_fld": 1, "flt_fld": 1, "comp_dt_fld": 1}},
         )
