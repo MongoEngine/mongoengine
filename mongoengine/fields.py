@@ -2045,7 +2045,7 @@ class ImageField(FileField):
 
 class SequenceField(BaseField):
     """Provides a sequential counter see:
-     http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
+     https://docs.mongodb.com/manual/reference/method/ObjectId/#ObjectIDs-SequenceNumbers
 
     .. note::
 

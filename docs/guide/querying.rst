@@ -609,7 +609,7 @@ to push values with index::
 .. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
-    operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
+    operator <https://docs.mongodb.com/manual/tutorial/update-documents/#Updating-The%24positionaloperator>`_.
 
 Server-side javascript execution
 ================================
