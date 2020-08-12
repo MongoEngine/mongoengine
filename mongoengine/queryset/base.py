@@ -25,7 +25,8 @@ from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
 from six import string_types, iteritems, text_type
-
+from mongoengine.context_managers import switch_db
+from mongoengine.common import DryRunPeoProcessContext
 if IS_PYMONGO_3:
     from pymongo.collection import ReturnDocument
 
@@ -294,6 +295,19 @@ class BaseQuerySet(object):
             result = queryset[0]
         except IndexError:
             result = None
+
+        if DryRunPeoProcessContext.is_dry_run:
+            with switch_db(self._document, 'dry_run'):
+                queryset = self.clone()
+                try:
+                    result2 = queryset[0]
+                except IndexError:
+                    result2 = None
+                if result2:
+                    result = result2
+                elif result and str(result.id) in DryRunPeoProcessContext.changed_object_ids:
+                    result = None
+
         return result
 
     def insert(self, doc_or_docs, load_bulk=True,
@@ -704,7 +718,12 @@ class BaseQuerySet(object):
 
         .. versionadded:: 0.5
         """
-        return self.clone_into(self.__class__(self._document, self._collection_obj))
+
+        if DryRunPeoProcessContext.is_dry_run and self._document._meta.get("db_alias", "") == 'dry_run':
+            collection_obj = self._document._get_collection()
+        else:
+            collection_obj = self._collection_obj
+        return self.clone_into(self.__class__(self._document, collection_obj))
 
     def clone_into(self, cls):
         """Creates a copy of the current
@@ -727,6 +746,8 @@ class BaseQuerySet(object):
 
         if self._cursor_obj:
             cls._cursor_obj = self._cursor_obj.clone()
+            if DryRunPeoProcessContext.is_dry_run and cls._document._meta.get("db_alias", "") == 'dry_run':
+                cls._cursor_obj.__collection = cls._collection_obj
 
         return cls
 

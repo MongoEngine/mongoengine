@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 _class_registry_cache = {}
 _field_list_cache = []
+from bson import ObjectId
+from collections import defaultdict
 
 from mongoengine import connection
 
@@ -17,6 +19,25 @@ class ReadOnlyContext(object):
     def isActive(cls):
         return cls.read_only
 
+class DryRunPeoProcessContext(ReadOnlyContext):
+    is_dry_run = False
+    dry_run_id = None
+    changed_object_ids = []
+
+    def __enter__(self):
+        ReadOnlyContext.read_only = True
+        DryRunPeoProcessContext.is_dry_run = True
+        DryRunPeoProcessContext.dry_run_id = str(ObjectId())
+
+    def __exit__(self, *args):
+        ReadOnlyContext.read_only = False
+        DryRunPeoProcessContext.is_dry_run = False
+        DryRunPeoProcessContext.dry_run_id = None
+        DryRunPeoProcessContext.changed_object_ids = []
+
+    @classmethod
+    def isDryRun(cls):
+        return cls.is_dry_run
 
 def _import_class(cls_name):
     """Cache mechanism for imports.

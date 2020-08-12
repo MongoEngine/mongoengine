@@ -1126,6 +1126,11 @@ class ReferenceField(BaseField):
     def to_python(self, value, _lazy_prefetch_base=None, _fields=None, **kwargs):
         """Convert a MongoDB-compatible type to a Python type.
         """
+        from mongoengine.common import DryRunPeoProcessContext
+        if DryRunPeoProcessContext.is_dry_run and DryRunPeoProcessContext.is_dry_run_db:
+            return value
+
+
         if type(value) is DocumentProxy:
             return value
         if (not self.dbref and

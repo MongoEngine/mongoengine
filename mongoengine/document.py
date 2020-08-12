@@ -2,11 +2,11 @@ from __future__ import absolute_import
 import warnings
 import pymongo
 import re
-
+from bson import ObjectId
 from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
 from mongoengine import signals
-from mongoengine.common import _import_class
+from mongoengine.common import _import_class, DryRunPeoProcessContext
 from mongoengine.base import (
     DocumentMetaclass,
     TopLevelDocumentMetaclass,
@@ -24,6 +24,7 @@ from mongoengine.queryset import (OperationError, NotUniqueError,
                                   QuerySet, transform)
 from mongoengine.connection import get_db, DEFAULT_CONNECTION_NAME
 from mongoengine.connections_manager import connection_manager
+from mongoengine.context_managers import switch_db
 
 import logging
 from six import string_types, iteritems, text_type, with_metaclass
@@ -272,7 +273,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         self_id = self.id  # useful for restoring this, if history class is being edited
         doc = self.to_mongo()
-        
+
         if self.__class__.__name__.startswith("Historical") and self_id != self.history_object.id:
             # this means the object being saved was originally a history object
             # restore the id so that the mongo can overwrite history
@@ -286,90 +287,192 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         signals.pre_save_post_validation.send(self.__class__, document=self,
                                               created=created, **signal_kwargs)
 
-        try:
-            collection = connection_manager.get_and_setup(self.__class__, alias=alias, collection_name=collection_name)
-            if created:
-                if force_insert:
-                    object_id = collection.insert(doc, **write_concern)
+        if not DryRunPeoProcessContext.is_dry_run:
+            try:
+                collection = connection_manager.get_and_setup(self.__class__, alias=alias, collection_name=collection_name)
+                if created:
+                    if force_insert:
+                        object_id = collection.insert(doc, **write_concern)
+                    else:
+                        object_id = collection.save(doc, **write_concern)
+                        # In PyMongo 3.0, the save() call calls internally the _update() call
+                        # but they forget to return the _id value passed back, therefore getting it back here
+                        # Correct behaviour in 2.X and in 3.0.1+ versions
+                        if not object_id and pymongo.version_tuple == (3, 0):
+                            pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
+                            object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
+                                        self._qs.filter(pk=pk_as_mongo_obj).first().pk
                 else:
-                    object_id = collection.save(doc, **write_concern)
-                    # In PyMongo 3.0, the save() call calls internally the _update() call
-                    # but they forget to return the _id value passed back, therefore getting it back here
-                    # Correct behaviour in 2.X and in 3.0.1+ versions
-                    if not object_id and pymongo.version_tuple == (3, 0):
-                        pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
-                        object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
-                                    self._qs.filter(pk=pk_as_mongo_obj).first().pk
-            else:
-                object_id = doc['_id']
-                updates, removals = self._delta()
-                # Need to add shard key to query, or you get an error
-                if save_condition is not None:
-                    select_dict = transform.query(self.__class__,
-                                                  **save_condition)
-                else:
-                    select_dict = {}
-                select_dict['_id'] = object_id
-                shard_key = self.__class__._meta.get('shard_key', tuple())
-                for k in shard_key:
-                    path = self._lookup_field(k.split('.'))
-                    actual_key = [p.db_field for p in path]
-                    val = doc
-                    for ak in actual_key:
-                        val = val[ak]
-                    select_dict['.'.join(actual_key)] = val
+                    object_id = doc['_id']
+                    updates, removals = self._delta()
+                    # Need to add shard key to query, or you get an error
+                    if save_condition is not None:
+                        select_dict = transform.query(self.__class__,
+                                                      **save_condition)
+                    else:
+                        select_dict = {}
+                    select_dict['_id'] = object_id
+                    shard_key = self.__class__._meta.get('shard_key', tuple())
+                    for k in shard_key:
+                        path = self._lookup_field(k.split('.'))
+                        actual_key = [p.db_field for p in path]
+                        val = doc
+                        for ak in actual_key:
+                            val = val[ak]
+                        select_dict['.'.join(actual_key)] = val
 
-                def is_new_object(last_error):
-                    if last_error is not None:
-                        updated = last_error.get("updatedExisting")
-                        if updated is not None:
-                            return not updated
-                    return created
+                    def is_new_object(last_error):
+                        if last_error is not None:
+                            updated = last_error.get("updatedExisting")
+                            if updated is not None:
+                                return not updated
+                        return created
 
-                update_query = {}
+                    update_query = {}
 
-                if updates:
-                    update_query["$set"] = updates
-                if removals:
-                    update_query["$unset"] = removals
-                if updates or removals:
-                    upsert = save_condition is None
-                    last_error = collection.update(select_dict, update_query,
-                                                   upsert=upsert, **write_concern)
-                    if not upsert and last_error["n"] == 0:
-                        raise SaveConditionError('Race condition preventing'
-                                                 ' document update detected')
-                    created = is_new_object(last_error)
+                    if updates:
+                        update_query["$set"] = updates
+                    if removals:
+                        update_query["$unset"] = removals
+                    if updates or removals:
+                        upsert = save_condition is None
+                        last_error = collection.update(select_dict, update_query,
+                                                       upsert=upsert, **write_concern)
+                        if not upsert and last_error["n"] == 0:
+                            raise SaveConditionError('Race condition preventing'
+                                                     ' document update detected')
+                        created = is_new_object(last_error)
 
-            if cascade is None:
-                cascade = self._meta.get(
-                    'cascade', False) or cascade_kwargs is not None
+                if cascade is None:
+                    cascade = self._meta.get(
+                        'cascade', False) or cascade_kwargs is not None
 
-            if cascade:
-                kwargs = {
-                    "force_insert": force_insert,
-                    "validate": validate,
-                    "write_concern": write_concern,
-                    "cascade": cascade
-                }
-                if cascade_kwargs:  # Allow granular control over cascades
-                    kwargs.update(cascade_kwargs)
-                kwargs['_refs'] = _refs
-                self.cascade_save(**kwargs)
-        except pymongo.errors.DuplicateKeyError as err:
-            message = u'Tried to save duplicate unique keys (%s)'
-            raise NotUniqueError(message % text_type(err))
-        except pymongo.errors.OperationFailure as err:
-            message = 'Could not save document (%s)'
-            if re.match('^E1100[01] duplicate key', text_type(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
+                if cascade:
+                    kwargs = {
+                        "force_insert": force_insert,
+                        "validate": validate,
+                        "write_concern": write_concern,
+                        "cascade": cascade
+                    }
+                    if cascade_kwargs:  # Allow granular control over cascades
+                        kwargs.update(cascade_kwargs)
+                    kwargs['_refs'] = _refs
+                    self.cascade_save(**kwargs)
+            except pymongo.errors.DuplicateKeyError as err:
                 message = u'Tried to save duplicate unique keys (%s)'
                 raise NotUniqueError(message % text_type(err))
-            raise OperationError(message % text_type(err))
-        id_field = self._meta['id_field']
-        if created or id_field not in self._meta.get('shard_key', []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
+            except pymongo.errors.OperationFailure as err:
+                message = 'Could not save document (%s)'
+                if re.match('^E1100[01] duplicate key', text_type(err)):
+                    # E11000 - duplicate key error index
+                    # E11001 - duplicate key on update
+                    message = u'Tried to save duplicate unique keys (%s)'
+                    raise NotUniqueError(message % text_type(err))
+                raise OperationError(message % text_type(err))
+            id_field = self._meta['id_field']
+            if created or id_field not in self._meta.get('shard_key', []):
+                self[id_field] = self._fields[id_field].to_python(object_id)
+
+        else:
+            # new objects cannot be created in dry run and hence self.id will be none,
+            # hence to pass the validation process we are assigning temp object id to the self.id
+            if not self.dryRunId:
+                self.dryRunId = DryRunPeoProcessContext.dry_run_id
+                doc = self.to_mongo()
+                created = True
+
+            with switch_db(self.__class__, 'dry_run') as Dry:
+                self.__class__ = Dry
+                collection = connection_manager.get_and_setup(Dry)
+
+                try:
+                    # collection = connection_manager.get_and_setup(self.__class__, alias=alias, collection_name=collection_name)
+                    if created:
+                        if force_insert:
+                            object_id = collection.insert(doc, **write_concern)
+                        else:
+                            object_id = collection.save(doc, **write_concern)
+                            # In PyMongo 3.0, the save() call calls internally the _update() call
+                            # but they forget to return the _id value passed back, therefore getting it back here
+                            # Correct behaviour in 2.X and in 3.0.1+ versions
+                            if not object_id and pymongo.version_tuple == (3, 0):
+                                pk_as_mongo_obj = self._fields.get(self._meta['id_field']).to_mongo(self.pk)
+                                object_id = self._qs.filter(pk=pk_as_mongo_obj).first() and \
+                                            self._qs.filter(pk=pk_as_mongo_obj).first().pk
+                    else:
+                        object_id = doc['_id']
+                        updates, removals = self._delta()
+                        # Need to add shard key to query, or you get an error
+                        if save_condition is not None:
+                            select_dict = transform.query(self.__class__,
+                                                          **save_condition)
+                        else:
+                            select_dict = {}
+                        select_dict['_id'] = object_id
+                        shard_key = self.__class__._meta.get('shard_key', tuple())
+                        for k in shard_key:
+                            path = self._lookup_field(k.split('.'))
+                            actual_key = [p.db_field for p in path]
+                            val = doc
+                            for ak in actual_key:
+                                val = val[ak]
+                            select_dict['.'.join(actual_key)] = val
+
+                        def is_new_object(last_error):
+                            if last_error is not None:
+                                updated = last_error.get("updatedExisting")
+                                if updated is not None:
+                                    return not updated
+                            return created
+
+                        update_query = {}
+
+                        if updates:
+                            update_query["$set"] = updates
+                        if removals:
+                            update_query["$unset"] = removals
+                        if updates or removals:
+                            upsert = save_condition is None
+                            last_error = collection.update(select_dict, update_query,
+                                                           upsert=upsert, **write_concern)
+                            if not upsert and last_error["n"] == 0:
+                                raise SaveConditionError('Race condition preventing'
+                                                         ' document update detected')
+                            created = is_new_object(last_error)
+
+                    if cascade is None:
+                        cascade = self._meta.get(
+                            'cascade', False) or cascade_kwargs is not None
+
+                    if cascade:
+                        kwargs = {
+                            "force_insert": force_insert,
+                            "validate": validate,
+                            "write_concern": write_concern,
+                            "cascade": cascade
+                        }
+                        if cascade_kwargs:  # Allow granular control over cascades
+                            kwargs.update(cascade_kwargs)
+                        kwargs['_refs'] = _refs
+                        self.cascade_save(**kwargs)
+                except pymongo.errors.DuplicateKeyError as err:
+                    message = u'Tried to save duplicate unique keys (%s)'
+                    raise NotUniqueError(message % text_type(err))
+                except pymongo.errors.OperationFailure as err:
+                    message = 'Could not save document (%s)'
+                    if re.match('^E1100[01] duplicate key', text_type(err)):
+                        # E11000 - duplicate key error index
+                        # E11001 - duplicate key on update
+                        message = u'Tried to save duplicate unique keys (%s)'
+                        raise NotUniqueError(message % text_type(err))
+                    raise OperationError(message % text_type(err))
+                id_field = self._meta['id_field']
+                if created or id_field not in self._meta.get('shard_key', []):
+                    self[id_field] = self._fields[id_field].to_python(object_id)
+
+                if str(object_id) not in DryRunPeoProcessContext.changed_object_ids:
+                    DryRunPeoProcessContext.changed_object_ids.append(str(object_id))
+
 
         changed_fields = list(set([f.split('.')[0] for f in getattr(self, '_changed_fields', [])]))
         changed_fields = [self._reverse_db_field_map.get(changed_field, changed_field) for changed_field in changed_fields]
