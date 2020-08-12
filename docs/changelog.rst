@@ -6,6 +6,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- When using pymongo >= 3.7, make use of Collection.count_documents instead of Collection.count
+    and Cursor.count that got deprecated in pymongo >= 3.7.
+    This should have a negative impact on performance of count see Issue #2219
 - Fix a bug that made the queryset drop the read_preference after clone().
 - Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
 

@@ -551,8 +551,9 @@ class TestIndexes(unittest.TestCase):
         assert 5 == query_result.count()
 
         incorrect_collation = {"arndom": "wrdo"}
-        with pytest.raises(OperationFailure):
+        with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
+        assert "Missing expected field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)

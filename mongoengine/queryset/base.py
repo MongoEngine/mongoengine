@@ -29,6 +29,7 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
+from mongoengine.pymongo_support import count_documents
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -405,6 +406,8 @@ class BaseQuerySet:
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
+        # mimic the fact that setting .limit(0) in pymongo sets no limit
+        # https://docs.mongodb.com/manual/reference/method/cursor.limit/#zero-value
         if (
             self._limit == 0
             and with_limit_and_skip is False
@@ -412,7 +415,27 @@ class BaseQuerySet:
             or self._empty
         ):
             return 0
-        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
+
+        kwargs = (
+            {"limit": self._limit, "skip": self._skip} if with_limit_and_skip else {}
+        )
+
+        if self._limit == 0:
+            # mimic the fact that historically .limit(0) sets no limit
+            kwargs.pop("limit", None)
+
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+
+        if self._collation:
+            kwargs["collation"] = self._collation
+
+        count = count_documents(
+            collection=self._cursor.collection,
+            filter=self._cursor._Cursor__spec,
+            **kwargs
+        )
+
         self._cursor_obj = None
         return count
 
