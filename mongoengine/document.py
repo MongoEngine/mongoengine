@@ -6,7 +6,7 @@ import re
 from pymongo.read_preferences import ReadPreference
 from bson.dbref import DBRef
 from mongoengine import signals
-from mongoengine.common import _import_class
+from mongoengine.common import _import_class, ReadOnlyContext
 from mongoengine.base import (
     DocumentMetaclass,
     TopLevelDocumentMetaclass,
@@ -261,6 +261,10 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionchanged:: 0.10.7
             Add signal_kwargs argument
         """
+        if ReadOnlyContext.isActive():
+            ReadOnlyContext.error_raised = True
+            raise OperationError('Could not save document while running with ReadOnlyContext')
+
         signal_kwargs = signal_kwargs or {}
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
@@ -360,6 +364,8 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             message = u'Tried to save duplicate unique keys (%s)'
             raise NotUniqueError(message % text_type(err))
         except pymongo.errors.OperationFailure as err:
+            if ReadOnlyContext.isActive():
+                ReadOnlyContext.error_raised = True
             message = 'Could not save document (%s)'
             if re.match('^E1100[01] duplicate key', text_type(err)):
                 # E11000 - duplicate key error index

@@ -6,16 +6,31 @@ from mongoengine import connection
 
 class ReadOnlyContext(object):
     read_only = False
+    error_raised = False
 
     def __enter__(self):
-        ReadOnlyContext.read_only = True
+        ReadOnlyContext.activate()
 
     def __exit__(self, *args):
-        ReadOnlyContext.read_only = False
+        ReadOnlyContext.deactivate()
 
     @classmethod
     def isActive(cls):
         return cls.read_only
+
+    @classmethod
+    def accessError(cls):
+        return cls.error_raised
+
+    @classmethod
+    def activate(cls):
+        cls.read_only = True
+        cls.error_raised = False
+
+    @classmethod
+    def deactivate(cls):
+        cls.read_only = False
+        cls.error_raised = False
 
 
 def _import_class(cls_name):
