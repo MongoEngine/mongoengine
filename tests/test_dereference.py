@@ -370,8 +370,7 @@ class FieldTest(unittest.TestCase):
         assert Post.objects.all()[0].user_lists == [[u1, u2], [u3]]
 
     def test_circular_reference(self):
-        """Ensure you can handle circular references
-        """
+        """Ensure you can handle circular references"""
 
         class Relation(EmbeddedDocument):
             name = StringField()
@@ -426,6 +425,7 @@ class FieldTest(unittest.TestCase):
 
         daughter.relations.append(mother)
         daughter.relations.append(daughter)
+        assert daughter._get_changed_fields() == ["relations"]
         daughter.save()
 
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
