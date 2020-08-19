@@ -629,8 +629,8 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         connection_manager.drop_collection(cls, alias=alias, collection_name=collection_name)
 
     @classmethod
-    def _get_collection(cls, alias=None, collection_name=None):
-        return connection_manager.get_and_setup(cls, alias=alias, collection_name=collection_name)
+    def _get_collection(cls, alias=None, collection_name=None, read_preference=None):
+        return connection_manager.get_and_setup(cls, alias=alias, collection_name=collection_name, read_preference=read_preference)
 
     @classmethod
     def _get_db(cls, alias=None):
@@ -639,8 +639,8 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return connection_manager._get_db(alias)
         
     @classmethod
-    def __create_index(cls, *args, **kwargs):
-        collection = connection_manager.get_collection(cls)
+    def __create_index(cls, collection=None, *args, **kwargs):
+        collection = collection or connection_manager.get_collection(cls)
         try:
             collection.create_index(*args, **kwargs)
         except Exception as e:
@@ -745,7 +745,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                     del opts['cls']
 
                 if IS_PYMONGO_3:
-                    cls.__create_index(fields, background=background, **opts)
+                    cls.__create_index(collection, fields, background=background, **opts)
                 else:
                     collection.ensure_index(fields, background=background,
                                             drop_dups=drop_dups, **opts)

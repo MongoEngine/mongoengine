@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from collections import defaultdict
 
 from mongoengine.connection import get_connection, get_db
+from pymongo.read_preferences import Primary
+from pymongo.collection import Collection
 
 __all__ = ['InvalidCollectionError', 'connection_manager']
 
@@ -11,9 +13,11 @@ class InvalidCollectionError(Exception):
 
 
 class ConnectionManager(object):
-    connections_registry = defaultdict(dict)
+    connections_registry = defaultdict(lambda: defaultdict(dict))
 
-    def get_and_setup(self, doc_cls, alias=None, collection_name=None):
+    def get_and_setup(self, doc_cls, alias=None, collection_name=None, read_preference=None):
+        read_preference = read_preference or Primary()
+        
         if alias is None:
             alias = doc_cls._get_db_alias()
 
@@ -23,13 +27,13 @@ class ConnectionManager(object):
         else:
             registry_collection_name = collection_name
 
-        _collection = self.connections_registry[alias].get(registry_collection_name)
+        _collection = self.connections_registry[alias][read_preference].get(registry_collection_name)
         if not _collection:
-            _collection = self.get_collection(doc_cls, alias, collection_name)
+            _collection = self.get_collection(doc_cls, alias, collection_name, read_preference=read_preference)
             if doc_cls._meta.get('auto_create_index', False):
                 doc_cls.ensure_indexes(_collection)
-            self.connections_registry[alias][registry_collection_name] = _collection
-        return self.connections_registry[alias][registry_collection_name]
+            self.connections_registry[alias][read_preference][registry_collection_name] = _collection
+        return self.connections_registry[alias][read_preference][registry_collection_name]
 
     @classmethod
     def _get_db(cls, alias):
@@ -37,9 +41,8 @@ class ConnectionManager(object):
         return get_db(alias)
 
     @classmethod
-    def get_collection(cls, doc_cls, alias=None, collection_name=None):
+    def get_collection(cls, doc_cls, alias=None, collection_name=None, read_preference=None):
         """Returns the collection for the document."""
-
         if alias is None:
             alias = doc_cls._get_db_alias()
 
@@ -79,7 +82,7 @@ class ConnectionManager(object):
                     collection_name, **opts
                 )
         else:
-            _collection = db[collection_name]
+            _collection = Collection(db, collection_name, read_preference=read_preference)
         return _collection
 
     def drop_collection(self, doc_cls, alias, collection_name):
