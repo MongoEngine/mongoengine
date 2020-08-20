@@ -27,13 +27,13 @@ class ConnectionManager(object):
         else:
             registry_collection_name = collection_name
 
-        _collection = self.connections_registry[alias][read_preference].get(registry_collection_name)
+        _collection = self.connections_registry[alias][registry_collection_name].get(read_preference)
         if not _collection:
             _collection = self.get_collection(doc_cls, alias, collection_name, read_preference=read_preference)
             if doc_cls._meta.get('auto_create_index', False):
                 doc_cls.ensure_indexes(_collection)
-            self.connections_registry[alias][read_preference][registry_collection_name] = _collection
-        return self.connections_registry[alias][read_preference][registry_collection_name]
+            self.connections_registry[alias][registry_collection_name][read_preference] = _collection
+        return self.connections_registry[alias][registry_collection_name][read_preference]
 
     @classmethod
     def _get_db(cls, alias):
@@ -97,7 +97,7 @@ class ConnectionManager(object):
             raise OperationError('Document %s has no collection defined '
                                  '(is it abstract ?)' % doc_cls)
 
-        self.connections_registry[alias][collection_name] = None
+        self.connections_registry[alias][collection_name] = {}
         db = self._get_db(alias=alias)
         db.drop_collection(collection_name)
 
@@ -105,13 +105,13 @@ class ConnectionManager(object):
         if alias is None:
             alias = doc_cls._get_db_alias()
 
-        self.connections_registry[alias] = {}
+        self.connections_registry[alias] = defaultdict(dict)
         db = self._get_db(alias=alias)
         conn = get_connection(alias)
         conn.drop_database(db)
 
     def reset(self):
-        self.connections_registry = defaultdict(dict)
+        self.connections_registry = defaultdict(lambda: defaultdict(dict))
 
 
 connection_manager = ConnectionManager()
