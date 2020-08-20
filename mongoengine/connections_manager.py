@@ -17,6 +17,7 @@ class ConnectionManager(object):
 
     def get_and_setup(self, doc_cls, alias=None, collection_name=None, read_preference=None):
         read_preference = read_preference or Primary()
+        read_preference_str = str(read_preference)  # read_preference classes are unhashable in python 3
         
         if alias is None:
             alias = doc_cls._get_db_alias()
@@ -27,13 +28,13 @@ class ConnectionManager(object):
         else:
             registry_collection_name = collection_name
 
-        _collection = self.connections_registry[alias][registry_collection_name].get(read_preference)
+        _collection = self.connections_registry[alias][registry_collection_name].get(read_preference_str)
         if not _collection:
             _collection = self.get_collection(doc_cls, alias, collection_name, read_preference=read_preference)
             if doc_cls._meta.get('auto_create_index', False):
                 doc_cls.ensure_indexes(_collection)
-            self.connections_registry[alias][registry_collection_name][read_preference] = _collection
-        return self.connections_registry[alias][registry_collection_name][read_preference]
+            self.connections_registry[alias][registry_collection_name][read_preference_str] = _collection
+        return self.connections_registry[alias][registry_collection_name][read_preference_str]
 
     @classmethod
     def _get_db(cls, alias):
