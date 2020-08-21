@@ -155,10 +155,7 @@ class BaseField(object):
     def __set__(self, instance, value):
         """Descriptor for assigning a value to a field in a document.
         """
-        from mongoengine import StringField
-        if isinstance(self, StringField) and self.default is None and value == '':
-            value = None
-        
+
         # If setting to None and there is a default
         # Then set the value to the default value
         if value is None:
