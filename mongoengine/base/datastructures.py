@@ -102,10 +102,7 @@ class BaseDict(dict):
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, '_mark_as_changed'):
-            if key:
-                self._instance._mark_as_changed('%s.%s' % (self._name, key))
-            else:
-                self._instance._mark_as_changed(self._name)
+            self._instance._mark_as_changed(self._name)
 
 
 class BaseList(list):
