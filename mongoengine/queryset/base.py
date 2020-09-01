@@ -1687,6 +1687,9 @@ class BaseQuerySet(object):
         all_fields = not self.__as_pymongo_fields
 
         def clean(data, path=None):
+            if all_fields and not self._as_pymongo_coerce:
+                return data
+
             path = path or ''
 
             if isinstance(data, dict):

@@ -11,7 +11,7 @@ __all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
 
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
-ITER_CHUNK_SIZE = 100
+ITER_CHUNK_SIZE = 10000
 
 
 class QuerySet(BaseQuerySet, LazyPrefetchBase):
