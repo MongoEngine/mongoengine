@@ -2,7 +2,6 @@ from __future__ import absolute_import
 import os
 import sys
 from setuptools import setup, find_packages
-from six.moves import map
 
 # Hack to silence atexit traceback in newer python versions
 try:
@@ -22,8 +21,8 @@ except Exception:
 
 def get_version(version_tuple):
     if not isinstance(version_tuple[-1], int):
-        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
-    return '.'.join(map(str, version_tuple))
+        return '.'.join(str(t) for t in version_tuple[:-1]) + version_tuple[-1]
+    return '.'.join(str(t) for t in version_tuple)
 
 # Dirty hack to get version number from monogengine/__init__.py - we can't
 # import it as it depends on PyMongo and PyMongo isn't installed until this
