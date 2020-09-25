@@ -61,7 +61,7 @@ class EmbeddedDocument(with_metaclass(DocumentMetaclass, BaseDocument)):
     dictionary.
     """
 
-    __slots__ = ('_instance', )
+    __slots__ = ('_instance', '_root_field_name')
 
     # The __metaclass__ attribute is removed by 2to3 when running with Python3
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
@@ -70,6 +70,7 @@ class EmbeddedDocument(with_metaclass(DocumentMetaclass, BaseDocument)):
     def __init__(self, *args, **kwargs):
         super(EmbeddedDocument, self).__init__(*args, **kwargs)
         self._instance = None
+        self._root_field_name = None
         self._changed_fields = []
 
     def __eq__(self, other):

@@ -132,6 +132,7 @@ class BaseList(list):
             EmbeddedDocument = _import_class('EmbeddedDocument')
             if isinstance(value, EmbeddedDocument) and getattr(value, '_instance', None) is None:
                 value._instance = self._instance
+                value._root_field_name = self._name
             elif not isinstance(value, BaseDict) and isinstance(value, dict):
                 value = BaseDict(value, None, '%s.%s' % (self._name, key))
                 super(BaseList, self).__setitem__(key, value)

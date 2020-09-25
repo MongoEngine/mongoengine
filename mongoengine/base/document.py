@@ -511,6 +511,10 @@ class BaseDocument(object):
         if not key:
             return
 
+        if getattr(self, '_instance', None):
+            if getattr(self, "_root_field_name", None):
+                self._instance._mark_as_changed(self._root_field_name)
+
         if not hasattr(self, '_changed_fields'):
             return
         
