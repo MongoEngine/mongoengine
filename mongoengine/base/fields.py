@@ -19,11 +19,11 @@ __all__ = ("BaseField", "ComplexBaseField",
            "ObjectIdField", "GeoJsonBaseField")
 
 
-UPDATE_OPERATORS = set(['set', 'unset', 'inc', 'dec', 'pop', 'push',
-                        'push_all', 'pull', 'pull_all', 'add_to_set',
-                        'set_on_insert', 'min', 'max'])
+UPDATE_OPERATORS = {'set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all', 'pull', 'pull_all', 'add_to_set',
+                    'set_on_insert', 'min', 'max'}
 
-V2_OPTIMIZED_FIELDS = set(["DecimalField", "AmountField"])
+V2_OPTIMIZED_FIELDS = {"DecimalField", "AmountField"}
+EMBEDDED_OR_LIST_FIELDS = {"EmbeddedDocumentField", "EmbeddedDocumentListField", "ListField"}
 
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
@@ -144,6 +144,9 @@ class BaseField(object):
     def is_v2_field(self):
         return self.__class__.__name__ in V2_OPTIMIZED_FIELDS
 
+    def is_embedded_or_list_field(self):
+        return self.__class__.__name__ in EMBEDDED_OR_LIST_FIELDS
+
     def _should_mark_as_changed(self, instance, value):
         if self.name not in instance._data:
             # New value should not be None
@@ -169,6 +172,21 @@ class BaseField(object):
                 # If the field is optional and the value is None, we don't need to do anything
                 return
 
+        if type(value) is not DocumentProxy:
+            EmbeddedDocument = _import_class('EmbeddedDocument')
+            if isinstance(value, EmbeddedDocument):
+                value._instance = weakref.proxy(instance)
+                value._root_field_name = self.name
+            elif isinstance(value, (list, tuple)):
+                for v in value:
+                    if type(v) is not DocumentProxy and isinstance(v, EmbeddedDocument):
+                        v._instance = weakref.proxy(instance)
+                        v._root_field_name = self.name
+        else:
+            # Set this for DocumentProxy as well
+            value._instance = weakref.proxy(instance)
+            value._root_field_name = self.name
+
         if instance._initialised:
             try:
                 if self._should_mark_as_changed(instance, value):
@@ -177,18 +195,6 @@ class BaseField(object):
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
-
-        if not type(value) is DocumentProxy:
-            EmbeddedDocument = _import_class('EmbeddedDocument')
-            if isinstance(value, EmbeddedDocument):
-                value._instance = weakref.proxy(instance)
-            elif isinstance(value, (list, tuple)):
-                for v in value:
-                    if type(v) is not DocumentProxy and isinstance(v, EmbeddedDocument):
-                        v._instance = weakref.proxy(instance)
-        else:
-            # Set this for DocumentProxy as well
-            value._instance = weakref.proxy(instance)
         
         if self.is_v2_field():
             instance.v2_set(self, value)
