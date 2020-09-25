@@ -172,6 +172,15 @@ class BaseField(object):
                 # If the field is optional and the value is None, we don't need to do anything
                 return
 
+        if instance._initialised:
+            try:
+                if self._should_mark_as_changed(instance, value):
+                    instance._mark_as_changed(self.name)
+            except Exception:
+                # Values cant be compared eg: naive and tz datetimes
+                # So mark it as changed
+                instance._mark_as_changed(self.name)
+                
         if type(value) is not DocumentProxy:
             EmbeddedDocument = _import_class('EmbeddedDocument')
             if isinstance(value, EmbeddedDocument):
@@ -186,15 +195,6 @@ class BaseField(object):
             # Set this for DocumentProxy as well
             value._instance = weakref.proxy(instance)
             value._root_field_name = self.name
-
-        if instance._initialised:
-            try:
-                if self._should_mark_as_changed(instance, value):
-                    instance._mark_as_changed(self.name)
-            except Exception:
-                # Values cant be compared eg: naive and tz datetimes
-                # So mark it as changed
-                instance._mark_as_changed(self.name)
         
         if self.is_v2_field():
             instance.v2_set(self, value)
