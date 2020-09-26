@@ -511,9 +511,6 @@ class BaseDocument(object):
         if not key:
             return
 
-        if getattr(self, '_instance', None) and getattr(self, "_root_field_name", None):
-            self._instance._mark_as_changed(self._root_field_name)
-
         if not hasattr(self, '_changed_fields'):
             return
         
@@ -529,6 +526,9 @@ class BaseDocument(object):
             key = self._db_field_map.get(key, key)
 
         if key not in self._changed_fields:
+            if getattr(self, '_instance', None) and getattr(self, "_root_field_name", None):
+                self._instance._mark_as_changed(self._root_field_name)
+
             levels, idx = key.split('.'), 1
             while idx <= len(levels):
                 if '.'.join(levels[:idx]) in self._changed_fields:
