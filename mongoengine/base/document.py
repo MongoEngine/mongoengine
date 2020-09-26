@@ -121,8 +121,8 @@ class BaseDocument(object):
             value = getattr(self, key, None)
             setattr(self, key, value)
 
-        # Set any get_fieldname_display methods
-        self.__set_field_display()
+        # Set any get_fieldname_display methods. Rippling doesn't require this, so commenting it out.
+        # self.__set_field_display()
 
         # Flag initialised
         self._initialised = True
@@ -526,8 +526,12 @@ class BaseDocument(object):
             key = self._db_field_map.get(key, key)
 
         if key not in self._changed_fields:
-            if getattr(self, '_instance', None) and getattr(self, "_root_field_name", None):
-                self._instance._mark_as_changed(self._root_field_name)
+            try:
+                if getattr(self, '_instance', None) and getattr(self, "_root_field_name", None):
+                    self._instance._mark_as_changed(self._root_field_name)
+            except:
+                # Ignore if the weakreference has been cleaned up
+                pass
 
             levels, idx = key.split('.'), 1
             while idx <= len(levels):
