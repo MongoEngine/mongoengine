@@ -180,7 +180,7 @@ class BaseField(object):
                 # Values cant be compared eg: naive and tz datetimes
                 # So mark it as changed
                 instance._mark_as_changed(self.name)
-                
+
         if type(value) is not DocumentProxy:
             EmbeddedDocument = _import_class('EmbeddedDocument')
             if isinstance(value, EmbeddedDocument):
@@ -194,7 +194,6 @@ class BaseField(object):
         else:
             # Set this for DocumentProxy as well
             value._instance = weakref.proxy(instance)
-            value._root_field_name = self.name
         
         if self.is_v2_field():
             instance.v2_set(self, value)
