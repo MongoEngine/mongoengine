@@ -537,6 +537,9 @@ class BaseDocument:
         """Using _get_changed_fields iterate and remove any fields that
         are marked as changed.
         """
+        ReferenceField = _import_class("ReferenceField")
+        GenericReferenceField = _import_class("GenericReferenceField")
+
         for changed in self._get_changed_fields():
             parts = changed.split(".")
             data = self
@@ -549,7 +552,8 @@ class BaseDocument:
                 elif isinstance(data, dict):
                     data = data.get(part, None)
                 else:
-                    data = getattr(data, part, None)
+                    field_name = data._reverse_db_field_map.get(part, part)
+                    data = getattr(data, field_name, None)
 
                 if not isinstance(data, LazyReference) and hasattr(
                     data, "_changed_fields"
@@ -558,10 +562,40 @@ class BaseDocument:
                         continue
 
                     data._changed_fields = []
+                elif isinstance(data, (list, tuple, dict)):
+                    if hasattr(data, "field") and isinstance(
+                        data.field, (ReferenceField, GenericReferenceField)
+                    ):
+                        continue
+                    BaseDocument._nestable_types_clear_changed_fields(data)
 
         self._changed_fields = []
 
-    def _nestable_types_changed_fields(self, changed_fields, base_key, data):
+    @staticmethod
+    def _nestable_types_clear_changed_fields(data):
+        """Inspect nested data for changed fields
+
+        :param data: data to inspect for changes
+        """
+        Document = _import_class("Document")
+
+        # Loop list / dict fields as they contain documents
+        # Determine the iterator to use
+        if not hasattr(data, "items"):
+            iterator = enumerate(data)
+        else:
+            iterator = data.items()
+
+        for index_or_key, value in iterator:
+            if hasattr(value, "_get_changed_fields") and not isinstance(
+                value, Document
+            ):  # don't follow references
+                value._clear_changed_fields()
+            elif isinstance(value, (list, tuple, dict)):
+                BaseDocument._nestable_types_clear_changed_fields(value)
+
+    @staticmethod
+    def _nestable_types_changed_fields(changed_fields, base_key, data):
         """Inspect nested data for changed fields
 
         :param changed_fields: Previously collected changed fields
@@ -586,7 +620,9 @@ class BaseDocument:
                 changed = value._get_changed_fields()
                 changed_fields += ["{}{}".format(item_key, k) for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
-                self._nestable_types_changed_fields(changed_fields, item_key, value)
+                BaseDocument._nestable_types_changed_fields(
+                    changed_fields, item_key, value
+                )
 
     def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed.
