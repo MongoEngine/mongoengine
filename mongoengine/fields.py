@@ -23,7 +23,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField',
-           'ArbitraryField']
+           'ArbitraryField', 'GeoPolygonField', 'GeoBoxField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -654,3 +654,67 @@ class GeoPointField(BaseField):
         if (not isinstance(value[0], (float, int)) and
             not isinstance(value[1], (float, int))):
             raise ValidationError('Both values in point must be float or int.')
+
+
+class GeoBoxField(BaseField):
+    """A list storing two (longitude, latitude) pairs describing the bottom left
+    and upper right coordinates of a bounding box
+
+    .. versionadded:: 0.4
+    """
+
+    _geo_index = True
+
+    def validate(self, value):
+        """
+        Make sure that a geo-box is of format:
+            [
+              [ <bottom left coordinates> ],
+              [ <upper right coordinates> ]
+            ]
+        """
+        if not isinstance(value, (list, tuple)):
+            raise ValidationError('GeoBoxField can only accept tuples or '
+                                  'lists of (x, y)')
+
+        if not len(value) == 2:
+            raise ValidationError('GeoBoxField must contain exactly two '
+                                  '(longitude, latitude) coordinates.')
+        for elem in value:
+            if not (isinstance(elem, (list, tuple)) and len(elem) == 2):
+                raise ValidationError('GeoBoxField elements can only accept'
+                                      'two-dimentional lists or tuples')
+            if (not isinstance(elem[0], (float, int)) and
+                not isinstance(elem[1], (float, int))):
+                raise ValidationError('Both values in coordinates must be float '
+                                      'or int.')
+
+
+class GeoPolygonField(BaseField):
+    """A list storing (longitude, latitude) pairs describing a closed polygon
+
+    .. versionadded:: 0.4
+    """
+
+    _geo_index = True
+
+    def validate(self, value):
+        """
+        Make sure that a geo-polygon is of format:
+            [ [ <x1> , <y1> ], [ <x2> , <y2> ], [ <x3> , <y3> ], ... ]
+        """
+        if not isinstance(value, (list, tuple)):
+            raise ValidationError('GeoPolygonField can only accept tuples or '
+                                  'lists of (x, y)')
+
+        if not len(value) <= 3:
+            raise ValidationError('Input length is not enough for describing '
+                                  'a closed polygon')
+        for elem in value:
+            if not (isinstance(elem, (list, tuple)) and len(elem) == 2):
+                raise ValidationError('GeoPolygonField elements can only accept'
+                                      'two-dimentional lists or tuples')
+            if (not isinstance(elem[0], (float, int)) and
+                not isinstance(elem[1], (float, int))):
+                raise ValidationError('Both values in coordinates must be float '
+                                      'or int.')

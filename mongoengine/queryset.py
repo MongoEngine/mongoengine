@@ -470,7 +470,9 @@ class QuerySet(object):
         """
         operators = ['ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'mod',
                      'all', 'size', 'exists', 'not']
-        geo_operators = ['within_distance', 'within_spherical_distance', 'within_box', 'near', 'near_sphere']
+        geo_operators = ['within_distance', 'within_spherical_distance',
+                         'within_box', 'near', 'near_sphere', 'geo_within_box',
+                         'geo_within_polygon']
         match_operators = ['contains', 'icontains', 'startswith',
                            'istartswith', 'endswith', 'iendswith',
                            'exact', 'iexact']
@@ -522,6 +524,10 @@ class QuerySet(object):
                         value = {'$nearSphere': value}
                     elif op == 'within_box':
                         value = {'$within': {'$box': value}}
+                    elif op == 'geo_within_box':
+                        value = {'$geoWithin': {'$box': value}}
+                    elif op == 'geo_within_polygon':
+                        value = {'$geoWithin': {'$polygon': value}}
                     else:
                         raise NotImplementedError("Geo method '%s' has not "
                                                   "been implemented" % op)
