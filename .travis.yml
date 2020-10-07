@@ -24,18 +24,18 @@ python:
 
 env:
   global:
-    - MONGODB_3_4=3.4.17
-    - MONGODB_3_6=3.6.12
+    - MONGODB_3_4=3.4.19
+    - MONGODB_3_6=3.6.13
     - MONGODB_4_0=4.0.13
 
     - PYMONGO_3_4=3.4
     - PYMONGO_3_6=3.6
     - PYMONGO_3_9=3.9
-    - PYMONGO_3_10=3.10
+    - PYMONGO_3_11=3.11
 
     - MAIN_PYTHON_VERSION=3.7
   matrix:
-    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_10}
+    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_11}
 
 matrix:
   # Finish the build as soon as one job fails
@@ -47,9 +47,9 @@ matrix:
   - python: 3.7
     env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
   - python: 3.7
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_10}
+    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_11}
   - python: 3.8
-    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_10}
+    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_11}
 
 install:
   # Install Mongo
@@ -75,7 +75,7 @@ script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
 
 after_success:
-- - if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then coveralls --verbose; else echo "coveralls only sent for py37"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then coveralls --verbose; else echo "coveralls only sent for py37"; fi
 
 notifications:
   irc: irc.freenode.org#mongoengine
@@ -103,5 +103,5 @@ deploy:
   on:
     tags: true
     repo: MongoEngine/mongoengine
-    condition: ($PYMONGO = ${PYMONGO_3_10}) && ($MONGODB = ${MONGODB_3_4})
+    condition: ($PYMONGO = ${PYMONGO_3_11}) && ($MONGODB = ${MONGODB_3_4})
     python: 3.7
