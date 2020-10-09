@@ -242,6 +242,103 @@ class BaseField(object):
 
         self.validate(value)
 
+class GeoJsonBaseField(BaseField):
+    """
+    A geo json field storing a GSON style object. All GeoJson fields use 2dsphere
+    index in MongoDB for better performance
+    """
+
+    _geo_index = pymongo.GEOSPHERE
+    _type = "GeoBase"
+    _name = "GeoJsonBaseField"
+
+    def validate(self, value):
+        """Validate the GeoJson object format based on its type."""
+        if isinstance(value, dict):
+            if set(value.keys()) == {"type", "coordinates"}:
+                if value["type"] != self._type:
+                    raise ValidationError('{} type must be "{}"'.format(self._name, self._type))
+                return self.validate(value["coordinates"])
+            else:
+                raise ValidationError(
+                    "%s can only accept a valid GeoJson dictionary"
+                    " or lists of (x, y)" % self._name
+                )
+                return
+        elif not isinstance(value, (list, tuple)):
+            raise ValidationError(
+                "%s can only accept a valid GeoJson dictionary"
+                " or lists of (x, y)" % self._name
+            )
+            return
+
+        validate = getattr(self, "_validate_%s" % self._type.lower())
+        error = validate(value)
+        if error:
+            raise ValidationError(error)
+
+    def _validate_polygon(self, value, top_level=True):
+        if not isinstance(value, (list, tuple)):
+            return "Polygons must contain list of linestrings"
+
+        # Quick and dirty validator
+        try:
+            value[0][0][0]
+        except (TypeError, IndexError):
+            return "Invalid Polygon must contain at least one valid linestring"
+
+        errors = []
+        for val in value:
+            error = self._validate_linestring(val, False)
+            if not error and val[0] != val[-1]:
+                error = "LineStrings must start and end at the same point"
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            if top_level:
+                return "Invalid Polygon:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
+
+    def _validate_linestring(self, value, top_level=True):
+        """Validate a linestring."""
+        if not isinstance(value, (list, tuple)):
+            return "LineStrings must contain list of coordinate pairs"
+
+        # Quick and dirty validator
+        try:
+            value[0][0]
+        except (TypeError, IndexError):
+            return "Invalid LineString must contain at least one valid point"
+
+        errors = []
+        for val in value:
+            error = self._validate_point(val)
+            if error and error not in errors:
+                errors.append(error)
+        if errors:
+            if top_level:
+                return "Invalid LineString:\n%s" % ", ".join(errors)
+            else:
+                return "%s" % ", ".join(errors)
+
+    def _validate_point(self, value):
+        """Validate each set of coords"""
+        if not isinstance(value, (list, tuple)):
+            return "Points must be a list of coordinate pairs"
+        elif not len(value) == 2:
+            return "Value (%s) must be a two-dimensional point" % repr(value)
+        elif not isinstance(value[0], (float, int)) or not isinstance(
+            value[1], (float, int)
+        ):
+            return "Both values (%s) in point must be float or int" % repr(value)
+
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+        return bson.son.SON([("type", self._type), ("coordinates", value)])
+
 class ObjectIdField(BaseField):
     """An field wrapper around MongoDB's ObjectIds.
     """
