@@ -1,4 +1,4 @@
-from base import BaseField, ObjectIdField, \
+from base import BaseField, ObjectIdField, GeoJsonBaseField, \
     ValidationError, get_document, FieldStatus
 from document import Document, EmbeddedDocument
 from connection import _get_db
@@ -23,7 +23,7 @@ __all__ = ['StringField', 'IntField', 'FloatField', 'BooleanField',
            'ObjectIdField', 'ReferenceField', 'ValidationError',
            'DecimalField', 'URLField', 'GenericReferenceField',
            'BinaryField', 'SortedListField', 'EmailField', 'GeoPointField',
-           'ArbitraryField', 'GeoPolygonField', 'GeoBoxField']
+           'ArbitraryField', 'PointField', 'LineStringField', 'PolygonField']
 
 RECURSIVE_REFERENCE_CONSTANT = 'self'
 
@@ -640,7 +640,7 @@ class GeoPointField(BaseField):
     .. versionadded:: 0.4
     """
 
-    _geo_index = True
+    _geo_index = pymongo.GEO2D
 
     def validate(self, value):
         """Make sure that a geo-value is of type (x, y)
@@ -656,65 +656,66 @@ class GeoPointField(BaseField):
             raise ValidationError('Both values in point must be float or int.')
 
 
-class GeoBoxField(BaseField):
-    """A list storing two (longitude, latitude) pairs describing the bottom left
-    and upper right coordinates of a bounding box
+class PointField(GeoJsonBaseField):
+    """A GeoJSON field describing a (longitude, latitude) coordinate.
 
-    .. versionadded:: 0.4
+    The data format is:
+
+    {'type' : 'Point' ,
+     'coordinates' : [x, y]}
+
+    or simply a list:
+
+    [x, y]
+
+    Reference Doc: https://docs.mongodb.com/manual/reference/geojson/#point
     """
 
-    _geo_index = True
-
-    def validate(self, value):
-        """
-        Make sure that a geo-box is of format:
-            [
-              [ <bottom left coordinates> ],
-              [ <upper right coordinates> ]
-            ]
-        """
-        if not isinstance(value, (list, tuple)):
-            raise ValidationError('GeoBoxField can only accept tuples or '
-                                  'lists of (x, y)')
-
-        if not len(value) == 2:
-            raise ValidationError('GeoBoxField must contain exactly two '
-                                  '(longitude, latitude) coordinates.')
-        for elem in value:
-            if not (isinstance(elem, (list, tuple)) and len(elem) == 2):
-                raise ValidationError('GeoBoxField elements can only accept'
-                                      'two-dimentional lists or tuples')
-            if (not isinstance(elem[0], (float, int)) and
-                not isinstance(elem[1], (float, int))):
-                raise ValidationError('Both values in coordinates must be float '
-                                      'or int.')
+    _type = "Point"
+    _name = "PointField"
 
 
-class GeoPolygonField(BaseField):
-    """A list storing (longitude, latitude) pairs describing a closed polygon
+class LineStringField(GeoJsonBaseField):
+    """A GeoJSON field describing a line consists of (longitude, latitude)
+    coordinates.
 
-    .. versionadded:: 0.4
+    The data format is:
+
+    {'type' : 'LineString' ,
+     'coordinates' : [[x1, y1], [x2, y2] ... [xn, yn]]}
+
+    or simply a list of coordinates:
+
+    [[x1, y1], [x2, y2] ... [xn, yn]]
+
+    Reference Doc: https://docs.mongodb.com/manual/reference/geojson/#linestring
     """
 
-    _geo_index = True
+    _type = "LineString"
+    _name = "LineStringField"
 
-    def validate(self, value):
-        """
-        Make sure that a geo-polygon is of format:
-            [ [ <x1> , <y1> ], [ <x2> , <y2> ], [ <x3> , <y3> ], ... ]
-        """
-        if not isinstance(value, (list, tuple)):
-            raise ValidationError('GeoPolygonField can only accept tuples or '
-                                  'lists of (x, y)')
 
-        if not len(value) <= 3:
-            raise ValidationError('Input length is not enough for describing '
-                                  'a closed polygon')
-        for elem in value:
-            if not (isinstance(elem, (list, tuple)) and len(elem) == 2):
-                raise ValidationError('GeoPolygonField elements can only accept'
-                                      'two-dimentional lists or tuples')
-            if (not isinstance(elem[0], (float, int)) and
-                not isinstance(elem[1], (float, int))):
-                raise ValidationError('Both values in coordinates must be float '
-                                      'or int.')
+class PolygonField(GeoJsonBaseField):
+    """A GeoJSON field describing a polygon consists of serveral closed
+    LineString lists.
+
+    The data format is:
+
+    {'type' : 'Polygon' ,
+     'coordinates' : [[[x1, y1], [x1, y1] ... [xn, yn]],
+                      [[x1, y1], [x1, y1] ... [xn, yn]]]}
+
+    or simply a list of LineStrings:
+
+    [[[x1, y1], [x1, y1] ... [xn, yn]],
+     [[x1, y1], [x1, y1] ... [xn, yn]]]
+
+    Note that each line string must be closed (starts and ends in the same point)
+    and the first LineString being the outside and the rest being
+    holes.
+
+    Reference Doc: https://docs.mongodb.com/manual/reference/geojson/#polygon
+    """
+
+    _type = "Polygon"
+    _name = "PolygonField"

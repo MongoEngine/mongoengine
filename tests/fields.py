@@ -8,7 +8,7 @@ import gridfs
 from mongoengine import *
 import mongoengine.connection
 from mongoengine.connection import _get_db
-from mongoengine.base import _document_registry
+from mongoengine.base import _document_registry, GeoJsonBaseField
 
 mongoengine.connection.set_default_db("test")
 
@@ -894,6 +894,88 @@ class FieldTest(unittest.TestCase):
 
         person.reload()
         self.assertRaises(TypeError,person.age)
+
+    def test_geo_json_field(self):
+        """Ensure that GeoJsonBaseField is properly validated.
+        """
+        class Location(Document):
+            field = GeoJsonBaseField()
+
+        invalid_field1 = {"x":1, "y":2}
+        test_loc = Location(field=invalid_field1)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field2 = {"type": "invalid_type", "coordinates": [1, 2]}
+        test_loc = Location(field=invalid_field2)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field3 = "invalid_field"
+        test_loc = Location(field=invalid_field3)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+    def test_point_field(self):
+        """Ensure that PointField is properly validated.
+        """
+        class Location(Document):
+            field = PointField()
+
+        invalid_field1 = ["error_value", 1]
+        test_loc = Location(field=invalid_field1)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field2 = {"type": "Point", "coordinates": [1, 2, 3]}
+        test_loc = Location(field=invalid_field2)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field3 = {"type": "Point", "coordinates": {"x": 1, "y": 1}}
+        test_loc = Location(field=invalid_field3)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        correct_field = {"type": "Point", "coordinates": [1, 2]}
+        Location(field=correct_field).validate()
+
+    def test_linestring_field(self):
+        """Ensure that LineStringField is properly validated.
+        """
+        class Location(Document):
+            field = LineStringField()
+
+        invalid_field1 = [1, 2]
+        test_loc = Location(field=invalid_field1)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field2 = {"type": "LineString", "coordinates": [[], [1, 2]]}
+        test_loc = Location(field=invalid_field2)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field3 = {"type": "Point", "coordinates": [[1, 2], [3, 4]]}
+        test_loc = Location(field=invalid_field3)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        correct_field = {"type": "LineString", "coordinates": [[1, 2], [3, 4]]}
+        Location(field=correct_field).validate()
+
+    def test_polygon_field(self):
+        """Ensure that GeoJsonBaseField is properly validated.
+        """
+        class Location(Document):
+            field = PolygonField()
+
+        invalid_field1 = [1, 2]
+        test_loc = Location(field=invalid_field1)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field2 = {"type": "Polygon", "coordinates": [[], [1, 2]]}
+        test_loc = Location(field=invalid_field2)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        invalid_field3 = {"type": "Polygon", "coordinates": [[[1, 2], [3, 4]]]}
+        test_loc = Location(field=invalid_field3)
+        self.assertRaises(ValidationError, test_loc.validate)
+
+        correct_field = {"type": "Polygon", "coordinates": [[[1, 2], [3, 4], [1, 2]]]}
+        Location(field=correct_field).validate()
+
 
 if __name__ == '__main__':
     unittest.main()
