@@ -113,7 +113,7 @@ class TestDictField(MongoDBTestCase):
         post.info.setdefault("authors", [])
         post.save()
         post.reload()
-        assert [] == post.info["authors"]
+        assert post.info["authors"] == []
 
     def test_dictfield_dump_document(self):
         """Ensure a DictField can handle another document's dump."""

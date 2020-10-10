@@ -381,7 +381,7 @@ class TestGeoField(MongoDBTestCase):
 
             meta = {"indexes": [[("location", "2dsphere"), ("datetime", 1)]]}
 
-        assert [] == Log._geo_indices()
+        assert Log._geo_indices() == []
 
         Log.drop_collection()
         Log.ensure_indexes()
@@ -401,7 +401,7 @@ class TestGeoField(MongoDBTestCase):
                 "indexes": [{"fields": [("location", "2dsphere"), ("datetime", 1)]}]
             }
 
-        assert [] == Log._geo_indices()
+        assert Log._geo_indices() == []
 
         Log.drop_collection()
         Log.ensure_indexes()

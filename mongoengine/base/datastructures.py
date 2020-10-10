@@ -179,7 +179,7 @@ class BaseList(list):
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, "_mark_as_changed"):
-            if key:
+            if key is not None:
                 self._instance._mark_as_changed(
                     "{}.{}".format(self._name, key % len(self))
                 )

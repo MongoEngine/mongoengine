@@ -9,9 +9,13 @@ from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
 class DocumentStub(object):
     def __init__(self):
         self._changed_fields = []
+        self._unset_fields = []
 
     def _mark_as_changed(self, key):
         self._changed_fields.append(key)
+
+    def _mark_as_unset(self, key):
+        self._unset_fields.append(key)
 
 
 class TestBaseDict:
@@ -314,7 +318,7 @@ class TestBaseList:
     def test___setitem___item_0_calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
         base_list[0] = False
-        assert base_list._instance._changed_fields == ["my_name"]
+        assert base_list._instance._changed_fields == ["my_name.0"]
         assert base_list == [False]
 
     def test___setitem___item_1_calls_mark_as_changed(self):
