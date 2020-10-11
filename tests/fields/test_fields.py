@@ -1084,7 +1084,7 @@ class TestField(MongoDBTestCase):
 
         e = Simple().save()
         e.mapping = []
-        assert [] == e._changed_fields
+        assert e._changed_fields == []
 
         class Simple(Document):
             mapping = DictField()
@@ -1093,7 +1093,7 @@ class TestField(MongoDBTestCase):
 
         e = Simple().save()
         e.mapping = {}
-        assert [] == e._changed_fields
+        assert e._changed_fields == []
 
     def test_slice_marks_field_as_changed(self):
         class Simple(Document):

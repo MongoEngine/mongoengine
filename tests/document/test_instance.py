@@ -188,7 +188,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_queryset_resurrects_dropped_collection(self):
         self.Person.drop_collection()
-        assert [] == list(self.Person.objects())
+        assert list(self.Person.objects()) == []
 
         # Ensure works correctly with inhertited classes
         class Actor(self.Person):
@@ -196,7 +196,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         Actor.objects()
         self.Person.drop_collection()
-        assert [] == list(Actor.objects())
+        assert list(Actor.objects()) == []
 
     def test_polymorphic_references(self):
         """Ensure that the correct subclasses are returned from a query
@@ -578,7 +578,8 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.embedded_field.list_field.append(1)
         doc.embedded_field.dict_field["woot"] = "woot"
 
-        assert doc._get_changed_fields() == [
+        changed = doc._get_changed_fields()
+        assert changed == [
             "list_field",
             "dict_field.woot",
             "embedded_field.list_field",
