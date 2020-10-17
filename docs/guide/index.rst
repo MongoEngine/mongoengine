@@ -14,4 +14,5 @@ User Guide
    gridfs
    signals
    text-indexes
+   logging-monitoring
    mongomock

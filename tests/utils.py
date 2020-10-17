@@ -1,14 +1,13 @@
-import operator
 import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 from mongoengine import connect
 from mongoengine.connection import disconnect_all, get_db
 from mongoengine.mongodb_support import get_mongodb_version
 
 
-MONGO_TEST_DB = 'mongoenginetest'   # standard name for the test database
+MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
 
 class MongoDBTestCase(unittest.TestCase):
@@ -37,7 +36,7 @@ def get_as_pymongo(doc):
 def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     """Return a MongoDB version requirement decorator.
 
-    The resulting decorator will raise a SkipTest exception if the current
+    The resulting decorator will skip the test if the current
     MongoDB version doesn't match the provided version/operator.
 
     For example, if you define a decorator like so:
@@ -53,12 +52,14 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     :param mongo_version_req: The mongodb version requirement (tuple(int, int))
     :param oper: The operator to apply (e.g. operator.ge)
     """
+
     def _inner(*args, **kwargs):
         mongodb_v = get_mongodb_version()
         if oper(mongodb_v, mongo_version_req):
             return func(*args, **kwargs)
 
-        raise SkipTest('Needs MongoDB v{}+'.format('.'.join(str(n) for n in mongo_version_req)))
+        pretty_version = ".".join(str(n) for n in mongo_version_req)
+        pytest.skip("Needs MongoDB v{}+".format(pretty_version))
 
     _inner.__name__ = func.__name__
     _inner.__doc__ = func.__doc__

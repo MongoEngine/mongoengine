@@ -1,10 +1,10 @@
 from functools import partial
 from mongoengine.queryset.queryset import QuerySet
 
-__all__ = ('queryset_manager', 'QuerySetManager')
+__all__ = ("queryset_manager", "QuerySetManager")
 
 
-class QuerySetManager(object):
+class QuerySetManager:
     """
     The default QuerySet Manager.
 
@@ -33,7 +33,7 @@ class QuerySetManager(object):
             return self
 
         # owner is the document that contains the QuerySetManager
-        queryset_class = owner._meta.get('queryset_class', self.default)
+        queryset_class = owner._meta.get("queryset_class", self.default)
         queryset = queryset_class(owner, owner._get_collection())
         if self.get_queryset:
             arg_count = self.get_queryset.__code__.co_argcount

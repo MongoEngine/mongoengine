@@ -11,7 +11,7 @@ class PickleEmbedded(EmbeddedDocument):
 
 class PickleTest(Document):
     number = IntField()
-    string = StringField(choices=(('One', '1'), ('Two', '2')))
+    string = StringField(choices=(("One", "1"), ("Two", "2")))
     embedded = EmbeddedDocumentField(PickleEmbedded)
     lists = ListField(StringField())
     photo = FileField()
@@ -19,7 +19,7 @@ class PickleTest(Document):
 
 class NewDocumentPickleTest(Document):
     number = IntField()
-    string = StringField(choices=(('One', '1'), ('Two', '2')))
+    string = StringField(choices=(("One", "1"), ("Two", "2")))
     embedded = EmbeddedDocumentField(PickleEmbedded)
     lists = ListField(StringField())
     photo = FileField()
@@ -36,17 +36,17 @@ class PickleDynamicTest(DynamicDocument):
 
 class PickleSignalsTest(Document):
     number = IntField()
-    string = StringField(choices=(('One', '1'), ('Two', '2')))
+    string = StringField(choices=(("One", "1"), ("Two", "2")))
     embedded = EmbeddedDocumentField(PickleEmbedded)
     lists = ListField(StringField())
 
     @classmethod
     def post_save(self, sender, document, created, **kwargs):
-        pickled = pickle.dumps(document)
+        pickle.dumps(document)
 
     @classmethod
     def post_delete(self, sender, document, **kwargs):
-        pickled = pickle.dumps(document)
+        pickle.dumps(document)
 
 
 signals.post_save.connect(PickleSignalsTest.post_save, sender=PickleSignalsTest)
@@ -58,4 +58,4 @@ class Mixin(object):
 
 
 class Base(Document):
-    meta = {'allow_inheritance': True}
+    meta = {"allow_inheritance": True}

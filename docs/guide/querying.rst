@@ -222,6 +222,18 @@ keyword argument::
 
 .. versionadded:: 0.4
 
+Sorting/Ordering results
+========================
+It is possible to order the results by 1 or more keys using :meth:`~mongoengine.queryset.QuerySet.order_by`.
+The order may be specified by prepending each of the keys by "+" or "-". Ascending order is assumed if there's no prefix.::
+
+    # Order by ascending date
+    blogs = BlogPost.objects().order_by('date')    # equivalent to .order_by('+date')
+
+    # Order by ascending date first, then descending title
+    blogs = BlogPost.objects().order_by('+date', '-title')
+
+
 Limiting and skipping results
 =============================
 Just as with traditional ORMs, you may limit the number of results returned or
@@ -349,9 +361,9 @@ Just as with limiting and skipping results, there is a method on a
 You could technically use ``len(User.objects)`` to get the same result, but it
 would be significantly slower than :meth:`~mongoengine.queryset.QuerySet.count`.
 When you execute a server-side count query, you let MongoDB do the heavy
-lifting and you receive a single integer over the wire. Meanwhile, len()
+lifting and you receive a single integer over the wire. Meanwhile, ``len()``
 retrieves all the results, places them in a local cache, and finally counts
-them. If we compare the performance of the two operations, len() is much slower
+them. If we compare the performance of the two operations, ``len()`` is much slower
 than :meth:`~mongoengine.queryset.QuerySet.count`.
 
 Further aggregation
@@ -385,6 +397,25 @@ would be generating "tag-clouds"::
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
 
+
+MongoDB aggregation API
+-----------------------
+If you need to run aggregation pipelines, MongoEngine provides an entry point to `Pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
+through :meth:`~mongoengine.queryset.QuerySet.aggregate`. Check out Pymongo's documentation for the syntax and pipeline.
+An example of its use would be::
+
+        class Person(Document):
+            name = StringField()
+
+        Person(name='John').save()
+        Person(name='Bob').save()
+
+        pipeline = [
+            {"$sort" : {"name" : -1}},
+            {"$project": {"_id": 0, "name": {"$toUpper": "$name"}}}
+            ]
+        data = Person.objects().aggregate(pipeline)
+        assert data == [{'name': 'BOB'}, {'name': 'JOHN'}]
 
 Query efficiency and performance
 ================================
@@ -578,7 +609,7 @@ to push values with index::
 .. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
-    operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
+    operator <https://docs.mongodb.com/manual/tutorial/update-documents/#Updating-The%24positionaloperator>`_.
 
 Server-side javascript execution
 ================================

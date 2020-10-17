@@ -19,34 +19,44 @@ def _import_class(cls_name):
     if cls_name in _class_registry_cache:
         return _class_registry_cache.get(cls_name)
 
-    doc_classes = ('Document', 'DynamicEmbeddedDocument', 'EmbeddedDocument',
-                   'MapReduceDocument')
+    doc_classes = (
+        "Document",
+        "DynamicEmbeddedDocument",
+        "EmbeddedDocument",
+        "MapReduceDocument",
+    )
 
     # Field Classes
     if not _field_list_cache:
         from mongoengine.fields import __all__ as fields
+
         _field_list_cache.extend(fields)
         from mongoengine.base.fields import __all__ as fields
+
         _field_list_cache.extend(fields)
 
     field_classes = _field_list_cache
 
-    deref_classes = ('DeReference',)
+    deref_classes = ("DeReference",)
 
-    if cls_name == 'BaseDocument':
+    if cls_name == "BaseDocument":
         from mongoengine.base import document as module
-        import_classes = ['BaseDocument']
+
+        import_classes = ["BaseDocument"]
     elif cls_name in doc_classes:
         from mongoengine import document as module
+
         import_classes = doc_classes
     elif cls_name in field_classes:
         from mongoengine import fields as module
+
         import_classes = field_classes
     elif cls_name in deref_classes:
         from mongoengine import dereference as module
+
         import_classes = deref_classes
     else:
-        raise ValueError('No import set for: %s' % cls_name)
+        raise ValueError("No import set for: %s" % cls_name)
 
     for cls in import_classes:
         _class_registry_cache[cls] = getattr(module, cls)

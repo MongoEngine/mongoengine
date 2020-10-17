@@ -13,7 +13,7 @@ Help Wanted!
 
 The MongoEngine team is looking for help contributing and maintaining a new
 Django extension for MongoEngine! If you have Django experience and would like
-to help contribute to the project, please get in touch on the 
-`mailing list <http://groups.google.com/group/mongoengine-users>`_ or by 
+to help contribute to the project, please get in touch on the
+`mailing list <http://groups.google.com/group/mongoengine-users>`_ or by
 simply contributing on
 `GitHub <https://github.com/MongoEngine/django-mongoengine>`_.

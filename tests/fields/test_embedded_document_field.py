@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
-from mongoengine import Document, StringField, ValidationError, EmbeddedDocument, EmbeddedDocumentField, \
-    InvalidQueryError, LookUpError, IntField, GenericEmbeddedDocumentField, ListField, EmbeddedDocumentListField, \
-    ReferenceField
+import pytest
+
+from mongoengine import (
+    Document,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    GenericEmbeddedDocumentField,
+    IntField,
+    InvalidQueryError,
+    ListField,
+    LookUpError,
+    StringField,
+    ValidationError,
+)
 
 from tests.utils import MongoDBTestCase
 
@@ -12,37 +23,41 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
             name = StringField()
 
         field = EmbeddedDocumentField(MyDoc)
-        self.assertEqual(field.document_type_obj, MyDoc)
+        assert field.document_type_obj == MyDoc
 
-        field2 = EmbeddedDocumentField('MyDoc')
-        self.assertEqual(field2.document_type_obj, 'MyDoc')
+        field2 = EmbeddedDocumentField("MyDoc")
+        assert field2.document_type_obj == "MyDoc"
 
     def test___init___throw_error_if_document_type_is_not_EmbeddedDocument(self):
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             EmbeddedDocumentField(dict)
 
     def test_document_type_throw_error_if_not_EmbeddedDocument_subclass(self):
-
         class MyDoc(Document):
             name = StringField()
 
-        emb = EmbeddedDocumentField('MyDoc')
-        with self.assertRaises(ValidationError) as ctx:
+        emb = EmbeddedDocumentField("MyDoc")
+        with pytest.raises(ValidationError) as exc_info:
             emb.document_type
-        self.assertIn('Invalid embedded document class provided to an EmbeddedDocumentField', str(ctx.exception))
+        assert (
+            "Invalid embedded document class provided to an EmbeddedDocumentField"
+            in str(exc_info.value)
+        )
 
     def test_embedded_document_field_only_allow_subclasses_of_embedded_document(self):
         # Relates to #1661
         class MyDoc(Document):
             name = StringField()
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
+
             class MyFailingDoc(Document):
                 emb = EmbeddedDocumentField(MyDoc)
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
+
             class MyFailingdoc2(Document):
-                emb = EmbeddedDocumentField('MyDoc')
+                emb = EmbeddedDocumentField("MyDoc")
 
     def test_query_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):
@@ -55,34 +70,31 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        p = Person(
-            settings=AdminSettings(foo1='bar1', foo2='bar2'),
-            name='John',
-        ).save()
+        p = Person(settings=AdminSettings(foo1="bar1", foo2="bar2"), name="John").save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            Person.objects(settings__notexist='bar').first()
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            Person.objects(settings__notexist="bar").first()
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
-        with self.assertRaises(LookUpError):
-            Person.objects.only('settings.notexist')
+        with pytest.raises(LookUpError):
+            Person.objects.only("settings.notexist")
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__foo1='bar1').first().id, p.id)
-        only_p = Person.objects.only('settings.foo1').first()
-        self.assertEqual(only_p.settings.foo1, p.settings.foo1)
-        self.assertIsNone(only_p.settings.foo2)
-        self.assertIsNone(only_p.name)
+        assert Person.objects(settings__foo1="bar1").first().id == p.id
+        only_p = Person.objects.only("settings.foo1").first()
+        assert only_p.settings.foo1 == p.settings.foo1
+        assert only_p.settings.foo2 is None
+        assert only_p.name is None
 
-        exclude_p = Person.objects.exclude('settings.foo1').first()
-        self.assertIsNone(exclude_p.settings.foo1)
-        self.assertEqual(exclude_p.settings.foo2, p.settings.foo2)
-        self.assertEqual(exclude_p.name, p.name)
+        exclude_p = Person.objects.exclude("settings.foo1").first()
+        assert exclude_p.settings.foo1 is None
+        assert exclude_p.settings.foo2 == p.settings.foo2
+        assert exclude_p.name == p.name
 
     def test_query_embedded_document_attribute_with_inheritance(self):
         class BaseSettings(EmbeddedDocument):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
             base_foo = StringField()
 
         class AdminSettings(BaseSettings):
@@ -93,26 +105,26 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        p = Person(settings=AdminSettings(base_foo='basefoo', sub_foo='subfoo'))
+        p = Person(settings=AdminSettings(base_foo="basefoo", sub_foo="subfoo"))
         p.save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            self.assertEqual(Person.objects(settings__notexist='bar').first().id, p.id)
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            assert Person.objects(settings__notexist="bar").first().id == p.id
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__base_foo='basefoo').first().id, p.id)
-        self.assertEqual(Person.objects(settings__sub_foo='subfoo').first().id, p.id)
+        assert Person.objects(settings__base_foo="basefoo").first().id == p.id
+        assert Person.objects(settings__sub_foo="subfoo").first().id == p.id
 
-        only_p = Person.objects.only('settings.base_foo', 'settings._cls').first()
-        self.assertEqual(only_p.settings.base_foo, 'basefoo')
-        self.assertIsNone(only_p.settings.sub_foo)
+        only_p = Person.objects.only("settings.base_foo", "settings._cls").first()
+        assert only_p.settings.base_foo == "basefoo"
+        assert only_p.settings.sub_foo is None
 
     def test_query_list_embedded_document_with_inheritance(self):
         class Post(EmbeddedDocument):
             title = StringField(max_length=120, required=True)
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
 
         class TextPost(Post):
             content = StringField()
@@ -123,22 +135,21 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         class Record(Document):
             posts = ListField(EmbeddedDocumentField(Post))
 
-        record_movie = Record(posts=[MoviePost(author='John', title='foo')]).save()
-        record_text = Record(posts=[TextPost(content='a', title='foo')]).save()
+        record_movie = Record(posts=[MoviePost(author="John", title="foo")]).save()
+        record_text = Record(posts=[TextPost(content="a", title="foo")]).save()
 
         records = list(Record.objects(posts__author=record_movie.posts[0].author))
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].id, record_movie.id)
+        assert len(records) == 1
+        assert records[0].id == record_movie.id
 
         records = list(Record.objects(posts__content=record_text.posts[0].content))
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0].id, record_text.id)
+        assert len(records) == 1
+        assert records[0].id == record_text.id
 
-        self.assertEqual(Record.objects(posts__title='foo').count(), 2)
+        assert Record.objects(posts__title="foo").count() == 2
 
 
 class TestGenericEmbeddedDocumentField(MongoDBTestCase):
-
     def test_generic_embedded_document(self):
         class Car(EmbeddedDocument):
             name = StringField()
@@ -153,21 +164,22 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        person = Person(name='Test User')
-        person.like = Car(name='Fiat')
+        person = Person(name="Test User")
+        person.like = Car(name="Fiat")
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Car)
+        assert isinstance(person.like, Car)
 
         person.like = Dish(food="arroz", number=15)
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
+        assert isinstance(person.like, Dish)
 
     def test_generic_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices."""
+
         class Car(EmbeddedDocument):
             name = StringField()
 
@@ -181,20 +193,22 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        person = Person(name='Test User')
-        person.like = Car(name='Fiat')
-        self.assertRaises(ValidationError, person.validate)
+        person = Person(name="Test User")
+        person.like = Car(name="Fiat")
+        with pytest.raises(ValidationError):
+            person.validate()
 
         person.like = Dish(food="arroz", number=15)
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.like, Dish)
+        assert isinstance(person.like, Dish)
 
     def test_generic_list_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices inside
         a list field.
         """
+
         class Car(EmbeddedDocument):
             name = StringField()
 
@@ -208,39 +222,38 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        person = Person(name='Test User')
-        person.likes = [Car(name='Fiat')]
-        self.assertRaises(ValidationError, person.validate)
+        person = Person(name="Test User")
+        person.likes = [Car(name="Fiat")]
+        with pytest.raises(ValidationError):
+            person.validate()
 
         person.likes = [Dish(food="arroz", number=15)]
         person.save()
 
         person = Person.objects.first()
-        self.assertIsInstance(person.likes[0], Dish)
+        assert isinstance(person.likes[0], Dish)
 
     def test_choices_validation_documents(self):
         """
         Ensure fields with document choices validate given a valid choice.
         """
+
         class UserComments(EmbeddedDocument):
             author = StringField()
             message = StringField()
 
         class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(UserComments,))
-            )
+            comments = ListField(GenericEmbeddedDocumentField(choices=(UserComments,)))
 
         # Ensure Validation Passes
-        BlogPost(comments=[
-            UserComments(author='user2', message='message2'),
-        ]).save()
+        BlogPost(comments=[UserComments(author="user2", message="message2")]).save()
 
     def test_choices_validation_documents_invalid(self):
         """
         Ensure fields with document choices validate given an invalid choice.
         This should throw a ValidationError exception.
         """
+
         class UserComments(EmbeddedDocument):
             author = StringField()
             message = StringField()
@@ -250,31 +263,30 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
             message = StringField()
 
         class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(UserComments,))
-            )
+            comments = ListField(GenericEmbeddedDocumentField(choices=(UserComments,)))
 
         # Single Entry Failure
-        post = BlogPost(comments=[
-            ModeratorComments(author='mod1', message='message1'),
-        ])
-        self.assertRaises(ValidationError, post.save)
+        post = BlogPost(comments=[ModeratorComments(author="mod1", message="message1")])
+        with pytest.raises(ValidationError):
+            post.save()
 
         # Mixed Entry Failure
-        post = BlogPost(comments=[
-            ModeratorComments(author='mod1', message='message1'),
-            UserComments(author='user2', message='message2'),
-        ])
-        self.assertRaises(ValidationError, post.save)
+        post = BlogPost(
+            comments=[
+                ModeratorComments(author="mod1", message="message1"),
+                UserComments(author="user2", message="message2"),
+            ]
+        )
+        with pytest.raises(ValidationError):
+            post.save()
 
     def test_choices_validation_documents_inheritance(self):
         """
         Ensure fields with document choices validate given subclass of choice.
         """
+
         class Comments(EmbeddedDocument):
-            meta = {
-                'abstract': True
-            }
+            meta = {"abstract": True}
             author = StringField()
             message = StringField()
 
@@ -282,14 +294,10 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
             pass
 
         class BlogPost(Document):
-            comments = ListField(
-                GenericEmbeddedDocumentField(choices=(Comments,))
-            )
+            comments = ListField(GenericEmbeddedDocumentField(choices=(Comments,)))
 
         # Save Valid EmbeddedDocument Type
-        BlogPost(comments=[
-            UserComments(author='user2', message='message2'),
-        ]).save()
+        BlogPost(comments=[UserComments(author="user2", message="message2")]).save()
 
     def test_query_generic_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):
@@ -299,28 +307,30 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
             foo2 = StringField()
 
         class Person(Document):
-            settings = GenericEmbeddedDocumentField(choices=(AdminSettings, NonAdminSettings))
+            settings = GenericEmbeddedDocumentField(
+                choices=(AdminSettings, NonAdminSettings)
+            )
 
         Person.drop_collection()
 
-        p1 = Person(settings=AdminSettings(foo1='bar1')).save()
-        p2 = Person(settings=NonAdminSettings(foo2='bar2')).save()
+        p1 = Person(settings=AdminSettings(foo1="bar1")).save()
+        p2 = Person(settings=NonAdminSettings(foo2="bar2")).save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            Person.objects(settings__notexist='bar').first()
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            Person.objects(settings__notexist="bar").first()
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
-        with self.assertRaises(LookUpError):
-            Person.objects.only('settings.notexist')
+        with pytest.raises(LookUpError):
+            Person.objects.only("settings.notexist")
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__foo1='bar1').first().id, p1.id)
-        self.assertEqual(Person.objects(settings__foo2='bar2').first().id, p2.id)
+        assert Person.objects(settings__foo1="bar1").first().id == p1.id
+        assert Person.objects(settings__foo2="bar2").first().id == p2.id
 
     def test_query_generic_embedded_document_attribute_with_inheritance(self):
         class BaseSettings(EmbeddedDocument):
-            meta = {'allow_inheritance': True}
+            meta = {"allow_inheritance": True}
             base_foo = StringField()
 
         class AdminSettings(BaseSettings):
@@ -331,14 +341,14 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         Person.drop_collection()
 
-        p = Person(settings=AdminSettings(base_foo='basefoo', sub_foo='subfoo'))
+        p = Person(settings=AdminSettings(base_foo="basefoo", sub_foo="subfoo"))
         p.save()
 
         # Test non exiting attribute
-        with self.assertRaises(InvalidQueryError) as ctx_err:
-            self.assertEqual(Person.objects(settings__notexist='bar').first().id, p.id)
-        self.assertEqual(unicode(ctx_err.exception), u'Cannot resolve field "notexist"')
+        with pytest.raises(InvalidQueryError) as exc_info:
+            assert Person.objects(settings__notexist="bar").first().id == p.id
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
-        self.assertEqual(Person.objects(settings__base_foo='basefoo').first().id, p.id)
-        self.assertEqual(Person.objects(settings__sub_foo='subfoo').first().id, p.id)
+        assert Person.objects(settings__base_foo="basefoo").first().id == p.id
+        assert Person.objects(settings__sub_foo="subfoo").first().id == p.id

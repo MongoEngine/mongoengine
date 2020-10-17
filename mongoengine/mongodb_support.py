@@ -11,9 +11,9 @@ MONGODB_36 = (3, 6)
 
 
 def get_mongodb_version():
-    """Return the version of the connected mongoDB (first 2 digits)
+    """Return the version of the default connected mongoDB (first 2 digits)
 
     :return: tuple(int, int)
     """
-    version_list = get_connection().server_info()['versionArray'][:2]     # e.g. (3, 2)
+    version_list = get_connection().server_info()["versionArray"][:2]  # e.g: (3, 2)
     return tuple(version_list)

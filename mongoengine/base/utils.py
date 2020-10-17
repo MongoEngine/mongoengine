@@ -1,7 +1,7 @@
 import re
 
 
-class LazyRegexCompiler(object):
+class LazyRegexCompiler:
     """Descriptor to allow lazy compilation of regex"""
 
     def __init__(self, pattern, flags=0):
