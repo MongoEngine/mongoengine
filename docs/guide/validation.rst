@@ -3,10 +3,11 @@ Document Validation
 ====================
 
 By design, MongoEngine strictly validates the documents right before they are inserted in MongoDB
-and make sure they are consistent with the fields defined in your models.
+and makes sure they are consistent with the fields defined in your models.
 
-Mongoengine will not validate a document when an object is loaded from the DB into an instance
-of your model but this operation will fail under some circumstances (e.g. if there is a field in
+MongoEngine makes the assumption that the documents that exists in the DB are compliant with the schema.
+This means that Mongoengine will not validate a document when an object is loaded from the DB into an instance
+of your model but this operation may fail under some circumstances (e.g. if there is a field in
 the document fetched from the database that is not defined in your model).
 
 
@@ -53,23 +54,28 @@ The following feature can be used to customize the validation:
 
 * Document `clean` method
 
-Although not its primary use case, `clean` may be use to do validation that involves multiple fields.
-Note that `clean` runs before the validation when you save a Document.
+This method is called as part of :meth:`~mongoengine.document.Document.save` and should be used to provide
+custom model validation and/or to modify some of the field values prior to validation.
+For instance, you could use it to automatically provide a value for a field, or to do validation
+that requires access to more than a single field.
 
 .. code-block:: python
 
-    class Person(Document):
-        first_name = StringField()
-        last_name = StringField()
+    class Essay(Document):
+        status = StringField(choices=('Published', 'Draft'), required=True)
+        pub_date = DateTimeField()
 
         def clean(self):
-            if self.first_name == 'John' and self.last_name == 'Doe':
-                raise ValidationError('John Doe is not a valid name')
+            # Validate that only published essays have a `pub_date`
+            if self.status == 'Draft' and self.pub_date is not None:
+                raise ValidationError('Draft entries should not have a publication date.')
+            # Set the pub_date for published items if not set.
+            if self.status == 'Published' and self.pub_date is None:
+                self.pub_date = datetime.now()
 
-    Person(first_name='Billy', last_name='Doe').save()
-    Person(first_name='John', last_name='Doe').save()      # raises ValidationError (John Doe is not a valid name)
-
-
+.. note::
+    Cleaning is only called if validation is turned on and when calling
+    :meth:`~mongoengine.Document.save`.
 
 * Adding custom Field classes
 
@@ -98,19 +104,20 @@ to subclass a Field and encapsulate some validation by overriding the `validate`
    When overriding `validate`, use `self.error("your-custom-error")` instead of raising ValidationError explicitly,
    it will provide a better context with the error message
 
-Disabling validation
+Skipping validation
 ====================
 
-We do not recommend to do this but if for some reason you need to disable the validation of a document
-when you call `.save()`, you can use `.save(validate=False)`.
+Although discouraged as it allows to violate fields constraints, if for some reason you need to disable
+the validation and cleaning of a document when you call `.save()`, you can use `.save(validate=False)`.
 
 .. code-block:: python
 
     class Person(Document):
-        age = IntField()
+        age = IntField(max_value=100)
 
-    Person(age='garbage').save()    # raises ValidationError (garbage could not be converted to int: ['age'])
+    Person(age=1000).save()    # raises ValidationError (Integer value is too large)
 
-    Person(age='garbage').save(validate=False)
+    Person(age=1000).save(validate=False)
     person = Person.objects.first()
-    assert person.age == 'garbage'
+    assert person.age == 1000
+
