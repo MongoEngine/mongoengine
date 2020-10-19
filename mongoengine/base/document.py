@@ -314,7 +314,8 @@ class BaseDocument:
 
     def clean(self):
         """
-        Hook for doing document level data cleaning before validation is run.
+        Hook for doing document level data cleaning (usually validation or assignment)
+        before validation is run.
 
         Any ValidationError raised by this method will not be associated with
         a particular field; it will have a special-case association with the

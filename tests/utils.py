@@ -50,7 +50,7 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     ran against MongoDB < v3.6.
 
     :param mongo_version_req: The mongodb version requirement (tuple(int, int))
-    :param oper: The operator to apply (e.g: operator.ge)
+    :param oper: The operator to apply (e.g. operator.ge)
     """
 
     def _inner(*args, **kwargs):

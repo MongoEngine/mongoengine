@@ -10,6 +10,7 @@ User Guide
    defining-documents
    document-instances
    querying
+   validation
    gridfs
    signals
    text-indexes
