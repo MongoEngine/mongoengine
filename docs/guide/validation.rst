@@ -12,7 +12,7 @@ the document fetched from the database that is not defined in your model).
 
 
 Built-in validation
-=================
+===================
 
 Mongoengine provides different fields that encapsulate the corresponding validation
 out of the box. Validation runs when calling `.validate()` or `.save()`
@@ -108,7 +108,7 @@ Skipping validation
 ====================
 
 Although discouraged as it allows to violate fields constraints, if for some reason you need to disable
-the validation and cleaning of a document when you call `.save()`, you can use `.save(validate=False)`.
+the validation and cleaning of a document when you call :meth:`~mongoengine.document.Document.save`, you can use `.save(validate=False)`.
 
 .. code-block:: python
 
