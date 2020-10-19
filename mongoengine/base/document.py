@@ -341,10 +341,10 @@ class BaseDocument(object):
         root_fields = set([f.split('.')[0] for f in fields])
 
         for field_name in self:
-            if root_fields and field_name not in root_fields:
-                continue
-
             field = self._fields.get(field_name)
+            output_field_name = field.db_field if use_db_field else field.name
+            if root_fields and output_field_name not in root_fields:
+                continue
 
             if field and field.is_v2_field():
                 value = self.v2_get(field)
@@ -354,9 +354,9 @@ class BaseDocument(object):
             if value is not None:
 
                 if fields:
-                    key = '%s.' % field_name
+                    key = '%s.' % output_field_name
                     embedded_fields = [
-                        i.replace(key, '') for i in fields
+                        i[len(key):] for i in fields
                         if i.startswith(key)]
 
                 else:
@@ -371,13 +371,10 @@ class BaseDocument(object):
                     value = field.generate()
                     self._data[field_name] = value
                 elif serial_v2:
-                    data[field_name] = None
+                    data[output_field_name] = None
 
             if value is not None:
-                if use_db_field:
-                    data[field.db_field] = value
-                else:
-                    data[field.name] = value
+                data[output_field_name] = value
 
         # If "_id" has not been set, then try and set it
         Document = _import_class("Document")
