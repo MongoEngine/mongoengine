@@ -381,6 +381,8 @@ class BaseDocument(object):
         if isinstance(self, Document):
             if data["_id"] is None:
                 data["_id"] = self._data.get("id", None)
+                if data["_id"] and serial_v2:
+                    data["_id"] = str(data["_id"])
 
         if data['_id'] is None:
             data.pop('_id')
