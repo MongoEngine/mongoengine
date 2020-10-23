@@ -362,8 +362,13 @@ class BaseDocument(object):
                 else:
                     embedded_fields = []
 
-                value = field.to_mongo(value, use_db_field=use_db_field,
-                                       fields=embedded_fields, serial_v2=serial_v2)
+                if serial_v2 and isinstance(field, EmbeddedDocumentField):
+                    # `serial_v2` is only used by `RPOptimizedSerializer` which re-serializes embedded document fields anyway
+                    # any data we assign to this field will be replaced
+                    value = None
+                else:
+                    value = field.to_mongo(value, use_db_field=use_db_field,
+                                           fields=embedded_fields, serial_v2=serial_v2)
 
             # Handle self generating fields
             if value is None:
