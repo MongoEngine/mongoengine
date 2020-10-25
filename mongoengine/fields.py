@@ -612,8 +612,10 @@ class EmbeddedDocumentField(BaseField):
         """Make sure that the document instance is an instance of the
         EmbeddedDocument subclass provided when the document was defined.
         """
+        if self.allow_subclasses and any([isinstance(value, cls) for cls in self.allow_subclasses]):
+            pass
         # Using isinstance also works for subclasses of self.document
-        if not isinstance(value, self.document_type):
+        elif not isinstance(value, self.document_type):
             self.error('Invalid embedded document instance provided to an '
                        'EmbeddedDocumentField')
         self.document_type.validate(value, clean)

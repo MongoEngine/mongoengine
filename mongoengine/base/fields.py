@@ -47,7 +47,7 @@ class BaseField(object):
                  unique=False, unique_with=None, primary_key=False,
                  validation=None, choices=None, null=False, sparse=False, alertable=False,
                  display_name=None, reportable=False, category='', subCategory='',
-                 isGroupable=False, hasSensitiveData=False, description='',
+                 isGroupable=False, hasSensitiveData=False, description='', allow_subclasses=None,
                  **kwargs):
         """
         :param db_field: The database field to store this field in
@@ -99,6 +99,7 @@ class BaseField(object):
         self.null = null
         self.sparse = sparse
         self._owner_document = None
+        self.allow_subclasses = allow_subclasses or []
         
         # Detect and report conflicts between metadata and base properties.
         conflicts = set(dir(self)) & set(kwargs)
