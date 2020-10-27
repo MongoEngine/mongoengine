@@ -492,6 +492,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return update_doc
 
     def _integrate_shard_key(self, doc, select_dict):
+        """Integrates the collection's shard key to the `select_dict`, which will be used for the query.
+        The value from the shard key is taken from the `doc` and finally the select_dict is returned.
+        """
 
         # Need to add shard key to query, or you get an error
         shard_key = self._meta.get("shard_key", tuple())
@@ -504,7 +507,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             select_dict[".".join(actual_key)] = val
 
         return select_dict
-
 
     def _save_update(self, doc, save_condition, write_concern):
         """Update an existing document.
