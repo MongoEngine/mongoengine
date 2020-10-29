@@ -59,20 +59,27 @@ class SimplificationVisitor(QNodeVisitor):
                 raise DuplicateQueryConditionsError()
 
             query_ops.update(ops)
+
+            from mongoengine import Document
+            from mongoengine.queryset import QuerySet
+            from mongoengine.base.proxy import DocumentProxy
+            from bson import DBRef
             
             # Convert DocumentProxy to ids.
+            def is_doc_or_proxy(val):
+                return type(val) is DocumentProxy or isinstance(val, Document)
+            def convert_to_dbref(doc_or_proxy):
+                if type(doc_or_proxy) is DocumentProxy:
+                    collection = doc_or_proxy.collection
+                else:
+                    collection = doc_or_proxy._get_collection_name()
+                return DBRef(collection, doc_or_proxy.id)
             for op in ops:
-                from mongoengine import Document
-                from mongoengine.queryset import QuerySet
-                from mongoengine.base.proxy import DocumentProxy
-                import collections
-                def is_doc_or_proxy(val):
-                    return type(val) is DocumentProxy or isinstance(val, Document)
                 if is_doc_or_proxy(query[op]):
-                    query[op] = query[op].id
+                    query[op] = convert_to_dbref(query[op])
                 elif isinstance(query[op], (list, set, QuerySet)):
-                    convert_to_id = lambda obj: obj.id if is_doc_or_proxy(obj) else obj
-                    query[op] = list(map(convert_to_id, query[op]))
+                    convert_to_ref = lambda obj: convert_to_dbref(obj) if is_doc_or_proxy(obj) else obj
+                    query[op] = list(map(convert_to_ref, query[op]))
             
             combined_query.update(copy.deepcopy(query))
             
