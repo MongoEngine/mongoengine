@@ -59,19 +59,13 @@ class SimplificationVisitor(QNodeVisitor):
                 raise DuplicateQueryConditionsError()
 
             query_ops.update(ops)
-            from mongoengine import Document
-            from mongoengine.base.proxy import DocumentProxy            
+            
             # Convert DocumentProxy to ids.
-            def convert_proxy(val):
-                if type(val) is DocumentProxy or isinstance(val, Document):
-                    return val.id
-                return val
-                
             for op in ops:
-                if isinstance(query[op], list):
-                    query[op] = list(map(convert_proxy, query[op]))
-                else:
-                    query[op] = convert_proxy(query[op])
+                from mongoengine import Document
+                from mongoengine.base.proxy import DocumentProxy
+                if type(query[op]) is DocumentProxy or isinstance(query[op], Document):
+                    query[op] = query[op].id
             
             combined_query.update(copy.deepcopy(query))
             
