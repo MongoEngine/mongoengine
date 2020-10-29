@@ -71,7 +71,7 @@ class SimplificationVisitor(QNodeVisitor):
                 if isinstance(query[op], list):
                     query[op] = list(map(convert_proxy, query[op]))
                 else:
-                    query[op] = convert_proxy(query[op)
+                    query[op] = convert_proxy(query[op])
             
             combined_query.update(copy.deepcopy(query))
             
