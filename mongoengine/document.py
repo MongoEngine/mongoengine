@@ -466,9 +466,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if "_id" in doc:
                 select_dict = {"_id": doc["_id"]}
                 select_dict = self._integrate_shard_key(doc, select_dict)
-                raw_object = wc_collection.find_one_and_replace(
-                    select_dict, doc
-                )
+                raw_object = wc_collection.find_one_and_replace(select_dict, doc)
                 if raw_object:
                     return doc["_id"]
 
@@ -930,7 +928,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def list_indexes(cls):
-        """ Lists all of the indexes that should be created for given
+        """Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
         if cls._meta.get("abstract"):
@@ -995,7 +993,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones
+        """Compares the indexes defined in MongoEngine with the ones
         existing in the database. Returns any missing/extra indexes.
         """
 
