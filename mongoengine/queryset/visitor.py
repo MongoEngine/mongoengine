@@ -63,13 +63,14 @@ class SimplificationVisitor(QNodeVisitor):
             # Convert DocumentProxy to ids.
             for op in ops:
                 from mongoengine import Document
+                from mongoengine.queryset import QuerySet
                 from mongoengine.base.proxy import DocumentProxy
                 import collections
                 def is_doc_or_proxy(val):
                     return type(val) is DocumentProxy or isinstance(val, Document)
                 if is_doc_or_proxy(query[op]):
                     query[op] = query[op].id
-                elif isinstance(query[op], collections.Iterable):
+                elif isinstance(query[op], (list, set, QuerySet)):
                     convert_to_id = lambda obj: obj.id if is_doc_or_proxy(obj) else obj
                     query[op] = list(map(convert_to_id, query[op]))
             
