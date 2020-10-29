@@ -12,7 +12,7 @@ from mongoengine.queryset import QuerySet
 
 
 class DeReference(object):
-    def __call__(self, items, max_depth=1, instance=None, name=None):
+    def __call__(self, items, max_depth=1, instance=None, name=None, field_paths=None):
         """
         Cheaply dereferences the items to a set depth.
         Also handles the conversion of complex data types.
@@ -24,6 +24,8 @@ class DeReference(object):
         :param name: The name of the field, used for tracking changes by
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
+        :param field_paths:  Dereference only the specific field paths (of the form "a.b.c") provided.
+                             If specified, max_depth is ignored.
         """
         if items is None or isinstance(items, string_types):
             return items
@@ -35,6 +37,16 @@ class DeReference(object):
 
         self.max_depth = max_depth
         doc_type = None
+
+        self.field_paths = {}
+        if field_paths:
+            for field_path in field_paths:
+                pieces = field_path.split('.')
+                d = self.field_paths
+                for piece in pieces:
+                    d.setdefault(piece, {})
+                    d = d[piece]
+
 
         if instance and isinstance(instance, (Document, EmbeddedDocument,
                                               TopLevelDocumentMetaclass)):
