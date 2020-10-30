@@ -87,6 +87,7 @@ __all__ = (
     "PolygonField",
     "SequenceField",
     "UUIDField",
+    "EnumField",
     "MultiPointField",
     "MultiLineStringField",
     "MultiPolygonField",
@@ -1615,6 +1616,57 @@ class BinaryField(BaseField):
 
         if self.max_bytes is not None and len(value) > self.max_bytes:
             self.error("Binary value is too long")
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        return super().prepare_query_value(op, self.to_mongo(value))
+
+
+class EnumField(BaseField):
+    """ Enumeration Field. Values are stored underneath as strings.
+     Example usage:
+    .. code-block:: python
+
+        class Status(Enum):
+            NEW = 'new'
+            DONE = 'done'
+
+        class ModelWithEnum(Document):
+            status = EnumField(Status, default=Status.NEW)
+
+        ModelWithEnum(status='done')
+        ModelWithEnum(status=Status.DONE)
+
+    Enum fields can be searched using enum or its value:
+    .. code-block:: python
+
+        ModelWithEnum.objects(status='new').count()
+        ModelWithEnum.objects(status=Status.NEW).count()
+    """
+    def __init__(self, enum, **kwargs):
+        self._enum_cls = enum
+        kwargs["choices"] = list(self._enum_cls)
+        super().__init__(**kwargs)
+
+    def __set__(self, instance, value):
+        if value is None or isinstance(value, self._enum_cls):
+            value = value  # if it is proper enum or none then fine
+        else:  # if it not, then try to create enum of it
+            value = self._enum_cls(value)
+        return super().__set__(instance, value)
+
+    def to_mongo(self, value):
+        if isinstance(value, self._enum_cls):
+            return str(value.value)
+        return str(value)
+
+    def validate(self, value):
+        if not isinstance(value, self._enum_cls):
+            self.error(
+                "EnumField only accepts instances of "
+                "(%s)" % self._enum_cls
+            )
 
     def prepare_query_value(self, op, value):
         if value is None:

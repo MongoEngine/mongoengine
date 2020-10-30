@@ -76,6 +76,7 @@ are as follows:
 * :class:`~mongoengine.fields.EmailField`
 * :class:`~mongoengine.fields.EmbeddedDocumentField`
 * :class:`~mongoengine.fields.EmbeddedDocumentListField`
+* :class:`~mongoengine.fields.EnumField`
 * :class:`~mongoengine.fields.FileField`
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
