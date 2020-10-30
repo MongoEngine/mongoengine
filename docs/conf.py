@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # MongoEngine documentation build configuration file, created by
 # sphinx-quickstart on Sun Nov 22 18:14:13 2009.

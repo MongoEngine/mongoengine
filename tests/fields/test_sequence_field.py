@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from mongoengine import *
 
 from tests.utils import MongoDBTestCase
