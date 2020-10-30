@@ -484,6 +484,8 @@ class ObjectIdField(BaseField):
         return value
 
     def to_mongo(self, value, **kwargs):
+        if isinstance(value, DBRef):
+            return ObjectId(text_type(value.id))
         if not isinstance(value, ObjectId):
             try:
                 return ObjectId(text_type(value))

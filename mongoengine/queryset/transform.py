@@ -115,6 +115,12 @@ def query(_doc_cls=None, **kwargs):
                     parts[-1] += '._ref'
                 elif isinstance(value, ObjectId):
                     parts[-1] += '._ref.$id'
+                elif isinstance(value, list) and value:
+                    filtered_items = [v for v in value if v is not None]
+                    if isinstance(filtered_items[0], DBRef):
+                        parts[-1] += '._ref'
+                    elif isinstance(filtered_items[0], ObjectId):
+                        parts[-1] += '._ref.$id'
 
         # if op and op not in COMPARISON_OPERATORS:
         if op:
