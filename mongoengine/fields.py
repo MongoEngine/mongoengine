@@ -848,8 +848,7 @@ class DynamicField(BaseField):
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
     def to_mongo(self, value, use_db_field=True, fields=None):
-        """Convert a Python type to a MongoDB compatible type.
-        """
+        """Convert a Python type to a MongoDB compatible type."""
 
         if isinstance(value, str):
             return value
@@ -1624,7 +1623,7 @@ class BinaryField(BaseField):
 
 
 class EnumField(BaseField):
-    """ Enumeration Field. Values are stored underneath as strings.
+    """Enumeration Field. Values are stored underneath as strings.
      Example usage:
     .. code-block:: python
 
@@ -1643,30 +1642,41 @@ class EnumField(BaseField):
 
         ModelWithEnum.objects(status='new').count()
         ModelWithEnum.objects(status=Status.NEW).count()
+
+    Note that choices cannot be set explicitly, they are derived
+    from the provided enum class.
     """
+
     def __init__(self, enum, **kwargs):
         self._enum_cls = enum
+        if "choices" in kwargs:
+            raise ValueError(
+                "'choices' can't be set on EnumField, "
+                "it is implicitly set as the enum class"
+            )
         kwargs["choices"] = list(self._enum_cls)
         super().__init__(**kwargs)
 
     def __set__(self, instance, value):
-        if value is None or isinstance(value, self._enum_cls):
-            value = value  # if it is proper enum or none then fine
-        else:  # if it not, then try to create enum of it
-            value = self._enum_cls(value)
+        is_legal_value = value is None or isinstance(value, self._enum_cls)
+        if not is_legal_value:
+            try:
+                value = self._enum_cls(value)
+            except Exception:
+                pass
         return super().__set__(instance, value)
 
     def to_mongo(self, value):
         if isinstance(value, self._enum_cls):
-            return str(value.value)
-        return str(value)
+            return value.value
+        return value
 
     def validate(self, value):
-        if not isinstance(value, self._enum_cls):
-            self.error(
-                "EnumField only accepts instances of "
-                "(%s)" % self._enum_cls
-            )
+        if value and not isinstance(value, self._enum_cls):
+            try:
+                self._enum_cls(value)
+            except Exception as e:
+                self.error(str(e))
 
     def prepare_query_value(self, op, value):
         if value is None:
