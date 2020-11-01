@@ -1,5 +1,6 @@
 from enum import Enum
 
+from bson import InvalidDocument
 import pytest
 
 from mongoengine import *
@@ -105,3 +106,17 @@ class TestIntEnumField(MongoDBTestCase):
 
         with pytest.raises(ValidationError, match="Value must be one of"):
             ModelWithColor(color="wrong_type").validate()
+
+
+class TestFunkyEnumField(MongoDBTestCase):
+    def test_enum_incompatible_bson_type_fails_during_save(self):
+        class FunkyColor(Enum):
+            YELLOW = object()
+
+        class ModelWithFunkyColor(Document):
+            color = EnumField(FunkyColor)
+
+        m = ModelWithFunkyColor(color=FunkyColor.YELLOW)
+
+        with pytest.raises(InvalidDocument, match="cannot encode object"):
+            m.save()
