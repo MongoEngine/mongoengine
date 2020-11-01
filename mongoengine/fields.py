@@ -1623,7 +1623,9 @@ class BinaryField(BaseField):
 
 
 class EnumField(BaseField):
-    """Enumeration Field. Values are stored underneath as strings.
+    """Enumeration Field. Values are stored underneath as is,
+    so it will only work with simple types (str, int, etc) that
+    are bson encodable
      Example usage:
     .. code-block:: python
 
