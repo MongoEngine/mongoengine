@@ -118,5 +118,5 @@ class TestFunkyEnumField(MongoDBTestCase):
 
         m = ModelWithFunkyColor(color=FunkyColor.YELLOW)
 
-        with pytest.raises(InvalidDocument, match="cannot encode object"):
+        with pytest.raises(InvalidDocument, match="[cC]annot encode object"):
             m.save()
