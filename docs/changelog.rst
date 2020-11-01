@@ -13,6 +13,7 @@ Development
 - Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
 - Bug fix in ListField when updating the first item, it was saving the whole list, instead of
     just replacing the first item (as it's usually done) #2392
+- Add EnumField: ``mongoengine.fields.EnumField``
 
 Changes in 0.20.0
 =================
