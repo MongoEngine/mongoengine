@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from bson import DBRef, ObjectId
 import pytest
 
