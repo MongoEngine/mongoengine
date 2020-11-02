@@ -64,8 +64,6 @@ class BaseDocument:
             It may contain additional reserved keywords, e.g. "__auto_convert".
         :param __auto_convert: If True, supplied values will be converted
             to Python-type values via each field's `to_python` method.
-        :param __only_fields: A set of fields that have been loaded for
-            this document. Empty if all fields have been loaded.
         :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
         """
@@ -79,8 +77,6 @@ class BaseDocument:
             )
 
         __auto_convert = values.pop("__auto_convert", True)
-
-        __only_fields = set(values.pop("__only_fields", values))
 
         _created = values.pop("_created", True)
 
@@ -109,7 +105,7 @@ class BaseDocument:
         # We set default values only for fields loaded from DB. See
         # https://github.com/mongoengine/mongoengine/issues/399 for more info.
         for key, field in self._fields.items():
-            if self._db_field_map.get(key, key) in __only_fields:
+            if self._db_field_map.get(key, key) in values:
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
@@ -758,11 +754,8 @@ class BaseDocument:
         return cls._meta.get("collection", None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
+    def _from_son(cls, son, _auto_dereference=True, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON."""
-        if not only_fields:
-            only_fields = []
-
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -817,9 +810,7 @@ class BaseDocument:
         if cls.STRICT:
             data = {k: v for k, v in data.items() if k in cls._fields}
 
-        obj = cls(
-            __auto_convert=False, _created=created, __only_fields=only_fields, **data
-        )
+        obj = cls(__auto_convert=False, _created=created, **data)
         obj._changed_fields = []
         if not _auto_dereference:
             obj._fields = fields

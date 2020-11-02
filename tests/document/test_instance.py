@@ -3411,7 +3411,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert obj3 != dbref2
         assert dbref2 != obj3
 
-    def test_default_values(self):
+    def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
             name = StringField()

@@ -14,6 +14,7 @@ Development
 - Bug fix in ListField when updating the first item, it was saving the whole list, instead of
     just replacing the first item (as it's usually done) #2392
 - Add EnumField: ``mongoengine.fields.EnumField``
+- Refactoring - Remove useless code related to Document.__only_fields and Queryset.only_fields
 
 Changes in 0.20.0
 =================
