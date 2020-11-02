@@ -102,8 +102,6 @@ class BaseDocument:
         self._dynamic_fields = SON()
 
         # Assign default values to the instance.
-        # We set default values only for fields loaded from DB. See
-        # https://github.com/mongoengine/mongoengine/issues/399 for more info.
         for key, field in self._fields.items():
             if self._db_field_map.get(key, key) in values:
                 continue
