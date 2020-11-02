@@ -1,0 +1,44 @@
+name: MongoengineCI
+on: [push]
+env:
+  PYMONGO_3_11: 3.11
+  MONGODB_4_0: 4.0.13
+  MONGODB: $MONGODB_4_0
+  PYMONGO: $PYMONGO_3_11
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8, pypy3]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    # install
+      # Install Mongo
+    - run: wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz
+    - run: tar xzf mongodb-linux-x86_64-${MONGODB}.tgz
+    - run: ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --version
+      # Install Python dependencies.
+    - run: pip install --upgrade pip
+    - run: pip install coveralls
+    - run: pip install pre-commit
+    - run: pip install tox
+      # tox dryrun to setup the tox venv (we run a mock test).
+    - run: tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
+
+    # before script
+    - run: mkdir ${PWD}/mongodb-linux-x86_64-${MONGODB}/data
+    - run: ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/data --logpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/mongodb.log --fork
+      # Run pre-commit hooks (black, flake8, etc) on entire codebase
+    - run: if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then pre-commit run -a; else echo "pre-commit checks only runs on py37"; fi
+    - run: mongo --eval 'db.version();'    # Make sure mongo is awake
+
+    # You can test your matrix by printing the current Python version
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Run test suite
+      run: tox -e $(echo py${{ matrix.python-version }}-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
