@@ -1,0 +1,54 @@
+name: MongoengineCI
+on: [push]
+env:
+  MONGODB_3_4: 3.4.19
+  MONGODB_3_6: 3.6.13
+  MONGODB_4_0: 4.0.13
+
+  PYMONGO_3_4: 3.4
+  PYMONGO_3_6: 3.6
+  PYMONGO_3_9: 3.9
+  PYMONGO_3_11: 3.11
+
+  MAIN_PYTHON_VERSION: 3.7
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - run: bash .github/workflows/install_ci_python_dep.sh
+    - run: pre-commit run -a
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
+        MONGODB: [$MONGODB_4_0]
+        PYMONGO: [$PYMONGO_3_11]
+        include:
+          - python-version: 3.7
+            MONGODB: $MONGODB_3_4
+            PYMONGO: $PYMONGO_3_6
+          - python-version: 3.7
+            MONGODB: $MONGODB_3_6
+            PYMONGO: $PYMONGO_3_9
+          - python-version: 3.7
+            MONGODB: $MONGODB_3_6
+            PYMONGO: $PYMONGO_3_11
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - run: bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
+    - run: bash .github/workflows/install_ci_python_dep.sh
+    - run: bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
+    - name: tox dry-run (to pre-install venv)
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
+    - name: Run test suite
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
