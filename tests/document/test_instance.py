@@ -543,19 +543,12 @@ class TestDocumentInstance(MongoDBTestCase):
         Animal.drop_collection()
         doc = Animal(is_mammal=True, name="Dog")
 
-        mongo_db = get_mongodb_version()
-
         with query_counter() as q:
             doc.save()
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             assert query_op["op"] == "command"
             assert query_op["command"]["findAndModify"] == "animal"
-            if mongo_db <= MONGODB_34:
-                assert set(query_op["query"].keys()) == set(["_id", "is_mammal"])
-            else:
-                assert set(query_op["command"]["query"].keys()) == set(
-                    ["_id", "is_mammal"]
-                )
+            assert set(query_op["command"]["query"].keys()) == set(["_id", "is_mammal"])
 
         Animal.drop_collection()
 
