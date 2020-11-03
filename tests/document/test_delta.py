@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import unittest
 
 from bson import SON
@@ -546,6 +545,7 @@ class TestDelta(MongoDBTestCase):
             {},
         )
         doc.save()
+        assert doc._get_changed_fields() == []
         doc = doc.reload(10)
 
         assert doc.embedded_field.list_field[0] == "1"
@@ -777,9 +777,7 @@ class TestDelta(MongoDBTestCase):
 
         MyDoc.drop_collection()
 
-        mydoc = MyDoc(
-            name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}
-        ).save()
+        MyDoc(name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}).save()
 
         mydoc = MyDoc.objects.first()
         subdoc = mydoc.subs["a"]["b"]
@@ -787,6 +785,35 @@ class TestDelta(MongoDBTestCase):
 
         assert subdoc._get_changed_fields() == ["name"]
         assert mydoc._get_changed_fields() == ["subs.a.b.name"]
+
+        mydoc._clear_changed_fields()
+        assert mydoc._get_changed_fields() == []
+
+    def test_nested_nested_fields_db_field_set__gets_mark_as_changed_and_cleaned(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField(db_field="db_name")
+
+        class MyDoc(Document):
+            embed = EmbeddedDocumentField(EmbeddedDoc, db_field="db_embed")
+            name = StringField(db_field="db_name")
+
+        MyDoc.drop_collection()
+
+        MyDoc(name="testcase1", embed=EmbeddedDoc(name="foo")).save()
+
+        mydoc = MyDoc.objects.first()
+        mydoc.embed.name = "foo1"
+
+        assert mydoc.embed._get_changed_fields() == ["db_name"]
+        assert mydoc._get_changed_fields() == ["db_embed.db_name"]
+
+        mydoc = MyDoc.objects.first()
+        embed = EmbeddedDoc(name="foo2")
+        embed.name = "bar"
+        mydoc.embed = embed
+
+        assert embed._get_changed_fields() == ["db_name"]
+        assert mydoc._get_changed_fields() == ["db_embed"]
 
         mydoc._clear_changed_fields()
         assert mydoc._get_changed_fields() == []
