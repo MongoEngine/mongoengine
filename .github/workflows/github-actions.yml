@@ -1,10 +1,15 @@
 name: MongoengineCI
 on:
+  # All PR
+  pull_request:
+  # master branch merge
   push:
     branches:
       - master
-      - /^v.*$/
-  pull_request:
+  # release tags
+  create:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
 env:
   MONGODB_3_4: 3.4.19
   MONGODB_3_6: 3.6.13
@@ -15,7 +20,7 @@ env:
   PYMONGO_3_9: 3.9
   PYMONGO_3_11: 3.11
 
-  MAIN_PYTHON_VERSION: 3.7
+#  MAIN_PYTHON_VERSION: 3.7
 jobs:
   linting:
     runs-on: ubuntu-latest
@@ -33,8 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.6]
-        #, 3.7, 3.8, 3.9, pypy3]
+        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
@@ -53,9 +57,10 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - run: bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
-    - run: bash .github/workflows/install_ci_python_dep.sh
-    - run: bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
+    - run: |
+        bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
+        bash .github/workflows/install_ci_python_dep.sh
+        bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
       run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
     - name: Run test suite
@@ -72,7 +77,8 @@ jobs:
           nickname: github-notifier
           message: |
             Build ${{ job.status }} - ${{ github.actor }} ${{ github.event_name }} ${{ github.event.ref }}
-  build-wheel:
+
+  build-n-publish:
     runs-on: ubuntu-latest
     needs: [linting, test]
     steps:
@@ -81,5 +87,13 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - run: pip install wheel
-    - run: python setup.py sdist bdist_wheel
+    # todo separate build from publish
+    # https://stackoverflow.com/questions/59349905/which-properties-does-github-event-in-a-github-workflow-have
+    - run: |
+        pip install wheel
+        python setup.py sdist bdist_wheel
+    - uses: pypa/gh-action-pypi-publish@master
+      if: github.event_name == 'create' && startsWith(github.ref, 'refs/tags/v')
+      with:
+        password: ${{ secrets.pypi_password }}
+        repository_url: https://test.pypi.org/legacy/
