@@ -9,7 +9,7 @@ on:
   # release tags
   create:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'
+      - 'v[0-9]+\.[0-9]+\.[0-9]+*'
 env:
   MONGODB_3_4: 3.4.19
   MONGODB_3_6: 3.6.13
