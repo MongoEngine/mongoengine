@@ -93,7 +93,10 @@ jobs:
         pip install wheel
         python setup.py sdist bdist_wheel
     - uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.test_pypi_password }}
+        repository_url: https://test.pypi.org/legacy/
+    - uses: pypa/gh-action-pypi-publish@master
       if: github.event_name == 'create' && startsWith(github.ref, 'refs/tags/v')
       with:
         password: ${{ secrets.pypi_password }}
-        repository_url: https://test.pypi.org/legacy/
