@@ -82,6 +82,7 @@ notifications:
 
 # Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
 branches:
+  # Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
   only:
     - master
     - /^v.*$/

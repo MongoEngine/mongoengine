@@ -1,5 +1,10 @@
 name: MongoengineCI
-on: [push]
+on:
+  push:
+    branches:
+      - master
+      - /^v.*$/
+  pull_request:
 env:
   MONGODB_3_4: 3.4.19
   MONGODB_3_6: 3.6.13
@@ -22,11 +27,14 @@ jobs:
         python-version: 3.7
     - run: bash .github/workflows/install_ci_python_dep.sh
     - run: pre-commit run -a
-  tests:
+
+  test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
+        python-version: [3.6]
+        #, 3.7, 3.8, 3.9, pypy3]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
@@ -52,3 +60,26 @@ jobs:
       run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
     - name: Run test suite
       run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
+
+  irc_notification:
+    runs-on: ubuntu-latest
+    needs: [linting, test]
+    steps:
+      - uses: rectalogic/notify-irc@v1
+        if: success()
+        with:
+          channel: "irc.freenode.org#mongoengine"
+          nickname: github-notifier
+          message: |
+            Build ${{ job.status }} - ${{ github.actor }} ${{ github.event_name }} ${{ github.event.ref }}
+  build-wheel:
+    runs-on: ubuntu-latest
+    needs: [linting, test]
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - run: pip install wheel
+    - run: python setup.py sdist bdist_wheel
