@@ -37,6 +37,19 @@ class TestDynamicDocument(MongoDBTestCase):
         # Confirm no changes to self.Person
         assert not hasattr(self.Person, "age")
 
+    def test_dynamic_document_parse_values_in_constructor_like_document_do(self):
+        class ProductDynamicDocument(DynamicDocument):
+            title = StringField()
+            price = FloatField()
+
+        class ProductDocument(Document):
+            title = StringField()
+            price = FloatField()
+
+        product = ProductDocument(title="Blabla", price="12.5")
+        dyn_product = ProductDynamicDocument(title="Blabla", price="12.5")
+        assert product.price == dyn_product.price == 12.5
+
     def test_change_scope_of_variable(self):
         """Test changing the scope of a dynamic field has no adverse effects"""
         p = self.Person()
