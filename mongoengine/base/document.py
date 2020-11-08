@@ -111,25 +111,22 @@ class BaseDocument:
         if "_cls" not in values:
             self._cls = self._class_name
 
-        # Set passed values after initialisation
-        if self._dynamic:
-            dynamic_data = {}
-            for key, value in values.items():
-                if key in self._fields or key == "_id":
-                    setattr(self, key, value)
-                else:
+        # Set actual values
+        dynamic_data = {}
+        FileField = _import_class("FileField")
+        for key, value in values.items():
+            key = self._reverse_db_field_map.get(key, key)
+            field = self._fields.get(key)
+            if field or key in ("id", "pk", "_cls"):
+                if __auto_convert and value is not None:
+                    if field and not isinstance(field, FileField):
+                        value = field.to_python(value)
+                setattr(self, key, value)
+            else:
+                if self._dynamic:
                     dynamic_data[key] = value
-        else:
-            FileField = _import_class("FileField")
-            for key, value in values.items():
-                key = self._reverse_db_field_map.get(key, key)
-                if key in self._fields or key in ("id", "pk", "_cls"):
-                    if __auto_convert and value is not None:
-                        field = self._fields.get(key)
-                        if field and not isinstance(field, FileField):
-                            value = field.to_python(value)
-                    setattr(self, key, value)
                 else:
+                    # For strict Document
                     self._data[key] = value
 
         # Set any get_<field>_display methods
