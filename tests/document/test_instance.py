@@ -3822,5 +3822,97 @@ class ObjectKeyTestCase(MongoDBTestCase):
         assert book._object_key == {"pk": book.pk, "author__name": "Author"}
 
 
+class DBFieldMappingTest(MongoDBTestCase):
+    def setUp(self):
+        class Fields(object):
+            w1 = BooleanField(db_field="w2")
+
+            x1 = BooleanField(db_field="x2")
+            x2 = BooleanField(db_field="x3")
+
+            y1 = BooleanField(db_field="y0")
+            y2 = BooleanField(db_field="y1")
+
+            z1 = BooleanField(db_field="z2")
+            z2 = BooleanField(db_field="z1")
+
+        class Doc(Fields, Document):
+            pass
+
+        class DynDoc(Fields, DynamicDocument):
+            pass
+
+        self.Doc = Doc
+        self.DynDoc = DynDoc
+
+    def tearDown(self):
+        for collection in self.db.collection_names():
+            if "system." in collection:
+                continue
+            self.db.drop_collection(collection)
+
+    def test_setting_fields_in_constructor_of_strict_doc_uses_model_names(self):
+        doc = self.Doc(z1=True, z2=False)
+        assert doc.z1 is True
+        assert doc.z2 is False
+
+    def test_setting_fields_in_constructor_of_dyn_doc_uses_model_names(self):
+        doc = self.DynDoc(z1=True, z2=False)
+        assert doc.z1 is True
+        assert doc.z2 is False
+
+    def test_setting_unknown_field_in_constructor_of_dyn_doc_does_not_overwrite_model_fields(
+        self,
+    ):
+        doc = self.DynDoc(w2=True)
+        assert doc.w1 is None
+        assert doc.w2 is True
+
+    def test_unknown_fields_of_strict_doc_do_not_overwrite_dbfields_1(self):
+        doc = self.Doc()
+        doc.w2 = True
+        doc.x3 = True
+        doc.y0 = True
+        doc.save()
+        reloaded = self.Doc.objects.get(id=doc.id)
+        assert reloaded.w1 is None
+        assert reloaded.x1 is None
+        assert reloaded.x2 is None
+        assert reloaded.y1 is None
+        assert reloaded.y2 is None
+
+    def test_dbfields_are_loaded_to_the_right_modelfield_for_strict_doc_2(self):
+        doc = self.Doc()
+        doc.x2 = True
+        doc.y2 = True
+        doc.z2 = True
+        doc.save()
+        reloaded = self.Doc.objects.get(id=doc.id)
+        assert (
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+
+    def test_dbfields_are_loaded_to_the_right_modelfield_for_dyn_doc_2(self):
+        doc = self.DynDoc()
+        doc.x2 = True
+        doc.y2 = True
+        doc.z2 = True
+        doc.save()
+        reloaded = self.DynDoc.objects.get(id=doc.id)
+        assert (
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+
+
 if __name__ == "__main__":
     unittest.main()

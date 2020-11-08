@@ -101,12 +101,13 @@ class BaseDocument:
 
         self._dynamic_fields = SON()
 
-        # Assign default values to the instance.
-        for key, field in self._fields.items():
-            if self._db_field_map.get(key, key) in values:
+        # Assign default values for fields
+        # not set in the constructor
+        for field_name in self._fields:
+            if field_name in values:
                 continue
-            value = getattr(self, key, None)
-            setattr(self, key, value)
+            value = getattr(self, field_name, None)
+            setattr(self, field_name, value)
 
         if "_cls" not in values:
             self._cls = self._class_name
@@ -115,7 +116,6 @@ class BaseDocument:
         dynamic_data = {}
         FileField = _import_class("FileField")
         for key, value in values.items():
-            key = self._reverse_db_field_map.get(key, key)
             field = self._fields.get(key)
             if field or key in ("id", "pk", "_cls"):
                 if __auto_convert and value is not None:
@@ -750,7 +750,8 @@ class BaseDocument:
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo SON."""
+        """Create an instance of a Document (subclass) from a PyMongo SON (dict)
+        """
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -763,6 +764,8 @@ class BaseDocument:
 
         # Convert SON to a data dict, making sure each key is a string and
         # corresponds to the right db field.
+        # This is needed as _from_son is currently called both from BaseDocument.__init__
+        # and from EmbeddedDocumentField.to_python
         data = {}
         for key, value in son.items():
             key = str(key)
