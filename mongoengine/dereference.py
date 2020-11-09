@@ -148,7 +148,7 @@ class DeReference(object):
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
-                        references = self._find_references(v, depth, field_paths=field_paths[field_name])
+                        references = self._find_references(v, depth, field_paths=field_paths[field_name] if field_paths else None)
                         for key, refs in iteritems(references):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
