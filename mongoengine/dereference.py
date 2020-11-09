@@ -38,15 +38,34 @@ class DeReference(object):
         self.max_depth = max_depth
         doc_type = None
 
+        def get_leaves(d):
+            leaves = []
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    leaves.extend(get_leaves(value))
+                else:
+                    leaves.append(value)
+            return leaves
+
+        def set_leaves(d, new_val):
+            for key in d:
+                if isinstance(d[key], dict) and d[key]:
+                    set_leaves(d[key], new_val)
+                else:
+                    d[key] = new_val
+
         self.field_paths = {}
         if field_paths:
+            self.max_depth = 1000
+            max_len = 0
             for field_path in field_paths:
                 pieces = field_path.split('.')
                 d = self.field_paths
+                max_len = max(max_len, len(pieces))
                 for piece in pieces:
                     d.setdefault(piece, {})
                     d = d[piece]
-
+            set_leaves(self.field_paths, False)
 
         if instance and isinstance(instance, (Document, EmbeddedDocument,
                                               TopLevelDocumentMetaclass)):
@@ -86,11 +105,17 @@ class DeReference(object):
                             for k, v in iteritems(items)
                         }
 
-        self.reference_map = self._find_references(items)
-        self.object_map = self._fetch_objects(doc_type=doc_type)
-        return self._attach_objects(items, 0, instance, name)
+        if self.field_paths:
+            while not all(get_leaves(self.field_paths)):
+                self.reference_map = self._find_references(items)
+                self.object_map = self._fetch_objects(doc_type=doc_type)
+                self._attach_objects(items, 0, instance, name)
+        else:
+            self.reference_map = self._find_references(items)
+            self.object_map = self._fetch_objects(doc_type=doc_type)
+            self._attach_objects(items, 0, instance, name)
 
-    def _find_references(self, items, depth=0):
+    def _find_references(self, items, depth=0, field_paths=None):
         """
         Recursively finds all db references to be dereferenced
 
@@ -112,6 +137,10 @@ class DeReference(object):
         for item in iterator:
             if type(item) is not DocumentProxy and isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in iteritems(item._fields):
+                    if isinstance(field_paths, dict) and field_name not in field_paths:
+                        continue
+                    if field_paths and field_paths[field_name] == False:
+                        field_paths[field_name] = True
                     v = item._data.get(field_name, None)
                     if type(v) is DocumentProxy or isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
@@ -119,7 +148,7 @@ class DeReference(object):
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
-                        references = self._find_references(v, depth)
+                        references = self._find_references(v, depth, field_paths=field_paths[field_name])
                         for key, refs in iteritems(references):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
@@ -129,7 +158,7 @@ class DeReference(object):
             elif isinstance(item, (dict, SON)) and '_ref' in item:
                 reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
-                references = self._find_references(item, depth - 1)
+                references = self._find_references(item, depth - 1, field_paths=field_paths)
                 for key, refs in iteritems(references):
                     reference_map.setdefault(key, set()).update(refs)
 

@@ -509,7 +509,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         .. versionadded:: 0.5
         """
         DeReference = _import_class('DeReference')
-        DeReference()([self], max_depth + 1)
+        DeReference()([self], max_depth + 1, field_paths=field_paths)
         return self
 
     def reload(self, *fields, **kwargs):
