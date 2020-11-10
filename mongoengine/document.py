@@ -502,14 +502,14 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
-    def select_related(self, max_depth=1):
+    def select_related(self, max_depth=1, field_paths=None):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
 
         .. versionadded:: 0.5
         """
         DeReference = _import_class('DeReference')
-        DeReference()([self], max_depth + 1)
+        DeReference()([self], max_depth + 1, field_paths=field_paths)
         return self
 
     def reload(self, *fields, **kwargs):

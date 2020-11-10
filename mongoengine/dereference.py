@@ -12,7 +12,7 @@ from mongoengine.queryset import QuerySet
 
 
 class DeReference(object):
-    def __call__(self, items, max_depth=1, instance=None, name=None):
+    def __call__(self, items, max_depth=1, instance=None, name=None, field_paths=None):
         """
         Cheaply dereferences the items to a set depth.
         Also handles the conversion of complex data types.
@@ -24,6 +24,8 @@ class DeReference(object):
         :param name: The name of the field, used for tracking changes by
             :class:`~mongoengine.base.ComplexBaseField`
         :param get: A boolean determining if being called by __get__
+        :param field_paths:  Dereference only the specific field paths (of the form "a.b.c") provided.
+                             If specified, max_depth is ignored.
         """
         if items is None or isinstance(items, string_types):
             return items
@@ -35,6 +37,33 @@ class DeReference(object):
 
         self.max_depth = max_depth
         doc_type = None
+
+        def get_leaves(d):
+            leaves = []
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    leaves.extend(get_leaves(value))
+                else:
+                    leaves.append(value)
+            return leaves
+
+        def set_leaves(d, new_val):
+            for key in d:
+                if isinstance(d[key], dict) and d[key]:
+                    set_leaves(d[key], new_val)
+                else:
+                    d[key] = new_val
+
+        self.field_paths = {}
+        if field_paths:
+            self.max_depth = 1000
+            for field_path in field_paths:
+                pieces = field_path.split('.')
+                d = self.field_paths
+                for piece in pieces:
+                    d.setdefault(piece, {})
+                    d = d[piece]
+            set_leaves(self.field_paths, False)
 
         if instance and isinstance(instance, (Document, EmbeddedDocument,
                                               TopLevelDocumentMetaclass)):
@@ -74,11 +103,22 @@ class DeReference(object):
                             for k, v in iteritems(items)
                         }
 
-        self.reference_map = self._find_references(items)
-        self.object_map = self._fetch_objects(doc_type=doc_type)
-        return self._attach_objects(items, 0, instance, name)
+        self.object_map = {}
+        if self.field_paths:
+            result = items
+            while not all(get_leaves(self.field_paths)):
+                self.reference_map = self._find_references(items, field_paths=self.field_paths)
+                if not self.reference_map:
+                    return result
+                self._fetch_objects(doc_type=doc_type)
+                result = self._attach_objects(items, 0, instance, name)
+            return result
+        else:
+            self.reference_map = self._find_references(items)
+            self._fetch_objects(doc_type=doc_type)
+            return self._attach_objects(items, 0, instance, name)
 
-    def _find_references(self, items, depth=0):
+    def _find_references(self, items, depth=0, field_paths=None):
         """
         Recursively finds all db references to be dereferenced
 
@@ -87,6 +127,9 @@ class DeReference(object):
         """
         reference_map = {}
         if not items or depth >= self.max_depth:
+            return reference_map
+
+        if field_paths is not None and not isinstance(field_paths, dict):
             return reference_map
 
         # Determine the iterator to use
@@ -100,6 +143,10 @@ class DeReference(object):
         for item in iterator:
             if type(item) is not DocumentProxy and isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in iteritems(item._fields):
+                    if field_paths and field_name not in field_paths:
+                        continue
+                    if field_paths and field_paths[field_name] == False:
+                            field_paths[field_name] = True
                     v = item._data.get(field_name, None)
                     if type(v) is DocumentProxy or isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
@@ -107,26 +154,29 @@ class DeReference(object):
                         reference_map.setdefault(get_document(v['_cls']), set()).add(v['_ref'].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(getattr(field, 'field', None), 'document_type', None)
-                        references = self._find_references(v, depth)
+                        references = self._find_references(v, depth, field_paths=field_paths[field_name] if field_paths else None)
                         for key, refs in iteritems(references):
                             if isinstance(field_cls, (Document, TopLevelDocumentMetaclass)):
                                 key = field_cls
+                            reference_map.setdefault(key, set()).update(refs)
+                    elif isinstance(v, Document) and depth < self.max_depth:
+                        references = self._find_references([v], depth, field_paths=field_paths[field_name] if field_paths else None)
+                        for key, refs in iteritems(references):
                             reference_map.setdefault(key, set()).update(refs)
             elif type(item) is DocumentProxy or isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and '_ref' in item:
                 reference_map.setdefault(get_document(item['_cls']), set()).add(item['_ref'].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
-                references = self._find_references(item, depth - 1)
+                references = self._find_references(item, depth - 1, field_paths=field_paths)
                 for key, refs in iteritems(references):
                     reference_map.setdefault(key, set()).update(refs)
-
         return reference_map
 
     def _fetch_objects(self, doc_type=None):
         """Fetch all references and convert to their document objects
         """
-        object_map = {}
+        object_map = self.object_map
         for collection, dbrefs in iteritems(self.reference_map):
             if hasattr(collection, 'objects'):  # We have a document class for the refs
                 col_name = collection._get_collection_name()
@@ -159,9 +209,8 @@ class DeReference(object):
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
-        return object_map
 
-    def _attach_objects(self, items, depth=0, instance=None, name=None):
+    def _attach_objects(self, items, depth=0, instance=None, name=None, visited=None):
         """
         Recursively finds all db references to be dereferenced
 
@@ -185,6 +234,9 @@ class DeReference(object):
                     return BaseDict(items, instance, name)
                 else:
                     return BaseList(items, instance, name)
+
+        if visited is None:
+            visited = set()
 
         if isinstance(items, (dict, SON)):
             if '_ref' in items:
@@ -224,6 +276,8 @@ class DeReference(object):
             elif type(v) is DocumentProxy:
                 data[k] = self.object_map.get((v.collection, v.id), v)
             elif isinstance(v, (Document, EmbeddedDocument)):
+                if hasattr(v, 'id'):
+                    visited.add(v.id)
                 for field_name in v._fields:
                     v = data[k]._data.get(field_name, None)
                     if type(v) is DocumentProxy or isinstance(v, DBRef):
@@ -234,10 +288,13 @@ class DeReference(object):
                             (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         item_name = text_type('{0}.{1}.{2}').format(name, k, field_name)
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
+                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name, visited=visited)
+                    elif isinstance(v, Document) and depth < self.max_depth:
+                        if not v.id in visited:
+                            data[k]._data[field_name] = self._attach_objects([v], depth, visited=visited)[0]
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name
-                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
+                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name, visited=visited)
             elif hasattr(v, 'id'):
                 data[k] = self.object_map.get((v.collection, v.id), v)
 

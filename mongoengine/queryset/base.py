@@ -730,7 +730,7 @@ class BaseQuerySet(object):
 
         return cls
 
-    def select_related(self, max_depth=1):
+    def select_related(self, max_depth=1, field_paths=None):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects or
         :class:`~bson.object_id.ObjectId` a maximum depth in order to cut down
         the number queries to mongodb.
@@ -740,7 +740,7 @@ class BaseQuerySet(object):
         # Make select related work the same for querysets
         max_depth += 1
         queryset = self.clone()
-        return queryset._dereference(queryset, max_depth=max_depth)
+        return queryset._dereference(queryset, max_depth=max_depth, field_paths=field_paths)
 
     def limit(self, n):
         """Limit the number of returned documents to `n`. This may also be
