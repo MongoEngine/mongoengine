@@ -108,8 +108,6 @@ class DeReference(object):
         if self.field_paths:
             result = items
             while not all(get_leaves(self.field_paths)):
-                print(self.field_paths)
-                print(get_leaves(self.field_paths))
                 self.reference_map = self._find_references(items, field_paths=self.field_paths)
                 if not self.reference_map:
                     return result
@@ -144,16 +142,13 @@ class DeReference(object):
         # Recursively find dbreferences
         depth += 1
         for item in iterator:
-            print("ITEM: {}".format(type(item)))
             if type(item) is not DocumentProxy and isinstance(item, (Document, EmbeddedDocument)):
                 for field_name, field in iteritems(item._fields):
                     if field_paths and field_name not in field_paths:
                         continue
-                    print("FIELD: {}".format(field_name))
                     if field_paths and field_paths[field_name] == False:
                             field_paths[field_name] = True
                     v = item._data.get(field_name, None)
-                    print("VALUE: {}".format(type(v)))
                     if type(v) is DocumentProxy or isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and '_ref' in v:
