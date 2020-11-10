@@ -105,18 +105,19 @@ class DeReference(object):
                             for k, v in iteritems(items)
                         }
 
+        self.object_map = {}
         if self.field_paths:
             result = items
             while not all(get_leaves(self.field_paths)):
                 self.reference_map = self._find_references(items, field_paths=self.field_paths)
                 if not self.reference_map:
                     return result
-                self.object_map = self._fetch_objects(doc_type=doc_type)
+                self._fetch_objects(doc_type=doc_type)
                 result = self._attach_objects(items, 0, instance, name)
             return result
         else:
             self.reference_map = self._find_references(items)
-            self.object_map = self._fetch_objects(doc_type=doc_type)
+            self._fetch_objects(doc_type=doc_type)
             return self._attach_objects(items, 0, instance, name)
 
     def _find_references(self, items, depth=0, field_paths=None):
@@ -177,7 +178,7 @@ class DeReference(object):
     def _fetch_objects(self, doc_type=None):
         """Fetch all references and convert to their document objects
         """
-        object_map = {}
+        object_map = self.object_map
         for collection, dbrefs in iteritems(self.reference_map):
             if hasattr(collection, 'objects'):  # We have a document class for the refs
                 col_name = collection._get_collection_name()
@@ -210,7 +211,6 @@ class DeReference(object):
                         else:
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
-        return object_map
 
     def _attach_objects(self, items, depth=0, instance=None, name=None):
         """
