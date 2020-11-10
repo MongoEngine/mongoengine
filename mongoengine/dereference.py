@@ -212,7 +212,7 @@ class DeReference(object):
                             doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
 
-    def _attach_objects(self, items, depth=0, instance=None, name=None):
+    def _attach_objects(self, items, depth=0, instance=None, name=None, visited=None):
         """
         Recursively finds all db references to be dereferenced
 
@@ -236,6 +236,9 @@ class DeReference(object):
                     return BaseDict(items, instance, name)
                 else:
                     return BaseList(items, instance, name)
+
+        if visited is None:
+            visited = set()
 
         if isinstance(items, (dict, SON)):
             if '_ref' in items:
@@ -275,6 +278,8 @@ class DeReference(object):
             elif type(v) is DocumentProxy:
                 data[k] = self.object_map.get((v.collection, v.id), v)
             elif isinstance(v, (Document, EmbeddedDocument)):
+                if hasattr(v, 'id'):
+                    visited.add(v.id)
                 for field_name in v._fields:
                     v = data[k]._data.get(field_name, None)
                     if type(v) is DocumentProxy or isinstance(v, DBRef):
@@ -285,12 +290,13 @@ class DeReference(object):
                             (v['_ref'].collection, v['_ref'].id), v)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         item_name = text_type('{0}.{1}.{2}').format(name, k, field_name)
-                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name)
+                        data[k]._data[field_name] = self._attach_objects(v, depth, instance=instance, name=item_name, visited=visited)
                     elif isinstance(v, Document) and depth < self.max_depth:
-                        data[k]._data[field_name] = self._attach_objects([v], depth)[0]
+                        if not v.id in visited:
+                            data[k]._data[field_name] = self._attach_objects([v], depth, visited=visited)[0]
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                 item_name = '%s.%s' % (name, k) if name else name
-                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name)
+                data[k] = self._attach_objects(v, depth - 1, instance=instance, name=item_name, visited=visited)
             elif hasattr(v, 'id'):
                 data[k] = self.object_map.get((v.collection, v.id), v)
 
