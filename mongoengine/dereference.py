@@ -57,11 +57,9 @@ class DeReference(object):
         self.field_paths = {}
         if field_paths:
             self.max_depth = 1000
-            max_len = 0
             for field_path in field_paths:
                 pieces = field_path.split('.')
                 d = self.field_paths
-                max_len = max(max_len, len(pieces))
                 for piece in pieces:
                     d.setdefault(piece, {})
                     d = d[piece]
