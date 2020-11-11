@@ -31,6 +31,8 @@ the :attr:`host` to
 
     connect('project1', host='mongodb://localhost/database_name')
 
+.. note:: URI containing SRV records (e.g mongodb+srv://server.example.com/) can be used as well as the :attr:`host`
+
 .. note:: Database, username and password from URI string overrides
     corresponding parameters in :func:`~mongoengine.connect`: ::
 
