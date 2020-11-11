@@ -464,9 +464,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             # insert_one will provoke UniqueError alongside save does not
             # therefore, it need to catch and call replace_one.
             if "_id" in doc:
-                raw_object = wc_collection.find_one_and_replace(
-                    {"_id": doc["_id"]}, doc
-                )
+                select_dict = {"_id": doc["_id"]}
+                select_dict = self._integrate_shard_key(doc, select_dict)
+                raw_object = wc_collection.find_one_and_replace(select_dict, doc)
                 if raw_object:
                     return doc["_id"]
 
@@ -489,6 +489,23 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return update_doc
 
+    def _integrate_shard_key(self, doc, select_dict):
+        """Integrates the collection's shard key to the `select_dict`, which will be used for the query.
+        The value from the shard key is taken from the `doc` and finally the select_dict is returned.
+        """
+
+        # Need to add shard key to query, or you get an error
+        shard_key = self._meta.get("shard_key", tuple())
+        for k in shard_key:
+            path = self._lookup_field(k.split("."))
+            actual_key = [p.db_field for p in path]
+            val = doc
+            for ak in actual_key:
+                val = val[ak]
+            select_dict[".".join(actual_key)] = val
+
+        return select_dict
+
     def _save_update(self, doc, save_condition, write_concern):
         """Update an existing document.
 
@@ -504,15 +521,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         select_dict["_id"] = object_id
 
-        # Need to add shard key to query, or you get an error
-        shard_key = self._meta.get("shard_key", tuple())
-        for k in shard_key:
-            path = self._lookup_field(k.split("."))
-            actual_key = [p.db_field for p in path]
-            val = doc
-            for ak in actual_key:
-                val = val[ak]
-            select_dict[".".join(actual_key)] = val
+        select_dict = self._integrate_shard_key(doc, select_dict)
 
         update_doc = self._get_update_doc()
         if update_doc:
@@ -919,7 +928,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def list_indexes(cls):
-        """ Lists all of the indexes that should be created for given
+        """Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
         if cls._meta.get("abstract"):
@@ -984,7 +993,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones
+        """Compares the indexes defined in MongoEngine with the ones
         existing in the database. Returns any missing/extra indexes.
         """
 

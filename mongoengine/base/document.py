@@ -64,8 +64,6 @@ class BaseDocument:
             It may contain additional reserved keywords, e.g. "__auto_convert".
         :param __auto_convert: If True, supplied values will be converted
             to Python-type values via each field's `to_python` method.
-        :param __only_fields: A set of fields that have been loaded for
-            this document. Empty if all fields have been loaded.
         :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
         """
@@ -79,8 +77,6 @@ class BaseDocument:
             )
 
         __auto_convert = values.pop("__auto_convert", True)
-
-        __only_fields = set(values.pop("__only_fields", values))
 
         _created = values.pop("_created", True)
 
@@ -106,10 +102,8 @@ class BaseDocument:
         self._dynamic_fields = SON()
 
         # Assign default values to the instance.
-        # We set default values only for fields loaded from DB. See
-        # https://github.com/mongoengine/mongoengine/issues/399 for more info.
         for key, field in self._fields.items():
-            if self._db_field_map.get(key, key) in __only_fields:
+            if self._db_field_map.get(key, key) in values:
                 continue
             value = getattr(self, key, None)
             setattr(self, key, value)
@@ -117,25 +111,22 @@ class BaseDocument:
         if "_cls" not in values:
             self._cls = self._class_name
 
-        # Set passed values after initialisation
-        if self._dynamic:
-            dynamic_data = {}
-            for key, value in values.items():
-                if key in self._fields or key == "_id":
-                    setattr(self, key, value)
-                else:
+        # Set actual values
+        dynamic_data = {}
+        FileField = _import_class("FileField")
+        for key, value in values.items():
+            key = self._reverse_db_field_map.get(key, key)
+            field = self._fields.get(key)
+            if field or key in ("id", "pk", "_cls"):
+                if __auto_convert and value is not None:
+                    if field and not isinstance(field, FileField):
+                        value = field.to_python(value)
+                setattr(self, key, value)
+            else:
+                if self._dynamic:
                     dynamic_data[key] = value
-        else:
-            FileField = _import_class("FileField")
-            for key, value in values.items():
-                key = self._reverse_db_field_map.get(key, key)
-                if key in self._fields or key in ("id", "pk", "_cls"):
-                    if __auto_convert and value is not None:
-                        field = self._fields.get(key)
-                        if field and not isinstance(field, FileField):
-                            value = field.to_python(value)
-                    setattr(self, key, value)
                 else:
+                    # For strict Document
                     self._data[key] = value
 
         # Set any get_<field>_display methods
@@ -758,11 +749,8 @@ class BaseDocument:
         return cls._meta.get("collection", None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
+    def _from_son(cls, son, _auto_dereference=True, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON."""
-        if not only_fields:
-            only_fields = []
-
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -817,9 +805,7 @@ class BaseDocument:
         if cls.STRICT:
             data = {k: v for k, v in data.items() if k in cls._fields}
 
-        obj = cls(
-            __auto_convert=False, _created=created, __only_fields=only_fields, **data
-        )
+        obj = cls(__auto_convert=False, _created=created, **data)
         obj._changed_fields = []
         if not _auto_dereference:
             obj._fields = fields

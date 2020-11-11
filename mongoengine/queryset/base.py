@@ -88,7 +88,6 @@ class BaseQuerySet:
         self._hint = -1  # Using -1 as None is a valid value for hint
         self._collation = None
         self._batch_size = None
-        self.only_fields = []
         self._max_time_ms = None
         self._comment = None
 
@@ -190,9 +189,7 @@ class BaseQuerySet:
             if queryset._scalar:
                 return queryset._get_scalar(
                     queryset._document._from_son(
-                        queryset._cursor[key],
-                        _auto_dereference=self._auto_dereference,
-                        only_fields=self.only_fields,
+                        queryset._cursor[key], _auto_dereference=self._auto_dereference,
                     )
                 )
 
@@ -200,9 +197,7 @@ class BaseQuerySet:
                 return queryset._cursor[key]
 
             return queryset._document._from_son(
-                queryset._cursor[key],
-                _auto_dereference=self._auto_dereference,
-                only_fields=self.only_fields,
+                queryset._cursor[key], _auto_dereference=self._auto_dereference,
             )
 
         raise TypeError("Provide a slice or an integer index")
@@ -719,12 +714,10 @@ class BaseQuerySet:
 
         if full_response:
             if result["value"] is not None:
-                result["value"] = self._document._from_son(
-                    result["value"], only_fields=self.only_fields
-                )
+                result["value"] = self._document._from_son(result["value"])
         else:
             if result is not None:
-                result = self._document._from_son(result, only_fields=self.only_fields)
+                result = self._document._from_son(result)
 
         return result
 
@@ -757,18 +750,14 @@ class BaseQuerySet:
         docs = self._collection.find({"_id": {"$in": object_ids}}, **self._cursor_args)
         if self._scalar:
             for doc in docs:
-                doc_map[doc["_id"]] = self._get_scalar(
-                    self._document._from_son(doc, only_fields=self.only_fields)
-                )
+                doc_map[doc["_id"]] = self._get_scalar(self._document._from_son(doc))
         elif self._as_pymongo:
             for doc in docs:
                 doc_map[doc["_id"]] = doc
         else:
             for doc in docs:
                 doc_map[doc["_id"]] = self._document._from_son(
-                    doc,
-                    only_fields=self.only_fields,
-                    _auto_dereference=self._auto_dereference,
+                    doc, _auto_dereference=self._auto_dereference,
                 )
 
         return doc_map
@@ -841,7 +830,6 @@ class BaseQuerySet:
             "_collation",
             "_auto_dereference",
             "_search_text",
-            "only_fields",
             "_max_time_ms",
             "_comment",
             "_batch_size",
@@ -1045,7 +1033,6 @@ class BaseQuerySet:
         .. versionchanged:: 0.5 - Added subfield support
         """
         fields = {f: QueryFieldList.ONLY for f in fields}
-        self.only_fields = list(fields.keys())
         return self.fields(True, **fields)
 
     def exclude(self, *fields):
@@ -1310,10 +1297,7 @@ class BaseQuerySet:
     def from_json(self, json_data):
         """Converts json data to unsaved objects"""
         son_data = json_util.loads(json_data)
-        return [
-            self._document._from_son(data, only_fields=self.only_fields)
-            for data in son_data
-        ]
+        return [self._document._from_son(data) for data in son_data]
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
         """Perform a aggregate function based in your queryset params
@@ -1638,9 +1622,7 @@ class BaseQuerySet:
             return raw_doc
 
         doc = self._document._from_son(
-            raw_doc,
-            _auto_dereference=self._auto_dereference,
-            only_fields=self.only_fields,
+            raw_doc, _auto_dereference=self._auto_dereference,
         )
 
         if self._scalar:

@@ -500,7 +500,7 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.reload()
         Animal.drop_collection()
 
-    def test_update_shard_key_routing(self):
+    def test_save_update_shard_key_routing(self):
         """Ensures updating a doc with a specified shard_key includes it in
         the query.
         """
@@ -525,6 +525,29 @@ class TestDocumentInstance(MongoDBTestCase):
                 assert set(query_op["query"].keys()) == set(["_id", "is_mammal"])
             else:
                 assert set(query_op["command"]["q"].keys()) == set(["_id", "is_mammal"])
+
+        Animal.drop_collection()
+
+    def test_save_create_shard_key_routing(self):
+        """Ensures inserting a doc with a specified shard_key includes it in
+        the query.
+        """
+
+        class Animal(Document):
+            _id = UUIDField(binary=False, primary_key=True, default=uuid.uuid4)
+            is_mammal = BooleanField()
+            name = StringField()
+            meta = {"shard_key": ("is_mammal",)}
+
+        Animal.drop_collection()
+        doc = Animal(is_mammal=True, name="Dog")
+
+        with query_counter() as q:
+            doc.save()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
+            assert query_op["op"] == "command"
+            assert query_op["command"]["findAndModify"] == "animal"
+            assert set(query_op["command"]["query"].keys()) == set(["_id", "is_mammal"])
 
         Animal.drop_collection()
 
@@ -3411,7 +3434,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert obj3 != dbref2
         assert dbref2 != obj3
 
-    def test_default_values(self):
+    def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
             name = StringField()
