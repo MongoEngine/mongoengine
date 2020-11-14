@@ -3846,9 +3846,7 @@ class DBFieldMappingTest(MongoDBTestCase):
         self.DynDoc = DynDoc
 
     def tearDown(self):
-        for collection in self.db.collection_names():
-            if "system." in collection:
-                continue
+        for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
     def test_setting_fields_in_constructor_of_strict_doc_uses_model_names(self):
