@@ -16,6 +16,9 @@ MongoEngine
   :target: https://landscape.io/github/MongoEngine/mongoengine/master
   :alt: Code Health
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+  :target: https://github.com/ambv/black
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
