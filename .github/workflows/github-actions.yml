@@ -20,7 +20,8 @@ env:
   PYMONGO_3_9: 3.9
   PYMONGO_3_11: 3.11
 
-#  MAIN_PYTHON_VERSION: 3.7
+  MAIN_PYTHON_VERSION: 3.7
+
 jobs:
   linting:
     runs-on: ubuntu-latest
@@ -66,6 +67,11 @@ jobs:
       run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
     - name: Run test suite
       run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
+    - name: Send coverage to Coveralls
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ matrix.python-version == env.MAIN_PYTHON_VERSION }}
+      run: coveralls
 
   build_doc_dryrun:
     # ensures that readthedocs can be built continuously
@@ -114,12 +120,14 @@ jobs:
         python setup.py egg_info -b ".dev`date '+%Y%m%d%H%M%S'`" build sdist bdist_wheel
 #        python setup.py sdist bdist_wheel
     - name: publish test-pypi
+      if: github.event_name != 'pull_request'
       uses: pypa/gh-action-pypi-publish@master
       with:
-        password: ${{ secrets.test_pypi_password }}
+        password: ${{ secrets.test_pypi_token }}
         repository_url: https://test.pypi.org/legacy/
+    ## Must clean prev files and rebuild here
 #    - name: publish pypi
 #      uses: pypa/gh-action-pypi-publish@master
 #      if: github.event_name == 'create' && startsWith(github.ref, 'refs/tags/v')
 #      with:
-#        password: ${{ secrets.pypi_password }}
+#        password: ${{ secrets.pypi_token }}

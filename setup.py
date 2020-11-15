@@ -112,7 +112,7 @@ extra_opts = {
     "tests_require": [
         "pytest<5.0",
         "pytest-cov",
-        "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
+        "coverage",
         "blinker",
         "Pillow>=7.0.0",
     ],
