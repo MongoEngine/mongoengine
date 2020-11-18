@@ -2272,6 +2272,13 @@ class TestField(MongoDBTestCase):
         with pytest.raises(FieldDoesNotExist):
             Doc(bar="test")
 
+    def test_undefined_field_works_no_confusion_with_db_field(self):
+        class Doc(Document):
+            foo = StringField(db_field="bar")
+
+        with pytest.raises(FieldDoesNotExist):
+            Doc(bar="test")
+
 
 class TestEmbeddedDocumentListField(MongoDBTestCase):
     def setUp(self):
