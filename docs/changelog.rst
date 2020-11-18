@@ -6,18 +6,23 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.21.0
+=================
 - Bug fix in DynamicDocument which is not parsing known fields in constructor like Document do #2412
 - When using pymongo >= 3.7, make use of Collection.count_documents instead of Collection.count
     and Cursor.count that got deprecated in pymongo >= 3.7.
     This should have a negative impact on performance of count see Issue #2219
 - Fix a bug that made the queryset drop the read_preference after clone().
 - Remove Py3.5 from CI as it reached EOL and add Python 3.9
-- Fix some issues related with db_field conflict in constructor #2414
-- Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
+- Fix some issues related with db_field/field conflict in constructor #2414
+- BREAKING CHANGE: Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
 - Bug fix in ListField when updating the first item, it was saving the whole list, instead of
-    just replacing the first item (as it's usually done) #2392
+    just replacing the first item (as usually done when updating 1 item of the list) #2392
 - Add EnumField: ``mongoengine.fields.EnumField``
 - Refactoring - Remove useless code related to Document.__only_fields and Queryset.only_fields
+- Fix query transformation regarding special operators #2365
+- Bug Fix: Document.save() fails when shard_key is not _id #2154
 
 Changes in 0.20.0
 =================
