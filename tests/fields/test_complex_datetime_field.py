@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
 import datetime
 import itertools
 import math
 import re
+
+import pytest
 
 from mongoengine import *
 
@@ -191,3 +192,18 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
 
         fetched_log = Log.objects.with_id(log.id)
         assert fetched_log.timestamp >= NOW
+
+    def test_setting_bad_value_does_not_raise_unless_validate_is_called(self):
+        # test regression of #2253
+
+        class Log(Document):
+            timestamp = ComplexDateTimeField()
+
+        Log.drop_collection()
+
+        log = Log(timestamp="garbage")
+        with pytest.raises(ValidationError):
+            log.validate()
+
+        with pytest.raises(ValidationError):
+            log.save()

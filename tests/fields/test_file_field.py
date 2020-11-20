@@ -1,16 +1,14 @@
-# -*- coding: utf-8 -*-
 import copy
 import os
 import tempfile
 import unittest
+from io import BytesIO
 
 import gridfs
 import pytest
-import six
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.python_support import StringIO
 
 try:
     from PIL import Image
@@ -30,7 +28,7 @@ TEST_IMAGE2_PATH = os.path.join(os.path.dirname(__file__), "mongodb_leaf.png")
 def get_file(path):
     """Use a BytesIO instead of a file to allow
     to have a one-liner and avoid that the file remains opened"""
-    bytes_io = StringIO()
+    bytes_io = BytesIO()
     with open(path, "rb") as f:
         bytes_io.write(f.read())
     bytes_io.seek(0)
@@ -58,7 +56,7 @@ class TestFileField(MongoDBTestCase):
 
         PutFile.drop_collection()
 
-        text = six.b("Hello, World!")
+        text = "Hello, World!".encode("latin-1")
         content_type = "text/plain"
 
         putfile = PutFile()
@@ -80,7 +78,7 @@ class TestFileField(MongoDBTestCase):
         PutFile.drop_collection()
 
         putfile = PutFile()
-        putstring = StringIO()
+        putstring = BytesIO()
         putstring.write(text)
         putstring.seek(0)
         putfile.the_file.put(putstring, content_type=content_type)
@@ -101,8 +99,8 @@ class TestFileField(MongoDBTestCase):
 
         StreamFile.drop_collection()
 
-        text = six.b("Hello, World!")
-        more_text = six.b("Foo Bar")
+        text = "Hello, World!".encode("latin-1")
+        more_text = "Foo Bar".encode("latin-1")
         content_type = "text/plain"
 
         streamfile = StreamFile()
@@ -137,8 +135,8 @@ class TestFileField(MongoDBTestCase):
 
         StreamFile.drop_collection()
 
-        text = six.b("Hello, World!")
-        more_text = six.b("Foo Bar")
+        text = "Hello, World!".encode("latin-1")
+        more_text = "Foo Bar".encode("latin-1")
 
         streamfile = StreamFile()
         streamfile.save()
@@ -167,8 +165,8 @@ class TestFileField(MongoDBTestCase):
         class SetFile(Document):
             the_file = FileField()
 
-        text = six.b("Hello, World!")
-        more_text = six.b("Foo Bar")
+        text = "Hello, World!".encode("latin-1")
+        more_text = "Foo Bar".encode("latin-1")
 
         SetFile.drop_collection()
 
@@ -196,7 +194,7 @@ class TestFileField(MongoDBTestCase):
         GridDocument.drop_collection()
 
         with tempfile.TemporaryFile() as f:
-            f.write(six.b("Hello World!"))
+            f.write("Hello World!".encode("latin-1"))
             f.flush()
 
             # Test without default
@@ -213,7 +211,7 @@ class TestFileField(MongoDBTestCase):
             assert doc_b.the_file.grid_id == doc_c.the_file.grid_id
 
             # Test with default
-            doc_d = GridDocument(the_file=six.b(""))
+            doc_d = GridDocument(the_file="".encode("latin-1"))
             doc_d.save()
 
             doc_e = GridDocument.objects.with_id(doc_d.id)
@@ -240,7 +238,7 @@ class TestFileField(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put(six.b("Hello, World!"))
+        test_file.the_file.put("Hello, World!".encode("latin-1"))
         test_file.save()
 
         # Second instance
@@ -297,7 +295,9 @@ class TestFileField(MongoDBTestCase):
 
         test_file = TestFile()
         assert not bool(test_file.the_file)
-        test_file.the_file.put(six.b("Hello, World!"), content_type="text/plain")
+        test_file.the_file.put(
+            "Hello, World!".encode("latin-1"), content_type="text/plain"
+        )
         test_file.save()
         assert bool(test_file.the_file)
 
@@ -319,7 +319,7 @@ class TestFileField(MongoDBTestCase):
         class TestFile(Document):
             the_file = FileField()
 
-        text = six.b("Hello, World!")
+        text = "Hello, World!".encode("latin-1")
         content_type = "text/plain"
 
         testfile = TestFile()
@@ -363,7 +363,7 @@ class TestFileField(MongoDBTestCase):
         testfile.the_file.put(text, content_type=content_type, filename="hello")
         testfile.save()
 
-        text = six.b("Bonjour, World!")
+        text = "Bonjour, World!".encode("latin-1")
         testfile.the_file.replace(text, content_type=content_type, filename="hello")
         testfile.save()
 
@@ -387,7 +387,7 @@ class TestFileField(MongoDBTestCase):
         TestImage.drop_collection()
 
         with tempfile.TemporaryFile() as f:
-            f.write(six.b("Hello World!"))
+            f.write("Hello World!".encode("latin-1"))
             f.flush()
 
             t = TestImage()
@@ -503,21 +503,21 @@ class TestFileField(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put(six.b("Hello, World!"), name="hello.txt")
+        test_file.the_file.put("Hello, World!".encode("latin-1"), name="hello.txt")
         test_file.save()
 
         data = get_db("test_files").macumba.files.find_one()
         assert data.get("name") == "hello.txt"
 
         test_file = TestFile.objects.first()
-        assert test_file.the_file.read() == six.b("Hello, World!")
+        assert test_file.the_file.read() == "Hello, World!".encode("latin-1")
 
         test_file = TestFile.objects.first()
-        test_file.the_file = six.b("HELLO, WORLD!")
+        test_file.the_file = "Hello, World!".encode("latin-1")
         test_file.save()
 
         test_file = TestFile.objects.first()
-        assert test_file.the_file.read() == six.b("HELLO, WORLD!")
+        assert test_file.the_file.read() == "Hello, World!".encode("latin-1")
 
     def test_copyable(self):
         class PutFile(Document):
@@ -525,7 +525,7 @@ class TestFileField(MongoDBTestCase):
 
         PutFile.drop_collection()
 
-        text = six.b("Hello, World!")
+        text = "Hello, World!".encode("latin-1")
         content_type = "text/plain"
 
         putfile = PutFile()

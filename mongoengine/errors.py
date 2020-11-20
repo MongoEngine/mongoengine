@@ -1,7 +1,5 @@
 from collections import defaultdict
 
-import six
-from six import iteritems
 
 __all__ = (
     "NotRegistered",
@@ -87,24 +85,24 @@ class ValidationError(AssertionError):
     _message = None
 
     def __init__(self, message="", **kwargs):
-        super(ValidationError, self).__init__(message)
+        super().__init__(message)
         self.errors = kwargs.get("errors", {})
         self.field_name = kwargs.get("field_name")
         self.message = message
 
     def __str__(self):
-        return six.text_type(self.message)
+        return str(self.message)
 
     def __repr__(self):
-        return "%s(%s,)" % (self.__class__.__name__, self.message)
+        return "{}({},)".format(self.__class__.__name__, self.message)
 
     def __getattribute__(self, name):
-        message = super(ValidationError, self).__getattribute__(name)
+        message = super().__getattribute__(name)
         if name == "message":
             if self.field_name:
                 message = "%s" % message
             if self.errors:
-                message = "%s(%s)" % (message, self._format_errors())
+                message = "{}({})".format(message, self._format_errors())
         return message
 
     def _get_message(self):
@@ -126,12 +124,12 @@ class ValidationError(AssertionError):
         def build_dict(source):
             errors_dict = {}
             if isinstance(source, dict):
-                for field_name, error in iteritems(source):
+                for field_name, error in source.items():
                     errors_dict[field_name] = build_dict(error)
             elif isinstance(source, ValidationError) and source.errors:
                 return build_dict(source.errors)
             else:
-                return six.text_type(source)
+                return str(source)
 
             return errors_dict
 
@@ -147,15 +145,15 @@ class ValidationError(AssertionError):
             if isinstance(value, list):
                 value = " ".join([generate_key(k) for k in value])
             elif isinstance(value, dict):
-                value = " ".join([generate_key(v, k) for k, v in iteritems(value)])
+                value = " ".join([generate_key(v, k) for k, v in value.items()])
 
-            results = "%s.%s" % (prefix, value) if prefix else value
+            results = "{}.{}".format(prefix, value) if prefix else value
             return results
 
         error_dict = defaultdict(list)
-        for k, v in iteritems(self.to_dict()):
+        for k, v in self.to_dict().items():
             error_dict[generate_key(v)].append(k)
-        return " ".join(["%s: %s" % (k, v) for k, v in iteritems(error_dict)])
+        return " ".join(["{}: {}".format(k, v) for k, v in error_dict.items()])
 
 
 class DeprecatedError(Exception):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import unittest
 
 from bson import SON
@@ -29,7 +28,8 @@ class TestDelta(MongoDBTestCase):
         self.delta(Document)
         self.delta(DynamicDocument)
 
-    def delta(self, DocClass):
+    @staticmethod
+    def delta(DocClass):
         class Doc(DocClass):
             string_field = StringField()
             int_field = IntField()
@@ -428,13 +428,20 @@ class TestDelta(MongoDBTestCase):
         assert doc.dict_field == {"hello": "world"}
         assert doc.list_field == ["1", 2, {"hello": "world"}]
 
-    def test_delta_recursive_db_field(self):
+    def test_delta_recursive_db_field_on_doc_and_embeddeddoc(self):
         self.delta_recursive_db_field(Document, EmbeddedDocument)
+
+    def test_delta_recursive_db_field_on_doc_and_dynamicembeddeddoc(self):
         self.delta_recursive_db_field(Document, DynamicEmbeddedDocument)
+
+    def test_delta_recursive_db_field_on_dynamicdoc_and_embeddeddoc(self):
         self.delta_recursive_db_field(DynamicDocument, EmbeddedDocument)
+
+    def test_delta_recursive_db_field_on_dynamicdoc_and_dynamicembeddeddoc(self):
         self.delta_recursive_db_field(DynamicDocument, DynamicEmbeddedDocument)
 
-    def delta_recursive_db_field(self, DocClass, EmbeddedClass):
+    @staticmethod
+    def delta_recursive_db_field(DocClass, EmbeddedClass):
         class Embedded(EmbeddedClass):
             string_field = StringField(db_field="db_string_field")
             int_field = IntField(db_field="db_int_field")
@@ -487,6 +494,7 @@ class TestDelta(MongoDBTestCase):
         doc = doc.reload(10)
         assert doc.embedded_field.dict_field == {}
 
+        assert doc._get_changed_fields() == []
         doc.embedded_field.list_field = []
         assert doc._get_changed_fields() == ["db_embedded_field.db_list_field"]
         assert doc.embedded_field._delta() == ({}, {"db_list_field": 1})
@@ -537,6 +545,7 @@ class TestDelta(MongoDBTestCase):
             {},
         )
         doc.save()
+        assert doc._get_changed_fields() == []
         doc = doc.reload(10)
 
         assert doc.embedded_field.list_field[0] == "1"
@@ -634,6 +643,7 @@ class TestDelta(MongoDBTestCase):
         doc.save()
         doc = doc.reload(10)
 
+        assert doc._delta() == ({}, {},)
         del doc.embedded_field.list_field[2].list_field
         assert doc._delta() == (
             {},
@@ -732,12 +742,12 @@ class TestDelta(MongoDBTestCase):
         assert organization._get_changed_fields() == []
 
         updates, removals = organization._delta()
-        assert {} == removals
-        assert {} == updates
+        assert removals == {}
+        assert updates == {}
 
         organization.employees.append(person)
         updates, removals = organization._delta()
-        assert {} == removals
+        assert removals == {}
         assert "employees" in updates
 
     def test_delta_with_dbref_false(self):
@@ -749,12 +759,12 @@ class TestDelta(MongoDBTestCase):
         assert organization._get_changed_fields() == []
 
         updates, removals = organization._delta()
-        assert {} == removals
-        assert {} == updates
+        assert removals == {}
+        assert updates == {}
 
         organization.employees.append(person)
         updates, removals = organization._delta()
-        assert {} == removals
+        assert removals == {}
         assert "employees" in updates
 
     def test_nested_nested_fields_mark_as_changed(self):
@@ -767,19 +777,46 @@ class TestDelta(MongoDBTestCase):
 
         MyDoc.drop_collection()
 
-        mydoc = MyDoc(
-            name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}
-        ).save()
+        MyDoc(name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}).save()
 
         mydoc = MyDoc.objects.first()
         subdoc = mydoc.subs["a"]["b"]
         subdoc.name = "bar"
 
-        assert ["name"] == subdoc._get_changed_fields()
-        assert ["subs.a.b.name"] == mydoc._get_changed_fields()
+        assert subdoc._get_changed_fields() == ["name"]
+        assert mydoc._get_changed_fields() == ["subs.a.b.name"]
 
         mydoc._clear_changed_fields()
-        assert [] == mydoc._get_changed_fields()
+        assert mydoc._get_changed_fields() == []
+
+    def test_nested_nested_fields_db_field_set__gets_mark_as_changed_and_cleaned(self):
+        class EmbeddedDoc(EmbeddedDocument):
+            name = StringField(db_field="db_name")
+
+        class MyDoc(Document):
+            embed = EmbeddedDocumentField(EmbeddedDoc, db_field="db_embed")
+            name = StringField(db_field="db_name")
+
+        MyDoc.drop_collection()
+
+        MyDoc(name="testcase1", embed=EmbeddedDoc(name="foo")).save()
+
+        mydoc = MyDoc.objects.first()
+        mydoc.embed.name = "foo1"
+
+        assert mydoc.embed._get_changed_fields() == ["db_name"]
+        assert mydoc._get_changed_fields() == ["db_embed.db_name"]
+
+        mydoc = MyDoc.objects.first()
+        embed = EmbeddedDoc(name="foo2")
+        embed.name = "bar"
+        mydoc.embed = embed
+
+        assert embed._get_changed_fields() == ["db_name"]
+        assert mydoc._get_changed_fields() == ["db_embed"]
+
+        mydoc._clear_changed_fields()
+        assert mydoc._get_changed_fields() == []
 
     def test_lower_level_mark_as_changed(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -794,17 +831,17 @@ class TestDelta(MongoDBTestCase):
 
         mydoc = MyDoc.objects.first()
         mydoc.subs["a"] = EmbeddedDoc()
-        assert ["subs.a"] == mydoc._get_changed_fields()
+        assert mydoc._get_changed_fields() == ["subs.a"]
 
         subdoc = mydoc.subs["a"]
         subdoc.name = "bar"
 
-        assert ["name"] == subdoc._get_changed_fields()
-        assert ["subs.a"] == mydoc._get_changed_fields()
+        assert subdoc._get_changed_fields() == ["name"]
+        assert mydoc._get_changed_fields() == ["subs.a"]
         mydoc.save()
 
         mydoc._clear_changed_fields()
-        assert [] == mydoc._get_changed_fields()
+        assert mydoc._get_changed_fields() == []
 
     def test_upper_level_mark_as_changed(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -821,15 +858,15 @@ class TestDelta(MongoDBTestCase):
         subdoc = mydoc.subs["a"]
         subdoc.name = "bar"
 
-        assert ["name"] == subdoc._get_changed_fields()
-        assert ["subs.a.name"] == mydoc._get_changed_fields()
+        assert subdoc._get_changed_fields() == ["name"]
+        assert mydoc._get_changed_fields() == ["subs.a.name"]
 
         mydoc.subs["a"] = EmbeddedDoc()
-        assert ["subs.a"] == mydoc._get_changed_fields()
+        assert mydoc._get_changed_fields() == ["subs.a"]
         mydoc.save()
 
         mydoc._clear_changed_fields()
-        assert [] == mydoc._get_changed_fields()
+        assert mydoc._get_changed_fields() == []
 
     def test_referenced_object_changed_attributes(self):
         """Ensures that when you save a new reference to a field, the referenced object isn't altered"""

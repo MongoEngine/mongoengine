@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import datetime
 import unittest
 
@@ -336,7 +335,7 @@ class TestField(MongoDBTestCase):
         doc.save()
 
         # Unset all the fields
-        HandleNoneFields._get_collection().update(
+        HandleNoneFields._get_collection().update_one(
             {"_id": doc.id},
             {"$unset": {"str_fld": 1, "int_fld": 1, "flt_fld": 1, "comp_dt_fld": 1}},
         )
@@ -1084,7 +1083,7 @@ class TestField(MongoDBTestCase):
 
         e = Simple().save()
         e.mapping = []
-        assert [] == e._changed_fields
+        assert e._changed_fields == []
 
         class Simple(Document):
             mapping = DictField()
@@ -1093,7 +1092,7 @@ class TestField(MongoDBTestCase):
 
         e = Simple().save()
         e.mapping = {}
-        assert [] == e._changed_fields
+        assert e._changed_fields == []
 
     def test_slice_marks_field_as_changed(self):
         class Simple(Document):
@@ -2269,6 +2268,13 @@ class TestField(MongoDBTestCase):
         class Doc(Document):
             foo = StringField()
             meta = {"strict": False}
+
+        with pytest.raises(FieldDoesNotExist):
+            Doc(bar="test")
+
+    def test_undefined_field_works_no_confusion_with_db_field(self):
+        class Doc(Document):
+            foo = StringField(db_field="bar")
 
         with pytest.raises(FieldDoesNotExist):
             Doc(bar="test")

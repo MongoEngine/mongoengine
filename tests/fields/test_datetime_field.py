@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 import datetime as dt
 
 import pytest
-import six
 
 try:
     import dateutil
@@ -97,17 +95,6 @@ class TestDateTimeField(MongoDBTestCase):
         log.reload()
         assert log.date != d1
         assert log.date == d2
-
-        if not six.PY3:
-            # Pre UTC dates microseconds below 1000 are dropped
-            # This does not seem to be true in PY3
-            d1 = dt.datetime(1969, 12, 31, 23, 59, 59, 999)
-            d2 = dt.datetime(1969, 12, 31, 23, 59, 59)
-            log.date = d1
-            log.save()
-            log.reload()
-            assert log.date != d1
-            assert log.date == d2
 
     def test_regular_usage(self):
         """Tests for regular datetime fields"""
@@ -213,7 +200,7 @@ class TestDateTimeField(MongoDBTestCase):
         # make sure that passing a parsable datetime works
         dtd = DTDoc()
         dtd.date = date_str
-        assert isinstance(dtd.date, six.string_types)
+        assert isinstance(dtd.date, str)
         dtd.save()
         dtd.reload()
 

@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
 import unittest
 
 from bson import DBRef, ObjectId
-from six import iteritems
 
 from mongoengine import *
-from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter
 
 
@@ -372,8 +369,7 @@ class FieldTest(unittest.TestCase):
         assert Post.objects.all()[0].user_lists == [[u1, u2], [u3]]
 
     def test_circular_reference(self):
-        """Ensure you can handle circular references
-        """
+        """Ensure you can handle circular references"""
 
         class Relation(EmbeddedDocument):
             name = StringField()
@@ -428,6 +424,7 @@ class FieldTest(unittest.TestCase):
 
         daughter.relations.append(mother)
         daughter.relations.append(daughter)
+        assert daughter._get_changed_fields() == ["relations"]
         daughter.save()
 
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
@@ -739,7 +736,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, User)
 
         # Document select_related
@@ -752,7 +749,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, User)
 
         # Queryset select_related
@@ -766,7 +763,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 2
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert isinstance(m, User)
 
         User.drop_collection()
@@ -820,7 +817,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Document select_related
@@ -836,7 +833,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Queryset select_related
@@ -853,7 +850,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 4
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert "User" in m.__class__.__name__
 
         Group.objects.delete()
@@ -910,7 +907,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, UserA)
 
         # Document select_related
@@ -926,7 +923,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert isinstance(m, UserA)
 
         # Queryset select_related
@@ -943,7 +940,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 2
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert isinstance(m, UserA)
 
         UserA.drop_collection()
@@ -997,7 +994,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Document select_related
@@ -1013,7 +1010,7 @@ class FieldTest(unittest.TestCase):
             [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in iteritems(group_obj.members):
+            for k, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Queryset select_related
@@ -1030,7 +1027,7 @@ class FieldTest(unittest.TestCase):
                 [m for m in group_obj.members]
                 assert q == 4
 
-                for k, m in iteritems(group_obj.members):
+                for k, m in group_obj.members.items():
                     assert "User" in m.__class__.__name__
 
         Group.objects.delete()

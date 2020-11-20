@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pytest
 
 from mongoengine import (
@@ -75,7 +74,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -111,7 +110,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
@@ -319,7 +318,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -347,7 +346,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert unicode(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id

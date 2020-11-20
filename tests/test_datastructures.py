@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from six import iterkeys
 
 from mongoengine import Document
 from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
@@ -10,9 +9,13 @@ from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
 class DocumentStub(object):
     def __init__(self):
         self._changed_fields = []
+        self._unset_fields = []
 
     def _mark_as_changed(self, key):
         self._changed_fields.append(key)
+
+    def _mark_as_unset(self, key):
+        self._unset_fields.append(key)
 
 
 class TestBaseDict:
@@ -287,7 +290,7 @@ class TestBaseList:
         base_list[:] = [
             0,
             1,
-        ]  # Will use __setslice__ under py2 and __setitem__ under py3
+        ]
         assert base_list._instance._changed_fields == ["my_name"]
         assert base_list == [0, 1]
 
@@ -296,13 +299,13 @@ class TestBaseList:
         base_list[0:2] = [
             1,
             0,
-        ]  # Will use __setslice__ under py2 and __setitem__ under py3
+        ]
         assert base_list._instance._changed_fields == ["my_name"]
         assert base_list == [1, 0, 2]
 
     def test___setitem___calls_with_step_slice_mark_as_changed(self):
         base_list = self._get_baselist([0, 1, 2])
-        base_list[0:3:2] = [-1, -2]  # uses __setitem__ in both py2 & 3
+        base_list[0:3:2] = [-1, -2]  # uses __setitem__
         assert base_list._instance._changed_fields == ["my_name"]
         assert base_list == [-1, 1, -2]
 
@@ -315,7 +318,7 @@ class TestBaseList:
     def test___setitem___item_0_calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
         base_list[0] = False
-        assert base_list._instance._changed_fields == ["my_name"]
+        assert base_list._instance._changed_fields == ["my_name.0"]
         assert base_list == [False]
 
     def test___setitem___item_1_calls_mark_as_changed(self):
@@ -372,7 +375,7 @@ class TestStrictDict(unittest.TestCase):
 
     def test_iterkeys(self):
         d = self.dtype(a=1)
-        assert list(iterkeys(d)) == ["a"]
+        assert list(d.keys()) == ["a"]
 
     def test_len(self):
         d = self.dtype(a=1)

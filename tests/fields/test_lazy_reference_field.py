@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from bson import DBRef, ObjectId
 import pytest
 
@@ -152,7 +151,7 @@ class TestLazyReferenceField(MongoDBTestCase):
             LazyReference(BadDoc, animal.pk),
         ):
             with pytest.raises(ValidationError):
-                p = Ocurrence(person="test", animal=bad).save()
+                Ocurrence(person="test", animal=bad).save()
 
     def test_lazy_reference_query_conversion(self):
         """Ensure that LazyReferenceFields can be queried using objects and values
@@ -386,7 +385,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         mineral = Mineral(name="Granite").save()
 
         occ_animal = Ocurrence(living_thing=animal, thing=animal).save()
-        occ_vegetal = Ocurrence(living_thing=vegetal, thing=vegetal).save()
+        _ = Ocurrence(living_thing=vegetal, thing=vegetal).save()
         with pytest.raises(ValidationError):
             Ocurrence(living_thing=mineral).save()
 
@@ -458,7 +457,7 @@ class TestGenericLazyReferenceField(MongoDBTestCase):
         baddoc = BadDoc().save()
         for bad in (42, "foo", baddoc, LazyReference(BadDoc, animal.pk)):
             with pytest.raises(ValidationError):
-                p = Ocurrence(person="test", animal=bad).save()
+                Ocurrence(person="test", animal=bad).save()
 
     def test_generic_lazy_reference_query_conversion(self):
         class Member(Document):

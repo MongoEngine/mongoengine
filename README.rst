@@ -16,6 +16,9 @@ MongoEngine
   :target: https://landscape.io/github/MongoEngine/mongoengine/master
   :alt: Code Health
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+  :target: https://github.com/ambv/black
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
@@ -34,7 +37,7 @@ with MongoDB version > 4.0.
 Installation
 ============
 We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
-`pip <https://pip.pypa.io/>`_. You can then use ``pip install -U mongoengine``.
+`pip <https://pip.pypa.io/>`_. You can then use ``python -m pip install -U mongoengine``.
 You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
 and thus you can use ``easy_install -U mongoengine``. Another option is
 `pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
@@ -42,13 +45,14 @@ to both create the virtual environment and install the package. Otherwise, you c
 download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
 run ``python setup.py install``.
 
+The support for Python2 was dropped with MongoEngine 0.20.0
+
 Dependencies
 ============
-All of the dependencies can easily be installed via `pip <https://pip.pypa.io/>`_.
+All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
 At the very least, you'll need these two packages to use MongoEngine:
 
 - pymongo>=3.4
-- six>=1.10.0
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 
@@ -57,6 +61,10 @@ If you utilize a ``DateTimeField``, you might also use a more flexible date pars
 If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
 
 - Pillow>=2.0.0
+
+If you need to use signals:
+
+- blinker>=1.3
 
 Examples
 ========
@@ -125,7 +133,7 @@ installed in your environment and then:
 .. code-block:: shell
 
     # Install tox
-    $ pip install tox
+    $ python -m pip install tox
     # Run the test suites
     $ tox
 

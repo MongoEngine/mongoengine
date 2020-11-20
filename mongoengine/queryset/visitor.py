@@ -7,7 +7,12 @@ from mongoengine.queryset import transform
 __all__ = ("Q", "QNode")
 
 
-class QNodeVisitor(object):
+def warn_empty_is_deprecated():
+    msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+
+class QNodeVisitor:
     """Base visitor class for visiting Q-object nodes in a query tree.
     """
 
@@ -79,7 +84,7 @@ class QueryCompilerVisitor(QNodeVisitor):
         return transform.query(self.document, **query.query)
 
 
-class QNode(object):
+class QNode:
     """Base class for nodes in query trees."""
 
     AND = 0
@@ -98,19 +103,18 @@ class QNode(object):
         object.
         """
         # If the other Q() is empty, ignore it and just use `self`.
-        if getattr(other, "empty", True):
+        if not bool(other):
             return self
 
         # Or if this Q is empty, ignore it and just use `other`.
-        if self.empty:
+        if not bool(self):
             return other
 
         return QCombination(operation, [self, other])
 
     @property
     def empty(self):
-        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
-        warnings.warn(msg, DeprecationWarning)
+        warn_empty_is_deprecated()
         return False
 
     def __or__(self, other):
@@ -143,8 +147,6 @@ class QCombination(QNode):
     def __bool__(self):
         return bool(self.children)
 
-    __nonzero__ = __bool__  # For Py2 support
-
     def accept(self, visitor):
         for i in range(len(self.children)):
             if isinstance(self.children[i], QNode):
@@ -154,8 +156,7 @@ class QCombination(QNode):
 
     @property
     def empty(self):
-        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
-        warnings.warn(msg, DeprecationWarning)
+        warn_empty_is_deprecated()
         return not bool(self.children)
 
     def __eq__(self, other):
@@ -180,8 +181,6 @@ class Q(QNode):
     def __bool__(self):
         return bool(self.query)
 
-    __nonzero__ = __bool__  # For Py2 support
-
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.query == other.query
 
@@ -190,4 +189,5 @@ class Q(QNode):
 
     @property
     def empty(self):
+        warn_empty_is_deprecated()
         return not bool(self.query)

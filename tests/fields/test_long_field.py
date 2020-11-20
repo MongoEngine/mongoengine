@@ -1,11 +1,5 @@
-# -*- coding: utf-8 -*-
+from bson.int64 import Int64
 import pytest
-import six
-
-try:
-    from bson.int64 import Int64
-except ImportError:
-    Int64 = long
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -28,7 +22,7 @@ class TestLongField(MongoDBTestCase):
         assert isinstance(
             db.test_long_field_considered_as_int64.find()[0]["some_long"], Int64
         )
-        assert isinstance(doc.some_long, six.integer_types)
+        assert isinstance(doc.some_long, int)
 
     def test_long_validation(self):
         """Ensure that invalid values cannot be assigned to long fields.

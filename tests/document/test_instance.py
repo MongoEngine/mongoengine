@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import pickle
 import unittest
@@ -10,7 +9,6 @@ import bson
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 import pytest
-from six import iteritems
 
 from mongoengine import *
 from mongoengine import signals
@@ -189,7 +187,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_queryset_resurrects_dropped_collection(self):
         self.Person.drop_collection()
-        assert [] == list(self.Person.objects())
+        assert list(self.Person.objects()) == []
 
         # Ensure works correctly with inhertited classes
         class Actor(self.Person):
@@ -197,7 +195,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         Actor.objects()
         self.Person.drop_collection()
-        assert [] == list(Actor.objects())
+        assert list(Actor.objects()) == []
 
     def test_polymorphic_references(self):
         """Ensure that the correct subclasses are returned from a query
@@ -502,7 +500,7 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.reload()
         Animal.drop_collection()
 
-    def test_update_shard_key_routing(self):
+    def test_save_update_shard_key_routing(self):
         """Ensures updating a doc with a specified shard_key includes it in
         the query.
         """
@@ -527,6 +525,29 @@ class TestDocumentInstance(MongoDBTestCase):
                 assert set(query_op["query"].keys()) == set(["_id", "is_mammal"])
             else:
                 assert set(query_op["command"]["q"].keys()) == set(["_id", "is_mammal"])
+
+        Animal.drop_collection()
+
+    def test_save_create_shard_key_routing(self):
+        """Ensures inserting a doc with a specified shard_key includes it in
+        the query.
+        """
+
+        class Animal(Document):
+            _id = UUIDField(binary=False, primary_key=True, default=uuid.uuid4)
+            is_mammal = BooleanField()
+            name = StringField()
+            meta = {"shard_key": ("is_mammal",)}
+
+        Animal.drop_collection()
+        doc = Animal(is_mammal=True, name="Dog")
+
+        with query_counter() as q:
+            doc.save()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
+            assert query_op["op"] == "command"
+            assert query_op["command"]["findAndModify"] == "animal"
+            assert set(query_op["command"]["query"].keys()) == set(["_id", "is_mammal"])
 
         Animal.drop_collection()
 
@@ -579,7 +600,8 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.embedded_field.list_field.append(1)
         doc.embedded_field.dict_field["woot"] = "woot"
 
-        assert doc._get_changed_fields() == [
+        changed = doc._get_changed_fields()
+        assert changed == [
             "list_field",
             "dict_field.woot",
             "embedded_field.list_field",
@@ -1415,7 +1437,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert raw_doc["first_name"] == "John"
 
     def test_inserts_if_you_set_the_pk(self):
-        p1 = self.Person(name="p1", id=bson.ObjectId()).save()
+        _ = self.Person(name="p1", id=bson.ObjectId()).save()
         p2 = self.Person(name="p2")
         p2.id = bson.ObjectId()
         p2.save()
@@ -2196,7 +2218,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user = User(name="Mike").save()
         reviewer = User(name="John").save()
-        book = Book(author=user, reviewer=reviewer).save()
+        _ = Book(author=user, reviewer=reviewer).save()
 
         reviewer.delete()
         assert Book.objects.count() == 1
@@ -2222,7 +2244,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user_1 = User(id=1).save()
         user_2 = User(id=2).save()
-        book_1 = Book(id=1, author=user_2).save()
+        _ = Book(id=1, author=user_2).save()
         book_2 = Book(id=2, author=user_1).save()
 
         user_2.delete()
@@ -2231,7 +2253,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert Book.objects.get() == book_2
 
         user_3 = User(id=3).save()
-        book_3 = Book(id=3, author=user_3).save()
+        _ = Book(id=3, author=user_3).save()
 
         user_3.delete()
         # Deleting user_3 should also delete book_3
@@ -3242,7 +3264,7 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_positional_creation(self):
         """Document cannot be instantiated using positional arguments."""
         with pytest.raises(TypeError) as exc_info:
-            person = self.Person("Test User", 42)
+            self.Person("Test User", 42)
 
         expected_msg = (
             "Instantiating a document with positional arguments is not "
@@ -3311,7 +3333,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
             def expand(self):
                 self.flattened_parameter = {}
-                for parameter_name, parameter in iteritems(self.parameters):
+                for parameter_name, parameter in self.parameters.items():
                     parameter.expand()
 
         class NodesSystem(Document):
@@ -3319,7 +3341,7 @@ class TestDocumentInstance(MongoDBTestCase):
             nodes = MapField(ReferenceField(Node, dbref=False))
 
             def save(self, *args, **kwargs):
-                for node_name, node in iteritems(self.nodes):
+                for node_name, node in self.nodes.items():
                     node.expand()
                     node.save(*args, **kwargs)
                 super(NodesSystem, self).save(*args, **kwargs)
@@ -3449,7 +3471,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert obj3 != dbref2
         assert dbref2 != obj3
 
-    def test_default_values(self):
+    def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
             created_on = DateTimeField(default=lambda: datetime.utcnow())
             name = StringField()
@@ -3644,13 +3666,13 @@ class TestDocumentInstance(MongoDBTestCase):
             v = StringField()
 
         class A(Document):
-            l = ListField(EmbeddedDocumentField(B))
+            array = ListField(EmbeddedDocumentField(B))
 
         A.objects.delete()
-        A(l=[B(v="1"), B(v="2"), B(v="3")]).save()
+        A(array=[B(v="1"), B(v="2"), B(v="3")]).save()
         a = A.objects.get()
-        assert a.l._instance == a
-        for idx, b in enumerate(a.l):
+        assert a.array._instance == a
+        for idx, b in enumerate(a.array):
             assert b._instance == a
         assert idx == 2
 
@@ -3835,6 +3857,96 @@ class ObjectKeyTestCase(MongoDBTestCase):
 
         book = Book(pk=ObjectId(), author=Author(name="Author"))
         assert book._object_key == {"pk": book.pk, "author__name": "Author"}
+
+
+class DBFieldMappingTest(MongoDBTestCase):
+    def setUp(self):
+        class Fields(object):
+            w1 = BooleanField(db_field="w2")
+
+            x1 = BooleanField(db_field="x2")
+            x2 = BooleanField(db_field="x3")
+
+            y1 = BooleanField(db_field="y0")
+            y2 = BooleanField(db_field="y1")
+
+            z1 = BooleanField(db_field="z2")
+            z2 = BooleanField(db_field="z1")
+
+        class Doc(Fields, Document):
+            pass
+
+        class DynDoc(Fields, DynamicDocument):
+            pass
+
+        self.Doc = Doc
+        self.DynDoc = DynDoc
+
+    def tearDown(self):
+        for collection in list_collection_names(self.db):
+            self.db.drop_collection(collection)
+
+    def test_setting_fields_in_constructor_of_strict_doc_uses_model_names(self):
+        doc = self.Doc(z1=True, z2=False)
+        assert doc.z1 is True
+        assert doc.z2 is False
+
+    def test_setting_fields_in_constructor_of_dyn_doc_uses_model_names(self):
+        doc = self.DynDoc(z1=True, z2=False)
+        assert doc.z1 is True
+        assert doc.z2 is False
+
+    def test_setting_unknown_field_in_constructor_of_dyn_doc_does_not_overwrite_model_fields(
+        self,
+    ):
+        doc = self.DynDoc(w2=True)
+        assert doc.w1 is None
+        assert doc.w2 is True
+
+    def test_unknown_fields_of_strict_doc_do_not_overwrite_dbfields_1(self):
+        doc = self.Doc()
+        doc.w2 = True
+        doc.x3 = True
+        doc.y0 = True
+        doc.save()
+        reloaded = self.Doc.objects.get(id=doc.id)
+        assert reloaded.w1 is None
+        assert reloaded.x1 is None
+        assert reloaded.x2 is None
+        assert reloaded.y1 is None
+        assert reloaded.y2 is None
+
+    def test_dbfields_are_loaded_to_the_right_modelfield_for_strict_doc_2(self):
+        doc = self.Doc()
+        doc.x2 = True
+        doc.y2 = True
+        doc.z2 = True
+        doc.save()
+        reloaded = self.Doc.objects.get(id=doc.id)
+        assert (
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+
+    def test_dbfields_are_loaded_to_the_right_modelfield_for_dyn_doc_2(self):
+        doc = self.DynDoc()
+        doc.x2 = True
+        doc.y2 = True
+        doc.z2 = True
+        doc.save()
+        reloaded = self.DynDoc.objects.get(id=doc.id)
+        assert (
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
 
 
 if __name__ == "__main__":

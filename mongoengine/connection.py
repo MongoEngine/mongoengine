@@ -1,6 +1,5 @@
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
-import six
 
 __all__ = [
     "DEFAULT_CONNECTION_NAME",
@@ -39,8 +38,8 @@ def _check_db_name(name):
     """Check if a database name is valid.
     This functionality is copied from pymongo Database class constructor.
     """
-    if not isinstance(name, six.string_types):
-        raise TypeError("name must be an instance of %s" % six.string_types)
+    if not isinstance(name, str):
+        raise TypeError("name must be an instance of %s" % str)
     elif name != "$external":
         _check_name(name)
 
@@ -93,7 +92,7 @@ def _get_connection_settings(
     conn_host = conn_settings["host"]
 
     # Host can be a list or a string, so if string, force to a list.
-    if isinstance(conn_host, six.string_types):
+    if isinstance(conn_host, str):
         conn_host = [conn_host]
 
     resolved_hosts = []
@@ -148,7 +147,7 @@ def _get_connection_settings(
                 # TODO simplify the code below once we drop support for
                 # PyMongo v3.4.
                 read_pf_mode = uri_options["readpreference"]
-                if isinstance(read_pf_mode, six.string_types):
+                if isinstance(read_pf_mode, str):
                     read_pf_mode = read_pf_mode.lower()
                 for preference in read_preferences:
                     if (
@@ -318,7 +317,7 @@ def _create_connection(alias, connection_class, **connection_settings):
     try:
         return connection_class(**connection_settings)
     except Exception as e:
-        raise ConnectionFailure("Cannot connect to database %s :\n%s" % (alias, e))
+        raise ConnectionFailure("Cannot connect to database {} :\n{}".format(alias, e))
 
 
 def _find_existing_connection(connection_settings):
@@ -396,8 +395,8 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
         if new_conn_settings != prev_conn_setting:
             err_msg = (
-                u"A different connection with alias `{}` was already "
-                u"registered. Use disconnect() first"
+                "A different connection with alias `{}` was already "
+                "registered. Use disconnect() first"
             ).format(alias)
             raise ConnectionFailure(err_msg)
     else:

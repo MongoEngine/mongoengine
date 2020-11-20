@@ -76,6 +76,7 @@ are as follows:
 * :class:`~mongoengine.fields.EmailField`
 * :class:`~mongoengine.fields.EmbeddedDocumentField`
 * :class:`~mongoengine.fields.EmbeddedDocumentListField`
+* :class:`~mongoengine.fields.EnumField`
 * :class:`~mongoengine.fields.FileField`
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
@@ -432,19 +433,6 @@ either a single field name, or a list or tuple of field names::
         first_name = StringField()
         last_name = StringField(unique_with='first_name')
 
-Skipping Document validation on save
-------------------------------------
-You can also skip the whole document validation process by setting
-``validate=False`` when calling the :meth:`~mongoengine.document.Document.save`
-method::
-
-    class Recipient(Document):
-        name = StringField()
-        email = EmailField()
-
-    recipient = Recipient(name='admin', email='root@localhost')
-    recipient.save()               # will raise a ValidationError while
-    recipient.save(validate=False) # won't
 
 Document collections
 ====================

@@ -8,6 +8,8 @@ from mongoengine.context_managers import (
     no_dereference,
     no_sub_classes,
     query_counter,
+    set_read_write_concern,
+    set_write_concern,
     switch_collection,
     switch_db,
 )
@@ -15,6 +17,52 @@ from mongoengine.pymongo_support import count_documents
 
 
 class TestContextManagers:
+    def test_set_write_concern(self):
+        connect("mongoenginetest")
+
+        class User(Document):
+            name = StringField()
+
+        collection = User._get_collection()
+        original_write_concern = collection.write_concern
+
+        with set_write_concern(
+            collection, {"w": "majority", "j": True, "wtimeout": 1234}
+        ) as updated_collection:
+            assert updated_collection.write_concern.document == {
+                "w": "majority",
+                "j": True,
+                "wtimeout": 1234,
+            }
+
+        assert original_write_concern.document == collection.write_concern.document
+
+    def test_set_read_write_concern(self):
+        connect("mongoenginetest")
+
+        class User(Document):
+            name = StringField()
+
+        collection = User._get_collection()
+
+        original_read_concern = collection.read_concern
+        original_write_concern = collection.write_concern
+
+        with set_read_write_concern(
+            collection,
+            {"w": "majority", "j": True, "wtimeout": 1234},
+            {"level": "local"},
+        ) as update_collection:
+            assert update_collection.read_concern.document == {"level": "local"}
+            assert update_collection.write_concern.document == {
+                "w": "majority",
+                "j": True,
+                "wtimeout": 1234,
+            }
+
+        assert original_read_concern.document == collection.read_concern.document
+        assert original_write_concern.document == collection.write_concern.document
+
     def test_switch_db_context_manager(self):
         connect("mongoenginetest")
         register_connection("testdb-1", "mongoenginetest2")
@@ -216,7 +264,7 @@ class TestContextManagers:
 
     def test_query_counter_does_not_swallow_exception(self):
         with pytest.raises(TypeError):
-            with query_counter() as q:
+            with query_counter():
                 raise TypeError()
 
     def test_query_counter_temporarily_modifies_profiling_level(self):
@@ -226,12 +274,12 @@ class TestContextManagers:
         initial_profiling_level = db.profiling_level()
 
         try:
-            NEW_LEVEL = 1
-            db.set_profiling_level(NEW_LEVEL)
-            assert db.profiling_level() == NEW_LEVEL
-            with query_counter() as q:
+            new_level = 1
+            db.set_profiling_level(new_level)
+            assert db.profiling_level() == new_level
+            with query_counter():
                 assert db.profiling_level() == 2
-            assert db.profiling_level() == NEW_LEVEL
+            assert db.profiling_level() == new_level
         except Exception:
             db.set_profiling_level(
                 initial_profiling_level
