@@ -371,7 +371,7 @@ class TestLazyReferenceField(MongoDBTestCase):
 
         for ref in book.authors:
             with pytest.raises(AttributeError):
-                x = ref["author"].name
+                ref["author"].name
             assert isinstance(ref.author, LazyReference)
             assert isinstance(ref.author.id, ObjectId)
 
