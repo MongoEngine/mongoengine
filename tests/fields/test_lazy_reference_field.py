@@ -3,6 +3,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.base import LazyReference
+from mongoengine.context_managers import query_counter
 
 from tests.utils import MongoDBTestCase
 
@@ -329,6 +330,50 @@ class TestLazyReferenceField(MongoDBTestCase):
         occ.in_embedded.direct = animal1.id
         occ.in_embedded.in_list = [animal1.id, animal2.id]
         check_fields_type(occ)
+
+    def test_lazy_reference_embedded_dereferencing(self):
+        # Test case for #2375
+
+        # -- Test documents
+
+        class Author(Document):
+            name = StringField()
+
+        class AuthorReference(EmbeddedDocument):
+            author = LazyReferenceField(Author)
+
+        class Book(Document):
+            authors = EmbeddedDocumentListField(AuthorReference)
+
+        # -- Cleanup
+
+        Author.drop_collection()
+        Book.drop_collection()
+
+        # -- Create test data
+
+        author_1 = Author(name="A1").save()
+        author_2 = Author(name="A2").save()
+        author_3 = Author(name="A3").save()
+        book = Book(
+            authors=[
+                AuthorReference(author=author_1),
+                AuthorReference(author=author_2),
+                AuthorReference(author=author_3),
+            ]
+        ).save()
+
+        with query_counter() as qc:
+            book = Book.objects.first()
+            # Accessing the list must not trigger dereferencing.
+            book.authors
+            assert qc == 1
+
+        for ref in book.authors:
+            with pytest.raises(AttributeError):
+                x = ref["author"].name
+            assert isinstance(ref.author, LazyReference)
+            assert isinstance(ref.author.id, ObjectId)
 
 
 class TestGenericLazyReferenceField(MongoDBTestCase):
