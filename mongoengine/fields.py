@@ -2570,6 +2570,7 @@ class LazyReferenceField(BaseField):
         if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
+            value = self.build_lazyref(value)
         return value
 
     def validate(self, value):
