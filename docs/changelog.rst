@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix LazyReferenceField dereferencing in embedded documents #2426
 
 Changes in 0.21.0
 =================
