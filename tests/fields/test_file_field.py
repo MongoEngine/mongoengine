@@ -429,7 +429,7 @@ class TestFileField(MongoDBTestCase):
     @require_pil
     def test_image_field_resize(self):
         class TestImage(Document):
-            image = ImageField(size=(185, 37))
+            image = ImageField(size=(185, 37, True))
 
         TestImage.drop_collection()
 
@@ -471,7 +471,7 @@ class TestFileField(MongoDBTestCase):
     @require_pil
     def test_image_field_thumbnail(self):
         class TestImage(Document):
-            image = ImageField(thumbnail_size=(92, 18))
+            image = ImageField(thumbnail_size=(92, 18, True))
 
         TestImage.drop_collection()
 
