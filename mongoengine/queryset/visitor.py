@@ -7,11 +7,6 @@ from mongoengine.queryset import transform
 __all__ = ("Q", "QNode")
 
 
-def warn_empty_is_deprecated():
-    msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
-    warnings.warn(msg, DeprecationWarning, stacklevel=2)
-
-
 class QNodeVisitor:
     """Base visitor class for visiting Q-object nodes in a query tree.
     """
@@ -103,18 +98,19 @@ class QNode:
         object.
         """
         # If the other Q() is empty, ignore it and just use `self`.
-        if not bool(other):
+        if getattr(other, "empty", True):
             return self
 
         # Or if this Q is empty, ignore it and just use `other`.
-        if not bool(self):
+        if self.empty:
             return other
 
         return QCombination(operation, [self, other])
 
     @property
     def empty(self):
-        warn_empty_is_deprecated()
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
+        warnings.warn(msg, DeprecationWarning)
         return False
 
     def __or__(self, other):
@@ -156,7 +152,8 @@ class QCombination(QNode):
 
     @property
     def empty(self):
-        warn_empty_is_deprecated()
+        msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
+        warnings.warn(msg, DeprecationWarning)
         return not bool(self.children)
 
     def __eq__(self, other):
@@ -189,5 +186,4 @@ class Q(QNode):
 
     @property
     def empty(self):
-        warn_empty_is_deprecated()
         return not bool(self.query)
