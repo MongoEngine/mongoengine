@@ -12,10 +12,6 @@ MongoEngine
 .. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
   :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
 
-.. image:: https://landscape.io/github/MongoEngine/mongoengine/master/landscape.svg?style=flat
-  :target: https://landscape.io/github/MongoEngine/mongoengine/master
-  :alt: Code Health
-
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
   :target: https://github.com/ambv/black
 
