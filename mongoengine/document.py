@@ -789,6 +789,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
             for base_cls in cls.__bases__:
                 if (isinstance(base_cls, TopLevelDocumentMetaclass) and
                         base_cls != Document and
+                        hasattr(base_cls, '_meta') and
                         not base_cls._meta.get('abstract') and
                         connection_manager.get_collection(base_cls).full_name == connection_manager.get_collection(cls).full_name and
                         base_cls not in classes):
