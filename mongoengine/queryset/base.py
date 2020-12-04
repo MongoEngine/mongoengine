@@ -517,7 +517,17 @@ class BaseQuerySet:
                 )
 
         with set_write_concern(queryset._collection, write_concern) as collection:
+            gridfs_refs = set()
+            for name, field in doc._fields.items():
+                if field.__class__.__name__ == "FileField":
+                    gridfs_refs.update(queryset.scalar(name))
+                if field.__class__.__name__ == "ListField":
+                    for ref_list in queryset.scalar(name):
+                        gridfs_refs.update(ref_list)
+
             result = collection.delete_many(queryset._query)
+            for ref in gridfs_refs:
+                ref.delete()
 
             # If we're using an unack'd write concern, we don't really know how
             # many items have been deleted at this point, hence we only return

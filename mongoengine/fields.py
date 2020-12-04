@@ -1774,6 +1774,9 @@ class GridFSProxy:
     def __ne__(self, other):
         return not self == other
 
+    def __hash__(self):
+        return int("{}{}".format(self.collection_name, self.grid_id).encode().hex(), 16)
+
     @property
     def fs(self):
         if not self._fs:
