@@ -3915,7 +3915,7 @@ class DBFieldMappingTest(MongoDBTestCase):
         class User(DynamicDocument):
             re_str = StringField(regex=r"(^ABC\d\d\d\d$)")
 
-        data = {"$oid": "5fca4edb27d981374c436b9f", "re_str": "ABC0000"}
+        data = {"re_str": "ABC0000"}
         User._from_son(son=data, _auto_dereference=False)
 
 

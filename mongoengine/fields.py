@@ -104,7 +104,16 @@ class StringField(BaseField):
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
         self.min_length = min_length
+        self._kwargs = kwargs
         super().__init__(**kwargs)
+
+    def __deepcopy__(self, _):
+        return StringField(
+            regex=self.regex.pattern,
+            max_length=self.max_length,
+            min_length=self.min_length,
+            **self._kwargs
+        )
 
     def to_python(self, value):
         if isinstance(value, str):
