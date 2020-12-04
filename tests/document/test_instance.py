@@ -3911,6 +3911,13 @@ class DBFieldMappingTest(MongoDBTestCase):
             reloaded.z2,
         ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
 
+    def test_from_son_with_compiled_regex(self):
+        class User(DynamicDocument):
+            re_str = StringField(regex=r"(^ABC\d\d\d\d$)")
+
+        data = {"$oid": "5fca4edb27d981374c436b9f", "re_str": "ABC0000"}
+        User._from_son(son=data, _auto_dereference=False)
+
 
 if __name__ == "__main__":
     unittest.main()
