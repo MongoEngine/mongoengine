@@ -521,7 +521,10 @@ class BaseQuerySet:
             for name, field in doc._fields.items():
                 if field.__class__.__name__ == "FileField":
                     gridfs_refs.update(queryset.scalar(name))
-                if field.__class__.__name__ == "ListField":
+                if (
+                    field.__class__.__name__ == "ListField"
+                    and field.field.__class__.__name__ == "FileField"
+                ):
                     for ref_list in queryset.scalar(name):
                         gridfs_refs.update(ref_list)
 
