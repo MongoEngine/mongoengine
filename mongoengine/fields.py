@@ -1,3 +1,4 @@
+import copy
 import datetime
 import decimal
 import itertools
@@ -107,13 +108,20 @@ class StringField(BaseField):
         self._kwargs = kwargs
         super().__init__(**kwargs)
 
-    def __deepcopy__(self, _):
-        return StringField(
-            regex=self.regex.pattern,
-            max_length=self.max_length,
-            min_length=self.min_length,
-            **self._kwargs
+    def __deepcopy__(self, memo):
+        memo[id(self)] = self
+
+        regex_bak = self.regex
+        self.regex = None
+
+        copied_obj = copy.deepcopy(self, memo)
+
+        copied_obj.regex = (
+            re.compile(regex_bak.pattern) if regex_bak is not None else None
         )
+        self.regex = regex_bak
+
+        return copied_obj
 
     def to_python(self, value):
         if isinstance(value, str):
