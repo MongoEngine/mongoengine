@@ -36,7 +36,6 @@ from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
@@ -101,6 +100,11 @@ class StringField(BaseField):
     """A unicode string field."""
 
     def __init__(self, regex=None, max_length=None, min_length=None, **kwargs):
+        """
+        :param regex: (optional) A string pattern that will be applied during validation
+        :param max_length: (optional) A max length that will be applied during validation
+        :param min_length: (optional) A min length that will be applied during validation
+        """
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
         self.min_length = min_length
@@ -158,7 +162,6 @@ class StringField(BaseField):
 class URLField(StringField):
     """A field that validates input as an URL.
 
-    .. versionadded:: 0.3
     """
 
     _URL_REGEX = LazyRegexCompiler(
@@ -174,6 +177,10 @@ class URLField(StringField):
     _URL_SCHEMES = ["http", "https", "ftp", "ftps"]
 
     def __init__(self, url_regex=None, schemes=None, **kwargs):
+        """
+        :param url_regex: (optional) Overwrite the default regex used for validation
+        :param schemes: (optional) Overwrite the default URL schemes that are allowed
+        """
         self.url_regex = url_regex or self._URL_REGEX
         self.schemes = schemes or self._URL_SCHEMES
         super().__init__(**kwargs)
@@ -192,7 +199,6 @@ class URLField(StringField):
 class EmailField(StringField):
     """A field that validates input as an email address.
 
-    .. versionadded:: 0.4
     """
 
     USER_REGEX = LazyRegexCompiler(
@@ -229,16 +235,10 @@ class EmailField(StringField):
         *args,
         **kwargs
     ):
-        """Initialize the EmailField.
-
-        Args:
-            domain_whitelist (list) - list of otherwise invalid domain
-                                      names which you'd like to support.
-            allow_utf8_user (bool) - if True, the user part of the email
-                                     address can contain UTF8 characters.
-                                     False by default.
-            allow_ip_domain (bool) - if True, the domain part of the email
-                                     can be a valid IPv4 or IPv6 address.
+        """
+        :param domain_whitelist: (optional) list of valid domain names applied during validation
+        :param allow_utf8_user: Allow user part of the email to contain utf8 char
+        :param allow_ip_domain: Allow domain part of the email to be an IPv4 or IPv6 address
         """
         self.domain_whitelist = domain_whitelist or []
         self.allow_utf8_user = allow_utf8_user
@@ -310,6 +310,10 @@ class IntField(BaseField):
     """32-bit integer field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -343,6 +347,10 @@ class LongField(BaseField):
     """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -379,6 +387,10 @@ class FloatField(BaseField):
     """Floating point number field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -416,8 +428,6 @@ class DecimalField(BaseField):
     """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
 
-    .. versionchanged:: 0.8
-    .. versionadded:: 0.3
     """
 
     def __init__(
@@ -430,8 +440,8 @@ class DecimalField(BaseField):
         **kwargs
     ):
         """
-        :param min_value: Validation rule for the minimum acceptable value.
-        :param max_value: Validation rule for the maximum acceptable value.
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
         :param force_string: Store the value as a string (instead of a float).
          Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
          and some query operator won't work (e.g. inc, dec)
@@ -498,10 +508,7 @@ class DecimalField(BaseField):
 
 
 class BooleanField(BaseField):
-    """Boolean field type.
-
-    .. versionadded:: 0.1.2
-    """
+    """Boolean field type."""
 
     def to_python(self, value):
         try:
@@ -551,7 +558,8 @@ class DateTimeField(BaseField):
 
         return self._parse_datetime(value)
 
-    def _parse_datetime(self, value):
+    @staticmethod
+    def _parse_datetime(value):
         # Attempt to parse a datetime from a string
         value = value.strip()
         if not value:
@@ -627,8 +635,6 @@ class ComplexDateTimeField(StringField):
     keyword when initializing the field.
 
     Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
-
-    .. versionadded:: 0.5
     """
 
     def __init__(self, separator=",", **kwargs):
@@ -975,8 +981,6 @@ class EmbeddedDocumentListField(ListField):
     .. note::
         The only valid list values are subclasses of
         :class:`~mongoengine.EmbeddedDocument`.
-
-    .. versionadded:: 0.9
     """
 
     def __init__(self, document_type, **kwargs):
@@ -999,9 +1003,6 @@ class SortedListField(ListField):
         save the whole list then other processes trying to save the whole list
         as well could overwrite changes.  The safest way to append to a list is
         to perform a push operation.
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.6 - added reverse keyword
     """
 
     _ordering = None
@@ -1058,9 +1059,6 @@ class DictField(ComplexBaseField):
 
     .. note::
         Required means it cannot be empty - as the default for DictFields is {}
-
-    .. versionadded:: 0.3
-    .. versionchanged:: 0.5 - Can now handle complex / varying types of data
     """
 
     def __init__(self, field=None, *args, **kwargs):
@@ -1124,8 +1122,6 @@ class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
-
-    .. versionadded:: 0.5
     """
 
     def __init__(self, field=None, *args, **kwargs):
@@ -1173,8 +1169,6 @@ class ReferenceField(BaseField):
             org = ReferenceField('Org', reverse_delete_rule=CASCADE)
 
         User.register_delete_rule(Org, 'owner', DENY)
-
-    .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
     def __init__(
@@ -1309,8 +1303,6 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
     """
     A referencefield with cache fields to purpose pseudo-joins
-
-    .. versionadded:: 0.9
     """
 
     def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
@@ -1485,8 +1477,6 @@ class GenericReferenceField(BaseField):
           it.
 
         * You can use the choices param to limit the acceptable Document types
-
-    .. versionadded:: 0.3
     """
 
     def __init__(self, *args, **kwargs):
@@ -1692,10 +1682,6 @@ class GridFSError(Exception):
 
 class GridFSProxy:
     """Proxy object to handle writing and reading of files to and from GridFS
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.5 - added optional size param to read
-    .. versionchanged:: 0.6 - added collection name param
     """
 
     _fs = None
@@ -1859,10 +1845,6 @@ class GridFSProxy:
 
 class FileField(BaseField):
     """A GridFS storage field.
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.5 added optional size param for read
-    .. versionchanged:: 0.6 added db_alias for multidb support
     """
 
     proxy_class = GridFSProxy
@@ -1945,11 +1927,7 @@ class FileField(BaseField):
 
 
 class ImageGridFsProxy(GridFSProxy):
-    """
-    Proxy for ImageField
-
-    versionadded: 0.6
-    """
+    """Proxy for ImageField"""
 
     def put(self, file_obj, **kwargs):
         """
@@ -2083,8 +2061,6 @@ class ImageField(FileField):
     :param size: max size to store images, provided as (width, height, force)
         if larger, it will be automatically resized (ex: size=(800, 600, True))
     :param thumbnail_size: size to generate a thumbnail, provided as (width, height, force)
-
-    .. versionadded:: 0.6
     """
 
     proxy_class = ImageGridFsProxy
@@ -2132,9 +2108,6 @@ class SequenceField(BaseField):
         In case the counter is defined in the abstract document, it will be
         common to all inherited documents and the default sequence name will
         be the class name of the abstract document.
-
-    .. versionadded:: 0.5
-    .. versionchanged:: 0.8 added `value_decorator`
     """
 
     _auto_gen = True
@@ -2248,8 +2221,6 @@ class SequenceField(BaseField):
 
 class UUIDField(BaseField):
     """A UUID field.
-
-    .. versionadded:: 0.6
     """
 
     _binary = None
@@ -2259,9 +2230,6 @@ class UUIDField(BaseField):
         Store UUID data in the database
 
         :param binary: if False store as a string.
-
-        .. versionchanged:: 0.8.0
-        .. versionchanged:: 0.6.19
         """
         self._binary = binary
         super().__init__(**kwargs)
@@ -2306,8 +2274,6 @@ class GeoPointField(BaseField):
         representing a geo point. It admits 2d indexes but not "2dsphere" indexes
         in MongoDB > 2.4 which are more natural for modeling geospatial points.
         See :ref:`geospatial-indexes`
-
-    .. versionadded:: 0.4
     """
 
     _geo_index = pymongo.GEO2D
@@ -2339,8 +2305,6 @@ class PointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "Point"
@@ -2359,8 +2323,6 @@ class LineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "LineString"
@@ -2382,8 +2344,6 @@ class PolygonField(GeoJsonBaseField):
     holes.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "Polygon"
@@ -2403,8 +2363,6 @@ class MultiPointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiPoint"
@@ -2424,8 +2382,6 @@ class MultiLineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiLineString"
@@ -2452,8 +2408,6 @@ class MultiPolygonField(GeoJsonBaseField):
     of Polygons.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiPolygon"
@@ -2466,8 +2420,6 @@ class LazyReferenceField(BaseField):
     Instead, access will return a :class:`~mongoengine.base.LazyReference` class
     instance, allowing access to `pk` or manual dereference by using
     ``fetch()`` method.
-
-    .. versionadded:: 0.15
     """
 
     def __init__(
@@ -2630,8 +2582,6 @@ class GenericLazyReferenceField(GenericReferenceField):
           it.
 
         * You can use the choices param to limit the acceptable Document types
-
-    .. versionadded:: 0.15
     """
 
     def __init__(self, *args, **kwargs):

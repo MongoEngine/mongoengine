@@ -1,5 +1,4 @@
 import re
-import warnings
 
 from bson.dbref import DBRef
 import pymongo
@@ -367,15 +366,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
-        .. versionchanged:: 0.8.5
-            Optional save_condition that only overwrites existing documents
-            if the condition is satisfied in the current db record.
-        .. versionchanged:: 0.10
-            :class:`OperationError` exception raised if save_condition fails.
-        .. versionchanged:: 0.10.1
-            :class: save_condition failure now raises a `SaveConditionError`
-        .. versionchanged:: 0.10.7
-            Add signal_kwargs argument
         """
         signal_kwargs = signal_kwargs or {}
 
@@ -714,8 +704,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
-
-        .. versionadded:: 0.5
         """
         DeReference = _import_class("DeReference")
         DeReference()([self], max_depth + 1)
@@ -726,10 +714,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         :param fields: (optional) args list of fields to reload
         :param max_depth: (optional) depth of dereferencing to follow
-
-        .. versionadded:: 0.1.2
-        .. versionchanged:: 0.6  Now chainable
-        .. versionchanged:: 0.9  Can provide specific fields to reload
         """
         max_depth = 1
         if fields and isinstance(fields[0], int):
@@ -1088,8 +1072,6 @@ class MapReduceDocument:
                 an ``ObjectId`` found in the given ``collection``,
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.
-
-    .. versionadded:: 0.3
     """
 
     def __init__(self, document, collection, key, value):
