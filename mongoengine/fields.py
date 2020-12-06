@@ -105,21 +105,22 @@ class StringField(BaseField):
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
         self.min_length = min_length
-        self._kwargs = kwargs
         super().__init__(**kwargs)
 
     def __deepcopy__(self, memo):
-        memo[id(self)] = self
-
         regex_bak = self.regex
-        self.regex = None
+        deepcopy_bak = self.__deepcopy__
 
+        self.regex = None
+        self.__deepcopy__ = (
+            None  # Lib/copy.py will use original deepcopy implementation
+        )
         copied_obj = copy.deepcopy(self, memo)
 
-        copied_obj.regex = (
-            re.compile(regex_bak.pattern) if regex_bak is not None else None
-        )
+        copied_obj.regex = regex_bak
+        copied_obj.__deepcopy__ = copy.deepcopy(deepcopy_bak)
         self.regex = regex_bak
+        self.__deepcopy__ = deepcopy_bak
 
         return copied_obj
 

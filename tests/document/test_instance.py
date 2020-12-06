@@ -1,3 +1,4 @@
+import copy
 import os
 import pickle
 import unittest
@@ -3769,6 +3770,24 @@ class TestDocumentInstance(MongoDBTestCase):
             value
         )
 
+    def test_from_son_with_auto_dereference_disabled(self):
+        class User(Document):
+            name = StringField(regex=r"(^ABC\d\d\d\d$)")
+
+        data = {"name": "ABC0000"}
+        user_obj = User._from_son(son=data, _auto_dereference=False)
+
+        assert user_obj._fields["name"] is not User.name
+        assert (
+            user_obj._fields["name"].regex is User.name.regex
+        )  # Compiled regex are atomic
+
+        copied_user = copy.deepcopy(user_obj)
+        assert user_obj._fields["name"] is not copied_user._fields["name"]
+        assert (
+            user_obj._fields["name"].regex is copied_user._fields["name"].regex
+        )  # Compiled regex are atomic
+
 
 class ObjectKeyTestCase(MongoDBTestCase):
     def test_object_key_simple_document(self):
@@ -3910,13 +3929,6 @@ class DBFieldMappingTest(MongoDBTestCase):
             reloaded.z1,
             reloaded.z2,
         ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
-
-    def test_from_son_with_compiled_regex(self):
-        class User(DynamicDocument):
-            re_str = StringField(regex=r"(^ABC\d\d\d\d$)")
-
-        data = {"re_str": "ABC0000"}
-        User._from_son(son=data, _auto_dereference=False)
 
 
 if __name__ == "__main__":
