@@ -16,8 +16,6 @@ __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
-
-    .. versionchanged:: 0.5 - added verbose and help text
     """
 
     name = None
@@ -265,8 +263,6 @@ class ComplexBaseField(BaseField):
     Allows for nesting of embedded documents inside complex types.
     Handles the lazy dereferencing of a queryset by lazily dereferencing all
     items in a list / dict rather than one at a time.
-
-    .. versionadded:: 0.5
     """
 
     field = None
@@ -521,8 +517,6 @@ class ObjectIdField(BaseField):
 
 class GeoJsonBaseField(BaseField):
     """A geo json field storing a geojson style object.
-
-    .. versionadded:: 0.8
     """
 
     _geo_index = pymongo.GEOSPHERE

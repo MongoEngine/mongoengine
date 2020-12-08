@@ -74,8 +74,6 @@ def _get_connection_settings(
     : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
-
-    .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
         "name": name or db or DEFAULT_DATABASE_NAME,
@@ -201,8 +199,6 @@ def register_connection(
     : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
-
-    .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = _get_connection_settings(
         db=db,
@@ -386,8 +382,6 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
     See the docstring for `register_connection` for more details about all
     supported kwargs.
-
-    .. versionchanged:: 0.6 - added multiple database support.
     """
     if alias in _connections:
         prev_conn_setting = _connection_settings[alias]

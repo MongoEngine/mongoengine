@@ -2,8 +2,6 @@
 GridFS
 ======
 
-.. versionadded:: 0.4
-
 Writing
 -------
 
