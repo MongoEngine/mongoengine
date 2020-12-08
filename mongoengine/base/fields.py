@@ -1,5 +1,4 @@
 import operator
-import warnings
 import weakref
 
 from bson import DBRef, ObjectId, SON
@@ -18,7 +17,7 @@ class BaseField:
     may be added to subclasses of `Document` to define a document's schema.
     """
 
-    name = None
+    name = None  # set in TopLevelDocumentMetaclass
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
     _auto_dereference = True
@@ -265,7 +264,9 @@ class ComplexBaseField(BaseField):
     items in a list / dict rather than one at a time.
     """
 
-    field = None
+    def __init__(self, field=None, **kwargs):
+        self.field = field
+        super().__init__(**kwargs)
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
