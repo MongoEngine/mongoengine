@@ -36,7 +36,6 @@ from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
@@ -546,10 +545,10 @@ class DateTimeField(BaseField):
         if callable(value):
             return value()
 
-        if not isinstance(value, str):
+        if isinstance(value, str):
+            return self._parse_datetime(value)
+        else:
             return None
-
-        return self._parse_datetime(value)
 
     def _parse_datetime(self, value):
         # Attempt to parse a datetime from a string
@@ -913,10 +912,9 @@ class ListField(ComplexBaseField):
     """
 
     def __init__(self, field=None, max_length=None, **kwargs):
-        self.field = field
         self.max_length = max_length
         kwargs.setdefault("default", lambda: [])
-        super().__init__(**kwargs)
+        super().__init__(field=field, **kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -1004,14 +1002,9 @@ class SortedListField(ListField):
     .. versionchanged:: 0.6 - added reverse keyword
     """
 
-    _ordering = None
-    _order_reverse = False
-
     def __init__(self, field, **kwargs):
-        if "ordering" in kwargs.keys():
-            self._ordering = kwargs.pop("ordering")
-        if "reverse" in kwargs.keys():
-            self._order_reverse = kwargs.pop("reverse")
+        self._ordering = kwargs.pop("ordering", None)
+        self._order_reverse = kwargs.pop("reverse", False)
         super().__init__(field, **kwargs)
 
     def to_mongo(self, value, use_db_field=True, fields=None):
@@ -1064,11 +1057,10 @@ class DictField(ComplexBaseField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        self.field = field
         self._auto_dereference = False
 
         kwargs.setdefault("default", lambda: {})
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, field=field, **kwargs)
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""

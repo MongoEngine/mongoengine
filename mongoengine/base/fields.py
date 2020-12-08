@@ -1,5 +1,4 @@
 import operator
-import warnings
 import weakref
 
 from bson import DBRef, ObjectId, SON
@@ -20,7 +19,7 @@ class BaseField:
     .. versionchanged:: 0.5 - added verbose and help text
     """
 
-    name = None
+    name = None  # set in TopLevelDocumentMetaclass
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
     _auto_dereference = True
@@ -269,7 +268,9 @@ class ComplexBaseField(BaseField):
     .. versionadded:: 0.5
     """
 
-    field = None
+    def __init__(self, field=None, **kwargs):
+        self.field = field
+        super().__init__(**kwargs)
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
