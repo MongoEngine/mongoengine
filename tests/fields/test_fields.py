@@ -1357,9 +1357,9 @@ class TestField(MongoDBTestCase):
         foo.delete()
         bar = Bar.objects.get()
         with pytest.raises(DoesNotExist):
-            getattr(bar, "ref")
+            bar.ref
         with pytest.raises(DoesNotExist):
-            getattr(bar, "generic_ref")
+            bar.generic_ref
 
         # When auto_dereference is disabled, there is no trouble returning DBRef
         bar = Bar.objects.get()

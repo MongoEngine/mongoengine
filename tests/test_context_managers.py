@@ -180,11 +180,11 @@ class TestContextManagers:
 
         with no_dereference(Group) as Group:
             group = Group.objects.first()
-            assert all([not isinstance(m, User) for m in group.members])
+            assert all(not isinstance(m, User) for m in group.members)
             assert not isinstance(group.ref, User)
             assert not isinstance(group.generic, User)
 
-        assert all([isinstance(m, User) for m in group.members])
+        assert all(isinstance(m, User) for m in group.members)
         assert isinstance(group.ref, User)
         assert isinstance(group.generic, User)
 

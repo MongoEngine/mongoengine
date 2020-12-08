@@ -60,7 +60,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
             assert log == log1
 
         # Test string padding
-        microsecond = map(int, [math.pow(10, x) for x in range(6)])
+        microsecond = map(int, (math.pow(10, x) for x in range(6)))
         mm = dd = hh = ii = ss = [1, 10]
 
         for values in itertools.product([2014], mm, dd, hh, ii, ss, microsecond):

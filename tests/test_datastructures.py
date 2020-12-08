@@ -421,7 +421,7 @@ class TestStrictDict(unittest.TestCase):
         d.a = 1
         assert d.a == 1
         with pytest.raises(AttributeError):
-            getattr(d, "b")
+            d.b
 
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()

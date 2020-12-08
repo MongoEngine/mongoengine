@@ -5,7 +5,6 @@ from decimal import Decimal
 
 from bson import DBRef, ObjectId
 import pymongo
-from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 import pytest
@@ -449,7 +448,7 @@ class TestQueryset(unittest.TestCase):
 
         # test iterating over the result set
         cnt = 0
-        for a in A.objects.batch_size(10):
+        for _ in A.objects.batch_size(10):
             cnt += 1
         assert cnt == 100
 
@@ -457,7 +456,7 @@ class TestQueryset(unittest.TestCase):
         qs = A.objects.all()
         qs = qs.limit(10).batch_size(20).skip(91)
         cnt = 0
-        for a in qs:
+        for _ in qs:
             cnt += 1
         assert cnt == 9
 
@@ -1146,7 +1145,7 @@ class TestQueryset(unittest.TestCase):
         people2 = [person for person in queryset]
 
         # Check that it still works even if iteration is interrupted.
-        for person in queryset:
+        for _person in queryset:
             break
         people3 = [person for person in queryset]
 
@@ -1182,7 +1181,7 @@ class TestQueryset(unittest.TestCase):
         assert "[<Doc: 1>, <Doc: 2>, <Doc: 3>]" == "%s" % docs
 
         assert docs.count(with_limit_and_skip=True) == 3
-        for doc in docs:
+        for _ in docs:
             assert ".. queryset mid-iteration .." == repr(docs)
 
     def test_regex_query_shortcuts(self):
@@ -3171,10 +3170,10 @@ class TestQueryset(unittest.TestCase):
 
         Test.drop_collection()
 
-        for i in range(50):
+        for _ in range(50):
             Test(val=1).save()
 
-        for i in range(20):
+        for _ in range(20):
             Test(val=2).save()
 
         freqs = Test.objects.item_frequencies("val", map_reduce=False, normalize=True)
@@ -3207,7 +3206,7 @@ class TestQueryset(unittest.TestCase):
 
         for i, weight in enumerate(ages):
             self.Person(
-                name="test meta%i", person_meta=self.PersonMeta(weight=weight)
+                name=f"test meta{i}", person_meta=self.PersonMeta(weight=weight)
             ).save()
 
         assert (
@@ -3246,7 +3245,7 @@ class TestQueryset(unittest.TestCase):
 
         # test summing over a filtered queryset
         assert self.Person.objects.filter(age__gte=50).sum("age") == sum(
-            [a for a in ages if a >= 50]
+            a for a in ages if a >= 50
         )
 
     def test_sum_over_db_field(self):

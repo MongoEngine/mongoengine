@@ -49,7 +49,7 @@ class FieldTest(unittest.TestCase):
             len(group_obj.members)
             assert q == 2
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
         # Document select_related
@@ -58,7 +58,7 @@ class FieldTest(unittest.TestCase):
 
             group_obj = Group.objects.first().select_related()
             assert q == 2
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
         # Queryset select_related
@@ -67,7 +67,7 @@ class FieldTest(unittest.TestCase):
             group_objs = Group.objects.select_related()
             assert q == 2
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 2
 
         User.drop_collection()
@@ -99,14 +99,14 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
             assert group_obj._data["members"]._dereferenced
 
             # verifies that no additional queries gets executed
             # if we re-iterate over the ListField once it is
             # dereferenced
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
             assert group_obj._data["members"]._dereferenced
 
@@ -117,7 +117,7 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
 
             assert q == 2
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
         # Queryset select_related
@@ -126,7 +126,7 @@ class FieldTest(unittest.TestCase):
             group_objs = Group.objects.select_related()
             assert q == 2
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 2
 
     def test_list_item_dereference_orphan_dbref(self):
@@ -158,14 +158,14 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
             assert group_obj._data["members"]._dereferenced
 
             # verifies that no additional queries gets executed
             # if we re-iterate over the ListField once it is
             # dereferenced
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
             assert group_obj._data["members"]._dereferenced
 
@@ -505,10 +505,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for m in group_obj.members:
@@ -521,10 +521,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for m in group_obj.members:
@@ -538,10 +538,10 @@ class FieldTest(unittest.TestCase):
             assert q == 4
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
                 for m in group_obj.members:
@@ -592,11 +592,11 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
             assert group_obj._data["members"]._dereferenced
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
             assert group_obj._data["members"]._dereferenced
 
@@ -648,10 +648,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for m in group_obj.members:
@@ -664,10 +664,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for m in group_obj.members:
@@ -681,10 +681,10 @@ class FieldTest(unittest.TestCase):
             assert q == 4
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
                 for m in group_obj.members:
@@ -723,10 +723,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
-            for k, m in group_obj.members.items():
+            for _, m in group_obj.members.items():
                 assert isinstance(m, User)
 
         # Document select_related
@@ -736,7 +736,7 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 2
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
             for k, m in group_obj.members.items():
@@ -750,7 +750,7 @@ class FieldTest(unittest.TestCase):
             assert q == 2
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 2
 
                 for k, m in group_obj.members.items():
@@ -801,10 +801,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for k, m in group_obj.members.items():
@@ -817,10 +817,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
             for k, m in group_obj.members.items():
@@ -834,10 +834,10 @@ class FieldTest(unittest.TestCase):
             assert q == 4
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
                 for k, m in group_obj.members.items():
@@ -852,7 +852,7 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 1
             assert group_obj.members == {}
 
@@ -891,10 +891,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
             for k, m in group_obj.members.items():
@@ -907,10 +907,10 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 2
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 2
 
             for k, m in group_obj.members.items():
@@ -924,13 +924,13 @@ class FieldTest(unittest.TestCase):
             assert q == 2
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 2
 
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 2
 
-                for k, m in group_obj.members.items():
+                for _, m in group_obj.members.items():
                     assert isinstance(m, UserA)
 
         UserA.drop_collection()
@@ -978,13 +978,13 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in group_obj.members.items():
+            for _, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Document select_related
@@ -994,13 +994,13 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first().select_related()
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 4
 
-            for k, m in group_obj.members.items():
+            for _, m in group_obj.members.items():
                 assert "User" in m.__class__.__name__
 
         # Queryset select_related
@@ -1011,13 +1011,13 @@ class FieldTest(unittest.TestCase):
             assert q == 4
 
             for group_obj in group_objs:
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
-                [m for m in group_obj.members]
+                _ = [m for m in group_obj.members]
                 assert q == 4
 
-                for k, m in group_obj.members.items():
+                for _, m in group_obj.members.items():
                     assert "User" in m.__class__.__name__
 
         Group.objects.delete()
@@ -1029,7 +1029,7 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
             assert q == 1
 
-            [m for m in group_obj.members]
+            _ = [m for m in group_obj.members]
             assert q == 1
 
         UserA.drop_collection()

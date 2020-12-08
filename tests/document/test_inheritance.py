@@ -280,7 +280,7 @@ class TestInheritance(MongoDBTestCase):
         C.ensure_indexes()
 
         assert sorted(
-            [idx["key"] for idx in C._get_collection().index_information().values()]
+            idx["key"] for idx in C._get_collection().index_information().values()
         ) == sorted([[("_cls", 1), ("b", 1)], [("_id", 1)], [("_cls", 1), ("a", 1)]])
 
     def test_polymorphic_queries(self):
@@ -467,7 +467,7 @@ class TestInheritance(MongoDBTestCase):
         assert city.pk is None
         # TODO: expected error? Shouldn't we create a new error type?
         with pytest.raises(KeyError):
-            setattr(city, "pk", 1)
+            city.pk = 1
 
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance."""
@@ -499,13 +499,8 @@ class TestInheritance(MongoDBTestCase):
         class DateUpdatedDocument(Document):
             meta = {"allow_inheritance": True, "abstract": True}
 
-        try:
-
-            class MyDocument(DateCreatedDocument, DateUpdatedDocument):
-                pass
-
-        except Exception:
-            assert False, "Couldn't create MyDocument class"
+        class MyDocument(DateCreatedDocument, DateUpdatedDocument):
+            pass
 
     def test_abstract_documents(self):
         """Ensure that a document superclass can be marked as abstract

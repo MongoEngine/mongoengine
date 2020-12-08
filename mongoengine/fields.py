@@ -1743,7 +1743,7 @@ class GridFSProxy:
 
     def __str__(self):
         gridout = self.get()
-        filename = getattr(gridout, "filename") if gridout else "<no file>"
+        filename = gridout.filename if gridout else "<no file>"
         return f"<{self.__class__.__name__}: {filename} ({self.grid_id})>"
 
     def __eq__(self, other):

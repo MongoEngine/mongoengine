@@ -51,10 +51,10 @@ class DeReference:
                 doc_type = doc_type.document_type
                 is_list = not hasattr(items, "items")
 
-                if is_list and all([i.__class__ == doc_type for i in items]):
+                if is_list and all(i.__class__ == doc_type for i in items):
                     return items
                 elif not is_list and all(
-                    [i.__class__ == doc_type for i in items.values()]
+                    i.__class__ == doc_type for i in items.values()
                 ):
                     return items
                 elif not field.dbref:

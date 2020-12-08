@@ -11,7 +11,7 @@ from mongoengine import *
 from mongoengine.connection import get_db
 
 try:
-    from PIL import Image
+    from PIL import Image  # noqa: F401
 
     HAS_PIL = True
 except ImportError:

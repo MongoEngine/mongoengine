@@ -210,10 +210,7 @@ class TestValidatorError(MongoDBTestCase):
         child.reference = parent
 
         # Saving the child should not raise a ValidationError
-        try:
-            child.save()
-        except ValidationError as e:
-            self.fail("ValidationError raised: %s" % e.message)
+        child.save()
 
 
 if __name__ == "__main__":

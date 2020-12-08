@@ -89,9 +89,7 @@ class BaseDocument:
                 list(self._fields.keys()) + ["id", "pk", "_cls", "_text_score"]
             )
             if _undefined_fields:
-                msg = ('The fields "{}" do not exist on the document "{}"').format(
-                    _undefined_fields, self._class_name
-                )
+                msg = f'The fields "{_undefined_fields}" do not exist on the document "{self._class_name}"'
                 raise FieldDoesNotExist(msg)
 
         if self.STRICT and not self._dynamic:
@@ -231,10 +229,10 @@ class BaseDocument:
                 setattr(self, k, data[k])
         if "_fields_ordered" in data:
             if self._dynamic:
-                setattr(self, "_fields_ordered", data["_fields_ordered"])
+                self._fields_ordered = data["_fields_ordered"]
             else:
                 _super_fields_ordered = type(self)._fields_ordered
-                setattr(self, "_fields_ordered", _super_fields_ordered)
+                self._fields_ordered = _super_fields_ordered
 
         dynamic_fields = data.get("_dynamic_fields") or SON()
         for k in dynamic_fields.keys():
@@ -576,7 +574,7 @@ class BaseDocument:
         else:
             iterator = data.items()
 
-        for index_or_key, value in iterator:
+        for _index_or_key, value in iterator:
             if hasattr(value, "_get_changed_fields") and not isinstance(
                 value, Document
             ):  # don't follow references
@@ -999,9 +997,7 @@ class BaseDocument:
             "PolygonField",
         )
 
-        geo_field_types = tuple(
-            [_import_class(field) for field in geo_field_type_names]
-        )
+        geo_field_types = tuple(_import_class(field) for field in geo_field_type_names)
 
         for field in cls._fields.values():
             if not isinstance(field, geo_field_types):

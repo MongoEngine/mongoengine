@@ -29,7 +29,7 @@ class TestClassMethods(unittest.TestCase):
         """Ensure that document may be defined using fields."""
         assert ["_cls", "age", "id", "name"] == sorted(self.Person._fields.keys())
         assert ["IntField", "ObjectIdField", "StringField", "StringField"] == sorted(
-            [x.__class__.__name__ for x in self.Person._fields.values()]
+            x.__class__.__name__ for x in self.Person._fields.values()
         )
 
     def test_get_db(self):
