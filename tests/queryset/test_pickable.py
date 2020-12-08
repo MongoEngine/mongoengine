@@ -18,7 +18,7 @@ class TestQuerysetPickable(MongoDBTestCase):
     """
 
     def setUp(self):
-        super(TestQuerysetPickable, self).setUp()
+        super().setUp()
         self.john = Person.objects.create(name="John", age=21)
 
     def test_picke_simple_qs(self):

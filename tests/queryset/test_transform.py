@@ -328,7 +328,7 @@ class TestTransform(unittest.TestCase):
         word = Word(word="abc", index=1)
         update = transform.update(MainDoc, pull__content__text=word)
         assert update == {
-            "$pull": {"content.text": SON([("word", u"abc"), ("index", 1)])}
+            "$pull": {"content.text": SON([("word", "abc"), ("index", 1)])}
         }
 
         update = transform.update(MainDoc, pull__content__heading="xyz")

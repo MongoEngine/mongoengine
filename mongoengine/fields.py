@@ -189,11 +189,11 @@ class URLField(StringField):
         # Check first if the scheme is valid
         scheme = value.split("://")[0].lower()
         if scheme not in self.schemes:
-            self.error("Invalid scheme {} in URL: {}".format(scheme, value))
+            self.error(f"Invalid scheme {scheme} in URL: {value}")
 
         # Then check full URL
         if not self.url_regex.match(value):
-            self.error("Invalid URL: {}".format(value))
+            self.error(f"Invalid URL: {value}")
 
 
 class EmailField(StringField):
@@ -233,7 +233,7 @@ class EmailField(StringField):
         allow_utf8_user=False,
         allow_ip_domain=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         :param domain_whitelist: (optional) list of valid domain names applied during validation
@@ -440,7 +440,7 @@ class DecimalField(BaseField):
         force_string=False,
         precision=2,
         rounding=decimal.ROUND_HALF_UP,
-        **kwargs
+        **kwargs,
     ):
         """
         :param min_value: (optional) A min value that will be applied during validation
@@ -1337,7 +1337,7 @@ class CachedReferenceField(BaseField):
             return None
 
         update_kwargs = {
-            "set__{}__{}".format(self.name, key): val
+            f"set__{self.name}__{key}": val
             for key, val in document._delta()[0].items()
             if key in self.fields
         }
@@ -1739,12 +1739,12 @@ class GridFSProxy:
         return self.__copy__()
 
     def __repr__(self):
-        return "<{}: {}>".format(self.__class__.__name__, self.grid_id)
+        return f"<{self.__class__.__name__}: {self.grid_id}>"
 
     def __str__(self):
         gridout = self.get()
         filename = getattr(gridout, "filename") if gridout else "<no file>"
-        return "<{}: {} ({})>".format(self.__class__.__name__, filename, self.grid_id)
+        return f"<{self.__class__.__name__}: {filename} ({self.grid_id})>"
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
@@ -2120,7 +2120,7 @@ class SequenceField(BaseField):
         sequence_name=None,
         value_decorator=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
@@ -2135,7 +2135,7 @@ class SequenceField(BaseField):
         Generate and Increment the counter
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
 
         counter = collection.find_one_and_update(
@@ -2149,7 +2149,7 @@ class SequenceField(BaseField):
     def set_next_value(self, value):
         """Helper method to set the next sequence value"""
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_one_and_update(
             filter={"_id": sequence_id},
@@ -2166,7 +2166,7 @@ class SequenceField(BaseField):
         as it is only fixed on set.
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
         data = collection.find_one({"_id": sequence_id})
 
@@ -2427,7 +2427,7 @@ class LazyReferenceField(BaseField):
         passthrough=False,
         dbref=False,
         reverse_delete_rule=DO_NOTHING,
-        **kwargs
+        **kwargs,
     ):
         """Initialises the Reference Field.
 

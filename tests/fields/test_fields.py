@@ -292,7 +292,7 @@ class TestField(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u"spam ham egg"
+        doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.com_dt_fld = datetime.datetime.utcnow()
@@ -328,7 +328,7 @@ class TestField(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u"spam ham egg"
+        doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.comp_dt_fld = datetime.datetime.utcnow()
@@ -426,9 +426,9 @@ class TestField(MongoDBTestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
         access_level_choices = (
-            ("a", u"Administration"),
-            ("b", u"Manager"),
-            ("c", u"Staff"),
+            ("a", "Administration"),
+            ("b", "Manager"),
+            ("c", "Staff"),
         )
 
         class User(Document):
@@ -476,7 +476,7 @@ class TestField(MongoDBTestCase):
         post.access_list = ["a", "b"]
         post.validate()
 
-        assert post.get_access_list_display() == u"Administration, Manager"
+        assert post.get_access_list_display() == "Administration, Manager"
 
         post.comments = ["a"]
         with pytest.raises(ValidationError):
@@ -2028,8 +2028,8 @@ class TestField(MongoDBTestCase):
         """Ensure that error messages are correct."""
         SIZES = ("S", "M", "L", "XL", "XXL")
         COLORS = (("R", "Red"), ("B", "Blue"))
-        SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
-        COLOR_MESSAGE = u"Value must be one of ['R', 'B']"
+        SIZE_MESSAGE = "Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
+        COLOR_MESSAGE = "Value must be one of ['R', 'B']"
 
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZES)
@@ -2092,7 +2092,7 @@ class TestField(MongoDBTestCase):
             assert "comments" in error_dict
             assert 1 in error_dict["comments"]
             assert "content" in error_dict["comments"][1]
-            assert error_dict["comments"][1]["content"] == u"Field is required"
+            assert error_dict["comments"][1]["content"] == "Field is required"
 
         post.comments[1].content = "here we go"
         post.validate()
@@ -2104,7 +2104,7 @@ class TestField(MongoDBTestCase):
 
         class EnumField(BaseField):
             def __init__(self, **kwargs):
-                super(EnumField, self).__init__(**kwargs)
+                super().__init__(**kwargs)
 
             def to_mongo(self, value):
                 return value
@@ -2606,11 +2606,11 @@ class TestEmbeddedDocumentListField(MongoDBTestCase):
         """
         post = self.BlogPost(
             comments=[
-                self.Comments(author="user1", message=u"сообщение"),
-                self.Comments(author="user2", message=u"хабарлама"),
+                self.Comments(author="user1", message="сообщение"),
+                self.Comments(author="user2", message="хабарлама"),
             ]
         ).save()
-        assert post.comments.get(message=u"сообщение").author == "user1"
+        assert post.comments.get(message="сообщение").author == "user1"
 
     def test_save(self):
         """

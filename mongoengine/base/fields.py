@@ -40,7 +40,7 @@ class BaseField:
         choices=None,
         null=False,
         sparse=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param db_field: The database field to store this field in
@@ -465,9 +465,7 @@ class ComplexBaseField(BaseField):
 
             if errors:
                 field_class = self.field.__class__.__name__
-                self.error(
-                    "Invalid {} item ({})".format(field_class, value), errors=errors
-                )
+                self.error(f"Invalid {field_class} item ({value})", errors=errors)
         # Don't allow empty values if required
         if self.required and not value:
             self.error("Field is required and cannot be empty")
@@ -537,7 +535,7 @@ class GeoJsonBaseField(BaseField):
         if isinstance(value, dict):
             if set(value.keys()) == {"type", "coordinates"}:
                 if value["type"] != self._type:
-                    self.error('{} type must be "{}"'.format(self._name, self._type))
+                    self.error(f'{self._name} type must be "{self._type}"')
                 return self.validate(value["coordinates"])
             else:
                 self.error(

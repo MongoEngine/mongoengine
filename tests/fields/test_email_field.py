@@ -30,11 +30,11 @@ class TestEmailField(MongoDBTestCase):
             user.validate()
 
         # unicode domain
-        user = User(email=u"user@пример.рф")
+        user = User(email="user@пример.рф")
         user.validate()
 
         # invalid unicode domain
-        user = User(email=u"user@пример")
+        user = User(email="user@пример")
         with pytest.raises(ValidationError):
             user.validate()
 
@@ -48,7 +48,7 @@ class TestEmailField(MongoDBTestCase):
             email = EmailField()
 
         # unicode user shouldn't validate by default...
-        user = User(email=u"Dörte@Sörensen.example.com")
+        user = User(email="Dörte@Sörensen.example.com")
         with pytest.raises(ValidationError):
             user.validate()
 
@@ -56,7 +56,7 @@ class TestEmailField(MongoDBTestCase):
         class User(Document):
             email = EmailField(allow_utf8_user=True)
 
-        user = User(email=u"Dörte@Sörensen.example.com")
+        user = User(email="Dörte@Sörensen.example.com")
         user.validate()
 
     def test_email_field_domain_whitelist(self):

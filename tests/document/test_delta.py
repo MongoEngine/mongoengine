@@ -8,7 +8,7 @@ from tests.utils import MongoDBTestCase
 
 class TestDelta(MongoDBTestCase):
     def setUp(self):
-        super(TestDelta, self).setUp()
+        super().setUp()
 
         class Person(Document):
             name = StringField()

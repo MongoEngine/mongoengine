@@ -8,7 +8,7 @@ class TestGeoField(MongoDBTestCase):
     def _test_for_expected_error(self, Cls, loc, expected):
         try:
             Cls(loc=loc).validate()
-            self.fail("Should not validate the location {0}".format(loc))
+            self.fail(f"Should not validate the location {loc}")
         except ValidationError as e:
             assert expected == e.to_dict()["loc"]
 

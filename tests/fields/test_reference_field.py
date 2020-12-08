@@ -87,7 +87,7 @@ class TestReferenceField(MongoDBTestCase):
             parent = ReferenceField("self", dbref=False)
 
         p = Person(name="Steve", parent=DBRef("person", "abcdefghijklmnop"))
-        assert p.to_mongo() == SON([("name", u"Steve"), ("parent", "abcdefghijklmnop")])
+        assert p.to_mongo() == SON([("name", "Steve"), ("parent", "abcdefghijklmnop")])
 
     def test_objectid_reference_fields(self):
         class Person(Document):

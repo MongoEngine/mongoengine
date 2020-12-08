@@ -113,7 +113,7 @@ class TestQueryset(unittest.TestCase):
 
     def test_slicing_sets_empty_limit_skip(self):
         self.Person.objects.insert(
-            [self.Person(name="User {}".format(i), age=i) for i in range(5)],
+            [self.Person(name=f"User {i}", age=i) for i in range(5)],
             load_bulk=False,
         )
 
@@ -1570,9 +1570,9 @@ class TestQueryset(unittest.TestCase):
 
         results = BlogPost.objects.exec_js(code)
         expected_results = [
-            {u"comment": u"cool", u"document": u"post1"},
-            {u"comment": u"yay", u"document": u"post1"},
-            {u"comment": u"nice stuff", u"document": u"post2"},
+            {"comment": "cool", "document": "post1"},
+            {"comment": "yay", "document": "post1"},
+            {"comment": "nice stuff", "document": "post2"},
         ]
         assert results == expected_results
 
@@ -2721,10 +2721,10 @@ class TestQueryset(unittest.TestCase):
         f1.save()
 
         # persons of first family
-        Person(id=1, family=f1, name=u"Wilson Jr", age=21).save()
-        Person(id=2, family=f1, name=u"Wilson Father", age=45).save()
-        Person(id=3, family=f1, name=u"Eliana Costa", age=40).save()
-        Person(id=4, family=f1, name=u"Tayza Mariana", age=17).save()
+        Person(id=1, family=f1, name="Wilson Jr", age=21).save()
+        Person(id=2, family=f1, name="Wilson Father", age=45).save()
+        Person(id=3, family=f1, name="Eliana Costa", age=40).save()
+        Person(id=4, family=f1, name="Tayza Mariana", age=17).save()
 
         # creating second family
         f2 = Family(id=2, log="Av prof frasc brunno")
@@ -2802,10 +2802,10 @@ class TestQueryset(unittest.TestCase):
             "_id": 1,
             "value": {
                 "persons": [
-                    {"age": 21, "name": u"Wilson Jr"},
-                    {"age": 45, "name": u"Wilson Father"},
-                    {"age": 40, "name": u"Eliana Costa"},
-                    {"age": 17, "name": u"Tayza Mariana"},
+                    {"age": 21, "name": "Wilson Jr"},
+                    {"age": 45, "name": "Wilson Father"},
+                    {"age": 40, "name": "Eliana Costa"},
+                    {"age": 17, "name": "Tayza Mariana"},
                 ],
                 "totalAge": 123,
             },
@@ -2815,9 +2815,9 @@ class TestQueryset(unittest.TestCase):
             "_id": 2,
             "value": {
                 "persons": [
-                    {"age": 16, "name": u"Isabella Luanna"},
-                    {"age": 36, "name": u"Sandra Mara"},
-                    {"age": 10, "name": u"Igor Gabriel"},
+                    {"age": 16, "name": "Isabella Luanna"},
+                    {"age": 36, "name": "Sandra Mara"},
+                    {"age": 10, "name": "Igor Gabriel"},
                 ],
                 "totalAge": 62,
             },
@@ -2827,8 +2827,8 @@ class TestQueryset(unittest.TestCase):
             "_id": 3,
             "value": {
                 "persons": [
-                    {"age": 30, "name": u"Arthur WA"},
-                    {"age": 25, "name": u"Paula Leonel"},
+                    {"age": 30, "name": "Arthur WA"},
+                    {"age": 25, "name": "Paula Leonel"},
                 ],
                 "totalAge": 55,
             },
@@ -2974,7 +2974,7 @@ class TestQueryset(unittest.TestCase):
 
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            assert set(["music", "film", "actors", "watch"]) == set(f.keys())
+            assert {"music", "film", "actors", "watch"} == set(f.keys())
             assert f["music"] == 3
             assert f["actors"] == 2
             assert f["watch"] == 2
@@ -2988,7 +2988,7 @@ class TestQueryset(unittest.TestCase):
         # Ensure query is taken into account
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            assert set(["music", "actors", "watch"]) == set(f.keys())
+            assert {"music", "actors", "watch"} == set(f.keys())
             assert f["music"] == 2
             assert f["actors"] == 1
             assert f["watch"] == 1
@@ -3016,7 +3016,7 @@ class TestQueryset(unittest.TestCase):
 
         # Check item_frequencies works for non-list fields
         def test_assertions(f):
-            assert set([1, 2]) == set(f.keys())
+            assert {1, 2} == set(f.keys())
             assert f[1] == 1
             assert f[2] == 2
 
@@ -3053,7 +3053,7 @@ class TestQueryset(unittest.TestCase):
 
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            assert set(["62-3331-1656", "62-3332-1656"]) == set(f.keys())
+            assert {"62-3331-1656", "62-3332-1656"} == set(f.keys())
             assert f["62-3331-1656"] == 2
             assert f["62-3332-1656"] == 1
 
@@ -3065,7 +3065,7 @@ class TestQueryset(unittest.TestCase):
         # Ensure query is taken into account
         def test_assertions(f):
             f = {key: int(val) for key, val in f.items()}
-            assert set(["62-3331-1656"]) == set(f.keys())
+            assert {"62-3331-1656"} == set(f.keys())
             assert f["62-3331-1656"] == 2
 
         exec_js = Person.objects(phone__number="62-3331-1656").item_frequencies(
@@ -3132,10 +3132,10 @@ class TestQueryset(unittest.TestCase):
         p.save()
 
         ot = Person.objects.item_frequencies("extra.tag", map_reduce=False)
-        assert ot == {None: 1.0, u"friend": 1.0}
+        assert ot == {None: 1.0, "friend": 1.0}
 
         ot = Person.objects.item_frequencies("extra.tag", map_reduce=True)
-        assert ot == {None: 1.0, u"friend": 1.0}
+        assert ot == {None: 1.0, "friend": 1.0}
 
     def test_item_frequencies_with_0_values(self):
         class Test(Document):
@@ -3379,13 +3379,16 @@ class TestQueryset(unittest.TestCase):
         self.Person(name="Mr White", age=20).save()
         self.Person(name="Mr Orange", age=30).save()
         self.Person(name="Mr Pink", age=30).save()
-        assert set(self.Person.objects.distinct("name")) == set(
-            ["Mr Orange", "Mr White", "Mr Pink"]
-        )
-        assert set(self.Person.objects.distinct("age")) == set([20, 30])
-        assert set(self.Person.objects(age=30).distinct("name")) == set(
-            ["Mr Orange", "Mr Pink"]
-        )
+        assert set(self.Person.objects.distinct("name")) == {
+            "Mr Orange",
+            "Mr White",
+            "Mr Pink",
+        }
+        assert set(self.Person.objects.distinct("age")) == {20, 30}
+        assert set(self.Person.objects(age=30).distinct("name")) == {
+            "Mr Orange",
+            "Mr Pink",
+        }
 
     def test_distinct_handles_references(self):
         class Foo(Document):
@@ -3446,8 +3449,8 @@ class TestQueryset(unittest.TestCase):
         assert count == 1
 
         News(
-            title=u"As eleições no Brasil já estão em planejamento",
-            content=u"A candidata dilma roussef já começa o teu planejamento",
+            title="As eleições no Brasil já estão em planejamento",
+            content="A candidata dilma roussef já começa o teu planejamento",
             is_active=False,
         ).save()
 
@@ -3525,8 +3528,8 @@ class TestQueryset(unittest.TestCase):
         Product(product_id=2).save()
         Product(product_id=1).save()
 
-        assert set(Product.objects.distinct("product_id")) == set([1, 2])
-        assert set(Product.objects.distinct("pid")) == set([1, 2])
+        assert set(Product.objects.distinct("product_id")) == {1, 2}
+        assert set(Product.objects.distinct("pid")) == {1, 2}
 
         Product.drop_collection()
 
@@ -4222,15 +4225,15 @@ class TestQueryset(unittest.TestCase):
         ulist = list(UserDoc.objects.scalar("name", "age"))
 
         assert ulist == [
-            (u"Wilson Jr", 19),
-            (u"Wilson", 43),
-            (u"Eliana", 37),
-            (u"Tayza", 15),
+            ("Wilson Jr", 19),
+            ("Wilson", 43),
+            ("Eliana", 37),
+            ("Tayza", 15),
         ]
 
         ulist = list(UserDoc.objects.scalar("name").order_by("age"))
 
-        assert ulist == [(u"Tayza"), (u"Wilson Jr"), (u"Eliana"), (u"Wilson")]
+        assert ulist == [("Tayza"), ("Wilson Jr"), ("Eliana"), ("Wilson")]
 
     def test_scalar_embedded(self):
         class Profile(EmbeddedDocument):
@@ -4269,7 +4272,7 @@ class TestQueryset(unittest.TestCase):
 
         assert list(
             Person.objects.order_by("profile__age").scalar("profile__name")
-        ) == [u"Wilson Jr", u"Gabriel Falcao", u"Lincoln de souza", u"Walter cruz"]
+        ) == ["Wilson Jr", "Gabriel Falcao", "Lincoln de souza", "Walter cruz"]
 
         ulist = list(
             Person.objects.order_by("locale.city").scalar(
@@ -4277,10 +4280,10 @@ class TestQueryset(unittest.TestCase):
             )
         )
         assert ulist == [
-            (u"Lincoln de souza", 28, u"Belo Horizonte"),
-            (u"Walter cruz", 30, u"Brasilia"),
-            (u"Wilson Jr", 19, u"Corumba-GO"),
-            (u"Gabriel Falcao", 23, u"New York"),
+            ("Lincoln de souza", 28, "Belo Horizonte"),
+            ("Walter cruz", 30, "Brasilia"),
+            ("Wilson Jr", 19, "Corumba-GO"),
+            ("Gabriel Falcao", 23, "New York"),
         ]
 
     def test_scalar_decimal(self):
@@ -4294,7 +4297,7 @@ class TestQueryset(unittest.TestCase):
         Person(name="Wilson Jr", rating=Decimal("1.0")).save()
 
         ulist = list(Person.objects.scalar("name", "rating"))
-        assert ulist == [(u"Wilson Jr", Decimal("1.0"))]
+        assert ulist == [("Wilson Jr", Decimal("1.0"))]
 
     def test_scalar_reference_field(self):
         class State(Document):
@@ -4313,7 +4316,7 @@ class TestQueryset(unittest.TestCase):
         Person(name="Wilson JR", state=s1).save()
 
         plist = list(Person.objects.scalar("name", "state"))
-        assert plist == [(u"Wilson JR", s1)]
+        assert plist == [("Wilson JR", s1)]
 
     def test_scalar_generic_reference_field(self):
         class State(Document):
@@ -4332,7 +4335,7 @@ class TestQueryset(unittest.TestCase):
         Person(name="Wilson JR", state=s1).save()
 
         plist = list(Person.objects.scalar("name", "state"))
-        assert plist == [(u"Wilson JR", s1)]
+        assert plist == [("Wilson JR", s1)]
 
     def test_generic_reference_field_with_only_and_as_pymongo(self):
         class TestPerson(Document):
@@ -4863,13 +4866,11 @@ class TestQueryset(unittest.TestCase):
         )
 
         results = User.objects.as_pymongo()
-        assert set(results[0].keys()) == set(["_id", "name", "age", "price"])
-        assert set(results[1].keys()) == set(
-            ["_id", "name", "age", "price", "last_login"]
-        )
+        assert set(results[0].keys()) == {"_id", "name", "age", "price"}
+        assert set(results[1].keys()) == {"_id", "name", "age", "price", "last_login"}
 
         results = User.objects.only("id", "name").as_pymongo()
-        assert set(results[0].keys()) == set(["_id", "name"])
+        assert set(results[0].keys()) == {"_id", "name"}
 
         users = User.objects.only("name", "price").as_pymongo()
         results = list(users)
@@ -5501,12 +5502,12 @@ class TestQueryset(unittest.TestCase):
             assert Person.objects._has_data(), "Cursor has data and returned False"
 
     def test_delete_count(self):
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
+        [self.Person(name=f"User {i}", age=i * 10).save() for i in range(1, 4)]
         assert (
             self.Person.objects().delete() == 3
         )  # test ordinary QuerySey delete count
 
-        [self.Person(name="User {0}".format(i), age=i * 10).save() for i in range(1, 4)]
+        [self.Person(name=f"User {i}", age=i * 10).save() for i in range(1, 4)]
 
         assert (
             self.Person.objects().skip(1).delete() == 2

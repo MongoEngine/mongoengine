@@ -26,7 +26,7 @@ class TestURLField(MongoDBTestCase):
             url = URLField()
 
         link = Link()
-        link.url = u"http://привет.com"
+        link.url = "http://привет.com"
 
         # TODO fix URL validation - this *IS* a valid URL
         # For now we just want to make sure that the error message is correct
@@ -34,7 +34,7 @@ class TestURLField(MongoDBTestCase):
             link.validate()
         assert (
             str(exc_info.value)
-            == u"ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
+            == "ValidationError (Link:None) (Invalid URL: http://\u043f\u0440\u0438\u0432\u0435\u0442.com: ['url'])"
         )
 
     def test_url_scheme_validation(self):

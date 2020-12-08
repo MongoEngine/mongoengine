@@ -275,7 +275,7 @@ class BaseDocument:
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = "[Bad Unicode data]"
         repr_type = str if u is None else type(u)
-        return repr_type("<{}: {}>".format(self.__class__.__name__, u))
+        return repr_type(f"<{self.__class__.__name__}: {u}>")
 
     def __str__(self):
         # TODO this could be simpler?
@@ -431,7 +431,7 @@ class BaseDocument:
                 pk = self.pk
             elif self._instance and hasattr(self._instance, "pk"):
                 pk = self._instance.pk
-            message = "ValidationError ({}:{}) ".format(self._class_name, pk)
+            message = f"ValidationError ({self._class_name}:{pk}) "
             raise ValidationError(message, errors=errors)
 
     def to_json(self, *args, **kwargs):
@@ -504,7 +504,7 @@ class BaseDocument:
         if "." in key:
             key, rest = key.split(".", 1)
             key = self._db_field_map.get(key, key)
-            key = "{}.{}".format(key, rest)
+            key = f"{key}.{rest}"
         else:
             key = self._db_field_map.get(key, key)
 
@@ -600,7 +600,7 @@ class BaseDocument:
             iterator = data.items()
 
         for index_or_key, value in iterator:
-            item_key = "{}{}.".format(base_key, index_or_key)
+            item_key = f"{base_key}{index_or_key}."
             # don't check anything lower if this key is already marked
             # as changed.
             if item_key[:-1] in changed_fields:
@@ -608,7 +608,7 @@ class BaseDocument:
 
             if hasattr(value, "_get_changed_fields"):
                 changed = value._get_changed_fields()
-                changed_fields += ["{}{}".format(item_key, k) for k in changed if k]
+                changed_fields += [f"{item_key}{k}" for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
                 BaseDocument._nestable_types_changed_fields(
                     changed_fields, item_key, value
@@ -640,7 +640,7 @@ class BaseDocument:
             if isinstance(data, EmbeddedDocument):
                 # Find all embedded fields that have been changed
                 changed = data._get_changed_fields()
-                changed_fields += ["{}{}".format(key, k) for k in changed if k]
+                changed_fields += [f"{key}{k}" for k in changed if k]
             elif isinstance(data, (list, tuple, dict)):
                 if hasattr(field, "field") and isinstance(
                     field.field, (ReferenceField, GenericReferenceField)
@@ -792,9 +792,7 @@ class BaseDocument:
                     errors_dict[field_name] = e
 
         if errors_dict:
-            errors = "\n".join(
-                ["Field '{}' - {}".format(k, v) for k, v in errors_dict.items()]
-            )
+            errors = "\n".join([f"Field '{k}' - {v}" for k, v in errors_dict.items()])
             msg = "Invalid data to create a `{}` instance.\n{}".format(
                 cls._class_name,
                 errors,
@@ -965,10 +963,7 @@ class BaseDocument:
                     unique_fields += unique_with
 
                 # Add the new index to the list
-                fields = [
-                    ("{}{}".format(namespace, f), pymongo.ASCENDING)
-                    for f in unique_fields
-                ]
+                fields = [(f"{namespace}{f}", pymongo.ASCENDING) for f in unique_fields]
                 index = {"fields": fields, "unique": True, "sparse": sparse}
                 unique_indexes.append(index)
 
@@ -1024,7 +1019,7 @@ class BaseDocument:
             elif field._geo_index:
                 field_name = field.db_field
                 if parent_field:
-                    field_name = "{}.{}".format(parent_field, field_name)
+                    field_name = f"{parent_field}.{field_name}"
                 geo_indices.append({"fields": [(field_name, field._geo_index)]})
 
         return geo_indices

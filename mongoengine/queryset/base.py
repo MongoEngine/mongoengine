@@ -422,7 +422,7 @@ class BaseQuerySet:
         count = count_documents(
             collection=self._cursor.collection,
             filter=self._cursor._Cursor__spec,
-            **kwargs
+            **kwargs,
         )
 
         self._cursor_obj = None
@@ -526,7 +526,7 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
-        **update
+        **update,
     ):
         """Perform an atomic update on the fields matched by the query.
 
@@ -603,7 +603,7 @@ class BaseQuerySet:
             write_concern=write_concern,
             read_concern=read_concern,
             full_result=True,
-            **update
+            **update,
         )
 
         if atomic_update.raw_result["updatedExisting"]:
@@ -634,7 +634,7 @@ class BaseQuerySet:
             multi=False,
             write_concern=write_concern,
             full_result=full_result,
-            **update
+            **update,
         )
 
     def modify(
@@ -692,7 +692,7 @@ class BaseQuerySet:
                     upsert=upsert,
                     sort=sort,
                     return_document=return_doc,
-                    **self._cursor_args
+                    **self._cursor_args,
                 )
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError("Update failed (%s)" % err)
@@ -1194,7 +1194,7 @@ class BaseQuerySet:
             preference.
         """
         if read_concern is not None and not isinstance(read_concern, Mapping):
-            raise TypeError("%r is not a valid read concern." % (read_concern,))
+            raise TypeError(f"{read_concern!r} is not a valid read concern.")
 
         queryset = self.clone()
         queryset._read_concern = (

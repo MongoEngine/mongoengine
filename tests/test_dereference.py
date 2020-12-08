@@ -1321,7 +1321,7 @@ class FieldTest(unittest.TestCase):
         BrandGroup.drop_collection()
 
         brand1 = Brand(title="Moschino").save()
-        brand2 = Brand(title=u"Денис Симачёв").save()
+        brand2 = Brand(title="Денис Симачёв").save()
 
         BrandGroup(title="top_brands", brands=[brand1, brand2]).save()
         brand_groups = BrandGroup.objects().all()

@@ -6,7 +6,7 @@ from mongoengine import Document
 from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
 
 
-class DocumentStub(object):
+class DocumentStub:
     def __init__(self):
         self._changed_fields = []
         self._unset_fields = []

@@ -231,7 +231,7 @@ class TestClassMethods(unittest.TestCase):
         assert BlogPost.list_indexes() == [
             [("_cls", 1), ("author", 1), ("tags", 1)],
             [("_cls", 1), ("author", 1), ("tags", 1), ("extra_text", 1)],
-            [(u"_id", 1)],
+            [("_id", 1)],
             [("_cls", 1)],
         ]
 
@@ -288,7 +288,7 @@ class TestClassMethods(unittest.TestCase):
         assert "wibble" == InheritedAbstractNamingTest._get_collection_name()
 
         # Mixin tests
-        class BaseMixin(object):
+        class BaseMixin:
             meta = {"collection": lambda c: c.__name__.lower()}
 
         class OldMixinNamingConvention(Document, BaseMixin):
@@ -299,7 +299,7 @@ class TestClassMethods(unittest.TestCase):
             == OldMixinNamingConvention._get_collection_name()
         )
 
-        class BaseMixin(object):
+        class BaseMixin:
             meta = {"collection": lambda c: c.__name__.lower()}
 
         class BaseDocument(Document, BaseMixin):
