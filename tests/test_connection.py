@@ -194,14 +194,12 @@ class ConnectionTest(unittest.TestCase):
         assert len(mongoengine.connection._connections) == 3
 
     def test_connect_with_invalid_db_name(self):
-        """Ensure that connect() method fails fast if db name is invalid
-        """
+        """Ensure that connect() method fails fast if db name is invalid"""
         with pytest.raises(InvalidName):
             connect("mongomock://localhost")
 
     def test_connect_with_db_name_external(self):
-        """Ensure that connect() works if db name is $external
-        """
+        """Ensure that connect() works if db name is $external"""
         """Ensure that the connect() method works properly."""
         connect("$external")
 
@@ -217,16 +215,14 @@ class ConnectionTest(unittest.TestCase):
         assert isinstance(conn, pymongo.mongo_client.MongoClient)
 
     def test_connect_with_invalid_db_name_type(self):
-        """Ensure that connect() method fails fast if db name has invalid type
-        """
+        """Ensure that connect() method fails fast if db name has invalid type"""
         with pytest.raises(TypeError):
             non_string_db_name = ["e. g. list instead of a string"]
             connect(non_string_db_name)
 
     @require_mongomock
     def test_connect_in_mocking(self):
-        """Ensure that the connect() method works properly in mocking.
-        """
+        """Ensure that the connect() method works properly in mocking."""
         connect("mongoenginetest", host="mongomock://localhost")
         conn = get_connection()
         assert isinstance(conn, mongomock.MongoClient)
@@ -270,8 +266,7 @@ class ConnectionTest(unittest.TestCase):
 
     @require_mongomock
     def test_default_database_with_mocking(self):
-        """Ensure that the default database is correctly set when using mongomock.
-        """
+        """Ensure that the default database is correctly set when using mongomock."""
         disconnect_all()
 
         class SomeDocument(Document):
@@ -452,8 +447,7 @@ class ConnectionTest(unittest.TestCase):
         disconnect_all()
 
     def test_sharing_connections(self):
-        """Ensure that connections are shared when the connection settings are exactly the same
-        """
+        """Ensure that connections are shared when the connection settings are exactly the same"""
         connect("mongoenginetests", alias="testdb1")
         expected_connection = get_connection("testdb1")
 
@@ -564,8 +558,7 @@ class ConnectionTest(unittest.TestCase):
         authd_conn.admin.system.users.delete_many({})
 
     def test_register_connection(self):
-        """Ensure that connections with different aliases may be registered.
-        """
+        """Ensure that connections with different aliases may be registered."""
         register_connection("testdb", "mongoenginetest2")
 
         with pytest.raises(ConnectionFailure):
@@ -578,8 +571,7 @@ class ConnectionTest(unittest.TestCase):
         assert db.name == "mongoenginetest2"
 
     def test_register_connection_defaults(self):
-        """Ensure that defaults are used when the host and port are None.
-        """
+        """Ensure that defaults are used when the host and port are None."""
         register_connection("testdb", "mongoenginetest", host=None, port=None)
 
         conn = get_connection("testdb")

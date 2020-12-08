@@ -38,8 +38,7 @@ class TestURLField(MongoDBTestCase):
         )
 
     def test_url_scheme_validation(self):
-        """Ensure that URLFields validate urls with specific schemes properly.
-        """
+        """Ensure that URLFields validate urls with specific schemes properly."""
 
         class Link(Document):
             url = URLField()

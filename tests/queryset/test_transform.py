@@ -12,8 +12,7 @@ class TestTransform(unittest.TestCase):
         connect(db="mongoenginetest")
 
     def test_transform_query(self):
-        """Ensure that the _transform_query function operates correctly.
-        """
+        """Ensure that the _transform_query function operates correctly."""
         assert transform.query(name="test", age=30) == {"name": "test", "age": 30}
         assert transform.query(age__lt=30) == {"age": {"$lt": 30}}
         assert transform.query(age__gt=20, age__lt=50) == {
@@ -88,8 +87,7 @@ class TestTransform(unittest.TestCase):
         assert update == {"$set": {"tags": ["mongo", "db"]}}
 
     def test_query_field_name(self):
-        """Ensure that the correct field name is used when querying.
-        """
+        """Ensure that the correct field name is used when querying."""
 
         class Comment(EmbeddedDocument):
             content = StringField(db_field="commentContent")

@@ -9,8 +9,7 @@ from tests.utils import MongoDBTestCase
 
 class TestValidatorError(MongoDBTestCase):
     def test_to_dict(self):
-        """Ensure a ValidationError handles error to_dict correctly.
-        """
+        """Ensure a ValidationError handles error to_dict correctly."""
         error = ValidationError("root")
         assert error.to_dict() == {}
 
@@ -90,8 +89,7 @@ class TestValidatorError(MongoDBTestCase):
             p.validate()
 
     def test_embedded_document_validation(self):
-        """Ensure that embedded documents may be validated.
-        """
+        """Ensure that embedded documents may be validated."""
 
         class Comment(EmbeddedDocument):
             date = DateTimeField()

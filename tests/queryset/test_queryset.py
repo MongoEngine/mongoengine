@@ -60,8 +60,7 @@ class TestQueryset(unittest.TestCase):
         self.mongodb_version = get_mongodb_version()
 
     def test_initialisation(self):
-        """Ensure that a QuerySet is correctly initialised by QuerySetManager.
-        """
+        """Ensure that a QuerySet is correctly initialised by QuerySetManager."""
         assert isinstance(self.Person.objects, QuerySet)
         assert (
             self.Person.objects._collection.name == self.Person._get_collection_name()
@@ -271,8 +270,7 @@ class TestQueryset(unittest.TestCase):
         )
 
     def test_find_one(self):
-        """Ensure that a query using find_one returns a valid result.
-        """
+        """Ensure that a query using find_one returns a valid result."""
         person1 = self.Person(name="User A", age=20)
         person1.save()
         person2 = self.Person(name="User B", age=30)
@@ -317,8 +315,7 @@ class TestQueryset(unittest.TestCase):
             self.Person.objects.get()
 
     def test_get_multiple_match_raises_multipleobjectsreturned(self):
-        """Ensure that a query using ``get`` returns at most one result.
-        """
+        """Ensure that a query using ``get`` returns at most one result."""
         assert self.Person.objects().count() == 0
 
         person1 = self.Person(name="User A", age=20)
@@ -351,8 +348,7 @@ class TestQueryset(unittest.TestCase):
         assert person == person3
 
     def test_find_array_position(self):
-        """Ensure that query by array position works.
-        """
+        """Ensure that query by array position works."""
 
         class Comment(EmbeddedDocument):
             name = StringField()
@@ -1141,8 +1137,7 @@ class TestQueryset(unittest.TestCase):
             assert q == 2
 
     def test_repeated_iteration(self):
-        """Ensure that QuerySet rewinds itself one iteration finishes.
-        """
+        """Ensure that QuerySet rewinds itself one iteration finishes."""
         self.Person(name="Person 1").save()
         self.Person(name="Person 2").save()
 
@@ -1191,8 +1186,7 @@ class TestQueryset(unittest.TestCase):
             assert ".. queryset mid-iteration .." == repr(docs)
 
     def test_regex_query_shortcuts(self):
-        """Ensure that contains, startswith, endswith, etc work.
-        """
+        """Ensure that contains, startswith, endswith, etc work."""
         person = self.Person(name="Guido van Rossum")
         person.save()
 
@@ -1248,8 +1242,7 @@ class TestQueryset(unittest.TestCase):
         assert obj == person
 
     def test_not(self):
-        """Ensure that the __not operator works as expected.
-        """
+        """Ensure that the __not operator works as expected."""
         alice = self.Person(name="Alice", age=25)
         alice.save()
 
@@ -1260,8 +1253,7 @@ class TestQueryset(unittest.TestCase):
         assert obj is None
 
     def test_filter_chaining(self):
-        """Ensure filters can be chained together.
-        """
+        """Ensure filters can be chained together."""
 
         class Blog(Document):
             id = StringField(primary_key=True)
@@ -1337,8 +1329,7 @@ class TestQueryset(unittest.TestCase):
             assert qs[i] == expected[i]
 
     def test_ordering(self):
-        """Ensure default ordering is applied and can be overridden.
-        """
+        """Ensure default ordering is applied and can be overridden."""
 
         class BlogPost(Document):
             title = StringField()
@@ -1408,8 +1399,7 @@ class TestQueryset(unittest.TestCase):
             assert ORDER_BY_KEY not in q.get_ops()[0][CMD_QUERY_KEY]
 
     def test_no_ordering_for_get(self):
-        """ Ensure that Doc.objects.get doesn't use any ordering.
-        """
+        """Ensure that Doc.objects.get doesn't use any ordering."""
         ORDER_BY_KEY, CMD_QUERY_KEY = get_key_compat(self.mongodb_version)
 
         class BlogPost(Document):
@@ -1485,8 +1475,7 @@ class TestQueryset(unittest.TestCase):
         assert result.author is None
 
     def test_find_dict_item(self):
-        """Ensure that DictField items may be found.
-        """
+        """Ensure that DictField items may be found."""
 
         class BlogPost(Document):
             info = DictField()
@@ -1502,8 +1491,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_exec_js_query(self):
-        """Ensure that queries are properly formed for use in exec_js.
-        """
+        """Ensure that queries are properly formed for use in exec_js."""
 
         class BlogPost(Document):
             hits = IntField()
@@ -1540,8 +1528,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_exec_js_field_sub(self):
-        """Ensure that field substitutions occur properly in exec_js functions.
-        """
+        """Ensure that field substitutions occur properly in exec_js functions."""
 
         class Comment(EmbeddedDocument):
             content = StringField(db_field="body")
@@ -1597,8 +1584,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_delete(self):
-        """Ensure that documents are properly deleted from the database.
-        """
+        """Ensure that documents are properly deleted from the database."""
         self.Person(name="User A", age=20).save()
         self.Person(name="User B", age=30).save()
         self.Person(name="User C", age=40).save()
@@ -1612,8 +1598,7 @@ class TestQueryset(unittest.TestCase):
         assert self.Person.objects.count() == 0
 
     def test_reverse_delete_rule_cascade(self):
-        """Ensure cascading deletion of referring documents from the database.
-        """
+        """Ensure cascading deletion of referring documents from the database."""
 
         class BlogPost(Document):
             content = StringField()
@@ -1745,8 +1730,7 @@ class TestQueryset(unittest.TestCase):
         assert 0 == Category.objects.count()
 
     def test_reverse_delete_rule_nullify(self):
-        """Ensure nullification of references to deleted documents.
-        """
+        """Ensure nullification of references to deleted documents."""
 
         class Category(Document):
             name = StringField()
@@ -1842,8 +1826,7 @@ class TestQueryset(unittest.TestCase):
             self.Person.objects.delete()
 
     def test_reverse_delete_rule_pull(self):
-        """Ensure pulling of references to deleted documents.
-        """
+        """Ensure pulling of references to deleted documents."""
 
         class BlogPost(Document):
             content = StringField()
@@ -1918,8 +1901,7 @@ class TestQueryset(unittest.TestCase):
         assert 8 == Log.objects.count()
 
     def test_delete_with_limit_handles_delete_rules(self):
-        """Ensure cascading deletion of referring documents from the database.
-        """
+        """Ensure cascading deletion of referring documents from the database."""
 
         class BlogPost(Document):
             content = StringField()
@@ -1951,8 +1933,7 @@ class TestQueryset(unittest.TestCase):
         assert del_result is None
 
     def test_reference_field_find(self):
-        """Ensure cascading deletion of referring documents from the database.
-        """
+        """Ensure cascading deletion of referring documents from the database."""
 
         class BlogPost(Document):
             content = StringField()
@@ -1973,8 +1954,7 @@ class TestQueryset(unittest.TestCase):
         assert 1 == BlogPost.objects(author__in=["%s" % me.pk]).count()
 
     def test_reference_field_find_dbref(self):
-        """Ensure cascading deletion of referring documents from the database.
-        """
+        """Ensure cascading deletion of referring documents from the database."""
 
         class BlogPost(Document):
             content = StringField()
@@ -2058,8 +2038,7 @@ class TestQueryset(unittest.TestCase):
             BlogPost.objects.update_one(inc__review=0.1)  # test with floats
 
     def test_update_listfield_operator(self):
-        """Ensure that atomic updates work properly.
-        """
+        """Ensure that atomic updates work properly."""
 
         class BlogPost(Document):
             tags = ListField(StringField())
@@ -2107,8 +2086,7 @@ class TestQueryset(unittest.TestCase):
         assert "title" not in pymongo_doc
 
     def test_update_push_with_position(self):
-        """Ensure that the 'push' update with position works properly.
-        """
+        """Ensure that the 'push' update with position works properly."""
 
         class BlogPost(Document):
             slug = StringField()
@@ -2133,8 +2111,7 @@ class TestQueryset(unittest.TestCase):
         assert post.tags == ["scala", "mongodb", "python", "java"]
 
     def test_update_push_list_of_list(self):
-        """Ensure that the 'push' update operation works in the list of list
-        """
+        """Ensure that the 'push' update operation works in the list of list"""
 
         class BlogPost(Document):
             slug = StringField()
@@ -2149,8 +2126,7 @@ class TestQueryset(unittest.TestCase):
         assert post.tags == [["value1", 123]]
 
     def test_update_push_and_pull_add_to_set(self):
-        """Ensure that the 'pull' update operation works correctly.
-        """
+        """Ensure that the 'pull' update operation works correctly."""
 
         class BlogPost(Document):
             slug = StringField()
@@ -2259,8 +2235,7 @@ class TestQueryset(unittest.TestCase):
             )
 
     def test_pull_from_nested_embedded_using_in_nin(self):
-        """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators.
-        """
+        """Ensure that the 'pull' update operation works on embedded documents using 'in' and 'nin' operators."""
 
         class User(EmbeddedDocument):
             name = StringField()
@@ -2491,8 +2466,7 @@ class TestQueryset(unittest.TestCase):
         assert doc.pk == doc.embedded[0]._instance.pk
 
     def test_order_by(self):
-        """Ensure that QuerySets may be ordered.
-        """
+        """Ensure that QuerySets may be ordered."""
         self.Person(name="User B", age=40).save()
         self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
@@ -2560,8 +2534,7 @@ class TestQueryset(unittest.TestCase):
         self.assertSequence(qs, expected)
 
     def test_order_by_chaining(self):
-        """Ensure that an order_by query chains properly and allows .only()
-        """
+        """Ensure that an order_by query chains properly and allows .only()"""
         self.Person(name="User B", age=40).save()
         self.Person(name="User A", age=20).save()
         self.Person(name="User C", age=30).save()
@@ -2635,8 +2608,7 @@ class TestQueryset(unittest.TestCase):
                 assert op[CMD_QUERY_KEY][COMMENT_KEY] == "looking for an adult"
 
     def test_map_reduce(self):
-        """Ensure map/reduce is both mapping and reducing.
-        """
+        """Ensure map/reduce is both mapping and reducing."""
 
         class BlogPost(Document):
             title = StringField()
@@ -2988,8 +2960,7 @@ class TestQueryset(unittest.TestCase):
         Link.drop_collection()
 
     def test_item_frequencies(self):
-        """Ensure that item frequencies are properly generated from lists.
-        """
+        """Ensure that item frequencies are properly generated from lists."""
 
         class BlogPost(Document):
             hits = IntField()
@@ -3057,8 +3028,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_item_frequencies_on_embedded(self):
-        """Ensure that item frequencies are properly generated from lists.
-        """
+        """Ensure that item frequencies are properly generated from lists."""
 
         class Phone(EmbeddedDocument):
             number = StringField()
@@ -3214,8 +3184,7 @@ class TestQueryset(unittest.TestCase):
         assert freqs == {1: 50.0 / 70, 2: 20.0 / 70}
 
     def test_average(self):
-        """Ensure that field can be averaged correctly.
-        """
+        """Ensure that field can be averaged correctly."""
         self.Person(name="person", age=0).save()
         assert int(self.Person.objects.average("age")) == 0
 
@@ -3255,8 +3224,7 @@ class TestQueryset(unittest.TestCase):
         assert self.Person.objects.filter(age__gte=50).average("age") == avg
 
     def test_sum(self):
-        """Ensure that field can be summed over correctly.
-        """
+        """Ensure that field can be summed over correctly."""
         ages = [23, 54, 12, 94, 27]
         for i, age in enumerate(ages):
             self.Person(name="test%s" % i, age=age).save()
@@ -3406,8 +3374,7 @@ class TestQueryset(unittest.TestCase):
         assert Doc.objects.sum("values") == 1360
 
     def test_distinct(self):
-        """Ensure that the QuerySet.distinct method works.
-        """
+        """Ensure that the QuerySet.distinct method works."""
         self.Person(name="Mr Orange", age=20).save()
         self.Person(name="Mr White", age=20).save()
         self.Person(name="Mr Orange", age=30).save()
@@ -3547,8 +3514,7 @@ class TestQueryset(unittest.TestCase):
         assert Foo.objects.distinct("bar") == [bar]
 
     def test_distinct_handles_db_field(self):
-        """Ensure that distinct resolves field name to db_field as expected.
-        """
+        """Ensure that distinct resolves field name to db_field as expected."""
 
         class Product(Document):
             product_id = IntField(db_field="pid")
@@ -3644,8 +3610,7 @@ class TestQueryset(unittest.TestCase):
         assert Foo.objects.distinct("bar_lst") == [bar_1, bar_2]
 
     def test_custom_manager(self):
-        """Ensure that custom QuerySetManager instances work as expected.
-        """
+        """Ensure that custom QuerySetManager instances work as expected."""
 
         class BlogPost(Document):
             tags = ListField(StringField())
@@ -3746,8 +3711,7 @@ class TestQueryset(unittest.TestCase):
         assert 1 == Bar.objects.count()
 
     def test_query_value_conversion(self):
-        """Ensure that query values are properly converted when necessary.
-        """
+        """Ensure that query values are properly converted when necessary."""
 
         class BlogPost(Document):
             author = ReferenceField(self.Person)
@@ -3773,8 +3737,7 @@ class TestQueryset(unittest.TestCase):
         BlogPost.drop_collection()
 
     def test_update_value_conversion(self):
-        """Ensure that values used in updates are converted before use.
-        """
+        """Ensure that values used in updates are converted before use."""
 
         class Group(Document):
             members = ListField(ReferenceField(self.Person))
@@ -3799,8 +3762,7 @@ class TestQueryset(unittest.TestCase):
         Group.drop_collection()
 
     def test_bulk(self):
-        """Ensure bulk querying by object id returns a proper dict.
-        """
+        """Ensure bulk querying by object id returns a proper dict."""
 
         class BlogPost(Document):
             title = StringField()
@@ -3838,8 +3800,7 @@ class TestQueryset(unittest.TestCase):
         self.Person.drop_collection()
 
     def test_custom_querysets(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
+        """Ensure that custom QuerySet classes may be used."""
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
@@ -3859,8 +3820,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
     def test_custom_querysets_set_manager_directly(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
+        """Ensure that custom QuerySet classes may be used."""
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
@@ -3883,8 +3843,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
     def test_custom_querysets_managers_directly(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
+        """Ensure that custom QuerySet classes may be used."""
 
         class CustomQuerySetManager(QuerySetManager):
             @staticmethod
@@ -3905,8 +3864,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
     def test_custom_querysets_inherited(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
+        """Ensure that custom QuerySet classes may be used."""
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
@@ -3928,8 +3886,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
     def test_custom_querysets_inherited_direct(self):
-        """Ensure that custom QuerySet classes may be used.
-        """
+        """Ensure that custom QuerySet classes may be used."""
 
         class CustomQuerySet(QuerySet):
             def not_empty(self):
@@ -3990,8 +3947,7 @@ class TestQueryset(unittest.TestCase):
         assert A.objects(b=[{"c": "c"}]).count() == 0
 
     def test_call_after_limits_set(self):
-        """Ensure that re-filtering after slicing works
-        """
+        """Ensure that re-filtering after slicing works"""
 
         class Post(Document):
             title = StringField()
@@ -4007,8 +3963,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
     def test_order_then_filter(self):
-        """Ensure that ordering still works after filtering.
-        """
+        """Ensure that ordering still works after filtering."""
 
         class Number(Document):
             n = IntField()
@@ -4025,8 +3980,7 @@ class TestQueryset(unittest.TestCase):
         Number.drop_collection()
 
     def test_clone(self):
-        """Ensure that cloning clones complex querysets
-        """
+        """Ensure that cloning clones complex querysets"""
 
         class Number(Document):
             n = IntField()
@@ -4055,8 +4009,7 @@ class TestQueryset(unittest.TestCase):
         Number.drop_collection()
 
     def test_clone_retains_settings(self):
-        """Ensure that cloning retains the read_preference and read_concern
-        """
+        """Ensure that cloning retains the read_preference and read_concern"""
 
         class Number(Document):
             n = IntField()
@@ -4081,8 +4034,7 @@ class TestQueryset(unittest.TestCase):
         Number.drop_collection()
 
     def test_using(self):
-        """Ensure that switching databases for a queryset is possible
-        """
+        """Ensure that switching databases for a queryset is possible"""
 
         class Number2(Document):
             n = IntField()
@@ -4134,8 +4086,7 @@ class TestQueryset(unittest.TestCase):
         Number.drop_collection()
 
     def test_order_works_with_primary(self):
-        """Ensure that order_by and primary work.
-        """
+        """Ensure that order_by and primary work."""
 
         class Number(Document):
             n = IntField(primary_key=True)
@@ -4154,8 +4105,7 @@ class TestQueryset(unittest.TestCase):
         Number.drop_collection()
 
     def test_ensure_index(self):
-        """Ensure that manual creation of indexes works.
-        """
+        """Ensure that manual creation of indexes works."""
 
         class Comment(Document):
             message = StringField()
@@ -4171,8 +4121,7 @@ class TestQueryset(unittest.TestCase):
         assert ([("_cls", 1), ("message", 1)], False, False) in info
 
     def test_where(self):
-        """Ensure that where clauses work.
-        """
+        """Ensure that where clauses work."""
 
         class IntPair(Document):
             fielda = IntField()
@@ -4451,8 +4400,7 @@ class TestQueryset(unittest.TestCase):
         assert list(val) == [("test", "test value")]
 
     def test_scalar_cursor_behaviour(self):
-        """Ensure that a query returns a valid set of results.
-        """
+        """Ensure that a query returns a valid set of results."""
         person1 = self.Person(name="User A", age=20)
         person1.save()
         person2 = self.Person(name="User B", age=30)
@@ -4669,8 +4617,7 @@ class TestQueryset(unittest.TestCase):
         assert [b3] == ak
 
     def test_upsert_includes_cls(self):
-        """Upserts should include _cls information for inheritable classes
-        """
+        """Upserts should include _cls information for inheritable classes"""
 
         class Test(Document):
             test = StringField()
@@ -5366,8 +5313,7 @@ class TestQueryset(unittest.TestCase):
             assert obj.__class__ == C
 
     def test_query_generic_embedded_document(self):
-        """Ensure that querying sub field on generic_embedded_field works
-        """
+        """Ensure that querying sub field on generic_embedded_field works"""
 
         class A(EmbeddedDocument):
             a_name = StringField()

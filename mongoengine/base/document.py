@@ -244,8 +244,7 @@ class BaseDocument:
         return iter(self._fields_ordered)
 
     def __getitem__(self, name):
-        """Dictionary-style field access, return a field's value if present.
-        """
+        """Dictionary-style field access, return a field's value if present."""
         try:
             if name in self._fields_ordered:
                 return getattr(self, name)
@@ -254,8 +253,7 @@ class BaseDocument:
         raise KeyError(name)
 
     def __setitem__(self, name, value):
-        """Dictionary-style field access, set a field's value.
-        """
+        """Dictionary-style field access, set a field's value."""
         # Ensure that the field exists before settings its value
         if not self._dynamic and name not in self._fields:
             raise KeyError(name)
@@ -617,8 +615,7 @@ class BaseDocument:
                 )
 
     def _get_changed_fields(self):
-        """Return a list of all fields that have explicitly been changed.
-        """
+        """Return a list of all fields that have explicitly been changed."""
         EmbeddedDocument = _import_class("EmbeddedDocument")
         ReferenceField = _import_class("ReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
@@ -750,8 +747,7 @@ class BaseDocument:
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo SON (dict)
-        """
+        """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -800,7 +796,8 @@ class BaseDocument:
                 ["Field '{}' - {}".format(k, v) for k, v in errors_dict.items()]
             )
             msg = "Invalid data to create a `{}` instance.\n{}".format(
-                cls._class_name, errors,
+                cls._class_name,
+                errors,
             )
             raise InvalidDocumentError(msg)
 
@@ -1165,8 +1162,7 @@ class BaseDocument:
 
     @classmethod
     def _translate_field_name(cls, field, sep="."):
-        """Translate a field attribute name to a database field name.
-        """
+        """Translate a field attribute name to a database field name."""
         parts = field.split(sep)
         parts = [f.db_field for f in cls._lookup_field(parts)]
         return ".".join(parts)

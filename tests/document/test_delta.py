@@ -643,7 +643,10 @@ class TestDelta(MongoDBTestCase):
         doc.save()
         doc = doc.reload(10)
 
-        assert doc._delta() == ({}, {},)
+        assert doc._delta() == (
+            {},
+            {},
+        )
         del doc.embedded_field.list_field[2].list_field
         assert doc._delta() == (
             {},

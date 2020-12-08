@@ -107,8 +107,7 @@ class TestReferenceField(MongoDBTestCase):
         assert p.parent == p1
 
     def test_undefined_reference(self):
-        """Ensure that ReferenceFields may reference undefined Documents.
-        """
+        """Ensure that ReferenceFields may reference undefined Documents."""
 
         class Product(Document):
             name = StringField()

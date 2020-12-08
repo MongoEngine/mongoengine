@@ -13,8 +13,7 @@ BIN_VALUE = "\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde
 
 class TestBinaryField(MongoDBTestCase):
     def test_binary_fields(self):
-        """Ensure that binary fields can be stored and retrieved.
-        """
+        """Ensure that binary fields can be stored and retrieved."""
 
         class Attachment(Document):
             content_type = StringField()
@@ -33,8 +32,7 @@ class TestBinaryField(MongoDBTestCase):
         assert BLOB == bytes(attachment_1.blob)
 
     def test_validation_succeeds(self):
-        """Ensure that valid values can be assigned to binary fields.
-        """
+        """Ensure that valid values can be assigned to binary fields."""
 
         class AttachmentRequired(Document):
             blob = BinaryField(required=True)

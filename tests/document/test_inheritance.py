@@ -45,8 +45,7 @@ class TestInheritance(MongoDBTestCase):
         test_doc.delete()
 
     def test_superclasses(self):
-        """Ensure that the correct list of superclasses is assembled.
-        """
+        """Ensure that the correct list of superclasses is assembled."""
 
         class Animal(Document):
             meta = {"allow_inheritance": True}
@@ -216,8 +215,7 @@ class TestInheritance(MongoDBTestCase):
         assert Pike._subclasses == ("Animal.Fish.Pike",)
 
     def test_inheritance_meta_data(self):
-        """Ensure that document may inherit fields from a superclass document.
-        """
+        """Ensure that document may inherit fields from a superclass document."""
 
         class Person(Document):
             name = StringField()
@@ -234,8 +232,7 @@ class TestInheritance(MongoDBTestCase):
         assert Employee._get_collection_name() == Person._get_collection_name()
 
     def test_inheritance_to_mongo_keys(self):
-        """Ensure that document may inherit fields from a superclass document.
-        """
+        """Ensure that document may inherit fields from a superclass document."""
 
         class Person(Document):
             name = StringField()
@@ -259,7 +256,7 @@ class TestInheritance(MongoDBTestCase):
         assert Employee._get_collection_name() == Person._get_collection_name()
 
     def test_indexes_and_multiple_inheritance(self):
-        """ Ensure that all of the indexes are created for a document with
+        """Ensure that all of the indexes are created for a document with
         multiple inheritance.
         """
 
@@ -289,8 +286,7 @@ class TestInheritance(MongoDBTestCase):
         )
 
     def test_polymorphic_queries(self):
-        """Ensure that the correct subclasses are returned from a query
-        """
+        """Ensure that the correct subclasses are returned from a query"""
 
         class Animal(Document):
             meta = {"allow_inheritance": True}
@@ -347,8 +343,7 @@ class TestInheritance(MongoDBTestCase):
         assert "_cls" not in obj
 
     def test_cant_turn_off_inheritance_on_subclass(self):
-        """Ensure if inheritance is on in a subclass you cant turn it off.
-        """
+        """Ensure if inheritance is on in a subclass you cant turn it off."""
 
         class Animal(Document):
             name = StringField()
@@ -498,8 +493,7 @@ class TestInheritance(MongoDBTestCase):
         assert "_cls" in doc.to_mongo()
 
     def test_document_inheritance(self):
-        """Ensure mutliple inheritance of abstract documents
-        """
+        """Ensure mutliple inheritance of abstract documents"""
 
         class DateCreatedDocument(Document):
             meta = {"allow_inheritance": True, "abstract": True}

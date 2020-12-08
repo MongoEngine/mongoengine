@@ -22,8 +22,7 @@ class ConnectionTest(unittest.TestCase):
         mongoengine.connection._dbs = {}
 
     def test_replicaset_uri_passes_read_preference(self):
-        """Requires a replica set called "rs" on port 27017
-        """
+        """Requires a replica set called "rs" on port 27017"""
         try:
             conn = mongoengine.connect(
                 db="mongoenginetest",

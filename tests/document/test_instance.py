@@ -160,8 +160,7 @@ class TestDocumentInstance(MongoDBTestCase):
         Log.objects
 
     def test_repr(self):
-        """Ensure that unicode representation works
-        """
+        """Ensure that unicode representation works"""
 
         class Article(Document):
             title = StringField()
@@ -1553,8 +1552,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert site.page.log_message == "Error: Dummy message"
 
     def test_update_list_field(self):
-        """Test update on `ListField` with $pull + $in.
-        """
+        """Test update on `ListField` with $pull + $in."""
 
         class Doc(Document):
             foo = ListField(StringField())
@@ -2816,15 +2814,13 @@ class TestDocumentInstance(MongoDBTestCase):
         register_connection("testdb-2", "mongoenginetest2")
 
         class A(Document):
-            """Uses default db_alias
-            """
+            """Uses default db_alias"""
 
             name = StringField()
             meta = {"allow_inheritance": True}
 
         class B(A):
-            """Uses testdb-2 db_alias
-            """
+            """Uses testdb-2 db_alias"""
 
             meta = {"db_alias": "testdb-2"}
 
@@ -3612,8 +3608,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert u_from_db.height is None
 
     def test_not_saved_eq(self):
-        """Ensure we can compare documents not saved.
-        """
+        """Ensure we can compare documents not saved."""
 
         class Person(Document):
             pass

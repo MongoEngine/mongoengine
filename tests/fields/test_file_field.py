@@ -48,8 +48,7 @@ class TestFileField(MongoDBTestCase):
         DemoFile.objects.create()
 
     def test_file_fields(self):
-        """Ensure that file fields can be written to and their data retrieved
-        """
+        """Ensure that file fields can be written to and their data retrieved"""
 
         class PutFile(Document):
             the_file = FileField()
@@ -91,8 +90,7 @@ class TestFileField(MongoDBTestCase):
         result.the_file.delete()
 
     def test_file_fields_stream(self):
-        """Ensure that file fields can be written to and their data retrieved
-        """
+        """Ensure that file fields can be written to and their data retrieved"""
 
         class StreamFile(Document):
             the_file = FileField()
@@ -228,8 +226,7 @@ class TestFileField(MongoDBTestCase):
         assert ["doc_b", "doc_e"] == grid_fs.list()
 
     def test_file_uniqueness(self):
-        """Ensure that each instance of a FileField is unique
-        """
+        """Ensure that each instance of a FileField is unique"""
 
         class TestFile(Document):
             name = StringField()
@@ -285,8 +282,7 @@ class TestFileField(MongoDBTestCase):
         assert test_file.the_file.get().length == 4971
 
     def test_file_boolean(self):
-        """Ensure that a boolean test of a FileField indicates its presence
-        """
+        """Ensure that a boolean test of a FileField indicates its presence"""
 
         class TestFile(Document):
             the_file = FileField()

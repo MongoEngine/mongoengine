@@ -117,8 +117,7 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
     def test_no_dereference_context_manager_object_id(self):
-        """Ensure that DBRef items in ListFields aren't dereferenced.
-        """
+        """Ensure that DBRef items in ListFields aren't dereferenced."""
         connect("mongoenginetest")
 
         class User(Document):
@@ -155,8 +154,7 @@ class TestContextManagers:
         assert isinstance(group.generic, User)
 
     def test_no_dereference_context_manager_dbref(self):
-        """Ensure that DBRef items in ListFields aren't dereferenced.
-        """
+        """Ensure that DBRef items in ListFields aren't dereferenced."""
         connect("mongoenginetest")
 
         class User(Document):

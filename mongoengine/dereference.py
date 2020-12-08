@@ -157,8 +157,7 @@ class DeReference:
         return reference_map
 
     def _fetch_objects(self, doc_type=None):
-        """Fetch all references and convert to their document objects
-        """
+        """Fetch all references and convert to their document objects"""
         object_map = {}
         for collection, dbrefs in self.reference_map.items():
 

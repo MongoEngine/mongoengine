@@ -16,8 +16,7 @@ class FieldTest(unittest.TestCase):
         cls.db.drop_database("mongoenginetest")
 
     def test_list_item_dereference(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -75,8 +74,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
     def test_list_item_dereference_dref_false(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -132,8 +130,7 @@ class FieldTest(unittest.TestCase):
                 assert q == 2
 
     def test_list_item_dereference_orphan_dbref(self):
-        """Ensure that orphan DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that orphan DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -176,8 +173,7 @@ class FieldTest(unittest.TestCase):
         Group.drop_collection()
 
     def test_list_item_dereference_dref_false_stores_as_type(self):
-        """Ensure that DBRef items are stored as their type
-        """
+        """Ensure that DBRef items are stored as their type"""
 
         class User(Document):
             my_id = IntField(primary_key=True)
@@ -198,8 +194,7 @@ class FieldTest(unittest.TestCase):
         assert group.members == [user]
 
     def test_handle_old_style_references(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -232,8 +227,7 @@ class FieldTest(unittest.TestCase):
         assert group.members[-1].name == "String!"
 
     def test_migrate_references(self):
-        """Example of migrating ReferenceField storage
-        """
+        """Example of migrating ReferenceField storage"""
 
         # Create some sample data
         class User(Document):
@@ -278,8 +272,7 @@ class FieldTest(unittest.TestCase):
         assert isinstance(raw_data["members"][0], ObjectId)
 
     def test_recursive_reference(self):
-        """Ensure that ReferenceFields can reference their own documents.
-        """
+        """Ensure that ReferenceFields can reference their own documents."""
 
         class Employee(Document):
             name = StringField()
@@ -402,8 +395,7 @@ class FieldTest(unittest.TestCase):
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
 
     def test_circular_reference_on_self(self):
-        """Ensure you can handle circular references
-        """
+        """Ensure you can handle circular references"""
 
         class Person(Document):
             name = StringField()
@@ -430,8 +422,7 @@ class FieldTest(unittest.TestCase):
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
 
     def test_circular_tree_reference(self):
-        """Ensure you can handle circular references with more than one level
-        """
+        """Ensure you can handle circular references with more than one level"""
 
         class Other(EmbeddedDocument):
             name = StringField()
@@ -557,8 +548,7 @@ class FieldTest(unittest.TestCase):
                     assert "User" in m.__class__.__name__
 
     def test_generic_reference_orphan_dbref(self):
-        """Ensure that generic orphan DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that generic orphan DBRef items in ListFields are dereferenced."""
 
         class UserA(Document):
             name = StringField()
@@ -1168,8 +1158,7 @@ class FieldTest(unittest.TestCase):
         assert msg.author.name == "new-name"
 
     def test_list_lookup_not_checked_in_map(self):
-        """Ensure we dereference list data correctly
-        """
+        """Ensure we dereference list data correctly"""
 
         class Comment(Document):
             id = IntField(primary_key=True)
@@ -1191,8 +1180,7 @@ class FieldTest(unittest.TestCase):
         assert 1 == msg.comments[1].id
 
     def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -1221,8 +1209,7 @@ class FieldTest(unittest.TestCase):
             assert q == 2
 
     def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()

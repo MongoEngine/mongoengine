@@ -19,8 +19,7 @@ class TestFloatField(MongoDBTestCase):
         assert 1 == TestDocument.objects(float_fld__ne=1).count()
 
     def test_validation(self):
-        """Ensure that invalid values cannot be assigned to float fields.
-        """
+        """Ensure that invalid values cannot be assigned to float fields."""
 
         class Person(Document):
             height = FloatField(min_value=0.1, max_value=3.5)

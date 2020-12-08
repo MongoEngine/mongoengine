@@ -189,7 +189,8 @@ class BaseQuerySet:
             if queryset._scalar:
                 return queryset._get_scalar(
                     queryset._document._from_son(
-                        queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                        queryset._cursor[key],
+                        _auto_dereference=self._auto_dereference,
                     )
                 )
 
@@ -197,7 +198,8 @@ class BaseQuerySet:
                 return queryset._cursor[key]
 
             return queryset._document._from_son(
-                queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                queryset._cursor[key],
+                _auto_dereference=self._auto_dereference,
             )
 
         raise TypeError("Provide a slice or an integer index")
@@ -720,7 +722,7 @@ class BaseQuerySet:
         return queryset.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
-        """"Retrieve a set of documents by their ids.
+        """ "Retrieve a set of documents by their ids.
 
         :param object_ids: a list or tuple of ObjectId's
         :rtype: dict of ObjectId's as keys and collection-specific
@@ -738,7 +740,8 @@ class BaseQuerySet:
         else:
             for doc in docs:
                 doc_map[doc["_id"]] = self._document._from_son(
-                    doc, _auto_dereference=self._auto_dereference,
+                    doc,
+                    _auto_dereference=self._auto_dereference,
                 )
 
         return doc_map
@@ -1556,8 +1559,7 @@ class BaseQuerySet:
     # Iterator helpers
 
     def __next__(self):
-        """Wrap the result in a :class:`~mongoengine.Document` object.
-        """
+        """Wrap the result in a :class:`~mongoengine.Document` object."""
         if self._none or self._empty:
             raise StopIteration
 
@@ -1567,7 +1569,8 @@ class BaseQuerySet:
             return raw_doc
 
         doc = self._document._from_son(
-            raw_doc, _auto_dereference=self._auto_dereference,
+            raw_doc,
+            _auto_dereference=self._auto_dereference,
         )
 
         if self._scalar:

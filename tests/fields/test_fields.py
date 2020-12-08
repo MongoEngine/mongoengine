@@ -544,8 +544,7 @@ class TestField(MongoDBTestCase):
         post.validate()
 
     def test_sorted_list_sorting(self):
-        """Ensure that a sorted list field properly sorts values.
-        """
+        """Ensure that a sorted list field properly sorts values."""
 
         class Comment(EmbeddedDocument):
             order = IntField()
@@ -661,8 +660,7 @@ class TestField(MongoDBTestCase):
         )
 
     def test_list_field_manipulative_operators(self):
-        """Ensure that ListField works with standard list operators that manipulate the list.
-        """
+        """Ensure that ListField works with standard list operators that manipulate the list."""
 
         class BlogPost(Document):
             ref = StringField()
@@ -1372,8 +1370,7 @@ class TestField(MongoDBTestCase):
         assert bar.generic_ref == {"_ref": expected, "_cls": "Foo"}
 
     def test_list_item_dereference(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -1398,8 +1395,7 @@ class TestField(MongoDBTestCase):
         assert group_obj.members[1].name == user2.name
 
     def test_recursive_reference(self):
-        """Ensure that ReferenceFields can reference their own documents.
-        """
+        """Ensure that ReferenceFields can reference their own documents."""
 
         class Employee(Document):
             name = StringField()
@@ -1426,8 +1422,7 @@ class TestField(MongoDBTestCase):
         assert peter.friends == friends
 
     def test_recursive_embedding(self):
-        """Ensure that EmbeddedDocumentFields can contain their own documents.
-        """
+        """Ensure that EmbeddedDocumentFields can contain their own documents."""
 
         class TreeNode(EmbeddedDocument):
             name = StringField()
@@ -1503,8 +1498,7 @@ class TestField(MongoDBTestCase):
             AbstractDoc.drop_collection()
 
     def test_reference_class_with_abstract_parent(self):
-        """Ensure that a class with an abstract parent can be referenced.
-        """
+        """Ensure that a class with an abstract parent can be referenced."""
 
         class Sibling(Document):
             name = StringField()
@@ -1574,8 +1568,7 @@ class TestField(MongoDBTestCase):
             brother.save()
 
     def test_generic_reference(self):
-        """Ensure that a GenericReferenceField properly dereferences items.
-        """
+        """Ensure that a GenericReferenceField properly dereferences items."""
 
         class Link(Document):
             title = StringField()
@@ -1614,8 +1607,7 @@ class TestField(MongoDBTestCase):
         assert isinstance(bm.bookmark_object, Link)
 
     def test_generic_reference_list(self):
-        """Ensure that a ListField properly dereferences generic references.
-        """
+        """Ensure that a ListField properly dereferences generic references."""
 
         class Link(Document):
             title = StringField()
@@ -1718,8 +1710,7 @@ class TestField(MongoDBTestCase):
         assert bm.bookmark_object == post_1
 
     def test_generic_reference_string_choices(self):
-        """Ensure that a GenericReferenceField can handle choices as strings
-        """
+        """Ensure that a GenericReferenceField can handle choices as strings"""
 
         class Link(Document):
             title = StringField()
@@ -1811,8 +1802,7 @@ class TestField(MongoDBTestCase):
         assert user.bookmarks == [post_1]
 
     def test_generic_reference_list_item_modification(self):
-        """Ensure that modifications of related documents (through generic reference) don't influence on querying
-        """
+        """Ensure that modifications of related documents (through generic reference) don't influence on querying"""
 
         class Post(Document):
             title = StringField()
@@ -1900,8 +1890,7 @@ class TestField(MongoDBTestCase):
         assert doc == doc2
 
     def test_choices_allow_using_sets_as_choices(self):
-        """Ensure that sets can be used when setting choices
-        """
+        """Ensure that sets can be used when setting choices"""
 
         class Shirt(Document):
             size = StringField(choices={"M", "L"})
@@ -1920,8 +1909,7 @@ class TestField(MongoDBTestCase):
         shirt.validate()
 
     def test_choices_validation_accept_possible_value(self):
-        """Ensure that value is in a container of allowed values.
-        """
+        """Ensure that value is in a container of allowed values."""
 
         class Shirt(Document):
             size = StringField(choices=("S", "M"))
@@ -1930,8 +1918,7 @@ class TestField(MongoDBTestCase):
         shirt.validate()
 
     def test_choices_validation_reject_unknown_value(self):
-        """Ensure that unallowed value are rejected upon validation
-        """
+        """Ensure that unallowed value are rejected upon validation"""
 
         class Shirt(Document):
             size = StringField(choices=("S", "M"))
@@ -1989,8 +1976,7 @@ class TestField(MongoDBTestCase):
             shirt1.validate()
 
     def test_simple_choices_validation(self):
-        """Ensure that value is in a container of allowed values.
-        """
+        """Ensure that value is in a container of allowed values."""
 
         class Shirt(Document):
             size = StringField(max_length=3, choices=("S", "M", "L", "XL", "XXL"))
@@ -2039,8 +2025,7 @@ class TestField(MongoDBTestCase):
             shirt.validate()
 
     def test_simple_choices_validation_invalid_value(self):
-        """Ensure that error messages are correct.
-        """
+        """Ensure that error messages are correct."""
         SIZES = ("S", "M", "L", "XL", "XXL")
         COLORS = (("R", "Red"), ("B", "Blue"))
         SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
