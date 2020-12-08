@@ -104,6 +104,7 @@ class StringField(BaseField):
         :param regex: (optional) A string pattern that will be applied during validation
         :param max_length: (optional) A max length that will be applied during validation
         :param min_length: (optional) A min length that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
@@ -160,9 +161,7 @@ class StringField(BaseField):
 
 
 class URLField(StringField):
-    """A field that validates input as an URL.
-
-    """
+    """A field that validates input as an URL."""
 
     _URL_REGEX = LazyRegexCompiler(
         r"^(?:[a-z0-9\.\-]*)://"  # scheme is validated separately
@@ -180,6 +179,7 @@ class URLField(StringField):
         """
         :param url_regex: (optional) Overwrite the default regex used for validation
         :param schemes: (optional) Overwrite the default URL schemes that are allowed
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
         """
         self.url_regex = url_regex or self._URL_REGEX
         self.schemes = schemes or self._URL_SCHEMES
@@ -239,6 +239,7 @@ class EmailField(StringField):
         :param domain_whitelist: (optional) list of valid domain names applied during validation
         :param allow_utf8_user: Allow user part of the email to contain utf8 char
         :param allow_ip_domain: Allow domain part of the email to be an IPv4 or IPv6 address
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
         """
         self.domain_whitelist = domain_whitelist or []
         self.allow_utf8_user = allow_utf8_user
@@ -313,6 +314,7 @@ class IntField(BaseField):
         """
         :param min_value: (optional) A min value that will be applied during validation
         :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
@@ -350,6 +352,7 @@ class LongField(BaseField):
         """
         :param min_value: (optional) A min value that will be applied during validation
         :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
@@ -390,6 +393,7 @@ class FloatField(BaseField):
         """
         :param min_value: (optional) A min value that will be applied during validation
         :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
@@ -427,7 +431,6 @@ class FloatField(BaseField):
 class DecimalField(BaseField):
     """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
-
     """
 
     def __init__(
@@ -458,7 +461,7 @@ class DecimalField(BaseField):
             - decimal.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
 
             Defaults to: ``decimal.ROUND_HALF_UP``
-
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.min_value = min_value
         self.max_value = max_value
@@ -640,6 +643,7 @@ class ComplexDateTimeField(StringField):
     def __init__(self, separator=",", **kwargs):
         """
         :param separator: Allows to customize the separator used for storage (default ``,``)
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
         """
         self.separator = separator
         self.format = separator.join(["%Y", "%m", "%d", "%H", "%M", "%S", "%f"])
@@ -987,8 +991,7 @@ class EmbeddedDocumentListField(ListField):
         """
         :param document_type: The type of
          :class:`~mongoengine.EmbeddedDocument` the list will hold.
-        :param kwargs: Keyword arguments passed directly into the parent
-         :class:`~mongoengine.ListField`.
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.ListField`
         """
         super().__init__(field=EmbeddedDocumentField(document_type), **kwargs)
 
@@ -1176,10 +1179,12 @@ class ReferenceField(BaseField):
     ):
         """Initialises the Reference Field.
 
+        :param document_type: The type of Document that will be referenced
         :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
           or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
 
         .. note ::
             A reference to an abstract document type is always stored as a
@@ -1301,15 +1306,16 @@ class ReferenceField(BaseField):
 
 
 class CachedReferenceField(BaseField):
-    """
-    A referencefield with cache fields to purpose pseudo-joins
+    """A referencefield with cache fields to purpose pseudo-joins
     """
 
     def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
         """Initialises the Cached Reference Field.
 
+        :param document_type: The type of Document that will be referenced
         :param fields:  A list of fields to be cached in document
-        :param auto_sync: if True documents are auto updated.
+        :param auto_sync: if True documents are auto updated
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         if fields is None:
             fields = []

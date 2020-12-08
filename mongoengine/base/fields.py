@@ -16,8 +16,6 @@ __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
-
-    .. versionchanged:: 0.5 - added verbose and help text
     """
 
     name = None

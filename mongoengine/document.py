@@ -620,9 +620,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             For example, ``save(..., w: 2, fsync: True)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-
-        .. versionchanged:: 0.10.7
-            Add signal_kwargs argument
         """
         signal_kwargs = signal_kwargs or {}
         signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
@@ -815,9 +812,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         Raises :class:`OperationError` if the document has no collection set
         (i.g. if it is `abstract`)
-
-        .. versionchanged:: 0.10.7
-            :class:`OperationError` exception raised if no collection available
         """
         coll_name = cls._get_collection_name()
         if not coll_name:
