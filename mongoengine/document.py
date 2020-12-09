@@ -1530,8 +1530,57 @@ class Document(BaseDocument):
                            '$maxScan', '$orderby', '$explain', '$snapshot',
                            '$max', '$min', '$showDiskLoc', '$hint', '$comment',
                            '$slice', '$options', '$regex', '$position']
+        GEO_OPS = ['$geometry', '$geoWithin', '$geoIntersects', '$near',
+                   '$nearSphere', '$maxDistance', '$minDistance']
+        NO_VALIDATE_OPS += GEO_OPS
 
         base_op = op
+
+        # handle geo operators
+        if op == '$geometry':
+            if isinstance(value, dict):
+                if 'type' not in value or 'coordinates' not in value:
+                    raise ValidationError("wrong GSON format: %s" % value)
+                return SON(value)
+            raise ValidationError("%s operator must take a GSON object" % op)
+        elif op == '$maxDistance' or op == '$minDistance':
+            if isinstance(value, dict) or isinstance(value, list):
+                raise ValidationError("%s operator takes a single number" % op)
+        # ensure GeoJSON format for other geo operators
+        elif op in GEO_OPS:
+            if isinstance(value, dict):
+                if "$geometry" in value:
+                    value = value
+                elif "coordinates" in value and "type" in value:
+                    value = {"$geometry": value}
+                else:
+                    raise ValidationError( "Invalid $geometry dictionary \
+                    should have type and coordinates keys")
+            # infer geometry type if given a list or set
+            elif isinstance(value, (list, set)):
+                try:
+                    value[0][0][0]
+                    return {"$geometry": {"type": "Polygon", "coordinates": value}}
+                except (TypeError, IndexError):
+                    pass
+
+                try:
+                    value[0][0]
+                    return {"$geometry": {"type": "LineString", "coordinates": value}}
+                except (TypeError, IndexError):
+                    pass
+
+                try:
+                    value[0]
+                    return {"$geometry": {"type": "Point", "coordinates": value}}
+                except (TypeError, IndexError):
+                    pass
+
+                raise ValidationError(
+                    "Invalid $geometry data. Can be either a \
+                    dictionary or (nested) lists of coordinate(s)"
+                )
+
 
         # recurse on list, unless we're at a ListField
         if isinstance(value, list) and not isinstance(context, ListField):
@@ -1581,6 +1630,28 @@ class Document(BaseDocument):
                 transformed_value[new_key] = \
                     Document._transform_value(subvalue, value_context,
                                               op, validate, fields, embeddeddoc=embeddeddoc)
+
+
+            # a tricky part: $maxDistance and $minDistance should be merged
+            # into $near operator value
+            if '$near' in transformed_value:
+                if '$maxDistance' in transformed_value:
+                    transformed_value['$near']['$maxDistance'] = \
+                        transformed_value['$maxDistance']
+                    del transformed_value['$maxDistance']
+                if '$minDistance' in transformed_value:
+                    transformed_value['$near']['$minDistance'] = \
+                        transformed_value['$minDistance']
+                    del transformed_value['$minDistance']
+            if '$nearSphere' in transformed_value:
+                if '$maxDistance' in transformed_value:
+                    transformed_value['$nearSphere']['$maxDistance'] = \
+                        transformed_value['$maxDistance']
+                    del transformed_value['$maxDistance']
+                if '$minDistance' in transformed_value:
+                    transformed_value['$nearSphere']['$minDistance'] = \
+                        transformed_value['$minDistance']
+                    del transformed_value['$minDistance']
 
             return transformed_value
         # if we're in a dict field and there's operations on it, recurse
