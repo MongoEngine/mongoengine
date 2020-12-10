@@ -86,7 +86,6 @@ __all__ = (
     "PolygonField",
     "SequenceField",
     "UUIDField",
-    "EnumField",
     "MultiPointField",
     "MultiLineStringField",
     "MultiPolygonField",
@@ -447,7 +446,7 @@ class DecimalField(BaseField):
         :param max_value: (optional) A max value that will be applied during validation
         :param force_string: Store the value as a string (instead of a float).
          Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
-         and some query operator won't work (e.g. inc, dec)
+         and some query operator won't work (e.g: inc, dec)
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal library:
 
@@ -784,9 +783,6 @@ class EmbeddedDocumentField(BaseField):
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
-            # Short circuit for special operators, returning them as is
-            if isinstance(value, dict) and all(k.startswith("$") for k in value.keys()):
-                return value
             try:
                 value = self.document_type._from_son(value)
             except ValueError:
@@ -858,7 +854,8 @@ class DynamicField(BaseField):
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
     def to_mongo(self, value, use_db_field=True, fields=None):
-        """Convert a Python type to a MongoDB compatible type."""
+        """Convert a Python type to a MongoDB compatible type.
+        """
 
         if isinstance(value, str):
             return value
@@ -1611,70 +1608,6 @@ class BinaryField(BaseField):
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
-class EnumField(BaseField):
-    """Enumeration Field. Values are stored underneath as is,
-    so it will only work with simple types (str, int, etc) that
-    are bson encodable
-     Example usage:
-    .. code-block:: python
-
-        class Status(Enum):
-            NEW = 'new'
-            DONE = 'done'
-
-        class ModelWithEnum(Document):
-            status = EnumField(Status, default=Status.NEW)
-
-        ModelWithEnum(status='done')
-        ModelWithEnum(status=Status.DONE)
-
-    Enum fields can be searched using enum or its value:
-    .. code-block:: python
-
-        ModelWithEnum.objects(status='new').count()
-        ModelWithEnum.objects(status=Status.NEW).count()
-
-    Note that choices cannot be set explicitly, they are derived
-    from the provided enum class.
-    """
-
-    def __init__(self, enum, **kwargs):
-        self._enum_cls = enum
-        if "choices" in kwargs:
-            raise ValueError(
-                "'choices' can't be set on EnumField, "
-                "it is implicitly set as the enum class"
-            )
-        kwargs["choices"] = list(self._enum_cls)
-        super().__init__(**kwargs)
-
-    def __set__(self, instance, value):
-        is_legal_value = value is None or isinstance(value, self._enum_cls)
-        if not is_legal_value:
-            try:
-                value = self._enum_cls(value)
-            except Exception:
-                pass
-        return super().__set__(instance, value)
-
-    def to_mongo(self, value):
-        if isinstance(value, self._enum_cls):
-            return value.value
-        return value
-
-    def validate(self, value):
-        if value and not isinstance(value, self._enum_cls):
-            try:
-                self._enum_cls(value)
-            except Exception as e:
-                self.error(str(e))
-
-    def prepare_query_value(self, op, value):
-        if value is None:
-            return value
-        return super().prepare_query_value(op, self.to_mongo(value))
-
-
 class GridFSError(Exception):
     pass
 
@@ -2084,7 +2017,7 @@ class ImageField(FileField):
 
 class SequenceField(BaseField):
     """Provides a sequential counter see:
-     https://docs.mongodb.com/manual/reference/method/ObjectId/#ObjectIDs-SequenceNumbers
+     http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
 
     .. note::
 
@@ -2198,7 +2131,6 @@ class SequenceField(BaseField):
         return value
 
     def __set__(self, instance, value):
-
         if value is None and instance._initialised:
             value = self.generate()
 
@@ -2521,7 +2453,6 @@ class LazyReferenceField(BaseField):
         if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
-            value = self.build_lazyref(value)
         return value
 
     def validate(self, value):

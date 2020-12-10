@@ -64,6 +64,8 @@ class BaseDocument:
             It may contain additional reserved keywords, e.g. "__auto_convert".
         :param __auto_convert: If True, supplied values will be converted
             to Python-type values via each field's `to_python` method.
+        :param __only_fields: A set of fields that have been loaded for
+            this document. Empty if all fields have been loaded.
         :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
         """
@@ -77,6 +79,8 @@ class BaseDocument:
             )
 
         __auto_convert = values.pop("__auto_convert", True)
+
+        __only_fields = set(values.pop("__only_fields", values))
 
         _created = values.pop("_created", True)
 
@@ -101,32 +105,37 @@ class BaseDocument:
 
         self._dynamic_fields = SON()
 
-        # Assign default values for fields
-        # not set in the constructor
-        for field_name in self._fields:
-            if field_name in values:
+        # Assign default values to the instance.
+        # We set default values only for fields loaded from DB. See
+        # https://github.com/mongoengine/mongoengine/issues/399 for more info.
+        for key, field in self._fields.items():
+            if self._db_field_map.get(key, key) in __only_fields:
                 continue
-            value = getattr(self, field_name, None)
-            setattr(self, field_name, value)
+            value = getattr(self, key, None)
+            setattr(self, key, value)
 
         if "_cls" not in values:
             self._cls = self._class_name
 
-        # Set actual values
-        dynamic_data = {}
-        FileField = _import_class("FileField")
-        for key, value in values.items():
-            field = self._fields.get(key)
-            if field or key in ("id", "pk", "_cls"):
-                if __auto_convert and value is not None:
-                    if field and not isinstance(field, FileField):
-                        value = field.to_python(value)
-                setattr(self, key, value)
-            else:
-                if self._dynamic:
-                    dynamic_data[key] = value
+        # Set passed values after initialisation
+        if self._dynamic:
+            dynamic_data = {}
+            for key, value in values.items():
+                if key in self._fields or key == "_id":
+                    setattr(self, key, value)
                 else:
-                    # For strict Document
+                    dynamic_data[key] = value
+        else:
+            FileField = _import_class("FileField")
+            for key, value in values.items():
+                key = self._reverse_db_field_map.get(key, key)
+                if key in self._fields or key in ("id", "pk", "_cls"):
+                    if __auto_convert and value is not None:
+                        field = self._fields.get(key)
+                        if field and not isinstance(field, FileField):
+                            value = field.to_python(value)
+                    setattr(self, key, value)
+                else:
                     self._data[key] = value
 
         # Set any get_<field>_display methods
@@ -305,8 +314,7 @@ class BaseDocument:
 
     def clean(self):
         """
-        Hook for doing document level data cleaning (usually validation or assignment)
-        before validation is run.
+        Hook for doing document level data cleaning before validation is run.
 
         Any ValidationError raised by this method will not be associated with
         a particular field; it will have a special-case association with the
@@ -529,9 +537,6 @@ class BaseDocument:
         """Using _get_changed_fields iterate and remove any fields that
         are marked as changed.
         """
-        ReferenceField = _import_class("ReferenceField")
-        GenericReferenceField = _import_class("GenericReferenceField")
-
         for changed in self._get_changed_fields():
             parts = changed.split(".")
             data = self
@@ -544,8 +549,7 @@ class BaseDocument:
                 elif isinstance(data, dict):
                     data = data.get(part, None)
                 else:
-                    field_name = data._reverse_db_field_map.get(part, part)
-                    data = getattr(data, field_name, None)
+                    data = getattr(data, part, None)
 
                 if not isinstance(data, LazyReference) and hasattr(
                     data, "_changed_fields"
@@ -554,40 +558,10 @@ class BaseDocument:
                         continue
 
                     data._changed_fields = []
-                elif isinstance(data, (list, tuple, dict)):
-                    if hasattr(data, "field") and isinstance(
-                        data.field, (ReferenceField, GenericReferenceField)
-                    ):
-                        continue
-                    BaseDocument._nestable_types_clear_changed_fields(data)
 
         self._changed_fields = []
 
-    @staticmethod
-    def _nestable_types_clear_changed_fields(data):
-        """Inspect nested data for changed fields
-
-        :param data: data to inspect for changes
-        """
-        Document = _import_class("Document")
-
-        # Loop list / dict fields as they contain documents
-        # Determine the iterator to use
-        if not hasattr(data, "items"):
-            iterator = enumerate(data)
-        else:
-            iterator = data.items()
-
-        for index_or_key, value in iterator:
-            if hasattr(value, "_get_changed_fields") and not isinstance(
-                value, Document
-            ):  # don't follow references
-                value._clear_changed_fields()
-            elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_clear_changed_fields(value)
-
-    @staticmethod
-    def _nestable_types_changed_fields(changed_fields, base_key, data):
+    def _nestable_types_changed_fields(self, changed_fields, base_key, data):
         """Inspect nested data for changed fields
 
         :param changed_fields: Previously collected changed fields
@@ -612,9 +586,7 @@ class BaseDocument:
                 changed = value._get_changed_fields()
                 changed_fields += ["{}{}".format(item_key, k) for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_changed_fields(
-                    changed_fields, item_key, value
-                )
+                self._nestable_types_changed_fields(changed_fields, item_key, value)
 
     def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed.
@@ -749,9 +721,11 @@ class BaseDocument:
         return cls._meta.get("collection", None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo SON (dict)
-        """
+    def _from_son(cls, son, _auto_dereference=True, only_fields=None, created=False):
+        """Create an instance of a Document (subclass) from a PyMongo SON."""
+        if not only_fields:
+            only_fields = []
+
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -764,8 +738,6 @@ class BaseDocument:
 
         # Convert SON to a data dict, making sure each key is a string and
         # corresponds to the right db field.
-        # This is needed as _from_son is currently called both from BaseDocument.__init__
-        # and from EmbeddedDocumentField.to_python
         data = {}
         for key, value in son.items():
             key = str(key)
@@ -808,7 +780,9 @@ class BaseDocument:
         if cls.STRICT:
             data = {k: v for k, v in data.items() if k in cls._fields}
 
-        obj = cls(__auto_convert=False, _created=created, **data)
+        obj = cls(
+            __auto_convert=False, _created=created, __only_fields=only_fields, **data
+        )
         obj._changed_fields = []
         if not _auto_dereference:
             obj._fields = fields

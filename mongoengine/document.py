@@ -323,6 +323,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         _refs=None,
         save_condition=None,
         signal_kwargs=None,
+        session=None,
         **kwargs
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
@@ -395,10 +396,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         try:
             # Save a new document or update an existing one
             if created:
-                object_id = self._save_create(doc, force_insert, write_concern)
+                object_id = self._save_create(doc, force_insert, write_concern, session)
             else:
                 object_id, created = self._save_update(
-                    doc, save_condition, write_concern
+                    doc, save_condition, write_concern, session
                 )
 
             if cascade is None:
@@ -442,7 +443,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return self
 
-    def _save_create(self, doc, force_insert, write_concern):
+    def _save_create(self, doc, force_insert, write_concern, session):
         """Save a new document.
 
         Helper method, should only be used inside save().
@@ -450,17 +451,16 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection = self._get_collection()
         with set_write_concern(collection, write_concern) as wc_collection:
             if force_insert:
-                return wc_collection.insert_one(doc).inserted_id
+                return wc_collection.insert_one(doc, session=session).inserted_id
             # insert_one will provoke UniqueError alongside save does not
             # therefore, it need to catch and call replace_one.
             if "_id" in doc:
-                select_dict = {"_id": doc["_id"]}
-                select_dict = self._integrate_shard_key(doc, select_dict)
-                raw_object = wc_collection.find_one_and_replace(select_dict, doc)
+                raw_object = wc_collection.find_one_and_replace(
+                    {"_id": doc["_id"]}, doc,session=session
+                )                    
                 if raw_object:
                     return doc["_id"]
-
-            object_id = wc_collection.insert_one(doc).inserted_id
+            object_id = wc_collection.insert_one(doc,session=session).inserted_id
 
         return object_id
 
@@ -479,24 +479,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return update_doc
 
-    def _integrate_shard_key(self, doc, select_dict):
-        """Integrates the collection's shard key to the `select_dict`, which will be used for the query.
-        The value from the shard key is taken from the `doc` and finally the select_dict is returned.
-        """
-
-        # Need to add shard key to query, or you get an error
-        shard_key = self._meta.get("shard_key", tuple())
-        for k in shard_key:
-            path = self._lookup_field(k.split("."))
-            actual_key = [p.db_field for p in path]
-            val = doc
-            for ak in actual_key:
-                val = val[ak]
-            select_dict[".".join(actual_key)] = val
-
-        return select_dict
-
-    def _save_update(self, doc, save_condition, write_concern):
+    def _save_update(self, doc, save_condition, write_concern, session):
         """Update an existing document.
 
         Helper method, should only be used inside save().
@@ -511,15 +494,28 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         select_dict["_id"] = object_id
 
-        select_dict = self._integrate_shard_key(doc, select_dict)
+        # Need to add shard key to query, or you get an error
+        shard_key = self._meta.get("shard_key", tuple())
+        for k in shard_key:
+            path = self._lookup_field(k.split("."))
+            actual_key = [p.db_field for p in path]
+            val = doc
+            for ak in actual_key:
+                val = val[ak]
+            select_dict[".".join(actual_key)] = val
 
         update_doc = self._get_update_doc()
         if update_doc:
             upsert = save_condition is None
             with set_write_concern(collection, write_concern) as wc_collection:
-                last_error = wc_collection.update_one(
-                    select_dict, update_doc, upsert=upsert
-                ).raw_result
+                if session==None:
+                    last_error = wc_collection.update_one(
+                        select_dict, update_doc, upsert=upsert
+                    ).raw_result
+                else:
+                    last_error = wc_collection.update_one(
+                        select_dict, update_doc, upsert=upsert, session=session
+                    ).raw_result
             if not upsert and last_error["n"] == 0:
                 raise SaveConditionError(
                     "Race condition preventing document update detected"
@@ -590,7 +586,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             select_dict["__".join(field_parts)] = val
         return select_dict
 
-    def update(self, **kwargs):
+    def update(self, session=None, **kwargs):
         """Performs an update on the :class:`~mongoengine.Document`
         A convenience wrapper to :meth:`~mongoengine.QuerySet.update`.
 
@@ -602,12 +598,12 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 query = self.to_mongo()
                 if "_cls" in query:
                     del query["_cls"]
-                return self._qs.filter(**query).update_one(**kwargs)
+                return self._qs.filter(**query).update_one(session=session,**kwargs)
             else:
                 raise OperationError("attempt to update a document not yet saved")
 
         # Need to add shard key to query, or you get an error
-        return self._qs.filter(**self._object_key).update_one(**kwargs)
+        return self._qs.filter(**self._object_key).update_one(session=session, **kwargs) 
 
     def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -635,7 +631,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 write_concern=write_concern, _from_doc_delete=True
             )
         except pymongo.errors.OperationFailure as err:
-            message = "Could not delete document (%s)" % err.args
+            message = "Could not delete document (%s)" % err.message
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
@@ -906,7 +902,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def list_indexes(cls):
-        """Lists all of the indexes that should be created for given
+        """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
         if cls._meta.get("abstract"):
@@ -971,7 +967,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def compare_indexes(cls):
-        """Compares the indexes defined in MongoEngine with the ones
+        """ Compares the indexes defined in MongoEngine with the ones
         existing in the database. Returns any missing/extra indexes.
         """
 

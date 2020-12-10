@@ -29,7 +29,6 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
-from mongoengine.pymongo_support import count_documents
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -84,19 +83,12 @@ class BaseQuerySet:
         self._cursor_obj = None
         self._limit = None
         self._skip = None
-
         self._hint = -1  # Using -1 as None is a valid value for hint
         self._collation = None
         self._batch_size = None
+        self.only_fields = []
         self._max_time_ms = None
         self._comment = None
-
-        # Hack - As people expect cursor[5:5] to return
-        # an empty result set. It's hard to do that right, though, because the
-        # server uses limit(0) to mean 'no limit'. So we set _empty
-        # in that case and check for it when iterating. We also unset
-        # it anytime we change _limit. Inspired by how it is done in pymongo.Cursor
-        self._empty = False
 
     def __call__(self, q_obj=None, **query):
         """Filter the selected documents by calling the
@@ -170,7 +162,6 @@ class BaseQuerySet:
         [<User: User object>, <User: User object>]
         """
         queryset = self.clone()
-        queryset._empty = False
 
         # Handle a slice
         if isinstance(key, slice):
@@ -178,8 +169,6 @@ class BaseQuerySet:
             queryset._skip, queryset._limit = key.start, key.stop
             if key.start and key.stop:
                 queryset._limit = key.stop - key.start
-            if queryset._limit == 0:
-                queryset._empty = True
 
             # Allow further QuerySet modifications to be performed
             return queryset
@@ -189,7 +178,9 @@ class BaseQuerySet:
             if queryset._scalar:
                 return queryset._get_scalar(
                     queryset._document._from_son(
-                        queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                        queryset._cursor[key],
+                        _auto_dereference=self._auto_dereference,
+                        only_fields=self.only_fields,
                     )
                 )
 
@@ -197,7 +188,9 @@ class BaseQuerySet:
                 return queryset._cursor[key]
 
             return queryset._document._from_son(
-                queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                queryset._cursor[key],
+                _auto_dereference=self._auto_dereference,
+                only_fields=self.only_fields,
             )
 
         raise TypeError("Provide a slice or an integer index")
@@ -293,7 +286,7 @@ class BaseQuerySet:
         return result
 
     def insert(
-        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None, session=None
     ):
         """bulk insert documents
 
@@ -346,7 +339,7 @@ class BaseQuerySet:
                 insert_func = collection.insert_one
 
         try:
-            inserted_result = insert_func(raw)
+            inserted_result = insert_func(raw, session=session)
             ids = (
                 [inserted_result.inserted_id]
                 if return_one
@@ -393,40 +386,13 @@ class BaseQuerySet:
             :meth:`skip` that has been applied to this cursor into account when
             getting the count
         """
-        # mimic the fact that setting .limit(0) in pymongo sets no limit
-        # https://docs.mongodb.com/manual/reference/method/cursor.limit/#zero-value
-        if (
-            self._limit == 0
-            and with_limit_and_skip is False
-            or self._none
-            or self._empty
-        ):
+        if self._limit == 0 and with_limit_and_skip is False or self._none:
             return 0
-
-        kwargs = (
-            {"limit": self._limit, "skip": self._skip} if with_limit_and_skip else {}
-        )
-
-        if self._limit == 0:
-            # mimic the fact that historically .limit(0) sets no limit
-            kwargs.pop("limit", None)
-
-        if self._hint not in (-1, None):
-            kwargs["hint"] = self._hint
-
-        if self._collation:
-            kwargs["collation"] = self._collation
-
-        count = count_documents(
-            collection=self._cursor.collection,
-            filter=self._cursor._Cursor__spec,
-            **kwargs
-        )
-
+        count = self._cursor.count(with_limit_and_skip=with_limit_and_skip)
         self._cursor_obj = None
         return count
 
-    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
+    def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None, non_delete_list=False, session=None):
         """Delete the documents matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -460,15 +426,18 @@ class BaseQuerySet:
         if call_document_delete:
             cnt = 0
             for doc in queryset:
-                doc.delete(**write_concern)
+                doc.delete(**write_concern, session=session)
                 cnt += 1
             return cnt
 
         delete_rules = doc._meta.get("delete_rules") or {}
         delete_rules = list(delete_rules.items())
 
+
         # Check for DENY rules before actually deleting/nullifying any other
         # references
+        '''
+        DEFAULT METHOD
         for rule_entry, rule in delete_rules:
             document_cls, field_name = rule_entry
             if document_cls._meta.get("abstract"):
@@ -481,6 +450,25 @@ class BaseQuerySet:
                         "Could not delete document (%s.%s refers to it)"
                         % (document_cls.__name__, field_name)
                     )
+        '''
+
+        delList=list()
+        for rule_entry, rule in delete_rules:
+            document_cls, field_name = rule_entry
+            if document_cls._meta.get("abstract"):
+                continue
+            if rule == DENY:
+                refs = document_cls.objects(**{field_name + "__in": self})
+                if refs.limit(1).count() > 0:
+                    if non_delete_list==True:
+                        item={'docClassName':document_cls.__name__, 'field_name':field_name, 'ids':refs.distinct(field_name)}
+                        delList.append(item)
+                        queryset=queryset.filter(id__nin=item['ids'])
+                    else:
+                        raise OperationError(
+                            "Could not delete document (%s.%s refers to it)"
+                            % (document_cls.__name__, field_name)
+                        )
 
         # Check all the other rules
         for rule_entry, rule in delete_rules:
@@ -498,24 +486,60 @@ class BaseQuerySet:
                     **{field_name + "__in": self, "pk__nin": cascade_refs}
                 )
                 if refs.count() > 0:
-                    refs.delete(write_concern=write_concern, cascade_refs=cascade_refs)
+                    refs.delete(write_concern=write_concern, cascade_refs=cascade_refs, session=session)
             elif rule == NULLIFY:
                 document_cls.objects(**{field_name + "__in": self}).update(
-                    write_concern=write_concern, **{"unset__%s" % field_name: 1}
+                    write_concern=write_concern, **{"unset__%s" % field_name: 1}, session=session
                 )
             elif rule == PULL:
                 document_cls.objects(**{field_name + "__in": self}).update(
-                    write_concern=write_concern, **{"pull_all__%s" % field_name: self}
+                    write_concern=write_concern, **{"pull_all__%s" % field_name: self}, session=session
                 )
 
         with set_write_concern(queryset._collection, write_concern) as collection:
-            result = collection.delete_many(queryset._query)
+            result = collection.delete_many(queryset._query, session=session)
 
             # If we're using an unack'd write concern, we don't really know how
             # many items have been deleted at this point, hence we only return
             # the count for ack'd ops.
             if result.acknowledged:
-                return result.deleted_count
+                if non_delete_list==False:
+                    return result.deleted_count
+                else:
+                    return result.deleted_count, delList
+
+
+    def delete_deny_list(self):
+        """List non deletable documents matched by the query.
+            :return queryset - possible deletable items
+            :return delList - dictionary mentioning ids that can't be deleted
+            with class and their field name causing error
+        """
+        queryset = self.clone()
+        doc = queryset._document
+        delete_rules = doc._meta.get("delete_rules") or {}
+        delete_rules = list(delete_rules.items())
+
+        # Check for DENY rules before actually deleting/nullifying any other
+        # references
+        querysetD=queryset.clone()
+        delList=list()
+        for rule_entry, rule in delete_rules:
+            document_cls, field_name = rule_entry
+            if document_cls._meta.get("abstract"):
+                continue
+            if rule == DENY:
+                refs = document_cls.objects(**{field_name + "__in": self})
+                if refs.limit(1).count() > 0:
+                    r=refs.distinct(field_name)
+                    ids=set()
+                    for x in r:
+                        ids.add(x.to_mongo()['_id'])
+                    ids=list(ids)
+                    item={'docClass':document_cls, 'field_name':field_name, 'ids':ids}
+                    delList.append(item)
+                    querysetD=querysetD.filter(id__nin=ids)
+        return querysetD, delList
 
     def update(
         self,
@@ -524,6 +548,7 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
+        session=None,
         **update
     ):
         """Perform an atomic update on the fields matched by the query.
@@ -567,7 +592,7 @@ class BaseQuerySet:
                 update_func = collection.update_one
                 if multi:
                     update_func = collection.update_many
-                result = update_func(query, update, upsert=upsert)
+                result = update_func(query, update, upsert=upsert, session=session)
             if full_result:
                 return result
             elif result.raw_result:
@@ -580,7 +605,7 @@ class BaseQuerySet:
                 raise OperationError(message)
             raise OperationError("Update failed (%s)" % err)
 
-    def upsert_one(self, write_concern=None, read_concern=None, **update):
+    def upsert_one(self, write_concern=None, read_concern=None, session=None, **update):
         """Overwrite or add the first document matched by the query.
 
         :param write_concern: Extra keyword arguments are passed down which
@@ -601,6 +626,7 @@ class BaseQuerySet:
             write_concern=write_concern,
             read_concern=read_concern,
             full_result=True,
+            session=session,
             **update
         )
 
@@ -610,7 +636,7 @@ class BaseQuerySet:
             document = self._document.objects.with_id(atomic_update.upserted_id)
         return document
 
-    def update_one(self, upsert=False, write_concern=None, full_result=False, **update):
+    def update_one(self, upsert=False, write_concern=None, full_result=False, session=None, **update):
         """Perform an atomic update on the fields of the first document
         matched by the query.
 
@@ -632,11 +658,12 @@ class BaseQuerySet:
             multi=False,
             write_concern=write_concern,
             full_result=full_result,
+            session=session,
             **update
         )
 
     def modify(
-        self, upsert=False, full_response=False, remove=False, new=False, **update
+        self, upsert=False, full_response=False, remove=False, new=False, session=None, **update
     ):
         """Update and return the updated document.
 
@@ -677,7 +704,7 @@ class BaseQuerySet:
                 warnings.warn(msg, DeprecationWarning)
             if remove:
                 result = queryset._collection.find_one_and_delete(
-                    query, sort=sort, **self._cursor_args
+                    query, sort=sort, session=session, **self._cursor_args
                 )
             else:
                 if new:
@@ -690,6 +717,7 @@ class BaseQuerySet:
                     upsert=upsert,
                     sort=sort,
                     return_document=return_doc,
+                    session=session,
                     **self._cursor_args
                 )
         except pymongo.errors.DuplicateKeyError as err:
@@ -699,10 +727,12 @@ class BaseQuerySet:
 
         if full_response:
             if result["value"] is not None:
-                result["value"] = self._document._from_son(result["value"])
+                result["value"] = self._document._from_son(
+                    result["value"], only_fields=self.only_fields
+                )
         else:
             if result is not None:
-                result = self._document._from_son(result)
+                result = self._document._from_son(result, only_fields=self.only_fields)
 
         return result
 
@@ -731,22 +761,24 @@ class BaseQuerySet:
         docs = self._collection.find({"_id": {"$in": object_ids}}, **self._cursor_args)
         if self._scalar:
             for doc in docs:
-                doc_map[doc["_id"]] = self._get_scalar(self._document._from_son(doc))
+                doc_map[doc["_id"]] = self._get_scalar(
+                    self._document._from_son(doc, only_fields=self.only_fields)
+                )
         elif self._as_pymongo:
             for doc in docs:
                 doc_map[doc["_id"]] = doc
         else:
             for doc in docs:
                 doc_map[doc["_id"]] = self._document._from_son(
-                    doc, _auto_dereference=self._auto_dereference,
+                    doc,
+                    only_fields=self.only_fields,
+                    _auto_dereference=self._auto_dereference,
                 )
 
         return doc_map
 
     def none(self):
-        """Returns a queryset that never returns any objects and no query will be executed when accessing the results
-        inspired by django none() https://docs.djangoproject.com/en/dev/ref/models/querysets/#none
-        """
+        """Helper that just returns a list"""
         queryset = self.clone()
         queryset._none = True
         return queryset
@@ -798,17 +830,16 @@ class BaseQuerySet:
             "_snapshot",
             "_timeout",
             "_read_preference",
-            "_read_concern",
             "_iter",
             "_scalar",
             "_as_pymongo",
             "_limit",
             "_skip",
-            "_empty",
             "_hint",
             "_collation",
             "_auto_dereference",
             "_search_text",
+            "only_fields",
             "_max_time_ms",
             "_comment",
             "_batch_size",
@@ -842,7 +873,6 @@ class BaseQuerySet:
         """
         queryset = self.clone()
         queryset._limit = n
-        queryset._empty = False  # cancels the effect of empty
 
         # If a cursor object has already been created, apply the limit to it.
         if queryset._cursor_obj:
@@ -1001,6 +1031,7 @@ class BaseQuerySet:
         :param fields: fields to include
         """
         fields = {f: QueryFieldList.ONLY for f in fields}
+        self.only_fields = list(fields.keys())
         return self.fields(True, **fields)
 
     def exclude(self, *fields):
@@ -1254,7 +1285,10 @@ class BaseQuerySet:
     def from_json(self, json_data):
         """Converts json data to unsaved objects"""
         son_data = json_util.loads(json_data)
-        return [self._document._from_son(data) for data in son_data]
+        return [
+            self._document._from_son(data, only_fields=self.only_fields)
+            for data in son_data
+        ]
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
         """Perform a aggregate function based in your queryset params
@@ -1295,11 +1329,10 @@ class BaseQuerySet:
         final_pipeline = initial_pipeline + user_pipeline
 
         collection = self._collection
-        if self._read_preference is not None or self._read_concern is not None:
+        if self._read_preference is not None:
             collection = self._collection.with_options(
-                read_preference=self._read_preference, read_concern=self._read_concern
+                read_preference=self._read_preference
             )
-
         return collection.aggregate(final_pipeline, cursor={}, **kwargs)
 
     # JS functionality
@@ -1558,7 +1591,7 @@ class BaseQuerySet:
     def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
-        if self._none or self._empty:
+        if self._limit == 0 or self._none:
             raise StopIteration
 
         raw_doc = next(self._cursor)
@@ -1567,13 +1600,17 @@ class BaseQuerySet:
             return raw_doc
 
         doc = self._document._from_son(
-            raw_doc, _auto_dereference=self._auto_dereference,
+            raw_doc,
+            _auto_dereference=self._auto_dereference,
+            only_fields=self.only_fields,
         )
 
         if self._scalar:
             return self._get_scalar(doc)
 
         return doc
+
+    next = __next__  # For Python2 support
 
     def rewind(self):
         """Rewind the cursor to its unevaluated state.
