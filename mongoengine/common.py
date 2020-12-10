@@ -8,14 +8,22 @@ class ReadOnlyContext(object):
     read_only = False
 
     def __enter__(self):
-        ReadOnlyContext.read_only = True
+        ReadOnlyContext.activate()
 
     def __exit__(self, *args):
-        ReadOnlyContext.read_only = False
+        ReadOnlyContext.deactivate()
 
     @classmethod
     def isActive(cls):
         return cls.read_only
+
+    @classmethod
+    def activate(cls):
+        ReadOnlyContext.read_only = True
+
+    @classmethod
+    def deactivate(cls):
+        ReadOnlyContext.read_only = False
 
 
 def _import_class(cls_name):
