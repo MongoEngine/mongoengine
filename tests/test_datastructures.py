@@ -3,7 +3,7 @@ import unittest
 import pytest
 
 from mongoengine import Document
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
+from mongoengine.base.datastructures import BaseDict, BaseList, BaseSet, StrictDict
 
 
 class DocumentStub(object):
@@ -18,7 +18,7 @@ class DocumentStub(object):
         self._unset_fields.append(key)
 
 
-class TestBaseDict:
+class TestBaseDict(unittest.TestCase):
     @staticmethod
     def _get_basedict(dict_items):
         """Get a BaseList bound to a fake document instance"""
@@ -154,7 +154,7 @@ class TestBaseDict:
         assert base_dict._instance._changed_fields == ["my_name.a_new_attr"]
 
 
-class TestBaseList:
+class TestBaseList(unittest.TestCase):
     @staticmethod
     def _get_baselist(list_items):
         """Get a BaseList bound to a fake document instance"""
@@ -360,6 +360,115 @@ class TestBaseList:
         base_list = self._get_baselist([1, 2, 11])
         base_list.sort(key=lambda i: str(i))
         assert base_list == [1, 11, 2]
+
+
+class TestBaseSet(unittest.TestCase):
+    @staticmethod
+    def _get_baseset(set_items):
+        """Get a BaseSet bound to a fake document instance"""
+        fake_doc = DocumentStub()
+        base_set = BaseSet(set_items, instance=None, name="my_name")
+        base_set._instance = (
+            fake_doc  # hack to inject the mock, it does not work in the constructor
+        )
+        return base_set
+
+    def test___init___(self):
+        class MyDoc(Document):
+            pass
+
+        set_items = {True}
+        doc = MyDoc()
+        base_set = BaseSet(set_items, instance=doc, name="my_name")
+        assert isinstance(base_set._instance, Document)
+        assert base_set._name == "my_name"
+        assert base_set == set_items
+
+    def test___iter__(self):
+        values = {0, 1, 2, 2}
+        base_set = BaseSet(values, instance=None, name="my_name")
+        assert values == set(base_set)
+
+    def test_add_calls_mark_as_changed(self):
+        base_set = self._get_baseset({})
+        assert not base_set._instance._changed_fields
+        base_set.add(True)
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_subclass_add(self):
+        # Due to the way mark_as_changed_wrapper is implemented
+        # it is good to test subclasses
+        class SubBaseSet(BaseSet):
+            pass
+
+        base_set = SubBaseSet({}, instance=None, name="my_name")
+        base_set.add(True)
+
+    def test_update_calls_mark_as_changed(self):
+        base_set = self._get_baseset({})
+        base_set.update({True})
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_intersection_update_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True, False})
+        base_set.intersection_update({True})
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_difference_update_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True, False})
+        base_set.difference_update({True})
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_symmetric_difference_update_calls_mark_as_changed(self):
+        base_set = self._get_baseset({0, 1})
+        base_set.symmetric_difference_update({1, 2})
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_remove_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True})
+        base_set.remove(True)
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_remove_not_mark_as_changed_when_it_fails(self):
+        base_set = self._get_baseset({True})
+        with pytest.raises(KeyError):
+            base_set.remove(False)
+        assert not base_set._instance._changed_fields
+
+    def test_discard_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True})
+        base_set.discard(True)
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_pop_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True})
+        base_set.pop()
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test_clear_calls_mark_as_changed(self):
+        base_set = self._get_baseset({True})
+        base_set.clear()
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test___ior___calls_mark_as_changed(self):
+        base_set = self._get_baseset({})
+        base_set |= {True}
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test___iand___calls_mark_as_changed(self):
+        base_set = self._get_baseset({True, False})
+        base_set &= {True}
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test___isub___calls_mark_as_changed(self):
+        base_set = self._get_baseset({True, False})
+        base_set -= {True}
+        assert base_set._instance._changed_fields == ["my_name"]
+
+    def test___ixor___calls_mark_as_changed(self):
+        base_set = self._get_baseset({0, 1})
+        base_set ^= {1, 2}
+        assert base_set._instance._changed_fields == ["my_name"]
 
 
 class TestStrictDict(unittest.TestCase):

@@ -5,7 +5,12 @@ from bson import DBRef, ObjectId, SON
 import pymongo
 
 from mongoengine.base.common import UPDATE_OPERATORS
-from mongoengine.base.datastructures import BaseDict, BaseList, EmbeddedDocumentList
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    BaseSet,
+    EmbeddedDocumentList,
+)
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError
 
@@ -313,6 +318,9 @@ class ComplexBaseField(BaseField):
             elif not isinstance(value, BaseList):
                 value = BaseList(value, instance, self.name)
             instance._data[self.name] = value
+        elif isinstance(value, set) and not isinstance(value, BaseSet):
+            value = BaseSet(value, instance, self.name)
+            instance._data[self.name] = value
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             value = BaseDict(value, instance, self.name)
             instance._data[self.name] = value
@@ -320,7 +328,7 @@ class ComplexBaseField(BaseField):
         if (
             auto_dereference
             and instance._initialised
-            and isinstance(value, (BaseList, BaseDict))
+            and isinstance(value, (BaseList, BaseSet, BaseDict))
             and not value._dereferenced
         ):
             value = _dereference(value, max_depth=1, instance=instance, name=self.name)

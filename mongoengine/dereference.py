@@ -3,6 +3,7 @@ from bson import DBRef, SON
 from mongoengine.base import (
     BaseDict,
     BaseList,
+    BaseSet,
     EmbeddedDocumentList,
     TopLevelDocumentMetaclass,
     get_document,
@@ -215,12 +216,14 @@ class DeReference:
             :class:`~mongoengine.base.ComplexBaseField`
         """
         if not items:
-            if isinstance(items, (BaseDict, BaseList)):
+            if isinstance(items, (BaseDict, BaseList, BaseSet)):
                 return items
 
             if instance:
                 if isinstance(items, dict):
                     return BaseDict(items, instance, name)
+                elif isinstance(items, set):
+                    return BaseSet(items, instance, name)
                 else:
                     return BaseList(items, instance, name)
 
@@ -238,8 +241,16 @@ class DeReference:
                     doc._data["_cls"] = _cls
                 return doc
 
-        if not hasattr(items, "items"):
-            is_list = True
+        SET = "set"
+        LIST = "list"
+        DICT = "dict"
+
+        if isinstance(items, set):
+            iterable_type = SET
+            iterator = enumerate(items)
+            data = set()
+        elif not hasattr(items, "items"):
+            iterable_type = LIST
             list_type = BaseList
             if isinstance(items, EmbeddedDocumentList):
                 list_type = EmbeddedDocumentList
@@ -247,18 +258,20 @@ class DeReference:
             iterator = enumerate(items)
             data = []
         else:
-            is_list = False
+            iterable_type = DICT
             iterator = items.items()
             data = {}
 
         depth += 1
         for k, v in iterator:
-            if is_list:
+            if iterable_type == SET:
+                data.add(v)
+            elif iterable_type == LIST:
                 data.append(v)
             else:
                 data[k] = v
 
-            if k in self.object_map and not is_list:
+            if k in self.object_map and iterable_type == DICT:
                 data[k] = self.object_map[k]
             elif isinstance(v, (Document, EmbeddedDocument)):
                 for field_name in v._fields:
@@ -271,12 +284,15 @@ class DeReference:
                         data[k]._data[field_name] = self.object_map.get(
                             (v["_ref"].collection, v["_ref"].id), v
                         )
-                    elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
+                    elif (
+                        isinstance(v, (dict, list, tuple, set))
+                        and depth <= self.max_depth
+                    ):
                         item_name = "{}.{}.{}".format(name, k, field_name)
                         data[k]._data[field_name] = self._attach_objects(
                             v, depth, instance=instance, name=item_name
                         )
-            elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
+            elif isinstance(v, (dict, list, tuple, set)) and depth <= self.max_depth:
                 item_name = "{}.{}".format(name, k) if name else name
                 data[k] = self._attach_objects(
                     v, depth - 1, instance=instance, name=item_name
@@ -285,7 +301,9 @@ class DeReference:
                 data[k] = self.object_map.get((v.collection, v.id), v)
 
         if instance and name:
-            if is_list:
+            if iterable_type == SET:
+                return BaseSet(data, instance, name)
+            if iterable_type == LIST:
                 return tuple(data) if as_tuple else list_type(data, instance, name)
             return BaseDict(data, instance, name)
         depth += 1
