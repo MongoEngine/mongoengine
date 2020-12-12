@@ -197,9 +197,7 @@ class URLField(StringField):
 
 
 class EmailField(StringField):
-    """A field that validates input as an email address.
-
-    """
+    """A field that validates input as an email address."""
 
     USER_REGEX = LazyRegexCompiler(
         # `dot-atom` defined in RFC 5322 Section 3.2.3.
@@ -1299,8 +1297,7 @@ class ReferenceField(BaseField):
 
 
 class CachedReferenceField(BaseField):
-    """A referencefield with cache fields to purpose pseudo-joins
-    """
+    """A referencefield with cache fields to purpose pseudo-joins"""
 
     def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
         """Initialises the Cached Reference Field.
@@ -1680,8 +1677,7 @@ class GridFSError(Exception):
 
 
 class GridFSProxy:
-    """Proxy object to handle writing and reading of files to and from GridFS
-    """
+    """Proxy object to handle writing and reading of files to and from GridFS"""
 
     _fs = None
 
@@ -1843,8 +1839,7 @@ class GridFSProxy:
 
 
 class FileField(BaseField):
-    """A GridFS storage field.
-    """
+    """A GridFS storage field."""
 
     proxy_class = GridFSProxy
 
@@ -2219,8 +2214,7 @@ class SequenceField(BaseField):
 
 
 class UUIDField(BaseField):
-    """A UUID field.
-    """
+    """A UUID field."""
 
     _binary = None
 

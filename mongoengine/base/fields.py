@@ -514,8 +514,7 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
-    """A geo json field storing a geojson style object.
-    """
+    """A geo json field storing a geojson style object."""
 
     _geo_index = pymongo.GEOSPHERE
     _type = "GeoBase"

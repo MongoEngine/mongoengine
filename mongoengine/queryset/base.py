@@ -281,8 +281,7 @@ class BaseQuerySet:
         )
 
     def create(self, **kwargs):
-        """Create new object. Returns the saved object instance.
-        """
+        """Create new object. Returns the saved object instance."""
         return self._document(**kwargs).save(force_insert=True)
 
     def first(self):
@@ -1579,8 +1578,7 @@ class BaseQuerySet:
         return doc
 
     def rewind(self):
-        """Rewind the cursor to its unevaluated state.
-        """
+        """Rewind the cursor to its unevaluated state."""
         self._iter = False
         self._cursor.rewind()
 
