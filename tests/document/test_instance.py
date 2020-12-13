@@ -2900,50 +2900,32 @@ class TestDocumentInstance(MongoDBTestCase):
         # Checks
         assert ",".join([str(b) for b in Book.objects.all()]) == "1,2,3,4,5,6,7,8,9"
         # bob related books
-        assert (
-            ",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
-                    )
-                ]
-            )
-            == "1,2,3,4"
+        bob_books_qs = Book.objects.filter(
+            Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
         )
+        assert [str(b) for b in bob_books_qs] == ["1", "2", "3", "4"]
+        assert bob_books_qs.count() == 4
 
         # Susan & Karl related books
-        assert (
-            ",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        Q(extra__a__all=[karl, susan])
-                        | Q(author__all=[karl, susan])
-                        | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
-                    )
-                ]
-            )
-            == "1"
+        susan_karl_books_qs = Book.objects.filter(
+            Q(extra__a__all=[karl, susan])
+            | Q(author__all=[karl, susan])
+            | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
         )
+        assert [str(b) for b in susan_karl_books_qs] == ["1"]
+        assert susan_karl_books_qs.count() == 1
 
         # $Where
-        assert (
-            ",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        __raw__={
-                            "$where": """
+        custom_qs = Book.objects.filter(
+            __raw__={
+                "$where": """
                                             function(){
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""
-                        }
-                    )
-                ]
-            )
-            == "1,2"
+            }
         )
+        assert [str(b) for b in custom_qs] == ["1", "2"]
+        assert custom_qs.count() == 2
 
     def test_switch_db_instance(self):
         register_connection("testdb-1", "mongoenginetest2")
