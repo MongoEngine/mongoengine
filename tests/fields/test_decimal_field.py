@@ -8,8 +8,7 @@ from tests.utils import MongoDBTestCase
 
 class TestDecimalField(MongoDBTestCase):
     def test_validation(self):
-        """Ensure that invalid values cannot be assigned to decimal fields.
-        """
+        """Ensure that invalid values cannot be assigned to decimal fields."""
 
         class Person(Document):
             height = DecimalField(min_value=Decimal("0.1"), max_value=Decimal("3.5"))

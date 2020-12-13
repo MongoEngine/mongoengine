@@ -7,7 +7,7 @@ from setuptools.command.test import test as TestCommand
 
 # Hack to silence atexit traceback in newer python versions
 try:
-    import multiprocessing
+    import multiprocessing  # noqa: F401
 except ImportError:
     pass
 

@@ -41,8 +41,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"MongoEngine"
-copyright = u"2009, MongoEngine Authors"
+project = "MongoEngine"
+copyright = "2009, MongoEngine Authors"  # noqa: A001
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

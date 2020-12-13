@@ -189,7 +189,8 @@ class BaseQuerySet:
             if queryset._scalar:
                 return queryset._get_scalar(
                     queryset._document._from_son(
-                        queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                        queryset._cursor[key],
+                        _auto_dereference=self._auto_dereference,
                     )
                 )
 
@@ -197,7 +198,8 @@ class BaseQuerySet:
                 return queryset._cursor[key]
 
             return queryset._document._from_son(
-                queryset._cursor[key], _auto_dereference=self._auto_dereference,
+                queryset._cursor[key],
+                _auto_dereference=self._auto_dereference,
             )
 
         raise TypeError("Provide a slice or an integer index")
@@ -279,8 +281,7 @@ class BaseQuerySet:
         )
 
     def create(self, **kwargs):
-        """Create new object. Returns the saved object instance.
-        """
+        """Create new object. Returns the saved object instance."""
         return self._document(**kwargs).save(force_insert=True)
 
     def first(self):
@@ -420,7 +421,7 @@ class BaseQuerySet:
         count = count_documents(
             collection=self._cursor.collection,
             filter=self._cursor._Cursor__spec,
-            **kwargs
+            **kwargs,
         )
 
         self._cursor_obj = None
@@ -524,7 +525,7 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
-        **update
+        **update,
     ):
         """Perform an atomic update on the fields matched by the query.
 
@@ -601,7 +602,7 @@ class BaseQuerySet:
             write_concern=write_concern,
             read_concern=read_concern,
             full_result=True,
-            **update
+            **update,
         )
 
         if atomic_update.raw_result["updatedExisting"]:
@@ -632,7 +633,7 @@ class BaseQuerySet:
             multi=False,
             write_concern=write_concern,
             full_result=full_result,
-            **update
+            **update,
         )
 
     def modify(
@@ -690,7 +691,7 @@ class BaseQuerySet:
                     upsert=upsert,
                     sort=sort,
                     return_document=return_doc,
-                    **self._cursor_args
+                    **self._cursor_args,
                 )
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError("Update failed (%s)" % err)
@@ -720,7 +721,7 @@ class BaseQuerySet:
         return queryset.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
-        """"Retrieve a set of documents by their ids.
+        """ "Retrieve a set of documents by their ids.
 
         :param object_ids: a list or tuple of ObjectId's
         :rtype: dict of ObjectId's as keys and collection-specific
@@ -738,7 +739,8 @@ class BaseQuerySet:
         else:
             for doc in docs:
                 doc_map[doc["_id"]] = self._document._from_son(
-                    doc, _auto_dereference=self._auto_dereference,
+                    doc,
+                    _auto_dereference=self._auto_dereference,
                 )
 
         return doc_map
@@ -1191,7 +1193,7 @@ class BaseQuerySet:
             preference.
         """
         if read_concern is not None and not isinstance(read_concern, Mapping):
-            raise TypeError("%r is not a valid read concern." % (read_concern,))
+            raise TypeError(f"{read_concern!r} is not a valid read concern.")
 
         queryset = self.clone()
         queryset._read_concern = (
@@ -1556,8 +1558,7 @@ class BaseQuerySet:
     # Iterator helpers
 
     def __next__(self):
-        """Wrap the result in a :class:`~mongoengine.Document` object.
-        """
+        """Wrap the result in a :class:`~mongoengine.Document` object."""
         if self._none or self._empty:
             raise StopIteration
 
@@ -1567,7 +1568,8 @@ class BaseQuerySet:
             return raw_doc
 
         doc = self._document._from_son(
-            raw_doc, _auto_dereference=self._auto_dereference,
+            raw_doc,
+            _auto_dereference=self._auto_dereference,
         )
 
         if self._scalar:
@@ -1576,8 +1578,7 @@ class BaseQuerySet:
         return doc
 
     def rewind(self):
-        """Rewind the cursor to its unevaluated state.
-        """
+        """Rewind the cursor to its unevaluated state."""
         self._iter = False
         self._cursor.rewind()
 

@@ -54,7 +54,7 @@ def _get_connection_settings(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
-    **kwargs
+    **kwargs,
 ):
     """Get the connection settings as a dict
 
@@ -177,7 +177,7 @@ def register_connection(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
-    **kwargs
+    **kwargs,
 ):
     """Register the connection settings.
 
@@ -210,7 +210,7 @@ def register_connection(
         password=password,
         authentication_source=authentication_source,
         authentication_mechanism=authentication_mechanism,
-        **kwargs
+        **kwargs,
     )
     _connection_settings[alias] = conn_settings
 
@@ -313,7 +313,7 @@ def _create_connection(alias, connection_class, **connection_settings):
     try:
         return connection_class(**connection_settings)
     except Exception as e:
-        raise ConnectionFailure("Cannot connect to database {} :\n{}".format(alias, e))
+        raise ConnectionFailure(f"Cannot connect to database {alias} :\n{e}")
 
 
 def _find_existing_connection(connection_settings):

@@ -53,7 +53,7 @@ signals.post_save.connect(PickleSignalsTest.post_save, sender=PickleSignalsTest)
 signals.post_delete.connect(PickleSignalsTest.post_delete, sender=PickleSignalsTest)
 
 
-class Mixin(object):
+class Mixin:
     name = StringField()
 
 

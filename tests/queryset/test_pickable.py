@@ -1,8 +1,6 @@
 import pickle
-import unittest
 
 from mongoengine import Document, IntField, StringField
-from mongoengine.connection import connect
 from tests.utils import MongoDBTestCase
 
 
@@ -18,18 +16,15 @@ class TestQuerysetPickable(MongoDBTestCase):
     """
 
     def setUp(self):
-        super(TestQuerysetPickable, self).setUp()
+        super().setUp()
         self.john = Person.objects.create(name="John", age=21)
 
     def test_picke_simple_qs(self):
-
         qs = Person.objects.all()
-
         pickle.dumps(qs)
 
     def _get_loaded(self, qs):
         s = pickle.dumps(qs)
-
         return pickle.loads(s)
 
     def test_unpickle(self):

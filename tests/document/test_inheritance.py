@@ -45,8 +45,7 @@ class TestInheritance(MongoDBTestCase):
         test_doc.delete()
 
     def test_superclasses(self):
-        """Ensure that the correct list of superclasses is assembled.
-        """
+        """Ensure that the correct list of superclasses is assembled."""
 
         class Animal(Document):
             meta = {"allow_inheritance": True}
@@ -216,8 +215,7 @@ class TestInheritance(MongoDBTestCase):
         assert Pike._subclasses == ("Animal.Fish.Pike",)
 
     def test_inheritance_meta_data(self):
-        """Ensure that document may inherit fields from a superclass document.
-        """
+        """Ensure that document may inherit fields from a superclass document."""
 
         class Person(Document):
             name = StringField()
@@ -234,8 +232,7 @@ class TestInheritance(MongoDBTestCase):
         assert Employee._get_collection_name() == Person._get_collection_name()
 
     def test_inheritance_to_mongo_keys(self):
-        """Ensure that document may inherit fields from a superclass document.
-        """
+        """Ensure that document may inherit fields from a superclass document."""
 
         class Person(Document):
             name = StringField()
@@ -259,7 +256,7 @@ class TestInheritance(MongoDBTestCase):
         assert Employee._get_collection_name() == Person._get_collection_name()
 
     def test_indexes_and_multiple_inheritance(self):
-        """ Ensure that all of the indexes are created for a document with
+        """Ensure that all of the indexes are created for a document with
         multiple inheritance.
         """
 
@@ -283,14 +280,11 @@ class TestInheritance(MongoDBTestCase):
         C.ensure_indexes()
 
         assert sorted(
-            [idx["key"] for idx in C._get_collection().index_information().values()]
-        ) == sorted(
-            [[(u"_cls", 1), (u"b", 1)], [(u"_id", 1)], [(u"_cls", 1), (u"a", 1)]]
-        )
+            idx["key"] for idx in C._get_collection().index_information().values()
+        ) == sorted([[("_cls", 1), ("b", 1)], [("_id", 1)], [("_cls", 1), ("a", 1)]])
 
     def test_polymorphic_queries(self):
-        """Ensure that the correct subclasses are returned from a query
-        """
+        """Ensure that the correct subclasses are returned from a query"""
 
         class Animal(Document):
             meta = {"allow_inheritance": True}
@@ -347,8 +341,7 @@ class TestInheritance(MongoDBTestCase):
         assert "_cls" not in obj
 
     def test_cant_turn_off_inheritance_on_subclass(self):
-        """Ensure if inheritance is on in a subclass you cant turn it off.
-        """
+        """Ensure if inheritance is on in a subclass you cant turn it off."""
 
         class Animal(Document):
             name = StringField()
@@ -474,7 +467,7 @@ class TestInheritance(MongoDBTestCase):
         assert city.pk is None
         # TODO: expected error? Shouldn't we create a new error type?
         with pytest.raises(KeyError):
-            setattr(city, "pk", 1)
+            city.pk = 1
 
     def test_allow_inheritance_embedded_document(self):
         """Ensure embedded documents respect inheritance."""
@@ -498,8 +491,7 @@ class TestInheritance(MongoDBTestCase):
         assert "_cls" in doc.to_mongo()
 
     def test_document_inheritance(self):
-        """Ensure mutliple inheritance of abstract documents
-        """
+        """Ensure mutliple inheritance of abstract documents"""
 
         class DateCreatedDocument(Document):
             meta = {"allow_inheritance": True, "abstract": True}
@@ -507,13 +499,8 @@ class TestInheritance(MongoDBTestCase):
         class DateUpdatedDocument(Document):
             meta = {"allow_inheritance": True, "abstract": True}
 
-        try:
-
-            class MyDocument(DateCreatedDocument, DateUpdatedDocument):
-                pass
-
-        except Exception:
-            assert False, "Couldn't create MyDocument class"
+        class MyDocument(DateCreatedDocument, DateUpdatedDocument):
+            pass
 
     def test_abstract_documents(self):
         """Ensure that a document superclass can be marked as abstract

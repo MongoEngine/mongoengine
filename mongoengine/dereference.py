@@ -51,10 +51,10 @@ class DeReference:
                 doc_type = doc_type.document_type
                 is_list = not hasattr(items, "items")
 
-                if is_list and all([i.__class__ == doc_type for i in items]):
+                if is_list and all(i.__class__ == doc_type for i in items):
                     return items
                 elif not is_list and all(
-                    [i.__class__ == doc_type for i in items.values()]
+                    i.__class__ == doc_type for i in items.values()
                 ):
                     return items
                 elif not field.dbref:
@@ -157,8 +157,7 @@ class DeReference:
         return reference_map
 
     def _fetch_objects(self, doc_type=None):
-        """Fetch all references and convert to their document objects
-        """
+        """Fetch all references and convert to their document objects"""
         object_map = {}
         for collection, dbrefs in self.reference_map.items():
 
@@ -272,12 +271,12 @@ class DeReference:
                             (v["_ref"].collection, v["_ref"].id), v
                         )
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                        item_name = "{}.{}.{}".format(name, k, field_name)
+                        item_name = f"{name}.{k}.{field_name}"
                         data[k]._data[field_name] = self._attach_objects(
                             v, depth, instance=instance, name=item_name
                         )
             elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
-                item_name = "{}.{}".format(name, k) if name else name
+                item_name = f"{name}.{k}" if name else name
                 data[k] = self._attach_objects(
                     v, depth - 1, instance=instance, name=item_name
                 )

@@ -11,7 +11,7 @@ from mongoengine import *
 from mongoengine.connection import get_db
 
 try:
-    from PIL import Image
+    from PIL import Image  # noqa: F401
 
     HAS_PIL = True
 except ImportError:
@@ -48,15 +48,14 @@ class TestFileField(MongoDBTestCase):
         DemoFile.objects.create()
 
     def test_file_fields(self):
-        """Ensure that file fields can be written to and their data retrieved
-        """
+        """Ensure that file fields can be written to and their data retrieved"""
 
         class PutFile(Document):
             the_file = FileField()
 
         PutFile.drop_collection()
 
-        text = "Hello, World!".encode("latin-1")
+        text = b"Hello, World!"
         content_type = "text/plain"
 
         putfile = PutFile()
@@ -91,16 +90,15 @@ class TestFileField(MongoDBTestCase):
         result.the_file.delete()
 
     def test_file_fields_stream(self):
-        """Ensure that file fields can be written to and their data retrieved
-        """
+        """Ensure that file fields can be written to and their data retrieved"""
 
         class StreamFile(Document):
             the_file = FileField()
 
         StreamFile.drop_collection()
 
-        text = "Hello, World!".encode("latin-1")
-        more_text = "Foo Bar".encode("latin-1")
+        text = b"Hello, World!"
+        more_text = b"Foo Bar"
         content_type = "text/plain"
 
         streamfile = StreamFile()
@@ -135,8 +133,8 @@ class TestFileField(MongoDBTestCase):
 
         StreamFile.drop_collection()
 
-        text = "Hello, World!".encode("latin-1")
-        more_text = "Foo Bar".encode("latin-1")
+        text = b"Hello, World!"
+        more_text = b"Foo Bar"
 
         streamfile = StreamFile()
         streamfile.save()
@@ -165,8 +163,8 @@ class TestFileField(MongoDBTestCase):
         class SetFile(Document):
             the_file = FileField()
 
-        text = "Hello, World!".encode("latin-1")
-        more_text = "Foo Bar".encode("latin-1")
+        text = b"Hello, World!"
+        more_text = b"Foo Bar"
 
         SetFile.drop_collection()
 
@@ -194,7 +192,7 @@ class TestFileField(MongoDBTestCase):
         GridDocument.drop_collection()
 
         with tempfile.TemporaryFile() as f:
-            f.write("Hello World!".encode("latin-1"))
+            f.write(b"Hello World!")
             f.flush()
 
             # Test without default
@@ -211,7 +209,7 @@ class TestFileField(MongoDBTestCase):
             assert doc_b.the_file.grid_id == doc_c.the_file.grid_id
 
             # Test with default
-            doc_d = GridDocument(the_file="".encode("latin-1"))
+            doc_d = GridDocument(the_file=b"")
             doc_d.save()
 
             doc_e = GridDocument.objects.with_id(doc_d.id)
@@ -228,8 +226,7 @@ class TestFileField(MongoDBTestCase):
         assert ["doc_b", "doc_e"] == grid_fs.list()
 
     def test_file_uniqueness(self):
-        """Ensure that each instance of a FileField is unique
-        """
+        """Ensure that each instance of a FileField is unique"""
 
         class TestFile(Document):
             name = StringField()
@@ -238,7 +235,7 @@ class TestFileField(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put("Hello, World!".encode("latin-1"))
+        test_file.the_file.put(b"Hello, World!")
         test_file.save()
 
         # Second instance
@@ -285,8 +282,7 @@ class TestFileField(MongoDBTestCase):
         assert test_file.the_file.get().length == 4971
 
     def test_file_boolean(self):
-        """Ensure that a boolean test of a FileField indicates its presence
-        """
+        """Ensure that a boolean test of a FileField indicates its presence"""
 
         class TestFile(Document):
             the_file = FileField()
@@ -295,9 +291,7 @@ class TestFileField(MongoDBTestCase):
 
         test_file = TestFile()
         assert not bool(test_file.the_file)
-        test_file.the_file.put(
-            "Hello, World!".encode("latin-1"), content_type="text/plain"
-        )
+        test_file.the_file.put(b"Hello, World!", content_type="text/plain")
         test_file.save()
         assert bool(test_file.the_file)
 
@@ -319,7 +313,7 @@ class TestFileField(MongoDBTestCase):
         class TestFile(Document):
             the_file = FileField()
 
-        text = "Hello, World!".encode("latin-1")
+        text = b"Hello, World!"
         content_type = "text/plain"
 
         testfile = TestFile()
@@ -363,7 +357,7 @@ class TestFileField(MongoDBTestCase):
         testfile.the_file.put(text, content_type=content_type, filename="hello")
         testfile.save()
 
-        text = "Bonjour, World!".encode("latin-1")
+        text = b"Bonjour, World!"
         testfile.the_file.replace(text, content_type=content_type, filename="hello")
         testfile.save()
 
@@ -387,7 +381,7 @@ class TestFileField(MongoDBTestCase):
         TestImage.drop_collection()
 
         with tempfile.TemporaryFile() as f:
-            f.write("Hello World!".encode("latin-1"))
+            f.write(b"Hello World!")
             f.flush()
 
             t = TestImage()
@@ -503,21 +497,21 @@ class TestFileField(MongoDBTestCase):
         # First instance
         test_file = TestFile()
         test_file.name = "Hello, World!"
-        test_file.the_file.put("Hello, World!".encode("latin-1"), name="hello.txt")
+        test_file.the_file.put(b"Hello, World!", name="hello.txt")
         test_file.save()
 
         data = get_db("test_files").macumba.files.find_one()
         assert data.get("name") == "hello.txt"
 
         test_file = TestFile.objects.first()
-        assert test_file.the_file.read() == "Hello, World!".encode("latin-1")
+        assert test_file.the_file.read() == b"Hello, World!"
 
         test_file = TestFile.objects.first()
-        test_file.the_file = "Hello, World!".encode("latin-1")
+        test_file.the_file = b"Hello, World!"
         test_file.save()
 
         test_file = TestFile.objects.first()
-        assert test_file.the_file.read() == "Hello, World!".encode("latin-1")
+        assert test_file.the_file.read() == b"Hello, World!"
 
     def test_copyable(self):
         class PutFile(Document):
@@ -525,7 +519,7 @@ class TestFileField(MongoDBTestCase):
 
         PutFile.drop_collection()
 
-        text = "Hello, World!".encode("latin-1")
+        text = b"Hello, World!"
         content_type = "text/plain"
 
         putfile = PutFile()

@@ -190,9 +190,9 @@ class TestCachedReferenceField(MongoDBTestCase):
 
         assert dict(a2.to_mongo()) == {
             "_id": a2.pk,
-            "name": u"Wilson Junior",
-            "tp": u"pf",
-            "father": {"_id": a1.pk, "tp": u"pj"},
+            "name": "Wilson Junior",
+            "tp": "pf",
+            "father": {"_id": a1.pk, "tp": "pj"},
         }
 
         assert Person.objects(father=a1)._query == {"father._id": a1.pk}
@@ -204,9 +204,9 @@ class TestCachedReferenceField(MongoDBTestCase):
         a2.reload()
         assert dict(a2.to_mongo()) == {
             "_id": a2.pk,
-            "name": u"Wilson Junior",
-            "tp": u"pf",
-            "father": {"_id": a1.pk, "tp": u"pf"},
+            "name": "Wilson Junior",
+            "tp": "pf",
+            "father": {"_id": a1.pk, "tp": "pf"},
         }
 
     def test_cached_reference_fields_on_embedded_documents(self):

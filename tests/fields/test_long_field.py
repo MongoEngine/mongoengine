@@ -25,8 +25,7 @@ class TestLongField(MongoDBTestCase):
         assert isinstance(doc.some_long, int)
 
     def test_long_validation(self):
-        """Ensure that invalid values cannot be assigned to long fields.
-        """
+        """Ensure that invalid values cannot be assigned to long fields."""
 
         class TestDocument(Document):
             value = LongField(min_value=0, max_value=110)

@@ -87,7 +87,7 @@ class TestReferenceField(MongoDBTestCase):
             parent = ReferenceField("self", dbref=False)
 
         p = Person(name="Steve", parent=DBRef("person", "abcdefghijklmnop"))
-        assert p.to_mongo() == SON([("name", u"Steve"), ("parent", "abcdefghijklmnop")])
+        assert p.to_mongo() == SON([("name", "Steve"), ("parent", "abcdefghijklmnop")])
 
     def test_objectid_reference_fields(self):
         class Person(Document):
@@ -107,8 +107,7 @@ class TestReferenceField(MongoDBTestCase):
         assert p.parent == p1
 
     def test_undefined_reference(self):
-        """Ensure that ReferenceFields may reference undefined Documents.
-        """
+        """Ensure that ReferenceFields may reference undefined Documents."""
 
         class Product(Document):
             name = StringField()

@@ -150,8 +150,7 @@ class QuerySet(BaseQuerySet):
         return self._len
 
     def no_cache(self):
-        """Convert to a non-caching queryset
-        """
+        """Convert to a non-caching queryset"""
         if self._result_cache is not None:
             raise OperationError("QuerySet already cached")
 
@@ -162,13 +161,11 @@ class QuerySetNoCache(BaseQuerySet):
     """A non caching QuerySet"""
 
     def cache(self):
-        """Convert to a caching queryset
-        """
+        """Convert to a caching queryset"""
         return self._clone_into(QuerySet(self._document, self._collection))
 
     def __repr__(self):
-        """Provides the string representation of the QuerySet
-        """
+        """Provides the string representation of the QuerySet"""
         if self._iter:
             return ".. queryset mid-iteration .."
 

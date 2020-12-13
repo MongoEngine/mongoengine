@@ -16,11 +16,11 @@
 language: python
 dist: xenial
 python:
-- 3.6
-- 3.7
-- 3.8
-- 3.9
-- pypy3
+  - 3.6
+  - 3.7
+  - 3.8
+  - 3.9
+  - pypy3
 
 env:
   global:
@@ -42,14 +42,14 @@ matrix:
   fast_finish: true
 
   include:
-  - python: 3.7
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
-  - python: 3.7
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
-  - python: 3.7
-    env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_11}
-  - python: 3.8
-    env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_11}
+    - python: 3.7
+      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
+    - python: 3.7
+      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
+    - python: 3.7
+      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_11}
+    - python: 3.8
+      env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_11}
 
 install:
   # Install Mongo
@@ -69,7 +69,7 @@ before_script:
   - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/data --logpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/mongodb.log --fork
   # Run pre-commit hooks (black, flake8, etc) on entire codebase
   - if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then pre-commit run -a; else echo "pre-commit checks only runs on py37"; fi
-  - mongo --eval 'db.version();'    # Make sure mongo is awake
+  - mongo --eval 'db.version();' # Make sure mongo is awake
 
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
@@ -83,8 +83,8 @@ notifications:
 # Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
 branches:
   only:
-  - master
-  - /^v.*$/
+    - master
+    - /^v.*$/
 
 # Whenever a new release is created via GitHub, publish it on PyPI.
 deploy:
