@@ -7,6 +7,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix LazyReferenceField dereferencing in embedded documents #2426
+- Fix regarding the recent use of Cursor.__spec in .count() that was interfering with mongomock #2425
 
 Changes in 0.21.0
 =================

@@ -104,18 +104,17 @@ class TestTransform(unittest.TestCase):
         post = BlogPost(**data)
         post.save()
 
-        assert "postTitle" in BlogPost.objects(title=data["title"])._query
-        assert not ("title" in BlogPost.objects(title=data["title"])._query)
-        assert BlogPost.objects(title=data["title"]).count() == 1
+        qs = BlogPost.objects(title=data["title"])
+        assert qs._query == {"postTitle": data["title"]}
+        assert qs.count() == 1
 
-        assert "_id" in BlogPost.objects(pk=post.id)._query
-        assert BlogPost.objects(pk=post.id).count() == 1
+        qs = BlogPost.objects(pk=post.id)
+        assert qs._query == {"_id": post.id}
+        assert qs.count() == 1
 
-        assert (
-            "postComments.commentContent"
-            in BlogPost.objects(comments__content="test")._query
-        )
-        assert BlogPost.objects(comments__content="test").count() == 1
+        qs = BlogPost.objects(comments__content="test")
+        assert qs._query == {"postComments.commentContent": "test"}
+        assert qs.count() == 1
 
         BlogPost.drop_collection()
 

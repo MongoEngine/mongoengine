@@ -420,7 +420,7 @@ class BaseQuerySet:
 
         count = count_documents(
             collection=self._cursor.collection,
-            filter=self._cursor._Cursor__spec,
+            filter=self._query,
             **kwargs,
         )
 
