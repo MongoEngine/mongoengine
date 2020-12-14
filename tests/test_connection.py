@@ -1,16 +1,11 @@
 import datetime
+import unittest
 
 from bson.tz_util import utc
 import pymongo
-
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import InvalidName, OperationFailure
 import pytest
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
 import mongoengine.connection
 from mongoengine import (
@@ -32,18 +27,6 @@ from mongoengine.connection import (
 
 def get_tz_awareness(connection):
     return connection.codec_options.tz_aware
-
-
-try:
-    import mongomock
-
-    MONGOMOCK_INSTALLED = True
-except ImportError:
-    MONGOMOCK_INSTALLED = False
-
-require_mongomock = pytest.mark.skipif(
-    not MONGOMOCK_INSTALLED, reason="you need mongomock installed to run this testcase"
-)
 
 
 class ConnectionTest(unittest.TestCase):
@@ -196,7 +179,7 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_with_invalid_db_name(self):
         """Ensure that connect() method fails fast if db name is invalid"""
         with pytest.raises(InvalidName):
-            connect("mongomock://localhost")
+            connect("mongodb://localhost")
 
     def test_connect_with_db_name_external(self):
         """Ensure that connect() works if db name is $external"""
@@ -219,104 +202,6 @@ class ConnectionTest(unittest.TestCase):
         with pytest.raises(TypeError):
             non_string_db_name = ["e. g. list instead of a string"]
             connect(non_string_db_name)
-
-    @require_mongomock
-    def test_connect_in_mocking(self):
-        """Ensure that the connect() method works properly in mocking."""
-        connect("mongoenginetest", host="mongomock://localhost")
-        conn = get_connection()
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect("mongoenginetest2", host="mongomock://localhost", alias="testdb2")
-        conn = get_connection("testdb2")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            "mongoenginetest3",
-            host="mongodb://localhost",
-            is_mock=True,
-            alias="testdb3",
-        )
-        conn = get_connection("testdb3")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect("mongoenginetest4", is_mock=True, alias="testdb4")
-        conn = get_connection("testdb4")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            host="mongodb://localhost:27017/mongoenginetest5",
-            is_mock=True,
-            alias="testdb5",
-        )
-        conn = get_connection("testdb5")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(host="mongomock://localhost:27017/mongoenginetest6", alias="testdb6")
-        conn = get_connection("testdb6")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            host="mongomock://localhost:27017/mongoenginetest7",
-            is_mock=True,
-            alias="testdb7",
-        )
-        conn = get_connection("testdb7")
-        assert isinstance(conn, mongomock.MongoClient)
-
-    @require_mongomock
-    def test_default_database_with_mocking(self):
-        """Ensure that the default database is correctly set when using mongomock."""
-        disconnect_all()
-
-        class SomeDocument(Document):
-            pass
-
-        conn = connect(host="mongomock://localhost:27017/mongoenginetest")
-        some_document = SomeDocument()
-        # database won't exist until we save a document
-        some_document.save()
-        assert conn.get_default_database().name == "mongoenginetest"
-        assert conn.list_database_names()[0] == "mongoenginetest"
-
-    @require_mongomock
-    def test_connect_with_host_list(self):
-        """Ensure that the connect() method works when host is a list
-
-        Uses mongomock to test w/o needing multiple mongod/mongos processes
-        """
-        connect(host=["mongomock://localhost"])
-        conn = get_connection()
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(host=["mongodb://localhost"], is_mock=True, alias="testdb2")
-        conn = get_connection("testdb2")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(host=["localhost"], is_mock=True, alias="testdb3")
-        conn = get_connection("testdb3")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            host=["mongomock://localhost:27017", "mongomock://localhost:27018"],
-            alias="testdb4",
-        )
-        conn = get_connection("testdb4")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            host=["mongodb://localhost:27017", "mongodb://localhost:27018"],
-            is_mock=True,
-            alias="testdb5",
-        )
-        conn = get_connection("testdb5")
-        assert isinstance(conn, mongomock.MongoClient)
-
-        connect(
-            host=["localhost:27017", "localhost:27018"], is_mock=True, alias="testdb6"
-        )
-        conn = get_connection("testdb6")
-        assert isinstance(conn, mongomock.MongoClient)
 
     def test_disconnect_cleans_globals(self):
         """Ensure that the disconnect() method cleans the globals objects"""
