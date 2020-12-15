@@ -98,7 +98,6 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
@@ -140,7 +139,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     install_requires=["pymongo>=3.4, <4.0"],
     cmdclass={"test": PyTest},
     **extra_opts
