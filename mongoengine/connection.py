@@ -54,7 +54,7 @@ def _get_connection_settings(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
-    **kwargs,
+    **kwargs
 ):
     """Get the connection settings as a dict
 
