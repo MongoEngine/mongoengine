@@ -1,0 +1,108 @@
+## For full coverage, we'd have to test all supported Python, MongoDB, and
+## PyMongo combinations. However, that would result in an overly long build
+## with a very large number of jobs, hence we only test a subset of all the
+## combinations.
+## * Python3.7, MongoDB v3.4 & the latest PyMongo v3.x is currently the "main" setup,
+## Other combinations are tested. See below for the details or check the travis jobs
+#
+## We should periodically check MongoDB Server versions supported by MongoDB
+## Inc., add newly released versions to the test matrix, and remove versions
+## which have reached their End of Life. See:
+## 1. https://www.mongodb.com/support-policy.
+## 2. https://docs.mongodb.com/ecosystem/drivers/driver-compatibility-reference/#python-driver-compatibility
+##
+## Reminder: Update README.rst if you change MongoDB versions we test.
+#
+#language: python
+#dist: xenial
+#python:
+#  - 3.6
+#  - 3.7
+#  - 3.8
+#  - 3.9
+#  - pypy3
+#
+#env:
+#  global:
+#    - MONGODB_3_4=3.4.19
+#    - MONGODB_3_6=3.6.13
+#    - MONGODB_4_0=4.0.13
+#
+#    - PYMONGO_3_4=3.4
+#    - PYMONGO_3_6=3.6
+#    - PYMONGO_3_9=3.9
+#    - PYMONGO_3_11=3.11
+#
+#    - MAIN_PYTHON_VERSION=3.7
+#  matrix:
+#    - MONGODB=${MONGODB_3_4} PYMONGO=${PYMONGO_3_11}
+#
+#matrix:
+#  # Finish the build as soon as one job fails
+#  fast_finish: true
+#
+#  include:
+#    - python: 3.7
+#      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_6}
+#    - python: 3.7
+#      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_9}
+#    - python: 3.7
+#      env: MONGODB=${MONGODB_3_6} PYMONGO=${PYMONGO_3_11}
+#    - python: 3.8
+#      env: MONGODB=${MONGODB_4_0} PYMONGO=${PYMONGO_3_11}
+#
+#install:
+#  # Install Mongo
+#  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz
+#  - tar xzf mongodb-linux-x86_64-${MONGODB}.tgz
+#  - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --version
+#  # Install Python dependencies.
+#  - pip install --upgrade pip
+#  - pip install coveralls
+#  - pip install pre-commit
+#  - pip install tox
+#  # tox dryrun to setup the tox venv (we run a mock test).
+#  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
+#
+#before_script:
+#  - mkdir ${PWD}/mongodb-linux-x86_64-${MONGODB}/data
+#  - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/data --logpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/mongodb.log --fork
+#  # Run pre-commit hooks (black, flake8, etc) on entire codebase
+#  - if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then pre-commit run -a; else echo "pre-commit checks only runs on py37"; fi
+#  - mongo --eval 'db.version();' # Make sure mongo is awake
+#
+#script:
+#  - tox -e $(echo py$TRAVIS_PYTHON_VERSION-mg$PYMONGO | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
+#
+#after_success:
+#  - if [[ $TRAVIS_PYTHON_VERSION == $MAIN_PYTHON_VERSION ]]; then coveralls --verbose; else echo "coveralls only sent for py37"; fi
+#
+#notifications:
+#  irc: irc.freenode.org#mongoengine
+#
+## Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
+#branches:
+#  # Only run builds on the master branch and GitHub releases (tagged as vX.Y.Z)
+#  only:
+#    - master
+#    - /^v.*$/
+#
+## Whenever a new release is created via GitHub, publish it on PyPI.
+#deploy:
+#  provider: pypi
+#  user: the_drow
+#  password:
+#    secure: QMyatmWBnC6ZN3XLW2+fTBDU4LQcp1m/LjR2/0uamyeUzWKdlOoh/Wx5elOgLwt/8N9ppdPeG83ose1jOz69l5G0MUMjv8n/RIcMFSpCT59tGYqn3kh55b0cIZXFT9ar+5cxlif6a5rS72IHm5li7QQyxexJIII6Uxp0kpvUmek=
+#
+#  # Create a source distribution and a pure python wheel for faster installs.
+#  distributions: "sdist bdist_wheel"
+#
+#  # Only deploy on tagged commits (aka GitHub releases) and only for the parent
+#  # repo's builds running Python v3.7 along with PyMongo v3.x and MongoDB v3.4.
+#  # We run Travis against many different Python, PyMongo, and MongoDB versions
+#  # and we don't want the deploy to occur multiple times).
+#  on:
+#    tags: true
+#    repo: MongoEngine/mongoengine
+#    condition: ($PYMONGO = ${PYMONGO_3_11}) && ($MONGODB = ${MONGODB_3_4})
+#    python: 3.7
