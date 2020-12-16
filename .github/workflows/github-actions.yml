@@ -115,7 +115,7 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - name: build dummy wheel for test-pypi
+    - name: build dummy wheel for test-pypi (hacking versioning to make it unique)
       run: |
         pip install wheel
         python setup.py egg_info -b ".dev`date '+%Y%m%d%H%M%S'`" build sdist bdist_wheel
