@@ -118,7 +118,7 @@ class StringField(BaseField):
         copied_obj = copy.deepcopy(self, memo)
 
         copied_obj.regex = regex_bak
-        copied_obj.__deepcopy__ = copy.deepcopy(deepcopy_bak)
+        copied_obj.__deepcopy__ = deepcopy_bak
         self.regex = regex_bak
         self.__deepcopy__ = deepcopy_bak
 
