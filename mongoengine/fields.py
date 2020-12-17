@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import inspect
 import itertools
 import re
 import socket
@@ -514,7 +515,7 @@ class BooleanField(BaseField):
     def to_python(self, value):
         try:
             value = bool(value)
-        except ValueError:
+        except (ValueError, TypeError):
             pass
         return value
 
@@ -1028,17 +1029,6 @@ def key_not_string(d):
             return True
 
 
-def key_has_dot_or_dollar(d):
-    """Helper function to recursively determine if any key in a
-    dictionary contains a dot or a dollar sign.
-    """
-    for k, v in d.items():
-        if ("." in k or k.startswith("$")) or (
-            isinstance(v, dict) and key_has_dot_or_dollar(v)
-        ):
-            return True
-
-
 def key_starts_with_dollar(d):
     """Helper function to recursively determine if any key in a
     dictionary starts with a dollar
@@ -1311,8 +1301,8 @@ class CachedReferenceField(BaseField):
             fields = []
 
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, str) and not issubclass(
-            document_type, Document
+        if not isinstance(document_type, str) and not (
+            inspect.isclass(document_type) and issubclass(document_type, Document)
         ):
             self.error(
                 "Argument to CachedReferenceField constructor must be a"
@@ -1642,7 +1632,7 @@ class EnumField(BaseField):
                 "'choices' can't be set on EnumField, "
                 "it is implicitly set as the enum class"
             )
-        kwargs["choices"] = list(self._enum_cls)
+        kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
     def __set__(self, instance, value):
@@ -1658,13 +1648,6 @@ class EnumField(BaseField):
         if isinstance(value, self._enum_cls):
             return value.value
         return value
-
-    def validate(self, value):
-        if value and not isinstance(value, self._enum_cls):
-            try:
-                self._enum_cls(value)
-            except Exception as e:
-                self.error(str(e))
 
     def prepare_query_value(self, op, value):
         if value is None:

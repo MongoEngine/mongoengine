@@ -374,34 +374,6 @@ class TestField(MongoDBTestCase):
         person.id = str(ObjectId())
         person.validate()
 
-    def test_string_validation(self):
-        """Ensure that invalid values cannot be assigned to string fields."""
-
-        class Person(Document):
-            name = StringField(max_length=20)
-            userid = StringField(r"[0-9a-z_]+$")
-
-        person = Person(name=34)
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        # Test regex validation on userid
-        person = Person(userid="test.User")
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        person.userid = "test_user"
-        assert person.userid == "test_user"
-        person.validate()
-
-        # Test max length validation on name
-        person = Person(name="Name that is more than twenty characters")
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        person.name = "Shorter name"
-        person.validate()
-
     def test_db_field_validation(self):
         """Ensure that db_field doesn't accept invalid values."""
 

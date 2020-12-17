@@ -2,11 +2,28 @@ from decimal import Decimal
 
 import pytest
 
-from mongoengine import *
+from mongoengine import (
+    CachedReferenceField,
+    DecimalField,
+    Document,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    InvalidDocumentError,
+    ListField,
+    ReferenceField,
+    StringField,
+    ValidationError,
+)
 from tests.utils import MongoDBTestCase
 
 
 class TestCachedReferenceField(MongoDBTestCase):
+    def test_constructor_fail_bad_document_type(self):
+        with pytest.raises(
+            ValidationError, match="must be a document class or a string"
+        ):
+            CachedReferenceField(document_type=0)
+
     def test_get_and_save(self):
         """
         Tests #1047: CachedReferenceField creates DBRefs on to_python,
