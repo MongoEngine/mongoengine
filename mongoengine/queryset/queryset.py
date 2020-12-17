@@ -25,8 +25,6 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
     _has_more = True
     _len = None
     _result_cache = None
-    _reference_cache_count = None
-    _reference_cache = None
 
     def next(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
@@ -97,10 +95,7 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
         Raises StopIteration when there are no more results"""
         if self._result_cache is None:
             self._result_cache = []
-        if self._reference_cache_count is None:
-            self._reference_cache_count = defaultdict(int)
-        if self._reference_cache is None:
-            self._reference_cache = defaultdict(dict)
+        self._init_reference()
 
         pos = 0
         while True:
@@ -120,10 +115,7 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
         """
         if self._result_cache is None:
             self._result_cache = []
-        if self._reference_cache_count is None:
-            self._reference_cache_count = defaultdict(int)
-        if self._reference_cache is None:
-            self._reference_cache = defaultdict(dict)
+        self._init_reference()
 
         if self._has_more:
             try:

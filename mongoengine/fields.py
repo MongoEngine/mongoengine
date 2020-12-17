@@ -934,16 +934,6 @@ class MapField(DictField):
 
 
 
-def _get_field(doc, fields):
-    for index in range(0, len(fields)):
-        if doc is None:
-            return None
-        attname = fields[index].name
-        if not (hasattr(doc, '_data') and attname in doc._data):
-            return None
-        doc = doc._data[attname]
-    return getattr(doc, 'id', None)
-
 def _dereference_dbref(value, cls):
     value = cls._get_db().dereference(value)
     if value is not None:
@@ -959,40 +949,18 @@ def dereference_dbref(value, document_type, _lazy_prefetch_base=None, _fields=No
         cls = document_type
 
     # Lets be extra safe and ensure that no exception can be thrown.
-    # _result_cache contains tuples instead of Document when values_list is called on the queryset. Our document
-    # parsing logic does not work for tuples, so lets assert this before prefetching.
-    cant_prefetch = (
-        not isinstance(_lazy_prefetch_base, LazyPrefetchBase) or
-        _lazy_prefetch_base._reference_cache_count is None or
-        not _lazy_prefetch_base._result_cache or
-        _fields is None
+    can_prefetch = (
+        isinstance(_lazy_prefetch_base, LazyPrefetchBase) and
+        _lazy_prefetch_base.lazy_prefetch_available() and
+        _fields is not None
     )
 
-    if cant_prefetch:
-        return _dereference_dbref(value, cls)
+    if can_prefetch:
+        is_valid, doc = _lazy_prefetch_base.try_fetch_document(value, cls, _fields)
+        if is_valid:
+            return doc
 
-    attname = '.'.join([f.name for f in _fields])
-
-    if value.id in _lazy_prefetch_base._reference_cache[attname]:
-        return _lazy_prefetch_base._reference_cache[attname][value.id]
-    start, end = _lazy_prefetch_base._reference_cache_count[attname], len(_lazy_prefetch_base._result_cache)
-
-    ids = [_get_field(doc, _fields) for doc in _lazy_prefetch_base._result_cache[start:end]]
-    ids = [id for id in ids if id is not None]
-
-    # This case usually happens when a queryset cache is not updated, like when cloning a queryset.
-    if value.id not in ids:
-        return _dereference_dbref(value, cls)
-
-    # Fetching is inevitable
-    cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
-    id_doc_map = dict((son['_id'], cls._from_son(son, _lazy_prefetch_base=_lazy_prefetch_base, _fields=_fields)) for son in cursor)
-
-    _lazy_prefetch_base._reference_cache[attname].update(dict((id, id_doc_map[id] if id in id_doc_map else None) for id in ids))
-
-    _lazy_prefetch_base._reference_cache_count[attname] = len(_lazy_prefetch_base._result_cache)
-    return id_doc_map.get(value.id, None)
-
+    return _dereference_dbref(value, cls)
 
 
 class ReferenceField(BaseField):
