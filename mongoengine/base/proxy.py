@@ -25,6 +25,9 @@ class LazyPrefetchBase:
     # mapping from field path to map of id -> (data, is_doc) tuple
     # data is Document object if `is_doc`, else it is SON
     _reference_cache = None
+    # decides whether to make the created DocumentProxy as being optimized using LazyPrefetchBase
+    # ideally we should always mark them, but making it opt-in so that the flag can be used for optimization in very sepcific conitions
+    _should_mark_document_proxy = False
 
     def _init_reference(self):
         if self._reference_cache_count is None:
@@ -35,6 +38,9 @@ class LazyPrefetchBase:
     def lazy_prefetch_available(self):
         # make sure we have initialized reference dicts and have data in `_result_cache`
         return self._reference_cache_count is not None and self._result_cache
+
+    def should_mark_document_proxy(self):
+        return self._should_mark_document_proxy and self.lazy_prefetch_available()
 
     def try_fetch_document(self, value, cls, fields):
         # tries to fetch document of class `cls` at the path given by `fields` from the reference `value`
@@ -94,13 +100,16 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     collection = None
     wrapped = None
     _instance = None
+    _lazy_prefetch_optimized = False
 
-    def __init__(self, wrapped, id, collection, instance=None):
+    def __init__(self, wrapped, id, collection, instance=None, lazy_prefetch_base=None):
         super(DocumentProxy, self).__init__(wrapped)
         self.id = id
         self.collection = collection
         if instance:
             self._instance = weakref.proxy(instance)
+        if lazy_prefetch_base is not None:
+            self._lazy_prefetch_optimized = lazy_prefetch_base.should_mark_document_proxy()
 
     def __call__(self, *args, **kwargs):
         # Hack as callable(lazy_object_proxy.Proxy) return True

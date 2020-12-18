@@ -1118,6 +1118,7 @@ class ReferenceField(BaseField):
                 ),
                 value.id,
                 value.collection,
+                lazy_prefetch_base = _lazy_prefetch_base if _fields else None,
             )
 
         return value
@@ -1226,6 +1227,7 @@ class CachedReferenceField(BaseField):
                 ),
                 value.id,
                 value.collection,
+                lazy_prefetch_base = _lazy_prefetch_base if _fields else None
             )
 
         return value
