@@ -4,10 +4,26 @@ import pytest
 from mongoengine import *
 from mongoengine.connection import get_db
 
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestLongField(MongoDBTestCase):
+    def test_storage(self):
+        class Person(Document):
+            value = LongField()
+
+        Person.drop_collection()
+        person = Person(value=5000)
+        person.save()
+        assert get_as_pymongo(person) == {"_id": person.id, "value": 5000}
+
+    def test_construction_does_not_fail_with_invalid_value(self):
+        class Person(Document):
+            value = LongField()
+
+        person = Person(value="not_an_int")
+        assert person.value == "not_an_int"
+
     def test_long_field_is_considered_as_int64(self):
         """
         Tests that long fields are stored as long in mongo, even if long
@@ -30,19 +46,16 @@ class TestLongField(MongoDBTestCase):
         class TestDocument(Document):
             value = LongField(min_value=0, max_value=110)
 
-        doc = TestDocument()
-        doc.value = 50
-        doc.validate()
+        TestDocument(value=50).validate()
 
-        doc.value = -1
         with pytest.raises(ValidationError):
-            doc.validate()
-        doc.value = 120
+            TestDocument(value=-1).validate()
+
         with pytest.raises(ValidationError):
-            doc.validate()
-        doc.value = "ten"
+            TestDocument(value=120).validate()
+
         with pytest.raises(ValidationError):
-            doc.validate()
+            TestDocument(value="ten").validate()
 
     def test_long_ne_operator(self):
         class TestDocument(Document):
@@ -53,4 +66,5 @@ class TestLongField(MongoDBTestCase):
         TestDocument(long_fld=None).save()
         TestDocument(long_fld=1).save()
 
-        assert 1 == TestDocument.objects(long_fld__ne=None).count()
+        assert TestDocument.objects(long_fld__ne=None).count() == 1
+        assert TestDocument.objects(long_fld__ne=1).count() == 1
