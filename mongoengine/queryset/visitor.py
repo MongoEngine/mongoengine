@@ -66,7 +66,7 @@ class SimplificationVisitor(QNodeVisitor):
             
             # Convert DocumentProxy to ids.
             def is_doc_or_proxy(val):
-                return type(val) is DocumentProxy or isinstance(val, Document)
+                return isinstance(val, DocumentProxy) or isinstance(val, Document)
             for op in ops:
                 if is_doc_or_proxy(query[op]):
                     query[op] = query[op].id
