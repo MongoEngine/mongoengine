@@ -1858,9 +1858,6 @@ class Document(BaseDocument):
         else:
             rest = None
 
-        if isinstance(context, EmbeddedDocumentField):
-            context = context.document_type
-
         # a key as a digit means a list index... set context as the list's value
         if first_part.isdigit() or first_part == '$':
             if isinstance(context, DictField):
