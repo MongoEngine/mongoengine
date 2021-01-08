@@ -1862,10 +1862,11 @@ class Document(BaseDocument):
         if first_part.isdigit() or first_part == '$':
             if isinstance(context, DictField):
                 context = ArbitraryField()
-            elif isinstance(context.field, basestring):
-                context = get_document(context.field)
-            elif isinstance(context.field, BaseField):
-                context = context.field
+            if getattr(context, "field", None) is not None:
+                if isinstance(context.field, basestring):
+                    context = get_document(context.field)
+                elif isinstance(context.field, BaseField):
+                    context = context.field
 
         if first_part == '_id':
             context = context.pk_field()
