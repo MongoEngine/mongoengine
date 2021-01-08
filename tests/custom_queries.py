@@ -792,8 +792,11 @@ class CustomQueryTest(unittest.TestCase):
         p5 = self.Person.find_one({'_id': p.id, 'other_colours.0': red})
         self.assertEquals(p.id, p5.id)
 
-        p6 = self.Person.find_one({'_id': p.id, 'other_colours.name': 'Red'}, {'other_colours.$': 1})
-        self.assertEquals(len(p6['other_colours']), 1)
+        p6 = self.Person.find_one({'_id': p.id, 'other_colours.1': red})
+        self.assertTrue(p6 is None)
+
+        p7 = self.Person.find_one({'_id': p.id, 'other_colours.name': 'Red'}, {'other_colours.$': 1})
+        self.assertEquals(len(p7['other_colours']), 1)
 
         resp = self.Person.update({'_id': p.id}, {'$set': {'other_colours.1.name': 'Aqua'}}, multi=False)
         self.assertEquals(resp['n'], 1)
