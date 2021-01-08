@@ -1858,14 +1858,18 @@ class Document(BaseDocument):
         else:
             rest = None
 
+        if isinstance(context, EmbeddedDocumentField):
+            context = context.document_type
+
         # a key as a digit means a list index... set context as the list's value
         if first_part.isdigit() or first_part == '$':
             if isinstance(context, DictField):
                 context = ArbitraryField()
-            elif isinstance(context.field, basestring):
-                context = get_document(context.field)
-            elif isinstance(context.field, BaseField):
-                context = context.field
+            if getattr(context, "field", None) is not None:
+                if isinstance(context.field, basestring):
+                    context = get_document(context.field)
+                elif isinstance(context.field, BaseField):
+                    context = context.field
 
         if first_part == '_id':
             context = context.pk_field()
@@ -1929,9 +1933,18 @@ class Document(BaseDocument):
                     return ".".join([prefix,'_cls']), CLSContext()
             raise ValueError("Can't find field %s" % first_part)
 
+        # another unfortunate hack... in find queries "list.field_name" means
+        # field_name inside of the list's field... but in updates,
+        # list.0.field_name means that... need to differentiate here
         list_field_name = None
-        if is_subclass_or_instance(field, ListField):
+        if is_subclass_or_instance(field, ListField) and is_find:
             list_field_name = field.db_field
+            if is_subclass_or_instance(field.field, basestring):
+                field = get_document(field.field)
+            elif is_subclass_or_instance(field.field, BaseField):
+                field = field.field
+            else:
+                raise ValueError("Can't parse field %s" % first_part)
             field._in_list = True
 
         if is_subclass_or_instance(field, ArbitraryField):
