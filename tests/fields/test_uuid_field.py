@@ -17,8 +17,7 @@ class TestUUIDField(MongoDBTestCase):
         assert get_as_pymongo(person) == {"_id": person.id, "api_key": str(uid)}
 
     def test_field_string(self):
-        """Test UUID fields storing as String
-        """
+        """Test UUID fields storing as String"""
         Person.drop_collection()
 
         uu = uuid.uuid4()

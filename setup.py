@@ -7,7 +7,7 @@ from setuptools.command.test import test as TestCommand
 
 # Hack to silence atexit traceback in newer python versions
 try:
-    import multiprocessing
+    import multiprocessing  # noqa: F401
 except ImportError:
     pass
 
@@ -98,7 +98,6 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
@@ -113,7 +112,7 @@ extra_opts = {
     "tests_require": [
         "pytest<5.0",
         "pytest-cov",
-        "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
+        "coverage",
         "blinker",
         "Pillow>=7.0.0",
     ],
@@ -140,7 +139,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     install_requires=["pymongo>=3.4, <4.0"],
     cmdclass={"test": PyTest},
     **extra_opts

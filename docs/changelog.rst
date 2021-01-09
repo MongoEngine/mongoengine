@@ -6,7 +6,17 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.22.1
+=================
+- Declare that Py3.5 is not supported in package metadata #2449
+- Moved CI from Travis to Github-Actions
+
+Changes in 0.22.0
+=================
 - Fix LazyReferenceField dereferencing in embedded documents #2426
+- Fix regarding the recent use of Cursor.__spec in .count() that was interfering with mongomock #2425
+- Drop support for Python 3.5 by introducing f-strings in the codebase
 
 Changes in 0.21.0
 =================

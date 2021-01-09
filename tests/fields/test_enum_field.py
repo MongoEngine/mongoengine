@@ -3,7 +3,7 @@ from enum import Enum
 from bson import InvalidDocument
 import pytest
 
-from mongoengine import *
+from mongoengine import Document, EnumField, ValidationError
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -44,6 +44,11 @@ class TestStringEnumField(MongoDBTestCase):
         m.status = Status.DONE
         m.save()
         assert m.status == Status.DONE
+
+        m.status = "wrong"
+        assert m.status == "wrong"
+        with pytest.raises(ValidationError):
+            m.validate()
 
     def test_set_default(self):
         class ModelWithDefault(Document):

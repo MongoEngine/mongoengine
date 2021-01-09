@@ -1,5 +1,4 @@
 import operator
-import warnings
 import weakref
 
 from bson import DBRef, ObjectId, SON
@@ -16,11 +15,9 @@ __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
-
-    .. versionchanged:: 0.5 - added verbose and help text
     """
 
-    name = None
+    name = None  # set in TopLevelDocumentMetaclass
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
     _auto_dereference = True
@@ -43,7 +40,7 @@ class BaseField:
         choices=None,
         null=False,
         sparse=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param db_field: The database field to store this field in
@@ -120,8 +117,7 @@ class BaseField:
             BaseField.creation_counter += 1
 
     def __get__(self, instance, owner):
-        """Descriptor for retrieving a value from a field in a document.
-        """
+        """Descriptor for retrieving a value from a field in a document."""
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -265,11 +261,11 @@ class ComplexBaseField(BaseField):
     Allows for nesting of embedded documents inside complex types.
     Handles the lazy dereferencing of a queryset by lazily dereferencing all
     items in a list / dict rather than one at a time.
-
-    .. versionadded:: 0.5
     """
 
-    field = None
+    def __init__(self, field=None, **kwargs):
+        self.field = field
+        super().__init__(**kwargs)
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
@@ -469,9 +465,7 @@ class ComplexBaseField(BaseField):
 
             if errors:
                 field_class = self.field.__class__.__name__
-                self.error(
-                    "Invalid {} item ({})".format(field_class, value), errors=errors
-                )
+                self.error(f"Invalid {field_class} item ({value})", errors=errors)
         # Don't allow empty values if required
         if self.required and not value:
             self.error("Field is required and cannot be empty")
@@ -520,10 +514,7 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
-    """A geo json field storing a geojson style object.
-
-    .. versionadded:: 0.8
-    """
+    """A geo json field storing a geojson style object."""
 
     _geo_index = pymongo.GEOSPHERE
     _type = "GeoBase"
@@ -543,7 +534,7 @@ class GeoJsonBaseField(BaseField):
         if isinstance(value, dict):
             if set(value.keys()) == {"type", "coordinates"}:
                 if value["type"] != self._type:
-                    self.error('{} type must be "{}"'.format(self._name, self._type))
+                    self.error(f'{self._name} type must be "{self._type}"')
                 return self.validate(value["coordinates"])
             else:
                 self.error(

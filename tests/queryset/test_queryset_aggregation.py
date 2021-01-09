@@ -64,7 +64,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         pipeline = [{"$match": {"name": "Isabella Luanna"}}]
         data = Person.objects().aggregate(pipeline)
-        assert list(data) == [{u"_id": p1.pk, u"age": 16, u"name": u"Isabella Luanna"}]
+        assert list(data) == [{"_id": p1.pk, "age": 16, "name": "Isabella Luanna"}]
 
     def test_queryset_aggregation_with_skip(self):
         class Person(Document):

@@ -292,7 +292,7 @@ class TestField(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u"spam ham egg"
+        doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.com_dt_fld = datetime.datetime.utcnow()
@@ -328,7 +328,7 @@ class TestField(MongoDBTestCase):
         HandleNoneFields.drop_collection()
 
         doc = HandleNoneFields()
-        doc.str_fld = u"spam ham egg"
+        doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
         doc.comp_dt_fld = datetime.datetime.utcnow()
@@ -374,34 +374,6 @@ class TestField(MongoDBTestCase):
         person.id = str(ObjectId())
         person.validate()
 
-    def test_string_validation(self):
-        """Ensure that invalid values cannot be assigned to string fields."""
-
-        class Person(Document):
-            name = StringField(max_length=20)
-            userid = StringField(r"[0-9a-z_]+$")
-
-        person = Person(name=34)
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        # Test regex validation on userid
-        person = Person(userid="test.User")
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        person.userid = "test_user"
-        assert person.userid == "test_user"
-        person.validate()
-
-        # Test max length validation on name
-        person = Person(name="Name that is more than twenty characters")
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        person.name = "Shorter name"
-        person.validate()
-
     def test_db_field_validation(self):
         """Ensure that db_field doesn't accept invalid values."""
 
@@ -426,9 +398,9 @@ class TestField(MongoDBTestCase):
     def test_list_validation(self):
         """Ensure that a list field only accepts lists with valid elements."""
         access_level_choices = (
-            ("a", u"Administration"),
-            ("b", u"Manager"),
-            ("c", u"Staff"),
+            ("a", "Administration"),
+            ("b", "Manager"),
+            ("c", "Staff"),
         )
 
         class User(Document):
@@ -476,7 +448,7 @@ class TestField(MongoDBTestCase):
         post.access_list = ["a", "b"]
         post.validate()
 
-        assert post.get_access_list_display() == u"Administration, Manager"
+        assert post.get_access_list_display() == "Administration, Manager"
 
         post.comments = ["a"]
         with pytest.raises(ValidationError):
@@ -544,8 +516,7 @@ class TestField(MongoDBTestCase):
         post.validate()
 
     def test_sorted_list_sorting(self):
-        """Ensure that a sorted list field properly sorts values.
-        """
+        """Ensure that a sorted list field properly sorts values."""
 
         class Comment(EmbeddedDocument):
             order = IntField()
@@ -661,8 +632,7 @@ class TestField(MongoDBTestCase):
         )
 
     def test_list_field_manipulative_operators(self):
-        """Ensure that ListField works with standard list operators that manipulate the list.
-        """
+        """Ensure that ListField works with standard list operators that manipulate the list."""
 
         class BlogPost(Document):
             ref = StringField()
@@ -1359,9 +1329,9 @@ class TestField(MongoDBTestCase):
         foo.delete()
         bar = Bar.objects.get()
         with pytest.raises(DoesNotExist):
-            getattr(bar, "ref")
+            bar.ref
         with pytest.raises(DoesNotExist):
-            getattr(bar, "generic_ref")
+            bar.generic_ref
 
         # When auto_dereference is disabled, there is no trouble returning DBRef
         bar = Bar.objects.get()
@@ -1372,8 +1342,7 @@ class TestField(MongoDBTestCase):
         assert bar.generic_ref == {"_ref": expected, "_cls": "Foo"}
 
     def test_list_item_dereference(self):
-        """Ensure that DBRef items in ListFields are dereferenced.
-        """
+        """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -1398,8 +1367,7 @@ class TestField(MongoDBTestCase):
         assert group_obj.members[1].name == user2.name
 
     def test_recursive_reference(self):
-        """Ensure that ReferenceFields can reference their own documents.
-        """
+        """Ensure that ReferenceFields can reference their own documents."""
 
         class Employee(Document):
             name = StringField()
@@ -1426,8 +1394,7 @@ class TestField(MongoDBTestCase):
         assert peter.friends == friends
 
     def test_recursive_embedding(self):
-        """Ensure that EmbeddedDocumentFields can contain their own documents.
-        """
+        """Ensure that EmbeddedDocumentFields can contain their own documents."""
 
         class TreeNode(EmbeddedDocument):
             name = StringField()
@@ -1503,8 +1470,7 @@ class TestField(MongoDBTestCase):
             AbstractDoc.drop_collection()
 
     def test_reference_class_with_abstract_parent(self):
-        """Ensure that a class with an abstract parent can be referenced.
-        """
+        """Ensure that a class with an abstract parent can be referenced."""
 
         class Sibling(Document):
             name = StringField()
@@ -1574,8 +1540,7 @@ class TestField(MongoDBTestCase):
             brother.save()
 
     def test_generic_reference(self):
-        """Ensure that a GenericReferenceField properly dereferences items.
-        """
+        """Ensure that a GenericReferenceField properly dereferences items."""
 
         class Link(Document):
             title = StringField()
@@ -1614,8 +1579,7 @@ class TestField(MongoDBTestCase):
         assert isinstance(bm.bookmark_object, Link)
 
     def test_generic_reference_list(self):
-        """Ensure that a ListField properly dereferences generic references.
-        """
+        """Ensure that a ListField properly dereferences generic references."""
 
         class Link(Document):
             title = StringField()
@@ -1718,8 +1682,7 @@ class TestField(MongoDBTestCase):
         assert bm.bookmark_object == post_1
 
     def test_generic_reference_string_choices(self):
-        """Ensure that a GenericReferenceField can handle choices as strings
-        """
+        """Ensure that a GenericReferenceField can handle choices as strings"""
 
         class Link(Document):
             title = StringField()
@@ -1811,8 +1774,7 @@ class TestField(MongoDBTestCase):
         assert user.bookmarks == [post_1]
 
     def test_generic_reference_list_item_modification(self):
-        """Ensure that modifications of related documents (through generic reference) don't influence on querying
-        """
+        """Ensure that modifications of related documents (through generic reference) don't influence on querying"""
 
         class Post(Document):
             title = StringField()
@@ -1900,8 +1862,7 @@ class TestField(MongoDBTestCase):
         assert doc == doc2
 
     def test_choices_allow_using_sets_as_choices(self):
-        """Ensure that sets can be used when setting choices
-        """
+        """Ensure that sets can be used when setting choices"""
 
         class Shirt(Document):
             size = StringField(choices={"M", "L"})
@@ -1920,8 +1881,7 @@ class TestField(MongoDBTestCase):
         shirt.validate()
 
     def test_choices_validation_accept_possible_value(self):
-        """Ensure that value is in a container of allowed values.
-        """
+        """Ensure that value is in a container of allowed values."""
 
         class Shirt(Document):
             size = StringField(choices=("S", "M"))
@@ -1930,8 +1890,7 @@ class TestField(MongoDBTestCase):
         shirt.validate()
 
     def test_choices_validation_reject_unknown_value(self):
-        """Ensure that unallowed value are rejected upon validation
-        """
+        """Ensure that unallowed value are rejected upon validation"""
 
         class Shirt(Document):
             size = StringField(choices=("S", "M"))
@@ -1989,8 +1948,7 @@ class TestField(MongoDBTestCase):
             shirt1.validate()
 
     def test_simple_choices_validation(self):
-        """Ensure that value is in a container of allowed values.
-        """
+        """Ensure that value is in a container of allowed values."""
 
         class Shirt(Document):
             size = StringField(max_length=3, choices=("S", "M", "L", "XL", "XXL"))
@@ -2039,12 +1997,11 @@ class TestField(MongoDBTestCase):
             shirt.validate()
 
     def test_simple_choices_validation_invalid_value(self):
-        """Ensure that error messages are correct.
-        """
+        """Ensure that error messages are correct."""
         SIZES = ("S", "M", "L", "XL", "XXL")
         COLORS = (("R", "Red"), ("B", "Blue"))
-        SIZE_MESSAGE = u"Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
-        COLOR_MESSAGE = u"Value must be one of ['R', 'B']"
+        SIZE_MESSAGE = "Value must be one of ('S', 'M', 'L', 'XL', 'XXL')"
+        COLOR_MESSAGE = "Value must be one of ['R', 'B']"
 
         class Shirt(Document):
             size = StringField(max_length=3, choices=SIZES)
@@ -2107,7 +2064,7 @@ class TestField(MongoDBTestCase):
             assert "comments" in error_dict
             assert 1 in error_dict["comments"]
             assert "content" in error_dict["comments"][1]
-            assert error_dict["comments"][1]["content"] == u"Field is required"
+            assert error_dict["comments"][1]["content"] == "Field is required"
 
         post.comments[1].content = "here we go"
         post.validate()
@@ -2119,7 +2076,7 @@ class TestField(MongoDBTestCase):
 
         class EnumField(BaseField):
             def __init__(self, **kwargs):
-                super(EnumField, self).__init__(**kwargs)
+                super().__init__(**kwargs)
 
             def to_mongo(self, value):
                 return value
@@ -2621,11 +2578,11 @@ class TestEmbeddedDocumentListField(MongoDBTestCase):
         """
         post = self.BlogPost(
             comments=[
-                self.Comments(author="user1", message=u"сообщение"),
-                self.Comments(author="user2", message=u"хабарлама"),
+                self.Comments(author="user1", message="сообщение"),
+                self.Comments(author="user2", message="хабарлама"),
             ]
         ).save()
-        assert post.comments.get(message=u"сообщение").author == "user1"
+        assert post.comments.get(message="сообщение").author == "user1"
 
     def test_save(self):
         """

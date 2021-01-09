@@ -26,16 +26,14 @@ class TestClassMethods(unittest.TestCase):
             self.db.drop_collection(collection)
 
     def test_definition(self):
-        """Ensure that document may be defined using fields.
-        """
+        """Ensure that document may be defined using fields."""
         assert ["_cls", "age", "id", "name"] == sorted(self.Person._fields.keys())
         assert ["IntField", "ObjectIdField", "StringField", "StringField"] == sorted(
-            [x.__class__.__name__ for x in self.Person._fields.values()]
+            x.__class__.__name__ for x in self.Person._fields.values()
         )
 
     def test_get_db(self):
-        """Ensure that get_db returns the expected db.
-        """
+        """Ensure that get_db returns the expected db."""
         db = self.Person._get_db()
         assert self.db == db
 
@@ -47,15 +45,13 @@ class TestClassMethods(unittest.TestCase):
         assert collection_name == self.Person._get_collection_name()
 
     def test_get_collection(self):
-        """Ensure that get_collection returns the expected collection.
-        """
+        """Ensure that get_collection returns the expected collection."""
         collection_name = "person"
         collection = self.Person._get_collection()
         assert self.db[collection_name] == collection
 
     def test_drop_collection(self):
-        """Ensure that the collection may be dropped from the database.
-        """
+        """Ensure that the collection may be dropped from the database."""
         collection_name = "person"
         self.Person(name="Test").save()
         assert collection_name in list_collection_names(self.db)
@@ -77,7 +73,7 @@ class TestClassMethods(unittest.TestCase):
         assert self.Person._meta["delete_rules"] == {(Job, "employee"): NULLIFY}
 
     def test_compare_indexes(self):
-        """ Ensure that the indexes are properly created and that
+        """Ensure that the indexes are properly created and that
         compare_indexes identifies the missing/extra indexes
         """
 
@@ -110,7 +106,7 @@ class TestClassMethods(unittest.TestCase):
         }
 
     def test_compare_indexes_inheritance(self):
-        """ Ensure that the indexes are properly created and that
+        """Ensure that the indexes are properly created and that
         compare_indexes identifies the missing/extra indexes for subclassed
         documents (_cls included)
         """
@@ -150,7 +146,7 @@ class TestClassMethods(unittest.TestCase):
         }
 
     def test_compare_indexes_multiple_subclasses(self):
-        """ Ensure that compare_indexes behaves correctly if called from a
+        """Ensure that compare_indexes behaves correctly if called from a
         class, which base class has multiple subclasses
         """
 
@@ -203,7 +199,7 @@ class TestClassMethods(unittest.TestCase):
         assert actual == expected
 
     def test_list_indexes_inheritance(self):
-        """ ensure that all of the indexes are listed regardless of the super-
+        """ensure that all of the indexes are listed regardless of the super-
         or sub-class that we call it from
         """
 
@@ -235,7 +231,7 @@ class TestClassMethods(unittest.TestCase):
         assert BlogPost.list_indexes() == [
             [("_cls", 1), ("author", 1), ("tags", 1)],
             [("_cls", 1), ("author", 1), ("tags", 1), ("extra_text", 1)],
-            [(u"_id", 1)],
+            [("_id", 1)],
             [("_cls", 1)],
         ]
 
@@ -260,8 +256,7 @@ class TestClassMethods(unittest.TestCase):
         assert Vaccine._meta["delete_rules"][(Cat, "vaccine_made")] == PULL
 
     def test_collection_naming(self):
-        """Ensure that a collection with a specified name may be used.
-        """
+        """Ensure that a collection with a specified name may be used."""
 
         class DefaultNamingTest(Document):
             pass
@@ -293,7 +288,7 @@ class TestClassMethods(unittest.TestCase):
         assert "wibble" == InheritedAbstractNamingTest._get_collection_name()
 
         # Mixin tests
-        class BaseMixin(object):
+        class BaseMixin:
             meta = {"collection": lambda c: c.__name__.lower()}
 
         class OldMixinNamingConvention(Document, BaseMixin):
@@ -304,7 +299,7 @@ class TestClassMethods(unittest.TestCase):
             == OldMixinNamingConvention._get_collection_name()
         )
 
-        class BaseMixin(object):
+        class BaseMixin:
             meta = {"collection": lambda c: c.__name__.lower()}
 
         class BaseDocument(Document, BaseMixin):
@@ -316,8 +311,7 @@ class TestClassMethods(unittest.TestCase):
         assert "basedocument" == MyDocument._get_collection_name()
 
     def test_custom_collection_name_operations(self):
-        """Ensure that a collection with a specified name is used as expected.
-        """
+        """Ensure that a collection with a specified name is used as expected."""
         collection_name = "personCollTest"
 
         class Person(Document):
@@ -337,8 +331,7 @@ class TestClassMethods(unittest.TestCase):
         assert collection_name not in list_collection_names(self.db)
 
     def test_collection_name_and_primary(self):
-        """Ensure that a collection with a specified name may be used.
-        """
+        """Ensure that a collection with a specified name may be used."""
 
         class Person(Document):
             name = StringField(primary_key=True)

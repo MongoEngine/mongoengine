@@ -10,12 +10,12 @@ from mongoengine import signals
 # mongoengine, e.g. instead of `from mongoengine.connection import connect`,
 # users can simply use `from mongoengine import connect`, or even
 # `from mongoengine import *` and then `connect('testdb')`.
-from mongoengine.connection import *
-from mongoengine.document import *
-from mongoengine.errors import *
-from mongoengine.fields import *
-from mongoengine.queryset import *
-from mongoengine.signals import *
+from mongoengine.connection import *  # noqa: F401
+from mongoengine.document import *  # noqa: F401
+from mongoengine.errors import *  # noqa: F401
+from mongoengine.fields import *  # noqa: F401
+from mongoengine.queryset import *  # noqa: F401
+from mongoengine.signals import *  # noqa: F401
 
 
 __all__ = (
@@ -28,7 +28,7 @@ __all__ = (
 )
 
 
-VERSION = (0, 21, 0)
+VERSION = (0, 22, 1)
 
 
 def get_version():

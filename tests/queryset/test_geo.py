@@ -496,8 +496,8 @@ class TestGeoQueries(MongoDBTestCase):
         p.save()
         qs = Place.objects().only("location")
         assert qs.as_pymongo()[0]["location"] == {
-            u"type": u"Point",
-            u"coordinates": [24.946861267089844, 60.16311983618494],
+            "type": "Point",
+            "coordinates": [24.946861267089844, 60.16311983618494],
         }
 
     def test_2dsphere_point_sets_correctly(self):

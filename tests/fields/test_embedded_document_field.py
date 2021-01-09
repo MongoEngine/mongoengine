@@ -74,7 +74,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -110,7 +110,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
@@ -318,7 +318,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -346,7 +346,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id

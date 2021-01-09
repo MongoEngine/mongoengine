@@ -135,11 +135,11 @@ class TestMapField(MongoDBTestCase):
 
         BlogPost.drop_collection()
 
-        tree = BlogPost(info_dict={u"éééé": {"description": u"VALUE: éééé"}})
+        tree = BlogPost(info_dict={"éééé": {"description": "VALUE: éééé"}})
 
         tree.save()
 
         assert (
-            BlogPost.objects.get(id=tree.id).info_dict[u"éééé"].description
-            == u"VALUE: éééé"
+            BlogPost.objects.get(id=tree.id).info_dict["éééé"].description
+            == "VALUE: éééé"
         )

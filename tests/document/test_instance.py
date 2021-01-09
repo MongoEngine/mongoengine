@@ -161,8 +161,7 @@ class TestDocumentInstance(MongoDBTestCase):
         Log.objects
 
     def test_repr(self):
-        """Ensure that unicode representation works
-        """
+        """Ensure that unicode representation works"""
 
         class Article(Document):
             title = StringField()
@@ -170,7 +169,7 @@ class TestDocumentInstance(MongoDBTestCase):
             def __unicode__(self):
                 return self.title
 
-        doc = Article(title=u"привет мир")
+        doc = Article(title="привет мир")
 
         assert "<Article: привет мир>" == repr(doc)
 
@@ -183,7 +182,7 @@ class TestDocumentInstance(MongoDBTestCase):
             def __str__(self):
                 return None
 
-        doc = Article(title=u"привет мир")
+        doc = Article(title="привет мир")
         assert "<Article: None>" == repr(doc)
 
     def test_queryset_resurrects_dropped_collection(self):
@@ -523,9 +522,9 @@ class TestDocumentInstance(MongoDBTestCase):
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             assert query_op["op"] == "update"
             if mongo_db <= MONGODB_34:
-                assert set(query_op["query"].keys()) == set(["_id", "is_mammal"])
+                assert set(query_op["query"].keys()) == {"_id", "is_mammal"}
             else:
-                assert set(query_op["command"]["q"].keys()) == set(["_id", "is_mammal"])
+                assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
 
         Animal.drop_collection()
 
@@ -548,7 +547,7 @@ class TestDocumentInstance(MongoDBTestCase):
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             assert query_op["op"] == "command"
             assert query_op["command"]["findAndModify"] == "animal"
-            assert set(query_op["command"]["query"].keys()) == set(["_id", "is_mammal"])
+            assert set(query_op["command"]["query"].keys()) == {"_id", "is_mammal"}
 
         Animal.drop_collection()
 
@@ -1430,11 +1429,11 @@ class TestDocumentInstance(MongoDBTestCase):
         coll = self.Person._get_collection()
         doc = self.Person(name="John").save()
         raw_doc = coll.find_one({"_id": doc.pk})
-        assert set(raw_doc.keys()) == set(["_id", "_cls", "name"])
+        assert set(raw_doc.keys()) == {"_id", "_cls", "name"}
 
         doc.update(rename__name="first_name")
         raw_doc = coll.find_one({"_id": doc.pk})
-        assert set(raw_doc.keys()) == set(["_id", "_cls", "first_name"])
+        assert set(raw_doc.keys()) == {"_id", "_cls", "first_name"}
         assert raw_doc["first_name"] == "John"
 
     def test_inserts_if_you_set_the_pk(self):
@@ -1554,8 +1553,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert site.page.log_message == "Error: Dummy message"
 
     def test_update_list_field(self):
-        """Test update on `ListField` with $pull + $in.
-        """
+        """Test update on `ListField` with $pull + $in."""
 
         class Doc(Document):
             foo = ListField(StringField())
@@ -2044,7 +2042,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert promoted_employee.details is None
 
     def test_object_mixins(self):
-        class NameMixin(object):
+        class NameMixin:
             name = StringField()
 
         class Foo(EmbeddedDocument, NameMixin):
@@ -2058,7 +2056,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert ["id", "name", "widgets"] == sorted(Bar._fields.keys())
 
     def test_mixin_inheritance(self):
-        class BaseMixIn(object):
+        class BaseMixIn:
             count = IntField()
             data = StringField()
 
@@ -2817,15 +2815,13 @@ class TestDocumentInstance(MongoDBTestCase):
         register_connection("testdb-2", "mongoenginetest2")
 
         class A(Document):
-            """Uses default db_alias
-            """
+            """Uses default db_alias"""
 
             name = StringField()
             meta = {"allow_inheritance": True}
 
         class B(A):
-            """Uses testdb-2 db_alias
-            """
+            """Uses testdb-2 db_alias"""
 
             meta = {"db_alias": "testdb-2"}
 
@@ -2905,50 +2901,32 @@ class TestDocumentInstance(MongoDBTestCase):
         # Checks
         assert ",".join([str(b) for b in Book.objects.all()]) == "1,2,3,4,5,6,7,8,9"
         # bob related books
-        assert (
-            ",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
-                    )
-                ]
-            )
-            == "1,2,3,4"
+        bob_books_qs = Book.objects.filter(
+            Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
         )
+        assert [str(b) for b in bob_books_qs] == ["1", "2", "3", "4"]
+        assert bob_books_qs.count() == 4
 
         # Susan & Karl related books
-        assert (
-            ",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        Q(extra__a__all=[karl, susan])
-                        | Q(author__all=[karl, susan])
-                        | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
-                    )
-                ]
-            )
-            == "1"
+        susan_karl_books_qs = Book.objects.filter(
+            Q(extra__a__all=[karl, susan])
+            | Q(author__all=[karl, susan])
+            | Q(extra__b__all=[karl.to_dbref(), susan.to_dbref()])
         )
+        assert [str(b) for b in susan_karl_books_qs] == ["1"]
+        assert susan_karl_books_qs.count() == 1
 
         # $Where
-        assert (
-            u",".join(
-                [
-                    str(b)
-                    for b in Book.objects.filter(
-                        __raw__={
-                            "$where": """
+        custom_qs = Book.objects.filter(
+            __raw__={
+                "$where": """
                                             function(){
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""
-                        }
-                    )
-                ]
-            )
-            == "1,2"
+            }
         )
+        assert [str(b) for b in custom_qs] == ["1", "2"]
+        assert custom_qs.count() == 2
 
     def test_switch_db_instance(self):
         register_connection("testdb-1", "mongoenginetest2")
@@ -3308,7 +3286,7 @@ class TestDocumentInstance(MongoDBTestCase):
                 for node_name, node in self.nodes.items():
                     node.expand()
                     node.save(*args, **kwargs)
-                super(NodesSystem, self).save(*args, **kwargs)
+                super().save(*args, **kwargs)
 
         NodesSystem.drop_collection()
         Node.drop_collection()
@@ -3613,8 +3591,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert u_from_db.height is None
 
     def test_not_saved_eq(self):
-        """Ensure we can compare documents not saved.
-        """
+        """Ensure we can compare documents not saved."""
 
         class Person(Document):
             pass
@@ -3758,7 +3735,7 @@ class TestDocumentInstance(MongoDBTestCase):
         _ = list(Jedi.objects)  # Ensure a proper document loads without errors
 
         # Forces a document with a wrong shape (may occur in case of migration)
-        value = u"I_should_be_a_dict"
+        value = "I_should_be_a_dict"
         coll.insert_one({"light_saber": value})
 
         with pytest.raises(InvalidDocumentError) as exc_info:
@@ -3843,7 +3820,7 @@ class ObjectKeyTestCase(MongoDBTestCase):
 
 class DBFieldMappingTest(MongoDBTestCase):
     def setUp(self):
-        class Fields(object):
+        class Fields:
             w1 = BooleanField(db_field="w2")
 
             x1 = BooleanField(db_field="x2")

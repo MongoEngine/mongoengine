@@ -166,8 +166,8 @@ class TestSequenceField(MongoDBTestCase):
         ids = [i.id for i in Person.objects]
         assert ids == list(range(1, 11))
 
-        id = [i.id for i in Animal.objects]
-        assert id == list(range(1, 11))
+        _id = [i.id for i in Animal.objects]
+        assert _id == list(range(1, 11))
 
         c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
         assert c["next"] == 10

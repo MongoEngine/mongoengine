@@ -54,7 +54,7 @@ def _get_connection_settings(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
-    **kwargs
+    **kwargs,
 ):
     """Get the connection settings as a dict
 
@@ -74,8 +74,6 @@ def _get_connection_settings(
     : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
-
-    .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = {
         "name": name or db or DEFAULT_DATABASE_NAME,
@@ -179,7 +177,7 @@ def register_connection(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
-    **kwargs
+    **kwargs,
 ):
     """Register the connection settings.
 
@@ -201,8 +199,6 @@ def register_connection(
     : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
-
-    .. versionchanged:: 0.10.6 - added mongomock support
     """
     conn_settings = _get_connection_settings(
         db=db,
@@ -214,7 +210,7 @@ def register_connection(
         password=password,
         authentication_source=authentication_source,
         authentication_mechanism=authentication_mechanism,
-        **kwargs
+        **kwargs,
     )
     _connection_settings[alias] = conn_settings
 
@@ -317,7 +313,7 @@ def _create_connection(alias, connection_class, **connection_settings):
     try:
         return connection_class(**connection_settings)
     except Exception as e:
-        raise ConnectionFailure("Cannot connect to database {} :\n{}".format(alias, e))
+        raise ConnectionFailure(f"Cannot connect to database {alias} :\n{e}")
 
 
 def _find_existing_connection(connection_settings):
@@ -386,8 +382,6 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
     See the docstring for `register_connection` for more details about all
     supported kwargs.
-
-    .. versionchanged:: 0.6 - added multiple database support.
     """
     if alias in _connections:
         prev_conn_setting = _connection_settings[alias]

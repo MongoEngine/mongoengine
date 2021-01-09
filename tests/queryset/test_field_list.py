@@ -148,8 +148,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         assert qs._loaded_fields.as_dict() == {"c": {"$slice": 2}, "a": 1}
 
     def test_only(self):
-        """Ensure that QuerySet.only only returns the requested fields.
-        """
+        """Ensure that QuerySet.only only returns the requested fields."""
         person = self.Person(name="test", age=25)
         person.save()
 
@@ -365,8 +364,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         Email.drop_collection()
 
     def test_slicing_fields(self):
-        """Ensure that query slicing an array works.
-        """
+        """Ensure that query slicing an array works."""
 
         class Numbers(Document):
             n = ListField(IntField())
@@ -401,8 +399,7 @@ class TestOnlyExcludeAll(unittest.TestCase):
         assert numbers.n == [-5, -4, -3, -2, -1]
 
     def test_slicing_nested_fields(self):
-        """Ensure that query slicing an embedded array works.
-        """
+        """Ensure that query slicing an embedded array works."""
 
         class EmbeddedNumber(EmbeddedDocument):
             n = ListField(IntField())
