@@ -44,7 +44,7 @@ the :attr:`host` to
         )
 
     will establish connection to ``production`` database using
-    ``admin`` username and ``qwerty`` password.
+    ``admin`` username and ``12345`` password.
 
 .. note:: Calling :func:`~mongoengine.connect` without argument will establish
     a connection to the "test" database by default
