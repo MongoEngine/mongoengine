@@ -74,6 +74,7 @@ jobs:
     - name: Send coverage to Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
       if: ${{ matrix.python-version == env.MAIN_PYTHON_VERSION }}
       run: coveralls
 
