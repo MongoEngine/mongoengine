@@ -513,7 +513,7 @@ class Document(BaseDocument):
             context._default_load_status = dflt_status
             context._all_loaded = False
 
-            if rest:
+            if rest and rest != "$":
                 # if the field is recursive the parent field must be loaded
                 context._fields_status[first_part] = FieldStatus.LOADED
                 name = [n for (n, f) in context._fields.iteritems()
