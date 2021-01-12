@@ -804,6 +804,12 @@ class CustomQueryTest(unittest.TestCase):
         p9 = self.Person.find_one({'_id': p.id, 'number_list': 2}, {'number_list.$': 1})
         self.assertEquals(p9['number_list'], [2])
 
+        p10 = self.Person.find_one({'_id': p.id, 'number_list': {"$gt": 1}}, {'number_list.$': 1})
+        self.assertEquals(p10['number_list'], [2])
+
+        p11 = self.Person.find_one({'_id': p.id, 'number_list': {"$gt": 1}})
+        self.assertEquals(p11['number_list'], [1, 1, 2])
+
         resp = self.Person.update({'_id': p.id}, {'$set': {'other_colours.1.name': 'Aqua'}}, multi=False)
         self.assertEquals(resp['n'], 1)
 
