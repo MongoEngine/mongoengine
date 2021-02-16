@@ -274,3 +274,25 @@ class TestSequenceField(MongoDBTestCase):
         assert foo.counter == bar.counter
         assert foo._fields["counter"].owner_document == Foo
         assert bar._fields["counter"].owner_document == Bar
+
+    def test_sequence_setattr_not_incrementing_counter(self):
+        class Person(DynamicDocument):
+            id = SequenceField(primary_key=True)
+            name = StringField()
+
+        self.db["mongoengine.counters"].drop()
+        Person.drop_collection()
+
+        for x in range(10):
+            Person(name="Person %s" % x).save()
+
+        c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
+        assert c["next"] == 10
+
+        # Setting SequenceField field value should not increment counter:
+        new_person = Person()
+        new_person.id = 1100
+
+        # Counter should still be at 10
+        c = self.db["mongoengine.counters"].find_one({"_id": "person.id"})
+        assert c["next"] == 10
