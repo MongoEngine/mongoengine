@@ -432,10 +432,10 @@ Document collections
 ====================
 Document classes that inherit **directly** from :class:`~mongoengine.Document`
 will have their own **collection** in the database. The name of the collection
-is by default the name of the class, converted to lowercase (so in the example
-above, the collection would be called `page`). If you need to change the name
-of the collection (e.g. to use MongoEngine with an existing database), then
-create a class dictionary attribute called :attr:`meta` on your document, and
+is by default the name of the class converted to snake_case (e.g if your Document class
+is named `CompanyUser`, the corresponding collection would be `company_user`). If you need
+to change the name of the collection (e.g. to use MongoEngine with an existing database),
+then create a class dictionary attribute called :attr:`meta` on your document, and
 set :attr:`collection` to the name of the collection that you want your
 document class to use::
 
