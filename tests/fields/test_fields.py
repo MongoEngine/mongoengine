@@ -306,7 +306,7 @@ class TestField(MongoDBTestCase):
         )
         assert res == 1
 
-        # Retrive data from db and verify it.
+        # Retrieve data from db and verify it.
         ret = HandleNoneFields.objects.all()[0]
         assert ret.str_fld is None
         assert ret.int_fld is None
@@ -340,7 +340,7 @@ class TestField(MongoDBTestCase):
             {"$unset": {"str_fld": 1, "int_fld": 1, "flt_fld": 1, "comp_dt_fld": 1}},
         )
 
-        # Retrive data from db and verify it.
+        # Retrieve data from db and verify it.
         ret = HandleNoneFields.objects.first()
         assert ret.str_fld is None
         assert ret.int_fld is None
