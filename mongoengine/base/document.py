@@ -156,7 +156,7 @@ class BaseDocument:
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
-            if not hasattr(self, name) and not name.startswith("_"):
+            if name not in self._fields_ordered and not name.startswith("_"):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name, null=True)
                 field.name = name
