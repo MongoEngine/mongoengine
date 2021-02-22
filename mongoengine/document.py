@@ -843,8 +843,22 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         """
 
         required = cls.list_indexes()
-        existing = [info['key']
-                    for info in connection_manager.get_collection(cls).index_information().values()]
+        existing = []
+        for info in cls._get_collection().index_information().values():
+            if '_fts' in [k[0] for k in info['key']]:
+                spec = []
+                index_type = None
+                for index in info['key']:
+                    if index[0] != '_fts':
+                        spec.append(index)
+                    else:
+                        index_type = index[1]
+                        break
+                text_index_fields = sorted(info.get('weights').keys())
+                spec.extend([(key, index_type) for key in text_index_fields])
+                existing.append(spec)
+            else:
+                existing.append(info['key'])
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
@@ -871,13 +885,23 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         required = cls.list_indexes(include_partial_filter_expressions=True)
         existing = []
         for info in cls._get_collection().index_information().values():
-            if '_fts' in info['key'][0]:
-                index_type = info['key'][0][1]
-                text_index_fields = info.get('weights').keys()
-                existing.append(
-                    ([(key, index_type) for key in text_index_fields], info.get('partialFilterExpression', {})))
+            from bson import SON
+            partial_filter = info.get('partialFilterExpression', SON()).to_dict()
+            if '_fts' in [k[0] for k in info['key']]:
+                spec = []
+                index_type = None
+                for index in info['key']:
+                    if index[0] != '_fts':
+                        spec.append(index)
+                    else:
+                        index_type = index[1]
+                        break
+                text_index_fields = sorted(info.get('weights').keys())
+                spec.extend([(key, index_type) for key in text_index_fields])
+                spec = (spec, partial_filter)
+                existing.append(spec)
             else:
-                existing.append((info['key'], info.get('partialFilterExpression', {})))
+                existing.append((info['key'], partial_filter))
                 
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]

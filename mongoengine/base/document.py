@@ -1009,6 +1009,11 @@ class BaseDocument(object):
             args['noCompanyPrefix'] = True
             spec['args'] = args
         
+        if "text" in [f[1] for f in spec['fields']]:
+            # text indexes don't have ordering sensitivity
+            # sorting will help in compare_indexes correctness
+            spec['fields'] = sorted(spec['fields'])
+        
         # Add `company` forcibly to the front.
         noCompanyPrefix = spec.pop('args', {}).get('noCompanyPrefix', False)
         if not noCompanyPrefix and cls._fields.get('company'):
