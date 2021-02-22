@@ -109,7 +109,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     By default, the MongoDB collection used to store documents created using a
     :class:`~mongoengine.Document` subclass will be the name of the subclass
-    converted to lowercase. A different collection may be specified by
+    converted to snake_case. A different collection may be specified by
     providing :attr:`collection` to the :attr:`meta` dictionary in the class
     definition.
 
