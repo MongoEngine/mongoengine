@@ -248,6 +248,34 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         assert list(data) == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
 
+    def test_queryset_aggregation_geonear_aggregation_on_pointfield(self):
+        """test ensures that $geonear can be used as a 1-stage pipeline and that
+        MongoEngine does not interfer with such pipeline (#2473)
+        """
+
+        class Aggr(Document):
+            name = StringField()
+            c = PointField()
+
+        Aggr.drop_collection()
+
+        agg1 = Aggr(name="X", c=[10.634584, 35.8245029]).save()
+        agg2 = Aggr(name="Y", c=[10.634584, 35.8245029]).save()
+
+        pipeline = [
+            {
+                "$geoNear": {
+                    "near": {"type": "Point", "coordinates": [10.634584, 35.8245029]},
+                    "distanceField": "c",
+                    "spherical": True,
+                }
+            }
+        ]
+        assert list(Aggr.objects.aggregate(*pipeline)) == [
+            {"_id": agg1.id, "c": 0.0, "name": "X"},
+            {"_id": agg2.id, "c": 0.0, "name": "Y"},
+        ]
+
 
 if __name__ == "__main__":
     unittest.main()

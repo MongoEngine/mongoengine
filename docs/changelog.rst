@@ -6,6 +6,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Bugfix: manually setting SequenceField in DynamicDocument doesn't increment the counter #2471
 
 Changes in 0.22.1
 =================

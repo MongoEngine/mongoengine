@@ -1162,7 +1162,7 @@ class ReferenceField(BaseField):
 
         :param document_type: The type of Document that will be referenced
         :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
-          or as the :class:`~pymongo.objectid.ObjectId`.id .
+          or as the :class:`~pymongo.objectid.ObjectId`.
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
         :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
