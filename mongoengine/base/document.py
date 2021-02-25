@@ -1001,9 +1001,6 @@ class BaseDocument(object):
         
     @classmethod
     def _rippling_process_index_spec(cls, spec):
-        # Remove `company` for spec['fields']
-        spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
-
         if "expireAfterSeconds" in spec:
             args = spec.get("args", {})
             args['noCompanyPrefix'] = True
@@ -1017,6 +1014,8 @@ class BaseDocument(object):
         # Add `company` forcibly to the front.
         noCompanyPrefix = spec.pop('args', {}).get('noCompanyPrefix', False)
         if not noCompanyPrefix and cls._fields.get('company'):
+            # Remove `company` for spec['fields']
+            spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
             spec['fields'].insert(0, ('company', 1))
             
         return spec
