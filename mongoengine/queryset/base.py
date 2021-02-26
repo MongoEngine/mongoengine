@@ -1171,7 +1171,7 @@ class BaseQuerySet:
         """Enable or disable the use of temporary files on disk while processing a blocking sort operation.
          (To store data exceeding the 100 megabyte system memory limit)
 
-        :param enabled: wether or not temporary files on disk are used
+        :param enabled: whether or not temporary files on disk are used
         """
         queryset = self.clone()
         queryset._allow_disk_use = enabled
