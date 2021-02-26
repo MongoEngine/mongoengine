@@ -5656,6 +5656,31 @@ class TestQueryset(unittest.TestCase):
         qs = self.Person.objects().timeout(False)
         assert qs._cursor_args == {"no_cursor_timeout": True}
 
+    def test_allow_disk_use(self):
+        qs = self.Person.objects()
+        assert qs._cursor_args == {}
+
+        qs = self.Person.objects().allow_disk_use(False)
+        assert qs._cursor_args == {}
+
+        qs = self.Person.objects().allow_disk_use(True)
+        assert qs._cursor_args == {"allow_disk_use": True}
+
+        # Test if allow_disk_use changes the results
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo", age=12)
+        self.Person.objects.create(name="Baz", age=17)
+        self.Person.objects.create(name="Bar", age=13)
+
+        qs_disk = self.Person.objects().order_by("age").allow_disk_use(True)
+        qs = self.Person.objects().order_by("age")
+
+        assert qs_disk.count() == qs.count()
+
+        for index in range(qs_disk.count()):
+            assert qs_disk[index] == qs[index]
+
+
 
 if __name__ == "__main__":
     unittest.main()
