@@ -64,6 +64,7 @@ class BaseQuerySet:
         self._ordering = None
         self._snapshot = False
         self._timeout = True
+        self._allow_disk_use = False
         self._read_preference = None
         self._read_concern = None
         self._iter = False
@@ -799,6 +800,7 @@ class BaseQuerySet:
             "_ordering",
             "_snapshot",
             "_timeout",
+            "_allow_disk_use",
             "_read_preference",
             "_read_concern",
             "_iter",
@@ -1163,6 +1165,16 @@ class BaseQuerySet:
         warnings.warn(msg, DeprecationWarning)
         queryset = self.clone()
         queryset._snapshot = enabled
+        return queryset
+
+    def allow_disk_use(self, enabled):
+        """Enable or disable the use of temporary files on disk while processing a blocking sort operation.
+         (To store data exceeding the 100 megabyte system memory limit)
+
+        :param enabled: whether or not temporary files on disk are used
+        """
+        queryset = self.clone()
+        queryset._allow_disk_use = enabled
         return queryset
 
     def timeout(self, enabled):
@@ -1603,6 +1615,9 @@ class BaseQuerySet:
         cursor_args = {}
         if not self._timeout:
             cursor_args["no_cursor_timeout"] = True
+
+        if self._allow_disk_use:
+            cursor_args["allow_disk_use"] = True
 
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
