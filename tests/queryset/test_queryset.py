@@ -21,6 +21,7 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
+from tests.utils import requires_mongodb_gte_44
 
 
 class db_ops_tracker(query_counter):
@@ -5656,6 +5657,7 @@ class TestQueryset(unittest.TestCase):
         qs = self.Person.objects().timeout(False)
         assert qs._cursor_args == {"no_cursor_timeout": True}
 
+    @requires_mongodb_gte_44
     def test_allow_disk_use(self):
         qs = self.Person.objects()
         assert qs._cursor_args == {}
@@ -5679,7 +5681,6 @@ class TestQueryset(unittest.TestCase):
 
         for index in range(qs_disk.count()):
             assert qs_disk[index] == qs[index]
-
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import operator
 import unittest
 
 import pytest
@@ -31,6 +32,10 @@ class MongoDBTestCase(unittest.TestCase):
 def get_as_pymongo(doc):
     """Fetch the pymongo version of a certain Document"""
     return doc.__class__.objects.as_pymongo().get(id=doc.id)
+
+
+def requires_mongodb_gte_44(func):
+    return _decorated_with_ver_requirement(func, (4, 4), oper=operator.ge)
 
 
 def _decorated_with_ver_requirement(func, mongo_version_req, oper):
