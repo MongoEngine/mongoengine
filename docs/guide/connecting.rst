@@ -25,29 +25,34 @@ and :attr:`authentication_source` arguments should be provided::
 
     connect('project1', username='webapp', password='pwd123', authentication_source='admin')
 
-URI style connections are also supported -- just supply the URI as
-the :attr:`host` to
-:func:`~mongoengine.connect`::
+URI string connection is also supported and **is the recommended way to connect**. The URI string is
+forwarded to the driver as is, so it follows the same scheme as the `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/#connection-string-uri-format>`_.
+Just supply the URI as the :attr:`host` to :func:`~mongoengine.connect`::
 
-    connect('project1', host='mongodb://localhost/database_name')
+    connect(host="mongodb://user:password@hostname:port/db_name")
+
+URI string can be used to configure advanced parameters like ssl, replicaSet, etc::
+
+    connect(host="mongodb://user:password@hostname:port/db_name?ssl=true&replicaSet=globaldb")
+
 
 .. note:: URI containing SRV records (e.g mongodb+srv://server.example.com/) can be used as well as the :attr:`host`
 
-.. note:: Database, username and password from URI string overrides
-    corresponding parameters in :func:`~mongoengine.connect`: ::
+.. note:: The URI string has precedence over keyword args so if you accidentally call ::
 
         connect(
             db='test',
             username='user',
             password='12345',
-            host='mongodb://admin:qwerty@localhost/production'
+            host='mongodb://admin:qwerty@localhost/my_db'
         )
 
-    will establish connection to ``production`` database using
-    ``admin`` username and ``12345`` password.
+    it will ignore the db, username and password argument and establish the connection to ``my_db`` database using
+    ``admin`` username and ``qwerty`` password.
 
 .. note:: Calling :func:`~mongoengine.connect` without argument will establish
     a connection to the "test" database by default
+
 
 Replica Sets
 ============
