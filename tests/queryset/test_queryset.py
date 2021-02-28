@@ -21,7 +21,11 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
-from tests.utils import requires_mongodb_gte_44
+from tests.utils import (
+    requires_mongodb_gte_44,
+    requires_mongodb_lt_42,
+    requires_mongodb_lte_42,
+)
 
 
 class db_ops_tracker(query_counter):
@@ -1490,6 +1494,7 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @requires_mongodb_lt_42
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js."""
 
@@ -1527,6 +1532,7 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @requires_mongodb_lt_42
     def test_exec_js_field_sub(self):
         """Ensure that field substitutions occur properly in exec_js functions."""
 
@@ -3109,6 +3115,7 @@ class TestQueryset(unittest.TestCase):
         freq = Person.objects.item_frequencies("city", normalize=True, map_reduce=True)
         assert freq == {"CRB": 0.5, None: 0.5}
 
+    @requires_mongodb_lte_42
     def test_item_frequencies_with_null_embedded(self):
         class Data(EmbeddedDocument):
             name = StringField()
@@ -3137,6 +3144,7 @@ class TestQueryset(unittest.TestCase):
         ot = Person.objects.item_frequencies("extra.tag", map_reduce=True)
         assert ot == {None: 1.0, "friend": 1.0}
 
+    @requires_mongodb_lte_42
     def test_item_frequencies_with_0_values(self):
         class Test(Document):
             val = IntField()
@@ -3151,6 +3159,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {0: 1}
 
+    @requires_mongodb_lte_42
     def test_item_frequencies_with_False_values(self):
         class Test(Document):
             val = BooleanField()
@@ -3165,6 +3174,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {False: 1}
 
+    @requires_mongodb_lte_42
     def test_item_frequencies_normalize(self):
         class Test(Document):
             val = IntField()
@@ -3551,7 +3561,8 @@ class TestQueryset(unittest.TestCase):
         Book.objects.create(title="The Stories", authors=[mark_twain, john_tolkien])
 
         authors = Book.objects.distinct("authors")
-        assert authors == [mark_twain, john_tolkien]
+        authors_names = {author.name for author in authors}
+        assert authors_names == {mark_twain.name, john_tolkien.name}
 
     def test_distinct_ListField_EmbeddedDocumentField_EmbeddedDocumentField(self):
         class Continent(EmbeddedDocument):
@@ -3588,7 +3599,8 @@ class TestQueryset(unittest.TestCase):
         assert country_list == [scotland, tibet]
 
         continent_list = Book.objects.distinct("authors.country.continent")
-        assert continent_list == [europe, asia]
+        continent_list_names = {c.continent_name for c in continent_list}
+        assert continent_list_names == {europe.continent_name, asia.continent_name}
 
     def test_distinct_ListField_ReferenceField(self):
         class Bar(Document):
