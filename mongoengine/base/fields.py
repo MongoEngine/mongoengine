@@ -9,7 +9,7 @@ from mongoengine.base.proxy import DocumentProxy
 
 from mongoengine.common import _import_class
 from mongoengine.errors import ValidationError
-from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.common import ALLOW_INHERITANCE
 from mongoengine.base.datastructures import (
     BaseDict, BaseList, EmbeddedDocumentList
 )
@@ -24,9 +24,6 @@ UPDATE_OPERATORS = {'set', 'unset', 'inc', 'dec', 'pop', 'push', 'push_all', 'pu
 
 V2_OPTIMIZED_FIELDS = {"DecimalField", "AmountField"}
 EMBEDDED_OR_LIST_FIELDS = {"EmbeddedDocumentField", "EmbeddedDocumentListField", "ListField"}
-
-# dicts with this key contain data to create instances of `EmbeddedDocument`
-EMBEDDED_DICT_KEY = "EMBEDDED_DICT_KEY"
 
 class BaseField(object):
     """A base class for fields in a MongoDB document. Instances of this class
@@ -338,7 +335,6 @@ class ComplexBaseField(BaseField):
                                for key, item in value.items()])
         else:
             Document = _import_class('Document')
-            EmbeddedDocument = _import_class('EmbeddedDocument')
             value_dict = {}
             for k, v in value.items():
                 if isinstance(v, Document):
@@ -348,15 +344,8 @@ class ComplexBaseField(BaseField):
                                    ' have been saved to the database')
                     collection = v._get_collection_name()
                     value_dict[k] = DBRef(collection, v.pk)
-                elif isinstance(v, EmbeddedDocument):
-                    # already in python form. keep as is
-                    value_dict[k] = v
                 elif hasattr(v, 'to_python'):
                     value_dict[k] = v.to_python()
-                elif isinstance(v, dict) and v.get(EMBEDDED_DICT_KEY):
-                    # v contains data of an embedded document
-                    doc_cls = get_document(v['_cls'])
-                    value_dict[k] = doc_cls._from_son(v)
                 else:
                     value_dict[k] = self.to_python(v)
 
@@ -383,7 +372,6 @@ class ComplexBaseField(BaseField):
             val = value.to_mongo(**kwargs)
             # If it's a document that is not inherited add _cls
             if isinstance(value, EmbeddedDocument):
-                val[EMBEDDED_DICT_KEY] = True
                 val['_cls'] = cls.__name__
             return val
 
@@ -425,7 +413,6 @@ class ComplexBaseField(BaseField):
                     val = v.to_mongo(**kwargs)
                     # If it's a document that is not inherited add _cls
                     if isinstance(v, (Document, EmbeddedDocument)):
-                        val[EMBEDDED_DICT_KEY] = True
                         val['_cls'] = cls.__name__
                     value_dict[k] = val
                 else:
