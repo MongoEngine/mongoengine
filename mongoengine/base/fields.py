@@ -335,6 +335,7 @@ class ComplexBaseField(BaseField):
                                for key, item in value.items()])
         else:
             Document = _import_class('Document')
+            EmbeddedDocument = _import_class('EmbeddedDocument')
             value_dict = {}
             for k, v in value.items():
                 if isinstance(v, Document):
@@ -344,6 +345,9 @@ class ComplexBaseField(BaseField):
                                    ' have been saved to the database')
                     collection = v._get_collection_name()
                     value_dict[k] = DBRef(collection, v.pk)
+                elif isinstance(v, EmbeddedDocument):
+                    # already in python form. keep as is
+                    value_dict[k] = v
                 elif hasattr(v, 'to_python'):
                     value_dict[k] = v.to_python()
                 else:
