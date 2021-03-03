@@ -2666,6 +2666,8 @@ class TestQueryset(unittest.TestCase):
             title = StringField(primary_key=True)
             tags = ListField(StringField())
 
+        BlogPost.drop_collection()
+
         post1 = BlogPost(title="Post #1", tags=["mongodb", "mongoengine"])
         post2 = BlogPost(title="Post #2", tags=["django", "mongodb"])
         post3 = BlogPost(title="Post #3", tags=["hitchcock films"])
@@ -2694,12 +2696,15 @@ class TestQueryset(unittest.TestCase):
             }
         """
 
-        results = BlogPost.objects.map_reduce(map_f, reduce_f, "myresults")
+        results = BlogPost.objects.order_by("_id").map_reduce(
+            map_f, reduce_f, "myresults2"
+        )
         results = list(results)
 
-        assert results[0].object == post1
-        assert results[1].object == post2
-        assert results[2].object == post3
+        assert len(results) == 3
+        assert results[0].object.id == post1.id
+        assert results[1].object.id == post2.id
+        assert results[2].object.id == post3.id
 
         BlogPost.drop_collection()
 
@@ -2707,7 +2712,6 @@ class TestQueryset(unittest.TestCase):
         """
         Test map/reduce custom output
         """
-        register_connection("test2", "mongoenginetest2")
 
         class Family(Document):
             id = IntField(primary_key=True)
@@ -2780,6 +2784,7 @@ class TestQueryset(unittest.TestCase):
                             family.persons.push(person);
                             family.totalAge += person.age;
                         });
+                        family.persons.sort((a, b) => (a.age > b.age))
                     }
                 });
 
@@ -2808,10 +2813,10 @@ class TestQueryset(unittest.TestCase):
             "_id": 1,
             "value": {
                 "persons": [
-                    {"age": 21, "name": "Wilson Jr"},
-                    {"age": 45, "name": "Wilson Father"},
-                    {"age": 40, "name": "Eliana Costa"},
                     {"age": 17, "name": "Tayza Mariana"},
+                    {"age": 21, "name": "Wilson Jr"},
+                    {"age": 40, "name": "Eliana Costa"},
+                    {"age": 45, "name": "Wilson Father"},
                 ],
                 "totalAge": 123,
             },
@@ -2821,9 +2826,9 @@ class TestQueryset(unittest.TestCase):
             "_id": 2,
             "value": {
                 "persons": [
+                    {"age": 10, "name": "Igor Gabriel"},
                     {"age": 16, "name": "Isabella Luanna"},
                     {"age": 36, "name": "Sandra Mara"},
-                    {"age": 10, "name": "Igor Gabriel"},
                 ],
                 "totalAge": 62,
             },
@@ -2833,8 +2838,8 @@ class TestQueryset(unittest.TestCase):
             "_id": 3,
             "value": {
                 "persons": [
-                    {"age": 30, "name": "Arthur WA"},
                     {"age": 25, "name": "Paula Leonel"},
+                    {"age": 30, "name": "Arthur WA"},
                 ],
                 "totalAge": 55,
             },
