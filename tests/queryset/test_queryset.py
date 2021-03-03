@@ -24,7 +24,6 @@ from mongoengine.queryset import (
 from tests.utils import (
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
-    requires_mongodb_lte_42,
 )
 
 
@@ -3120,7 +3119,7 @@ class TestQueryset(unittest.TestCase):
         freq = Person.objects.item_frequencies("city", normalize=True, map_reduce=True)
         assert freq == {"CRB": 0.5, None: 0.5}
 
-    @requires_mongodb_lte_42
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_null_embedded(self):
         class Data(EmbeddedDocument):
             name = StringField()
@@ -3149,7 +3148,7 @@ class TestQueryset(unittest.TestCase):
         ot = Person.objects.item_frequencies("extra.tag", map_reduce=True)
         assert ot == {None: 1.0, "friend": 1.0}
 
-    @requires_mongodb_lte_42
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_0_values(self):
         class Test(Document):
             val = IntField()
@@ -3164,7 +3163,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {0: 1}
 
-    @requires_mongodb_lte_42
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_False_values(self):
         class Test(Document):
             val = BooleanField()
@@ -3179,7 +3178,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {False: 1}
 
-    @requires_mongodb_lte_42
+    @requires_mongodb_lt_42
     def test_item_frequencies_normalize(self):
         class Test(Document):
             val = IntField()
