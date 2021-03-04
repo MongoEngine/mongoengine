@@ -1,4 +1,5 @@
 
+
 =========
 Changelog
 =========
@@ -6,8 +7,12 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.23.0
+===========
 - Bugfix: manually setting SequenceField in DynamicDocument doesn't increment the counter #2471
 - Add MongoDB 4.2 and 4.4 to CI
+- Add support for allowDiskUse on querysets #2468
 
 Changes in 0.22.1
 =================
