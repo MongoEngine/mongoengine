@@ -1355,21 +1355,18 @@ class BaseQuerySet:
 
         MapReduceDocument = _import_class("MapReduceDocument")
 
-        if not hasattr(self._collection, "map_reduce"):
-            raise NotImplementedError("Requires MongoDB >= 1.7.1")
-
         map_f_scope = {}
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
             map_f = str(map_f)
-        map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
+        map_f = Code(queryset._sub_js_fields(map_f), map_f_scope or None)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
             reduce_f = str(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
-        reduce_f = Code(reduce_f_code, reduce_f_scope)
+        reduce_f = Code(reduce_f_code, reduce_f_scope or None)
 
         mr_args = {"query": queryset._query}
 
@@ -1379,7 +1376,7 @@ class BaseQuerySet:
                 finalize_f_scope = finalize_f.scope
                 finalize_f = str(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
-            finalize_f = Code(finalize_f_code, finalize_f_scope)
+            finalize_f = Code(finalize_f_code, finalize_f_scope or None)
             mr_args["finalize"] = finalize_f
 
         if scope:
