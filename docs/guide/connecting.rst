@@ -5,7 +5,7 @@ Connecting to MongoDB
 =====================
 
 Connections in MongoEngine are registered globally and are identified with aliases.
-If no `alias` is provided during the connection, it will use "default" as alias.
+If no ``alias`` is provided during the connection, it will use "default" as alias.
 
 To connect to a running instance of :program:`mongod`, use the :func:`~mongoengine.connect`
 function. The first argument is the name of the database to connect to::
@@ -14,61 +14,86 @@ function. The first argument is the name of the database to connect to::
     connect('project1')
 
 By default, MongoEngine assumes that the :program:`mongod` instance is running
-on **localhost** on port **27017**. If MongoDB is running elsewhere, you should
-provide the :attr:`host` and :attr:`port` arguments to
-:func:`~mongoengine.connect`::
+on **localhost** on port **27017**.
 
-    connect('project1', host='192.168.1.35', port=12345)
+If MongoDB is running elsewhere, you need to provide details on how to connect. There are two ways of
+doing this. Using a connection string in URI format (**this is the preferred method**) or individual attributes
+provided as keyword arguments.
+
+Connect with URI string
+=======================
+
+When using a connection string in URI format you should specify the connection details
+as the :attr:`host` to :func:`~mongoengine.connect`. In a web application context for instance, the URI
+is typically read from the config file::
+
+        connect(host="mongodb://127.0.0.1:27017/my_db")
+
+If the database requires authentication, you can specify it in the
+URI. As each database can have its own users configured, you need to tell MongoDB
+where to look for the user you are working with, that's what the ``?authSource=admin`` bit
+of the MongoDB connection string is for::
+
+    # Connects to 'my_db' database by authenticating
+    # with given credentials against the 'admin' database (by default as authSource isn't provided)
+    connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db")
+
+    # Equivalent to previous connection but explicitly states that
+    # it should use admin as the authentication source database
+    connect(host="mongodb://my_user:my_password@hostname:port/my_db?authSource=admin")
+
+    # Connects to 'my_db' database by authenticating
+    # with given credentials against that same database
+    connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
+
+The URI string can also be used to configure advanced parameters like ssl, replicaSet, etc. For more
+information or example about URI string, you can refer to the `official doc <https://docs.mongodb.com/manual/reference/connection-string/>`_::
+
+    connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=admin&ssl=true&replicaSet=globaldb")
+
+.. note:: URI containing SRV records (e.g "mongodb+srv://server.example.com/") can be used as well
+
+Connect with keyword attributes
+===============================
+
+The second option for specifying the connection details is to provide the information as keyword
+attributes to :func:`~mongoengine.connect`::
+
+    connect('my_db', host='127.0.0.1', port=27017)
 
 If the database requires authentication, :attr:`username`, :attr:`password`
 and :attr:`authentication_source` arguments should be provided::
 
-    connect('project1', username='webapp', password='pwd123', authentication_source='admin')
+    connect('my_db', username='my_user', password='my_password', authentication_source='admin')
 
-URI string connection is also supported and **is the recommended way to connect**. The URI string is
-forwarded to the driver as is, so it follows the same scheme as the `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/#connection-string-uri-format>`_.
-Just supply the URI as the :attr:`host` to :func:`~mongoengine.connect`::
+The set of attributes that :func:`~mongoengine.connect` recognizes includes but is not limited to:
+:attr:`host`, :attr:`port`, :attr:`read_preference`, :attr:`username`, :attr:`password`, :attr:`authentication_source`, :attr:`authentication_mechanism`,
+:attr:`replicaset`, :attr:`tls`, etc. Most of the parameters accepted by `pymongo.MongoClient <https://pymongo.readthedocs.io/en/stable/api/pymongo/mongo_client.html#pymongo.mongo_client.MongoClient>`_
+can be used with :func:`~mongoengine.connect` and will simply be forwarded when instantiating the `pymongo.MongoClient`.
 
-    connect(host="mongodb://user:password@hostname:port/db_name")
-
-URI string can be used to configure advanced parameters like ssl, replicaSet, etc::
-
-    connect(host="mongodb://user:password@hostname:port/db_name?ssl=true&replicaSet=globaldb")
-
-
-.. note:: URI containing SRV records (e.g mongodb+srv://server.example.com/) can be used as well as the :attr:`host`
-
-.. note:: The URI string has precedence over keyword args so if you accidentally call ::
+.. note:: Database, username and password from URI string overrides
+    corresponding parameters in :func:`~mongoengine.connect`, this should
+    obviously be avoided: ::
 
         connect(
             db='test',
             username='user',
             password='12345',
-            host='mongodb://admin:qwerty@localhost/my_db'
+            host='mongodb://admin:qwerty@localhost/production'
         )
 
-    it will ignore the db, username and password argument and establish the connection to ``my_db`` database using
-    ``admin`` username and ``qwerty`` password.
+    will establish connection to ``production`` database using ``admin`` username and ``qwerty`` password.
 
 .. note:: Calling :func:`~mongoengine.connect` without argument will establish
     a connection to the "test" database by default
 
+Read Preferences
+================
 
-Replica Sets
-============
-
-MongoEngine supports connecting to replica sets::
-
-    from mongoengine import connect
-
-    # Regular connect
-    connect('dbname', replicaset='rs-name')
-
-    # MongoDB URI-style connect
-    connect(host='mongodb://localhost/dbname?replicaSet=rs-name')
-
-Read preferences are supported through the connection or via individual
+As stated above, Read preferences are supported through the connection but also via individual
 queries by passing the read_preference ::
+
+    from pymongo import ReadPreference
 
     Bar.objects().read_preference(ReadPreference.PRIMARY)
     Bar.objects(read_preference=ReadPreference.PRIMARY)
