@@ -915,7 +915,7 @@ class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
-    If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
+    If using with ReferenceFields see: :ref:`many-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
