@@ -267,6 +267,17 @@ class ComplexBaseField(BaseField):
         self.field = field
         super().__init__(**kwargs)
 
+    @staticmethod
+    def _lazy_load_refs(instance, name, ref_values, *, max_depth):
+        _dereference = _import_class("DeReference")()
+        documents = _dereference(
+            ref_values,
+            max_depth=max_depth,
+            instance=instance,
+            name=name,
+        )
+        return documents
+
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
         if instance is None:
@@ -284,19 +295,15 @@ class ComplexBaseField(BaseField):
             or isinstance(self.field, (GenericReferenceField, ReferenceField))
         )
 
-        _dereference = _import_class("DeReference")()
-
         if (
             instance._initialised
             and dereference
             and instance._data.get(self.name)
             and not getattr(instance._data[self.name], "_dereferenced", False)
         ):
-            instance._data[self.name] = _dereference(
-                instance._data.get(self.name),
-                max_depth=1,
-                instance=instance,
-                name=self.name,
+            ref_values = instance._data.get(self.name)
+            instance._data[self.name] = self._lazy_load_refs(
+                ref_values=ref_values, instance=instance, name=self.name, max_depth=1
             )
             if hasattr(instance._data[self.name], "_dereferenced"):
                 instance._data[self.name]._dereferenced = True
@@ -322,7 +329,9 @@ class ComplexBaseField(BaseField):
             and isinstance(value, (BaseList, BaseDict))
             and not value._dereferenced
         ):
-            value = _dereference(value, max_depth=1, instance=instance, name=self.name)
+            value = self._lazy_load_refs(
+                ref_values=value, instance=instance, name=self.name, max_depth=1
+            )
             value._dereferenced = True
             instance._data[self.name] = value
 
