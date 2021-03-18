@@ -808,6 +808,8 @@ class BaseDocument(object):
                                                              db_field_name)
                     if field_name in d._fields:
                         default = d._fields.get(field_name).default
+                        if d._fields.get(field_name).null and value is None:
+                            to_unset = False
                     else:
                         default = None
                 elif isinstance(d_type, DictField):

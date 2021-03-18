@@ -148,8 +148,8 @@ class BaseField(object):
         return self.__class__.__name__ in EMBEDDED_OR_LIST_FIELDS
 
     def _should_mark_as_changed(self, instance, value):
-        if self.name not in instance._data:
-            # New value should not be None
+        if self.name not in instance._data and not self.null:
+            # New value should not be None if null not set on field
             return value is not None
         if self.is_v2_field():
             self.v2_get(instance) != value
