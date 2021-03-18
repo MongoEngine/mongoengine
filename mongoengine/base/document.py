@@ -783,6 +783,8 @@ class BaseDocument(object):
                 continue
             elif path in self._fields:
                 default = self._fields[path].default
+                if self._fields[path].null and value is None:
+                    to_unset = False
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
                 d_type = type(self)
@@ -808,6 +810,8 @@ class BaseDocument(object):
                                                              db_field_name)
                     if field_name in d._fields:
                         default = d._fields.get(field_name).default
+                        if d._fields.get(field_name).null and value is None:
+                            to_unset = False
                     else:
                         default = None
                 elif isinstance(d_type, DictField):
