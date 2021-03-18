@@ -783,6 +783,8 @@ class BaseDocument(object):
                 continue
             elif path in self._fields:
                 default = self._fields[path].default
+                if self._fields[path].null and value is None:
+                    to_unset = False
             else:  # Perform a full lookup for lists / embedded lookups
                 d = self
                 d_type = type(self)
