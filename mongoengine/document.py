@@ -90,6 +90,15 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __getstate__(self):
+        data = super().__getstate__()
+        data["_instance"] = self._instance
+        return data
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._instance = state["_instance"]
+
     def to_mongo(self, *args, **kwargs):
         data = super().to_mongo(*args, **kwargs)
 

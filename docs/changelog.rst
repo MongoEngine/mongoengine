@@ -8,6 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Improve connection doc #2481
+- Fix deepcopy on EmbeddedDocument
 
 Changes in 0.23.0
 =================
