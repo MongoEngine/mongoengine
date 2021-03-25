@@ -7,6 +7,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
+from mongoengine.mongodb_support import MONGODB_42, get_mongodb_version
 
 
 class TestIndexes(unittest.TestCase):
@@ -452,9 +453,11 @@ class TestIndexes(unittest.TestCase):
             .get("stage")
             == "IXSCAN"
         )
+        mongo_db = get_mongodb_version()
+        PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
         assert (
             query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == "PROJECTION"
+            == PROJECTION_STR
         )
 
         query_plan = Test.objects(a=1).explain()

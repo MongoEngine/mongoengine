@@ -290,12 +290,12 @@ as the constructor's argument::
         content = StringField()
 
 
-.. _one-to-many-with-listfields:
+.. _many-to-many-with-listfields:
 
-One to Many with ListFields
+Many to Many with ListFields
 '''''''''''''''''''''''''''
 
-If you are implementing a one to many relationship via a list of references,
+If you are implementing a many to many relationship via a list of references,
 then the references are stored as DBRefs and to query you need to pass an
 instance of the object to the query::
 

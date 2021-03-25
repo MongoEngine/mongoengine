@@ -21,7 +21,10 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
-from tests.utils import requires_mongodb_gte_44
+from tests.utils import (
+    requires_mongodb_gte_44,
+    requires_mongodb_lt_42,
+)
 
 
 class db_ops_tracker(query_counter):
@@ -1490,6 +1493,7 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @requires_mongodb_lt_42
     def test_exec_js_query(self):
         """Ensure that queries are properly formed for use in exec_js."""
 
@@ -1527,6 +1531,7 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost.drop_collection()
 
+    @requires_mongodb_lt_42
     def test_exec_js_field_sub(self):
         """Ensure that field substitutions occur properly in exec_js functions."""
 
@@ -2660,6 +2665,8 @@ class TestQueryset(unittest.TestCase):
             title = StringField(primary_key=True)
             tags = ListField(StringField())
 
+        BlogPost.drop_collection()
+
         post1 = BlogPost(title="Post #1", tags=["mongodb", "mongoengine"])
         post2 = BlogPost(title="Post #2", tags=["django", "mongodb"])
         post3 = BlogPost(title="Post #3", tags=["hitchcock films"])
@@ -2688,12 +2695,15 @@ class TestQueryset(unittest.TestCase):
             }
         """
 
-        results = BlogPost.objects.map_reduce(map_f, reduce_f, "myresults")
+        results = BlogPost.objects.order_by("_id").map_reduce(
+            map_f, reduce_f, "myresults2"
+        )
         results = list(results)
 
-        assert results[0].object == post1
-        assert results[1].object == post2
-        assert results[2].object == post3
+        assert len(results) == 3
+        assert results[0].object.id == post1.id
+        assert results[1].object.id == post2.id
+        assert results[2].object.id == post3.id
 
         BlogPost.drop_collection()
 
@@ -2701,7 +2711,6 @@ class TestQueryset(unittest.TestCase):
         """
         Test map/reduce custom output
         """
-        register_connection("test2", "mongoenginetest2")
 
         class Family(Document):
             id = IntField(primary_key=True)
@@ -2774,6 +2783,7 @@ class TestQueryset(unittest.TestCase):
                             family.persons.push(person);
                             family.totalAge += person.age;
                         });
+                        family.persons.sort((a, b) => (a.age > b.age))
                     }
                 });
 
@@ -2802,10 +2812,10 @@ class TestQueryset(unittest.TestCase):
             "_id": 1,
             "value": {
                 "persons": [
-                    {"age": 21, "name": "Wilson Jr"},
-                    {"age": 45, "name": "Wilson Father"},
-                    {"age": 40, "name": "Eliana Costa"},
                     {"age": 17, "name": "Tayza Mariana"},
+                    {"age": 21, "name": "Wilson Jr"},
+                    {"age": 40, "name": "Eliana Costa"},
+                    {"age": 45, "name": "Wilson Father"},
                 ],
                 "totalAge": 123,
             },
@@ -2815,9 +2825,9 @@ class TestQueryset(unittest.TestCase):
             "_id": 2,
             "value": {
                 "persons": [
+                    {"age": 10, "name": "Igor Gabriel"},
                     {"age": 16, "name": "Isabella Luanna"},
                     {"age": 36, "name": "Sandra Mara"},
-                    {"age": 10, "name": "Igor Gabriel"},
                 ],
                 "totalAge": 62,
             },
@@ -2827,8 +2837,8 @@ class TestQueryset(unittest.TestCase):
             "_id": 3,
             "value": {
                 "persons": [
-                    {"age": 30, "name": "Arthur WA"},
                     {"age": 25, "name": "Paula Leonel"},
+                    {"age": 30, "name": "Arthur WA"},
                 ],
                 "totalAge": 55,
             },
@@ -3109,6 +3119,7 @@ class TestQueryset(unittest.TestCase):
         freq = Person.objects.item_frequencies("city", normalize=True, map_reduce=True)
         assert freq == {"CRB": 0.5, None: 0.5}
 
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_null_embedded(self):
         class Data(EmbeddedDocument):
             name = StringField()
@@ -3137,6 +3148,7 @@ class TestQueryset(unittest.TestCase):
         ot = Person.objects.item_frequencies("extra.tag", map_reduce=True)
         assert ot == {None: 1.0, "friend": 1.0}
 
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_0_values(self):
         class Test(Document):
             val = IntField()
@@ -3151,6 +3163,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {0: 1}
 
+    @requires_mongodb_lt_42
     def test_item_frequencies_with_False_values(self):
         class Test(Document):
             val = BooleanField()
@@ -3165,6 +3178,7 @@ class TestQueryset(unittest.TestCase):
         ot = Test.objects.item_frequencies("val", map_reduce=False)
         assert ot == {False: 1}
 
+    @requires_mongodb_lt_42
     def test_item_frequencies_normalize(self):
         class Test(Document):
             val = IntField()
@@ -3551,7 +3565,8 @@ class TestQueryset(unittest.TestCase):
         Book.objects.create(title="The Stories", authors=[mark_twain, john_tolkien])
 
         authors = Book.objects.distinct("authors")
-        assert authors == [mark_twain, john_tolkien]
+        authors_names = {author.name for author in authors}
+        assert authors_names == {mark_twain.name, john_tolkien.name}
 
     def test_distinct_ListField_EmbeddedDocumentField_EmbeddedDocumentField(self):
         class Continent(EmbeddedDocument):
@@ -3588,7 +3603,8 @@ class TestQueryset(unittest.TestCase):
         assert country_list == [scotland, tibet]
 
         continent_list = Book.objects.distinct("authors.country.continent")
-        assert continent_list == [europe, asia]
+        continent_list_names = {c.continent_name for c in continent_list}
+        assert continent_list_names == {europe.continent_name, asia.continent_name}
 
     def test_distinct_ListField_ReferenceField(self):
         class Bar(Document):

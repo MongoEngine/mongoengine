@@ -915,7 +915,7 @@ class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
-    If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
+    If using with ReferenceFields see: :ref:`many-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
@@ -1194,6 +1194,14 @@ class ReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing."""
         if instance is None:
@@ -1201,20 +1209,17 @@ class ReferenceField(BaseField):
             return self
 
         # Get value from document instance if available
-        value = instance._data.get(self.name)
+        ref_value = instance._data.get(self.name)
         auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
-        if auto_dereference and isinstance(value, DBRef):
-            if hasattr(value, "cls"):
+        if auto_dereference and isinstance(ref_value, DBRef):
+            if hasattr(ref_value, "cls"):
                 # Dereference using the class type specified in the reference
-                cls = get_document(value.cls)
+                cls = get_document(ref_value.cls)
             else:
                 cls = self.document_type
-            dereferenced = cls._get_db().dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = cls._from_son(dereferenced)
+
+            instance._data[self.name] = self._lazy_load_ref(cls, ref_value)
 
         return super().__get__(instance, owner)
 
@@ -1353,6 +1358,14 @@ class CachedReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         if instance is None:
             # Document class being used rather than a document object
@@ -1364,11 +1377,7 @@ class CachedReferenceField(BaseField):
 
         # Dereference DBRefs
         if auto_dereference and isinstance(value, DBRef):
-            dereferenced = self.document_type._get_db().dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = self.document_type._from_son(dereferenced)
+            instance._data[self.name] = self._lazy_load_ref(self.document_type, value)
 
         return super().__get__(instance, owner)
 
@@ -1493,6 +1502,14 @@ class GenericReferenceField(BaseField):
             value = value._class_name
         super()._validate_choices(value)
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -1500,12 +1517,9 @@ class GenericReferenceField(BaseField):
         value = instance._data.get(self.name)
 
         auto_dereference = instance._fields[self.name]._auto_dereference
-        if auto_dereference and isinstance(value, (dict, SON)):
-            dereferenced = self.dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = dereferenced
+        if auto_dereference and isinstance(value, dict):
+            doc_cls = get_document(value["_cls"])
+            instance._data[self.name] = self._lazy_load_ref(doc_cls, value["_ref"])
 
         return super().__get__(instance, owner)
 
@@ -1523,14 +1537,6 @@ class GenericReferenceField(BaseField):
                 "You can only reference documents once they have been"
                 " saved to the database"
             )
-
-    def dereference(self, value):
-        doc_cls = get_document(value["_cls"])
-        reference = value["_ref"]
-        doc = doc_cls._get_db().dereference(reference)
-        if doc is not None:
-            doc = doc_cls._from_son(doc)
-        return doc
 
     def to_mongo(self, document):
         if document is None:

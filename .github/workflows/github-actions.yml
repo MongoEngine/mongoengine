@@ -11,9 +11,10 @@ on:
     tags:
       - 'v[0-9]+\.[0-9]+\.[0-9]+*'
 env:
-  MONGODB_3_4: 3.4.19
-  MONGODB_3_6: 3.6.13
-  MONGODB_4_0: 4.0.13
+  MONGODB_3_6: 3.6.14
+  MONGODB_4_0: 4.0.23
+  MONGODB_4_2: 4.2
+  MONGODB_4_4: 4.4
 
   PYMONGO_3_4: 3.4
   PYMONGO_3_6: 3.6
@@ -48,13 +49,13 @@ jobs:
         PYMONGO: [$PYMONGO_3_11]
         include:
           - python-version: 3.7
-            MONGODB: $MONGODB_3_4
-            PYMONGO: $PYMONGO_3_6
-          - python-version: 3.7
             MONGODB: $MONGODB_3_6
             PYMONGO: $PYMONGO_3_9
           - python-version: 3.7
-            MONGODB: $MONGODB_3_6
+            MONGODB: $MONGODB_4_2
+            PYMONGO: $PYMONGO_3_6
+          - python-version: 3.7
+            MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_11
     steps:
     - uses: actions/checkout@v2
