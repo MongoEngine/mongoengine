@@ -1,10 +1,12 @@
 # Import submodules so that we can expose their __all__
-from mongoengine import connection
-from mongoengine import document
-from mongoengine import errors
-from mongoengine import fields
-from mongoengine import queryset
-from mongoengine import signals
+from mongoengine import (
+    connection,
+    document,
+    errors,
+    fields,
+    queryset,
+    signals,
+)
 
 # Import everything from each submodule so that it can be accessed via
 # mongoengine, e.g. instead of `from mongoengine.connection import connect`,
@@ -16,7 +18,6 @@ from mongoengine.errors import *  # noqa: F401
 from mongoengine.fields import *  # noqa: F401
 from mongoengine.queryset import *  # noqa: F401
 from mongoengine.signals import *  # noqa: F401
-
 
 __all__ = (
     list(document.__all__)

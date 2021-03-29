@@ -1,5 +1,5 @@
-from bson import DBRef, SON
 import pytest
+from bson import DBRef, SON
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase

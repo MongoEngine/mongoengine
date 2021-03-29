@@ -1,11 +1,13 @@
-from bson import InvalidDocument
 import pytest
+from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
-
-from tests.utils import MongoDBTestCase, get_as_pymongo
+from mongoengine.mongodb_support import (
+    get_mongodb_version,
+    MONGODB_36,
+)
+from tests.utils import get_as_pymongo, MongoDBTestCase
 
 
 class TestDictField(MongoDBTestCase):

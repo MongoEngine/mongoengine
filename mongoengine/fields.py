@@ -9,10 +9,10 @@ import uuid
 from io import BytesIO
 from operator import itemgetter
 
-from bson import Binary, DBRef, ObjectId, SON
-from bson.int64 import Int64
 import gridfs
 import pymongo
+from bson import Binary, DBRef, ObjectId, SON
+from bson.int64 import Int64
 from pymongo import ReturnDocument
 
 try:
@@ -22,21 +22,24 @@ except ImportError:
 else:
     import dateutil.parser
 
-
 from mongoengine.base import (
     BaseDocument,
     BaseField,
     ComplexBaseField,
     GeoJsonBaseField,
+    get_document,
     LazyReference,
     ObjectIdField,
-    get_document,
 )
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
-from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
+from mongoengine.errors import (
+    DoesNotExist,
+    InvalidQueryError,
+    ValidationError,
+)
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS

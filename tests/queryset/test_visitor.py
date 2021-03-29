@@ -2,8 +2,8 @@ import datetime
 import re
 import unittest
 
-from bson import ObjectId
 import pytest
+from bson import ObjectId
 
 from mongoengine import *
 from mongoengine.errors import InvalidQueryError

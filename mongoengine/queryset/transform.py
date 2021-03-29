@@ -1,8 +1,8 @@
 from collections import defaultdict
 
+import pymongo
 from bson import ObjectId, SON
 from bson.dbref import DBRef
-import pymongo
 
 from mongoengine.base import UPDATE_OPERATORS
 from mongoengine.common import _import_class

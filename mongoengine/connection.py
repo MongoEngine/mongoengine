@@ -217,8 +217,8 @@ def register_connection(
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     """Close the connection with a given alias."""
-    from mongoengine.base.common import _get_documents_by_db
     from mongoengine import Document
+    from mongoengine.base.common import _get_documents_by_db
 
     if alias in _connections:
         get_connection(alias=alias).close()

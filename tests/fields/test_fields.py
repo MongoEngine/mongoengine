@@ -1,8 +1,8 @@
 import datetime
 import unittest
 
-from bson import DBRef, ObjectId, SON
 import pytest
+from bson import DBRef, ObjectId, SON
 
 from mongoengine import (
     BooleanField,
@@ -34,9 +34,12 @@ from mongoengine import (
     StringField,
     ValidationError,
 )
-from mongoengine.base import BaseField, EmbeddedDocumentList, _document_registry
+from mongoengine.base import (
+    _document_registry,
+    BaseField,
+    EmbeddedDocumentList,
+)
 from mongoengine.errors import DeprecatedError
-
 from tests.utils import MongoDBTestCase
 
 

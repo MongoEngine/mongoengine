@@ -1,11 +1,15 @@
 import operator
 import weakref
 
-from bson import DBRef, ObjectId, SON
 import pymongo
+from bson import DBRef, ObjectId, SON
 
 from mongoengine.base.common import UPDATE_OPERATORS
-from mongoengine.base.datastructures import BaseDict, BaseList, EmbeddedDocumentList
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    EmbeddedDocumentList,
+)
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError
 

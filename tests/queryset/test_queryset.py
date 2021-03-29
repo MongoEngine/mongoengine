@@ -3,23 +3,26 @@ import unittest
 import uuid
 from decimal import Decimal
 
-from bson import DBRef, ObjectId
 import pymongo
+import pytest
+from bson import DBRef, ObjectId
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
-import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
+from mongoengine.mongodb_support import (
+    get_mongodb_version,
+    MONGODB_36,
+)
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
     QuerySet,
-    QuerySetManager,
     queryset_manager,
+    QuerySetManager,
 )
 from tests.utils import (
     requires_mongodb_gte_44,

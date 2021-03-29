@@ -1,20 +1,20 @@
 import datetime
 import unittest
 
-from bson.tz_util import utc
 import pymongo
+import pytest
+from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import InvalidName, OperationFailure
-import pytest
 
 import mongoengine.connection
 from mongoengine import (
-    DateTimeField,
-    Document,
-    StringField,
     connect,
+    DateTimeField,
     disconnect_all,
+    Document,
     register_connection,
+    StringField,
 )
 from mongoengine.connection import (
     ConnectionFailure,

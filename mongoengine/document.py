@@ -1,7 +1,7 @@
 import re
 
-from bson.dbref import DBRef
 import pymongo
+from bson.dbref import DBRef
 from pymongo.read_preferences import ReadPreference
 
 from mongoengine import signals
@@ -11,19 +11,28 @@ from mongoengine.base import (
     BaseList,
     DocumentMetaclass,
     EmbeddedDocumentList,
-    TopLevelDocumentMetaclass,
     get_document,
+    TopLevelDocumentMetaclass,
 )
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import set_write_concern, switch_collection, switch_db
+from mongoengine.context_managers import (
+    set_write_concern,
+    switch_collection,
+    switch_db,
+)
 from mongoengine.errors import (
     InvalidDocumentError,
     InvalidQueryError,
     SaveConditionError,
 )
 from mongoengine.pymongo_support import list_collection_names
-from mongoengine.queryset import NotUniqueError, OperationError, QuerySet, transform
+from mongoengine.queryset import (
+    NotUniqueError,
+    OperationError,
+    QuerySet,
+    transform,
+)
 
 __all__ = (
     "Document",

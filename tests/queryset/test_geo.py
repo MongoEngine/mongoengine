@@ -2,7 +2,6 @@ import datetime
 import unittest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 

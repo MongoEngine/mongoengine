@@ -2,7 +2,11 @@ import itertools
 import warnings
 
 from mongoengine.base.common import _document_registry
-from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
+from mongoengine.base.fields import (
+    BaseField,
+    ComplexBaseField,
+    ObjectIdField,
+)
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
 from mongoengine.queryset import (
@@ -11,7 +15,6 @@ from mongoengine.queryset import (
     MultipleObjectsReturned,
     QuerySetManager,
 )
-
 
 __all__ = ("DocumentMetaclass", "TopLevelDocumentMetaclass")
 

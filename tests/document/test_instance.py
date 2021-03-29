@@ -6,9 +6,9 @@ import weakref
 from datetime import datetime
 
 import bson
+import pytest
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
-import pytest
 
 from mongoengine import *
 from mongoengine import signals
@@ -23,7 +23,11 @@ from mongoengine.errors import (
     NotUniqueError,
     SaveConditionError,
 )
-from mongoengine.mongodb_support import MONGODB_34, MONGODB_36, get_mongodb_version
+from mongoengine.mongodb_support import (
+    get_mongodb_version,
+    MONGODB_34,
+    MONGODB_36,
+)
 from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import NULLIFY, Q
 from tests import fixtures
@@ -34,7 +38,7 @@ from tests.fixtures import (
     PickleSignalsTest,
     PickleTest,
 )
-from tests.utils import MongoDBTestCase, get_as_pymongo
+from tests.utils import get_as_pymongo, MongoDBTestCase
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 

@@ -1,10 +1,9 @@
 import copy
-
 import numbers
 from functools import partial
 
-from bson import DBRef, ObjectId, SON, json_util
 import pymongo
+from bson import DBRef, json_util, ObjectId, SON
 
 from mongoengine import signals
 from mongoengine.base.common import get_document

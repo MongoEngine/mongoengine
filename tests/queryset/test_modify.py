@@ -1,6 +1,12 @@
 import unittest
 
-from mongoengine import Document, IntField, ListField, StringField, connect
+from mongoengine import (
+    connect,
+    Document,
+    IntField,
+    ListField,
+    StringField,
+)
 
 
 class Doc(Document):

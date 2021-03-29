@@ -1,10 +1,10 @@
 from enum import Enum
 
-from bson import InvalidDocument
 import pytest
+from bson import InvalidDocument
 
 from mongoengine import Document, EnumField, ValidationError
-from tests.utils import MongoDBTestCase, get_as_pymongo
+from tests.utils import get_as_pymongo, MongoDBTestCase
 
 
 class Status(Enum):

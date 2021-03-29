@@ -1,13 +1,16 @@
 import unittest
 from datetime import datetime
 
+import pytest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
-import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.mongodb_support import MONGODB_42, get_mongodb_version
+from mongoengine.mongodb_support import (
+    get_mongodb_version,
+    MONGODB_42,
+)
 
 
 class TestIndexes(unittest.TestCase):

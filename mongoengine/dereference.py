@@ -4,13 +4,18 @@ from mongoengine.base import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    TopLevelDocumentMetaclass,
     get_document,
+    TopLevelDocumentMetaclass,
 )
 from mongoengine.base.datastructures import LazyReference
 from mongoengine.connection import get_db
 from mongoengine.document import Document, EmbeddedDocument
-from mongoengine.fields import DictField, ListField, MapField, ReferenceField
+from mongoengine.fields import (
+    DictField,
+    ListField,
+    MapField,
+    ReferenceField,
+)
 from mongoengine.queryset import QuerySet
 
 
