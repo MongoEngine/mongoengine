@@ -375,6 +375,26 @@ class TestLazyReferenceField(MongoDBTestCase):
             assert isinstance(ref.author, LazyReference)
             assert isinstance(ref.author.id, ObjectId)
 
+    def test_lazy_reference_in_list_with_changed_element(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            in_list = ListField(LazyReferenceField(Animal))
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal1 = Animal(name="doggo").save()
+
+        animal1.tag = "blue"
+
+        occ = Ocurrence(in_list=[animal1]).save()
+        animal1.save()
+        assert isinstance(occ.in_list[0], LazyReference)
+        assert occ.in_list[0].pk == animal1.pk
+
 
 class TestGenericLazyReferenceField(MongoDBTestCase):
     def test_generic_lazy_reference_simple(self):

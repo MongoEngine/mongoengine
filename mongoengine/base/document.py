@@ -615,7 +615,9 @@ class BaseDocument:
     def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed."""
         EmbeddedDocument = _import_class("EmbeddedDocument")
+        LazyReferenceField = _import_class("LazyReferenceField")
         ReferenceField = _import_class("ReferenceField")
+        GenericLazyReferenceField = _import_class("GenericLazyReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
         SortedListField = _import_class("SortedListField")
 
@@ -641,7 +643,13 @@ class BaseDocument:
                 changed_fields += [f"{key}{k}" for k in changed if k]
             elif isinstance(data, (list, tuple, dict)):
                 if hasattr(field, "field") and isinstance(
-                    field.field, (ReferenceField, GenericReferenceField)
+                    field.field,
+                    (
+                        LazyReferenceField,
+                        ReferenceField,
+                        GenericLazyReferenceField,
+                        GenericReferenceField,
+                    ),
                 ):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
