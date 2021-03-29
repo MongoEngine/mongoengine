@@ -35,8 +35,8 @@ Travis runs the tests against the main Python 3.x versions.
 Style Guide
 -----------
 
-MongoEngine's codebase is formatted with `black <https://github.com/python/black>`_, other tools like
-flake8 are also used. Those tools will run as part of the CI and will fail in case the code is not formatted properly.
+MongoEngine's codebase is auto-formatted with `black <https://github.com/python/black>`_, imports are ordered with `isort <https://pycqa.github.io/isort/>`_
+and other tools like flake8 are also used. Those tools will run as part of the CI and will fail in case the code is not formatted properly.
 
 To install all development tools, simply run the following commands:
 
@@ -57,6 +57,10 @@ To enable ``pre-commit`` simply run:
 
 See the ``.pre-commit-config.yaml`` configuration file for more information
 on how it works.
+
+pre-commit will now run upon every commit and will reject anything that doesn't comply.
+
+You can also run all the checks with ``pre-commit run -a``, this is what is used in the CI.
 
 Testing
 -------
