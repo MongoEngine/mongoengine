@@ -1661,7 +1661,7 @@ class BaseQuerySet:
         if self._ordering:
             # explicit ordering
             self._cursor_obj.sort(self._ordering)
-        elif self._ordering is None and self._document._meta["ordering"]:
+        elif not self._ordering and self._document._meta["ordering"]:
             # default ordering
             order = self._get_order_by(self._document._meta["ordering"])
             self._cursor_obj.sort(order)
