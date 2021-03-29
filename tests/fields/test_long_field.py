@@ -3,7 +3,7 @@ from bson.int64 import Int64
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from tests.utils import get_as_pymongo, MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestLongField(MongoDBTestCase):

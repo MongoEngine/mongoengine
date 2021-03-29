@@ -3,7 +3,7 @@ import unittest
 import pytest
 
 import mongoengine.connection
-from mongoengine import connect, disconnect_all, Document, StringField
+from mongoengine import Document, StringField, connect, disconnect_all
 from mongoengine.connection import get_connection
 
 try:

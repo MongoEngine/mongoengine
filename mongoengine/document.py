@@ -11,8 +11,8 @@ from mongoengine.base import (
     BaseList,
     DocumentMetaclass,
     EmbeddedDocumentList,
-    get_document,
     TopLevelDocumentMetaclass,
+    get_document,
 )
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db

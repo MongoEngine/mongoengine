@@ -4,10 +4,10 @@ from bson import InvalidDocument
 from mongoengine import *
 from mongoengine.base import BaseDict
 from mongoengine.mongodb_support import (
-    get_mongodb_version,
     MONGODB_36,
+    get_mongodb_version,
 )
-from tests.utils import get_as_pymongo, MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestDictField(MongoDBTestCase):

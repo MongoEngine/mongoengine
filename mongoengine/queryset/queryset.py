@@ -1,11 +1,11 @@
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (
-    BaseQuerySet,
     CASCADE,
     DENY,
     DO_NOTHING,
     NULLIFY,
     PULL,
+    BaseQuerySet,
 )
 
 __all__ = (

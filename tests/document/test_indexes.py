@@ -8,8 +8,8 @@ from pymongo.errors import OperationFailure
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import (
-    get_mongodb_version,
     MONGODB_42,
+    get_mongodb_version,
 )
 
 

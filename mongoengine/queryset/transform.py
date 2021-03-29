@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 import pymongo
-from bson import ObjectId, SON
+from bson import SON, ObjectId
 from bson.dbref import DBRef
 
 from mongoengine.base import UPDATE_OPERATORS

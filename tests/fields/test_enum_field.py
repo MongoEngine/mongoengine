@@ -4,7 +4,7 @@ import pytest
 from bson import InvalidDocument
 
 from mongoengine import Document, EnumField, ValidationError
-from tests.utils import get_as_pymongo, MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class Status(Enum):

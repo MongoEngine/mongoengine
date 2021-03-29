@@ -24,9 +24,9 @@ from mongoengine.errors import (
     SaveConditionError,
 )
 from mongoengine.mongodb_support import (
-    get_mongodb_version,
     MONGODB_34,
     MONGODB_36,
+    get_mongodb_version,
 )
 from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import NULLIFY, Q
@@ -38,7 +38,7 @@ from tests.fixtures import (
     PickleSignalsTest,
     PickleTest,
 )
-from tests.utils import get_as_pymongo, MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 

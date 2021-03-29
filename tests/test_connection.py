@@ -9,16 +9,16 @@ from pymongo.errors import InvalidName, OperationFailure
 
 import mongoengine.connection
 from mongoengine import (
-    connect,
     DateTimeField,
-    disconnect_all,
     Document,
-    register_connection,
     StringField,
+    connect,
+    disconnect_all,
+    register_connection,
 )
 from mongoengine.connection import (
-    ConnectionFailure,
     DEFAULT_DATABASE_NAME,
+    ConnectionFailure,
     disconnect,
     get_connection,
     get_db,

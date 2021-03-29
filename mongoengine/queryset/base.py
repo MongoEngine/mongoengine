@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 import pymongo
 import pymongo.errors
-from bson import json_util, SON
+from bson import SON, json_util
 from bson.code import Code
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference

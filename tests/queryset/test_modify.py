@@ -1,11 +1,11 @@
 import unittest
 
 from mongoengine import (
-    connect,
     Document,
     IntField,
     ListField,
     StringField,
+    connect,
 )
 
 

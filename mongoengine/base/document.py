@@ -3,7 +3,7 @@ import numbers
 from functools import partial
 
 import pymongo
-from bson import DBRef, json_util, ObjectId, SON
+from bson import SON, DBRef, ObjectId, json_util
 
 from mongoengine import signals
 from mongoengine.base.common import get_document

@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from mongoengine import *
-from tests.utils import get_as_pymongo, MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class Person(Document):

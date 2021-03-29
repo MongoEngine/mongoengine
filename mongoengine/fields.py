@@ -11,7 +11,7 @@ from operator import itemgetter
 
 import gridfs
 import pymongo
-from bson import Binary, DBRef, ObjectId, SON
+from bson import SON, Binary, DBRef, ObjectId
 from bson.int64 import Int64
 from pymongo import ReturnDocument
 
@@ -27,9 +27,9 @@ from mongoengine.base import (
     BaseField,
     ComplexBaseField,
     GeoJsonBaseField,
-    get_document,
     LazyReference,
     ObjectIdField,
+    get_document,
 )
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class

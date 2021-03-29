@@ -2,7 +2,7 @@ import operator
 import weakref
 
 import pymongo
-from bson import DBRef, ObjectId, SON
+from bson import SON, DBRef, ObjectId
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (

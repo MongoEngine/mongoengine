@@ -14,15 +14,15 @@ from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import (
-    get_mongodb_version,
     MONGODB_36,
+    get_mongodb_version,
 )
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
     QuerySet,
-    queryset_manager,
     QuerySetManager,
+    queryset_manager,
 )
 from tests.utils import (
     requires_mongodb_gte_44,

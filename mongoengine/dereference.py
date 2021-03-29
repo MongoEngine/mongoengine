@@ -1,11 +1,11 @@
-from bson import DBRef, SON
+from bson import SON, DBRef
 
 from mongoengine.base import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    get_document,
     TopLevelDocumentMetaclass,
+    get_document,
 )
 from mongoengine.base.datastructures import LazyReference
 from mongoengine.connection import get_db
