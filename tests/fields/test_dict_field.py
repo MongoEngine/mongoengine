@@ -1,10 +1,12 @@
-from bson import InvalidDocument
 import pytest
+from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
-
+from mongoengine.mongodb_support import (
+    MONGODB_36,
+    get_mongodb_version,
+)
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

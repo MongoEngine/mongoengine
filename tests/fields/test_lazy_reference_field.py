@@ -1,10 +1,9 @@
-from bson import DBRef, ObjectId
 import pytest
+from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.base import LazyReference
 from mongoengine.context_managers import query_counter
-
 from tests.utils import MongoDBTestCase
 
 

@@ -6,9 +6,9 @@ import weakref
 from datetime import datetime
 
 import bson
+import pytest
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
-import pytest
 
 from mongoengine import *
 from mongoengine import signals
@@ -23,7 +23,11 @@ from mongoengine.errors import (
     NotUniqueError,
     SaveConditionError,
 )
-from mongoengine.mongodb_support import MONGODB_34, MONGODB_36, get_mongodb_version
+from mongoengine.mongodb_support import (
+    MONGODB_34,
+    MONGODB_36,
+    get_mongodb_version,
+)
 from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import NULLIFY, Q
 from tests import fixtures

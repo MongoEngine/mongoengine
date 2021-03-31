@@ -120,4 +120,3 @@ the validation and cleaning of a document when you call :meth:`~mongoengine.docu
     Person(age=1000).save(validate=False)
     person = Person.objects.first()
     assert person.age == 1000
-

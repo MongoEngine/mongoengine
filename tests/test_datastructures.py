@@ -3,7 +3,11 @@ import unittest
 import pytest
 
 from mongoengine import Document
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    StrictDict,
+)
 
 
 class DocumentStub:

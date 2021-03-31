@@ -1,9 +1,8 @@
-from bson.int64 import Int64
 import pytest
+from bson.int64 import Int64
 
 from mongoengine import *
 from mongoengine.connection import get_db
-
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

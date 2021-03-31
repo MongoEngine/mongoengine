@@ -1,11 +1,11 @@
 import datetime
 import unittest
 
-from bson.tz_util import utc
 import pymongo
+import pytest
+from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
 from pymongo.errors import InvalidName, OperationFailure
-import pytest
 
 import mongoengine.connection
 from mongoengine import (
@@ -17,8 +17,8 @@ from mongoengine import (
     register_connection,
 )
 from mongoengine.connection import (
-    ConnectionFailure,
     DEFAULT_DATABASE_NAME,
+    ConnectionFailure,
     disconnect,
     get_connection,
     get_db,

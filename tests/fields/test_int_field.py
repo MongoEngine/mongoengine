@@ -1,7 +1,6 @@
 import pytest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 

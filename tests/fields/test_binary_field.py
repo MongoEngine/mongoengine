@@ -1,7 +1,7 @@
 import uuid
 
-from bson import Binary
 import pytest
+from bson import Binary
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase

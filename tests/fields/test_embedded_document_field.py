@@ -12,7 +12,6 @@ from mongoengine import (
     StringField,
     ValidationError,
 )
-
 from tests.utils import MongoDBTestCase
 
 

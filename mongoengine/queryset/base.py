@@ -2,13 +2,12 @@ import copy
 import itertools
 import re
 import warnings
-
 from collections.abc import Mapping
 
-from bson import SON, json_util
-from bson.code import Code
 import pymongo
 import pymongo.errors
+from bson import SON, json_util
+from bson.code import Code
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 from pymongo.read_concern import ReadConcern
@@ -33,7 +32,6 @@ from mongoengine.pymongo_support import count_documents
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
-
 
 __all__ = ("BaseQuerySet", "DO_NOTHING", "NULLIFY", "CASCADE", "DENY", "PULL")
 

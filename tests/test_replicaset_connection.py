@@ -5,7 +5,6 @@ from pymongo import MongoClient, ReadPreference
 import mongoengine
 from mongoengine.connection import ConnectionFailure
 
-
 CONN_CLASS = MongoClient
 READ_PREF = ReadPreference.SECONDARY
 

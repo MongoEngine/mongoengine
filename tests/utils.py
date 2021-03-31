@@ -7,7 +7,6 @@ from mongoengine import connect
 from mongoengine.connection import disconnect_all, get_db
 from mongoengine.mongodb_support import get_mongodb_version
 
-
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
 

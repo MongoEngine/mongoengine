@@ -53,8 +53,8 @@ class PyTest(TestCommand):
 
     def run_tests(self):
         # import here, cause outside the eggs aren't loaded
-        from pkg_resources import _namespace_packages
         import pytest
+        from pkg_resources import _namespace_packages
 
         # Purge modules under test from sys.modules. The test loader will
         # re-import them from the build location. Required when 2to3 is used

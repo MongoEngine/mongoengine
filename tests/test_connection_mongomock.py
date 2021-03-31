@@ -3,14 +3,8 @@ import unittest
 import pytest
 
 import mongoengine.connection
-from mongoengine import (
-    Document,
-    StringField,
-    connect,
-    disconnect_all,
-)
+from mongoengine import Document, StringField, connect, disconnect_all
 from mongoengine.connection import get_connection
-
 
 try:
     import mongomock

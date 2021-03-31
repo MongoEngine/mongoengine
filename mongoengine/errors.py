@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-
 __all__ = (
     "NotRegistered",
     "InvalidDocumentError",
