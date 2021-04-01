@@ -391,10 +391,10 @@ class QuerySet(object):
         if self._cursor_obj is None:
             cursor_args = {
                 'snapshot': self._snapshot,
-                'timeout': self._timeout,
+                'no_cursor_timeout': self._timeout,
             }
             if self._loaded_fields:
-                cursor_args['fields'] = self._loaded_fields
+                cursor_args['projection'] = self._loaded_fields
 
             try:
                 self._cursor_obj = self._collection.find(self._query,
@@ -429,6 +429,8 @@ class QuerySet(object):
                     time.sleep(0.1)
                     self._cursor_obj.skip(self._skip)
 
+        if not (isinstance(self._cursor_obj, pymongo.cursor.Cursor) or isinstance(self._cursor_obj, pymongo.command_cursor.CommandCursor)):
+            return self._cursor_obj.delegate
         return self._cursor_obj
 
     @classmethod
@@ -891,7 +893,7 @@ class QuerySet(object):
             if dkey and dkey.decide():
                 proxy_client.instance().remove(self._document, self._query)
                 return
-        self._collection.remove(self._query, safe=safe)
+        self._collection.delete_many(self._query)
 
     @classmethod
     def _transform_update(cls, _doc_cls=None, **update):

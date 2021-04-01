@@ -56,10 +56,10 @@ class DocumentTest(unittest.TestCase):
         self.Person(name='Test').save()
 
         collection = self.Person._get_collection_name()
-        self.assertTrue(collection in self.db.collection_names())
+        self.assertTrue(collection in self.db.list_collection_names())
 
         self.Person.drop_collection()
-        self.assertFalse(collection in self.db.collection_names())
+        self.assertFalse(collection in self.db.list_collection_names())
 
     def test_definition(self):
         """Ensure that document may be defined using fields.
@@ -288,7 +288,7 @@ class DocumentTest(unittest.TestCase):
         """Ensure that a collection with a specified name may be used.
         """
         collection = 'personCollTest'
-        if collection in self.db.collection_names():
+        if collection in self.db.list_collection_names():
             self.db.drop_collection(collection)
 
         _document_registry.clear()
@@ -298,7 +298,7 @@ class DocumentTest(unittest.TestCase):
 
         user = Person(name="Test User")
         user.save()
-        self.assertTrue(collection in self.db.collection_names())
+        self.assertTrue(collection in self.db.list_collection_names())
 
         user_obj = self.db[collection].find_one()
         self.assertEqual(user_obj['name'], "Test User")
@@ -307,7 +307,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEqual(user_obj.name, "Test User")
 
         Person.drop_collection()
-        self.assertFalse(collection in self.db.collection_names())
+        self.assertFalse(collection in self.db.list_collection_names())
 
     def test_collection_name_and_primary(self):
         """Ensure that a collection with a specified name may be used.
@@ -890,65 +890,6 @@ class DocumentTest(unittest.TestCase):
 
         self.assertRaises(InvalidDocumentError, throw_invalid_document_error)
 
-    def test_write_concern(self):
-        class ImportantThing(Document):
-            meta = {'write_concern': 2}
-            name = StringField()
-
-        class MajorityThing(Document):
-            meta = {'write_concern': 'majority',
-                    'force_insert': True}
-            name = StringField()
-
-        class NormalThing(Document):
-            name = StringField()
-
-        # test save() of ImportantThing gets w=2
-        with mock.patch.object(ImportantThing._pymongo(), "save") as save_mock:
-            it = ImportantThing(id=bson.ObjectId())
-            save_mock.return_value = it.id
-            it.save()
-
-            save_mock.assert_called_with(it.to_mongo(), w=2)
-
-        # test insert() of MajorityThing gets w=majority
-        # note: uses insert() because force_insert is set
-        with mock.patch.object(MajorityThing._pymongo(), "insert") as insert_mock:
-            mt = MajorityThing(id=bson.ObjectId())
-            insert_mock.return_value = mt.id
-            mt.save()
-
-            insert_mock.assert_called_with(mt.to_mongo(), w='majority')
-
-        # test NormalThing gets default w=1
-        with mock.patch.object(NormalThing._pymongo(), "save") as save_mock:
-            nt = NormalThing(id=bson.ObjectId())
-            save_mock.return_value = nt.id
-            nt.save()
-
-            save_mock.assert_called_with(nt.to_mongo(), w=1)
-
-        # test ImportantThing update gets w=2
-        with mock.patch.object(ImportantThing._pymongo(), "update") as update_mock:
-            it.set(name="Adam")
-
-            self.assertEquals(update_mock.call_count, 1)
-            self.assertEquals(update_mock.call_args[1]['w'], 2)
-
-        # test MajorityThing update gets w=majority
-        with mock.patch.object(MajorityThing._pymongo(), "update") as update_mock:
-            mt.set(name="Adam")
-
-            self.assertEquals(update_mock.call_count, 1)
-            self.assertEquals(update_mock.call_args[1]['w'], "majority")
-
-        # test NormalThing update gets w=1
-        with mock.patch.object(NormalThing._pymongo(), "update") as update_mock:
-            nt.set(name="Adam")
-
-            self.assertEquals(update_mock.call_count, 1)
-            self.assertEquals(update_mock.call_args[1]['w'], 1)
-
     def test_by_id_key(self):
         class UnshardedCollection(Document):
             pass
@@ -1085,7 +1026,7 @@ class DocumentTest(unittest.TestCase):
         col_mock.name = 'asdf'
         doc_mock = MagicMock()
         doc_mock.__iter__.return_value = ['a','b']
-        cur_mock = Mock()
+        cur_mock = Mock(spec=pymongo.cursor.Cursor)
         cur_mock.collection = col_mock
         cur_mock.next = MagicMock(side_effect=[doc_mock])
         find_raw = MagicMock(return_value=(cur_mock,Mock()))
@@ -1103,7 +1044,7 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(d[1]['max_time_ms'],1000)
 
     def test_max_time_ms_find_iter(self):
-        cur_mock = MagicMock()
+        cur_mock = MagicMock(spec=pymongo.cursor.Cursor)
         cur_mock._iterate_cursor = MagicMock(side_effect=['a'])
         find_raw = MagicMock(return_value=(cur_mock,Mock()))
         Citizen.find_raw = find_raw
@@ -1136,48 +1077,16 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(c[1]['max_time_ms'],-1)
         self.assertEquals(d[1]['max_time_ms'],1000)
 
-    def test_max_time_ms_count(self):
-        cur_mock = Mock()
-        cur_mock.count = MagicMock(return_value=1)
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        Citizen.count({}, max_time_ms=None)
-        Citizen.count({}, max_time_ms=0)
-        Citizen.count({}, max_time_ms=-1)
-        Citizen.count({}, max_time_ms=1000)
-
-        a,b,c,d = find_raw.call_args_list
-        self.assertEquals(a[1]['max_time_ms'],None)
-        self.assertEquals(b[1]['max_time_ms'],0)
-        self.assertEquals(c[1]['max_time_ms'],-1)
-        self.assertEquals(d[1]['max_time_ms'],1000)
-
-    def test_max_time_ms_distinct(self):
-        cur_mock = Mock()
-        cur_mock.distinct = MagicMock(return_value=1)
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        Citizen.distinct({}, '_id', max_time_ms=None)
-        Citizen.distinct({}, '_id', max_time_ms=0)
-        Citizen.distinct({}, '_id', max_time_ms=-1)
-        Citizen.distinct({}, '_id', max_time_ms=1000)
-
-        a,b,c,d = find_raw.call_args_list
-        self.assertEquals(a[1]['max_time_ms'],None)
-        self.assertEquals(b[1]['max_time_ms'],0)
-        self.assertEquals(c[1]['max_time_ms'],-1)
-        self.assertEquals(d[1]['max_time_ms'],1000)
-
 
     def test_timeout_value_find(self):
         col_mock = Mock()
         col_mock.name = 'asdf'
         doc_mock = MagicMock()
         doc_mock.__iter__.return_value = ['a','b']
-        cur_mock = Mock()
+        cur_mock = Mock(spec=pymongo.cursor.Cursor)
         cur_mock.collection = col_mock
+        cur_mock._Cursor__comment = ""
+        cur_mock._Cursor__max_time_ms = ""
         cur_mock.next = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
         find_raw = MagicMock(return_value=(cur_mock,Mock()))
@@ -1204,41 +1113,15 @@ class DocumentTest(unittest.TestCase):
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
             Citizen.find_one({})
 
-    def test_timeout_value_count(self):
-        cur_mock = Mock()
-        cur_mock.count = MagicMock(
-            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        self.assertEquals([],Citizen.count({}, timeout_value=[]))
-        self.assertEquals({},Citizen.count({}, timeout_value={}))
-        self.assertEquals(1,Citizen.count({}, timeout_value=1))
-        self.assertEquals('asdf',Citizen.count({}, timeout_value='asdf'))
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.count({})
-
-    def test_timeout_value_distinct(self):
-        cur_mock = Mock()
-        cur_mock.distinct = MagicMock(
-            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        self.assertEquals([],Citizen.distinct({}, '_id', timeout_value=[]))
-        self.assertEquals({},Citizen.distinct({}, '_id', timeout_value={}))
-        self.assertEquals(1,Citizen.distinct({}, '_id', timeout_value=1))
-        self.assertEquals('asdf',Citizen.distinct({}, '_id', timeout_value='asdf'))
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.distinct({}, '_id')
-
     def test_timeout_retry_find(self):
         col_mock = Mock()
         col_mock.name = 'asdf'
         doc_mock = MagicMock()
         doc_mock.__iter__.return_value = ['a','b']
-        cur_mock = Mock()
+        cur_mock = Mock(spec=pymongo.cursor.Cursor)
         cur_mock.collection = col_mock
+        cur_mock._Cursor__comment = ""
+        cur_mock._Cursor__max_time_ms = ""
         cur_mock.next = MagicMock(
             side_effect=pymongo.errors.ExecutionTimeout('asdf'))
         find_raw = MagicMock(return_value=(cur_mock,Mock()))
@@ -1276,54 +1159,6 @@ class DocumentTest(unittest.TestCase):
             Citizen.find_one({}, max_time_ms=Citizen.MAX_TIME_MS)
         with self.assertRaises(pymongo.errors.ExecutionTimeout):
             Citizen.find_one({}, max_time_ms=Citizen.MAX_TIME_MS + 1)
-
-        # should retry on the first two, should not retry on the last two
-        self.assertEquals(len(find_raw.call_args_list), 6)
-
-        _, a, _, b, c, d = find_raw.call_args_list
-
-        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
-        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
-
-    def test_timeout_retry_count(self):
-        cur_mock = Mock()
-        cur_mock.count = MagicMock(
-            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.count({}, max_time_ms=None)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS - 1)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.count({}, max_time_ms=Citizen.MAX_TIME_MS + 1)
-
-        # should retry on the first two, should not retry on the last two
-        self.assertEquals(len(find_raw.call_args_list), 6)
-
-        _, a, _, b, c, d = find_raw.call_args_list
-
-        self.assertEquals(a[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
-        self.assertEquals(b[1]['max_time_ms'],Citizen.RETRY_MAX_TIME_MS)
-
-    def test_timeout_retry_distinct(self):
-        cur_mock = Mock()
-        cur_mock.distinct = MagicMock(
-            side_effect=pymongo.errors.ExecutionTimeout('asdf'))
-        find_raw = Mock(return_value=(cur_mock,Mock()))
-        Citizen.find_raw = find_raw
-
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.distinct({}, '_id', max_time_ms=None)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.distinct({}, '_id', max_time_ms=Citizen.MAX_TIME_MS - 1)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.distinct({}, '_id', max_time_ms=Citizen.MAX_TIME_MS)
-        with self.assertRaises(pymongo.errors.ExecutionTimeout):
-            Citizen.distinct({},'_id',  max_time_ms=Citizen.MAX_TIME_MS + 1)
 
         # should retry on the first two, should not retry on the last two
         self.assertEquals(len(find_raw.call_args_list), 6)

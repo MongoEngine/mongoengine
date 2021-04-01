@@ -1094,7 +1094,7 @@ class CustomQueryTest(unittest.TestCase):
 
         self.assertEqual(hint, [("age", 1), ("favourite_colour.name", 1)])
 
-    @mock.patch('pymongo.collection.Collection.update')
+    @mock.patch('pymongo.collection.Collection.update_one')
     def testUpdateOneShardCriteria(self, updater_mock):
         # normal update_one
         old_name = 'Old Name'
@@ -1117,8 +1117,8 @@ class CustomQueryTest(unittest.TestCase):
         self.assertTrue('s' in called_with[0].keys())
 
     @mock.patch('pymongo.collection.Collection.find')
-    @mock.patch('pymongo.collection.Collection.find_and_modify')
-    @mock.patch('pymongo.collection.Collection.remove')
+    @mock.patch('pymongo.collection.Collection.find_one_and_update')
+    @mock.patch('pymongo.collection.Collection.delete_many')
     @mock.patch('pymongo.collection.Collection.update')
     def testComment(self, update_mock, remove_mock, fam_mock, find_mock):
         # fetch what spec keys were passed to pymongo query
@@ -1276,7 +1276,7 @@ class BulkOperationTest(unittest.TestCase):
             self.person_cls(name='P2')
         ]
         # corrupt data
-        person._pymongo().update(
+        person._pymongo().update_one(
             {'name': 'Patrick'},
             {'$set': {'age': None}}
         )
