@@ -791,9 +791,7 @@ class Document(BaseDocument):
             })
             warnings.warn('Avoid noTimeout cursors on primaries')
             del kwargs["timeout"]
-        timeout = kwargs.pop("timeout", None)
-        if timeout is not None:
-            kwargs["no_cursor_timeout"] = not timeout
+        cls._transformKwargs(kwargs)
 
         is_scatter_gather = cls.is_scatter_gather(spec)
 
@@ -918,7 +916,7 @@ class Document(BaseDocument):
     @classmethod
     def find(cls, spec, fields=None, skip=0, limit=0, sort=None,
              slave_ok=True, excluded_fields=None, max_time_ms=None,
-             timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
+             timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
         if proxy_client:
@@ -941,7 +939,7 @@ class Document(BaseDocument):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
                                slave_ok=slave_ok,
                                excluded_fields=excluded_fields,
-                               max_time_ms=max_time_ms, **kwargs)
+                               max_time_ms=max_time_ms,**kwargs)
 
             try:
                 return [
@@ -986,7 +984,7 @@ class Document(BaseDocument):
                                sort, slave_ok=slave_ok, timeout=timeout,
                                batch_size=batch_size,
                                excluded_fields=excluded_fields,
-                               max_time_ms=max_time_ms, **kwargs)
+                               max_time_ms=max_time_ms,**kwargs)
             try:
                 for doc in cls._iterate_cursor(cur):
                     try:
@@ -1027,16 +1025,11 @@ class Document(BaseDocument):
                 yield doc
 
     @classmethod
-    def aggregate(cls, pipeline=None, hint=None, **kwargs):
+    def aggregate(cls, pipeline=None, **kwargs):
         if kwargs.get('allowDiskUse', False):
             raise ValueError("Writing to temporary files is disabled. allowDiskUse=True is not allowed.")
 
         proxy_client = cls._get_proxy_client()
-        kwargs.pop("slave_ok", None) # useless argument, always query from secondary
-        if hint:
-            hint = cls._transform_hint(hint)
-            # HACK pymongo aggregate won't transform hint automatically
-            kwargs["hint"] = pymongo.helpers._index_document(hint)
         if proxy_client:
             if cls._get_read_decider():
                 results = []
@@ -1158,7 +1151,7 @@ class Document(BaseDocument):
         doc, set_comment = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
                          excluded_fields=excluded_fields,
-                         max_time_ms=max_time_ms, **kwargs)
+                         max_time_ms=max_time_ms,**kwargs)
 
         try:
             if doc:
@@ -1202,11 +1195,14 @@ class Document(BaseDocument):
 
             # handle queries with inheritance
             spec = cls._update_spec(spec, **kwargs)
-            if sort:
-                new_sort = []
+            if sort is None:
+                sort = {}
+            else:
+                new_sort = {}
                 for f, dir in sort.iteritems():
                     f, _ = cls._transform_key(f, cls)
-                    new_sort.append((f, dir))
+                    new_sort[f] = dir
+
                 sort = new_sort
 
             transformed_fields = cls._transform_fields(fields, excluded_fields)
@@ -1222,23 +1218,29 @@ class Document(BaseDocument):
                 try:
                     return proxy_client.instance().find_and_modify(
                         cls, spec, sort=sort, remove=remove, update=update, new=new,
-                        projection=fields, upsert=upsert, excluded_fields=excluded_fields,
+                        fields=fields, upsert=upsert, excluded_fields=excluded_fields,
                         **kwargs
                     )
                 finally:
                     cls.cleanup_trace(set_comment)
 
         try:
+            if sort == {}:
+                new_sort = None
+            else:
+                new_sort = []
+                for f, dir in sort.iteritems():
+                    new_sort.append((f, dir))
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):
                 if remove:
                     result = cls._pymongo().find_one_and_delete(
-                        spec, sort=sort, remove=remove,
+                        spec, sort=new_sort, remove=remove,
                         projection=transformed_fields, **kwargs
                     )
                 else:
                     ret = ReturnDocument.AFTER if new else ReturnDocument.BEFORE
                     result = cls._pymongo().find_one_and_update(
-                        spec, sort=sort, update=update,
+                        spec, sort=new_sort, update=update,
                         projection=transformed_fields,
                         return_document=ret,
                         upsert=upsert, **kwargs
@@ -1252,7 +1254,7 @@ class Document(BaseDocument):
 
     @classmethod
     def count(cls, spec, slave_ok=True, comment=None, max_time_ms=None,
-        timeout_value=NO_TIMEOUT_DEFAULT, **kwargs):
+        timeout_value=NO_TIMEOUT_DEFAULT,**kwargs):
 
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
@@ -1309,7 +1311,7 @@ class Document(BaseDocument):
 
     @classmethod
     def update(cls, spec, document, upsert=False, multi=True,
-               **kwargs):
+                **kwargs):
         # updates behave like set instead of find (None)... this is relevant for
         # setting list values since you're setting the value of the whole list,
         # not an element inside the list (like in find)
@@ -1643,7 +1645,10 @@ class Document(BaseDocument):
                     transformed_value = SON()
 
                     for key, subvalue in listel.iteritems():
-                        op = key if key[0] == '$' else base_op
+                        if key[0] == '$':
+                            op = key
+                        else:
+                            op = base_op
 
                         new_key, value_context = Document._transform_key(key, context,
                                                      is_find=(op is None))
@@ -1664,7 +1669,10 @@ class Document(BaseDocument):
 
             for key, subvalue in value.iteritems():
                 embeddeddoc = False
-                op = key if key[0] == '$' else base_op
+                if key[0] == '$':
+                    op = key
+                else:
+                    op = base_op
 
                 if isinstance(context, ListField):
                     if isinstance(context.field, EmbeddedDocumentField):
@@ -2025,6 +2033,9 @@ class Document(BaseDocument):
         maxTimeMS = kwargs.pop("max_time_ms", None)
         if maxTimeMS:
             kwargs["maxTimeMS"] = maxTimeMS
+        timeout = kwargs.pop("timeout", None)
+        if timeout is not None:
+            kwargs["no_cursor_timeout"] = not timeout
 
 class MapReduceDocument(object):
     """A document returned from a map/reduce query.

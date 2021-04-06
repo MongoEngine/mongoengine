@@ -391,7 +391,7 @@ class QuerySet(object):
         if self._cursor_obj is None:
             cursor_args = {
                 'snapshot': self._snapshot,
-                'no_cursor_timeout': self._timeout,
+                'no_cursor_timeout': not self._timeout,
             }
             if self._loaded_fields:
                 cursor_args['projection'] = self._loaded_fields
