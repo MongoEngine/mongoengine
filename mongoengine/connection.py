@@ -1,5 +1,4 @@
 from pymongo.mongo_client import MongoClient
-# from motor.motor_tornado import MotorClient
 from soa.services.greenmotor.greenmotor import GreenMotorClient
 from pymongo.read_preferences import ReadPreference
 import collections
@@ -124,10 +123,6 @@ def connect(host='localhost', conn_name=None, db_names=None, allow_async=False,
     # Connect to the database if not already connected
     if conn_name not in _connections:
         try:
-            pool_size = kwargs.pop('max_pool_size', None)
-            if pool_size:
-                kwargs['maxPoolSize'] = pool_size
-
             if allow_async:
                 async_conn = GreenMotorClient(host, **kwargs)
             else:
