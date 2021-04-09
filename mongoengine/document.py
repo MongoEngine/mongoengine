@@ -357,7 +357,6 @@ class Document(BaseDocument):
 
         bulk_op = cls.get_bulk_attr(cls.BULK_OP)
         proxy_bulk_op = cls.get_bulk_attr(cls.PROXY_BULK_OP)
-        # pymongo's bulk operation support is based on chaining
         if upsert:
             bulk_step['op'] = 'upsert'
         else:

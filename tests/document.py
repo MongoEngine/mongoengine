@@ -533,7 +533,7 @@ class DocumentTest(unittest.TestCase):
     def test_addtoset_on_null_list(self):
         person = self.Person(
             name = 'Bruce Banner',
-            id   = bson.ObjectId(),
+            id   = bson.ObjectId(), 
             uid  = bson.ObjectId(),
             friends = None
         )
