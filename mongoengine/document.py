@@ -5,6 +5,8 @@ from queryset import OperationError
 import contextlib
 import pymongo
 from pymongo.collection import ReturnDocument
+from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import PrimaryPreferred, SecondaryPreferred
 import time
 import greenlet
 import smtplib
@@ -598,7 +600,7 @@ class Document(BaseDocument):
         return _get_proxy_decider(OpClass.WRITE)
 
     @classmethod
-    def _pymongo(cls, use_async=True, read_preference=None):
+    def _pymongo(cls, use_async=True, read_preference=None, tag_sets=None):
         # we can't do async queries if we're on the root greenlet since we have
         # nothing to yield back to
         use_async &= bool(greenlet.getcurrent().parent)
@@ -616,7 +618,13 @@ class Document(BaseDocument):
             cls._pymongo_collection[use_async] = col
 
         if read_preference:
-            return cls._pymongo_collection[use_async].with_options(read_preference=read_preference)
+            if tag_sets:
+                if read_preference == ReadPreference.PRIMARY_PREFERRED:
+                    return cls._pymongo_collection[use_async].with_options(read_preference=PrimaryPreferred(tag_sets))
+                else:
+                    return cls._pymongo_collection[use_async].with_options(read_preference=SecondaryPreferred(tag_sets))
+            else:
+                return cls._pymongo_collection[use_async].with_options(read_preference=read_preference)
         return cls._pymongo_collection[use_async]
 
     def _update_one_key(self):
@@ -846,7 +854,7 @@ class Document(BaseDocument):
 
                 with log_slow_event('find', cls._meta['collection'], spec):
                     cur = cls._pymongo(
-                        allow_async, read_preference=slave_ok.read_pref
+                        allow_async, read_preference=slave_ok.read_pref, tag_sets=slave_ok.tags
                     ).find(
                         spec, fields, skip=skip, limit=limit,
                         sort=sort, **kwargs
