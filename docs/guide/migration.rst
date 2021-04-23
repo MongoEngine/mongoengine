@@ -35,7 +35,7 @@ existing ``User`` model with a `default=True`. Thus you simply update the ``User
 
     class User(Document):
         name = StringField(required=True)
-        enabled = BooleaField(default=True)
+        enabled = BooleanField(default=True)
 
 Without applying any migration, we now reload an object from the database into the ``User`` class
 and checks its `enabled` attribute:
