@@ -31,7 +31,7 @@ myNoddys = noddy.find()
     print("-" * 100)
     print("PyMongo: Creating 10000 dictionaries.")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     stmt = """
 from pymongo import MongoClient, WriteConcern
@@ -54,7 +54,7 @@ myNoddys = noddy.find()
     print("-" * 100)
     print('PyMongo: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     setup = """
 from pymongo import MongoClient
@@ -84,7 +84,7 @@ myNoddys = Noddy.objects()
     print("-" * 100)
     print("MongoEngine: Creating 10000 dictionaries.")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     stmt = """
 for i in range(10000):
@@ -102,7 +102,7 @@ myNoddys = Noddy.objects()
     print("-" * 100)
     print("MongoEngine: Creating 10000 dictionaries (using a single field assignment).")
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     stmt = """
 for i in range(10000):
@@ -118,7 +118,7 @@ myNoddys = Noddy.objects()
     print("-" * 100)
     print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     stmt = """
 for i in range(10000):
@@ -136,7 +136,7 @@ myNoddys = Noddy.objects()
         'MongoEngine: Creating 10000 dictionaries (write_concern={"w": 0}, validate=False).'
     )
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
     stmt = """
 for i in range(10000):
@@ -154,7 +154,7 @@ myNoddys = Noddy.objects()
         'MongoEngine: Creating 10000 dictionaries (force_insert=True, write_concern={"w": 0}, validate=False).'
     )
     t = timeit.Timer(stmt=stmt, setup=setup)
-    print("{}s".format(t.timeit(1)))
+    print(f"{t.timeit(1)}s")
 
 
 if __name__ == "__main__":

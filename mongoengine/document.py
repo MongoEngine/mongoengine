@@ -332,7 +332,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         _refs=None,
         save_condition=None,
         signal_kwargs=None,
-        **kwargs
+        **kwargs,
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -563,7 +563,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if not getattr(ref, "_changed_fields", True):
                 continue
 
-            ref_id = "{},{}".format(ref.__class__.__name__, str(ref._data))
+            ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
             if ref and ref_id not in _refs:
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
