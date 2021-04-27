@@ -12,6 +12,11 @@ class Status(Enum):
     DONE = "done"
 
 
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+
 class ModelWithEnum(Document):
     status = EnumField(Status)
 
@@ -74,14 +79,17 @@ class TestStringEnumField(MongoDBTestCase):
         with pytest.raises(ValidationError):
             m.validate()
 
-    def test_user_is_informed_when_tries_to_set_choices(self):
-        with pytest.raises(ValueError, match="'choices' can't be set on EnumField"):
+    def test_partial_choices(self):
+        partial = [Status.DONE]
+        assert EnumField(Status, choices=partial).choices == partial
+
+    def test_wrong_choices(self):
+        with pytest.raises(ValueError, match="Invalid choices"):
             EnumField(Status, choices=["my", "custom", "options"])
-
-
-class Color(Enum):
-    RED = 1
-    BLUE = 2
+        with pytest.raises(ValueError, match="Invalid choices"):
+            EnumField(Status, choices=[Color.RED])
+        with pytest.raises(ValueError, match="Invalid choices"):
+            EnumField(Status, choices=[Status.DONE, Color.RED])
 
 
 class ModelWithColor(Document):
