@@ -629,7 +629,6 @@ class BaseDocument(object):
             self._changed_fields = []
 
     def __clear_nested_types_changed_field(self, data):
-        ReferenceField = _import_class("ReferenceField")
         if not hasattr(data, 'items'):
             iterator = enumerate(data)
         else:
@@ -645,6 +644,14 @@ class BaseDocument(object):
                 self.__clear_nested_types_changed_field(value)
 
             if hasattr(value, "_changed_fields"):
+                # clear nested fields
+                changed_fields = getattr(value, "_changed_fields", None)
+                if changed_fields:
+                    for changed_field in changed_fields:
+                        field_value = getattr(value, changed_field, None)
+                        if hasattr(field_value, "__clear_changed_field"):
+                            field_value.__clear_changed_field()
+
                 value._changed_fields = []
 
     def _nestable_types_changed_fields(self, changed_fields, key, data, inspected):
