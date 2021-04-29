@@ -585,8 +585,8 @@ class BaseDocument(object):
                     continue
                 if hasattr(data, '_changed_fields'):
                     data._changed_fields = []
-                if hasattr(data, '__clear_changed_field'):
-                    data.__clear_changed_field()
+                if hasattr(data, '_clear_document_changed_fields'):
+                    data._clear_document_changed_fields()
 
                 elif isinstance(data, (list, tuple, dict)):
                     # if field inside the embedded document is reference field then skip
@@ -599,7 +599,7 @@ class BaseDocument(object):
         self._original_values = {}
         self._force_changed_fields = set()
 
-    def __clear_changed_field(self):
+    def _clear_document_changed_fields(self):
         """
         recursively clears the changed field of all the fields of `data`
         we can directly clear the `changed fields` without looking at whether field has actually changed since we are
@@ -620,7 +620,7 @@ class BaseDocument(object):
                 self.__clear_nested_types_changed_field(data)
 
             elif isinstance(data, (EmbeddedDocument, DynamicEmbeddedDocument)):
-                data.__clear_changed_field()
+                data._clear_document_changed_fields()
 
             if hasattr(data, "_changed_fields"):
                 data._changed_fields = []
@@ -629,7 +629,6 @@ class BaseDocument(object):
             self._changed_fields = []
 
     def __clear_nested_types_changed_field(self, data):
-        ReferenceField = _import_class("ReferenceField")
         if not hasattr(data, 'items'):
             iterator = enumerate(data)
         else:
@@ -638,8 +637,8 @@ class BaseDocument(object):
         for index, value in iterator:
             if hasattr(value, '_is_document') and value._is_document:
                 continue
-            if hasattr(value, "__clear_changed_field"):
-                value.__clear_changed_field()
+            if hasattr(value, "_clear_document_changed_fields"):
+                value._clear_document_changed_fields()
 
             elif isinstance(value, (list, tuple, dict)):
                 self.__clear_nested_types_changed_field(value)
