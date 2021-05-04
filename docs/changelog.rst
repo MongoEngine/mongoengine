@@ -12,6 +12,7 @@ Changes in 0.23.1
 ===========
 - Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
 - Improve connection doc #2481
+- EnumField improvements: now `choices` limits the values of an enum to allow
 
 Changes in 0.23.0
 =================

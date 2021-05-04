@@ -1636,12 +1636,15 @@ class EnumField(BaseField):
 
     def __init__(self, enum, **kwargs):
         self._enum_cls = enum
-        if "choices" in kwargs:
-            raise ValueError(
-                "'choices' can't be set on EnumField, "
-                "it is implicitly set as the enum class"
-            )
-        kwargs["choices"] = list(self._enum_cls)  # Implicit validator
+        if kwargs.get("choices"):
+            invalid_choices = []
+            for choice in kwargs["choices"]:
+                if not isinstance(choice, enum):
+                    invalid_choices.append(choice)
+            if invalid_choices:
+                raise ValueError("Invalid choices: %r" % invalid_choices)
+        else:
+            kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
     def __set__(self, instance, value):
