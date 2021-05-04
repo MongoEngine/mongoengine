@@ -177,7 +177,7 @@ class TestClassMethods(unittest.TestCase):
         assert BlogPostWithCustomField.compare_indexes() == {"missing": [], "extra": []}
 
     def test_compare_indexes_for_text_indexes(self):
-        """ Ensure that compare_indexes behaves correctly for text indexes """
+        """Ensure that compare_indexes behaves correctly for text indexes"""
 
         class Doc(Document):
             a = StringField()

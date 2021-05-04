@@ -308,7 +308,7 @@ class TestFileField(MongoDBTestCase):
         assert test_file.the_file not in [{"test": 1}]
 
     def test_file_disk_space(self):
-        """ Test disk space usage when we delete/replace a file """
+        """Test disk space usage when we delete/replace a file"""
 
         class TestFile(Document):
             the_file = FileField()
