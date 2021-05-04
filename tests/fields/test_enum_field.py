@@ -81,7 +81,17 @@ class TestStringEnumField(MongoDBTestCase):
 
     def test_partial_choices(self):
         partial = [Status.DONE]
-        assert EnumField(Status, choices=partial).choices == partial
+        enum_field = EnumField(Status, choices=partial)
+        assert enum_field.choices == partial
+
+        class FancyDoc(Document):
+            z = enum_field
+
+        FancyDoc(z=Status.DONE).validate()
+        with pytest.raises(
+            ValidationError, match=r"Value must be one of .*Status.DONE"
+        ):
+            FancyDoc(z=Status.NEW).validate()
 
     def test_wrong_choices(self):
         with pytest.raises(ValueError, match="Invalid choices"):
