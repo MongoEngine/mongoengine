@@ -16,8 +16,10 @@ __all__ = (
     "DeprecatedError",
 )
 
+
 class MongoEngineException(Exception):
     pass
+
 
 class NotRegistered(MongoEngineException):
     pass
