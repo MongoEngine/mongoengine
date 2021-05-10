@@ -6,6 +6,7 @@ from pymongo.read_preferences import ReadPreference
 
 from mongoengine import signals
 from mongoengine.base import (
+    UNSET_SENTINEL,
     BaseDict,
     BaseDocument,
     BaseList,
@@ -75,7 +76,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     :attr:`meta` dictionary.
     """
 
-    __slots__ = ("_instance",)
+    __slots__ = ("_instance", "_changed_fields", "_unset_fields")
 
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = DocumentMetaclass
@@ -90,6 +91,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
         super().__init__(*args, **kwargs)
         self._instance = None
         self._changed_fields = []
+        self._unset_fields = []
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -721,6 +723,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         :param fields: (optional) args list of fields to reload
         :param max_depth: (optional) depth of dereferencing to follow
         """
+        # max depth can be provided as first arg OR as a kwarg
         max_depth = 1
         if fields and isinstance(fields[0], int):
             max_depth = fields[0]
@@ -731,6 +734,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if self.pk is None:
             raise self.DoesNotExist("Document does not exist")
 
+        # The way reload works is by fetching another instance
+        # of the original Document and then re-attach the reloaded attribute
+        # to the original Document instance
         obj = (
             self._qs.read_preference(ReadPreference.PRIMARY)
             .filter(**self._object_key)
@@ -763,12 +769,18 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if fields
             else obj._changed_fields
         )
+        self._unset_fields = (
+            list(set(self._unset_fields) - set(fields)) if fields else obj._unset_fields
+        )
         self._created = False
         return self
 
     def _reload(self, key, value):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
         correct instance is linked to self.
+
+        In fact .reload() is fetching another instance of the source document
+        and then re-attach special fields to the source document
         """
         if isinstance(value, BaseDict):
             value = [(k, self._reload(k, v)) for k, v in value.items()]
@@ -781,7 +793,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             value = BaseList(value, self, key)
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._instance = None
-            value._changed_fields = []
         return value
 
     def to_dbref(self):
@@ -1035,7 +1046,7 @@ class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
         """
         field_name = args[0]
         if field_name in self._dynamic_fields:
-            setattr(self, field_name, None)
+            setattr(self, field_name, UNSET_SENTINEL)
             self._dynamic_fields[field_name].null = False
         else:
             super().__delattr__(*args, **kwargs)
@@ -1058,10 +1069,7 @@ class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
         """
         field_name = args[0]
         if field_name in self._fields:
-            default = self._fields[field_name].default
-            if callable(default):
-                default = default()
-            setattr(self, field_name, default)
+            super().__delattr__(*args, **kwargs)
         else:
             setattr(self, field_name, None)
 

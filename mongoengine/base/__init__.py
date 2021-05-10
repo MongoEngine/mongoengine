@@ -13,6 +13,7 @@ from mongoengine.base.metaclasses import *
 __all__ = (
     # common
     "UPDATE_OPERATORS",
+    "UNSET_SENTINEL",
     "_document_registry",
     "get_document",
     # datastructures

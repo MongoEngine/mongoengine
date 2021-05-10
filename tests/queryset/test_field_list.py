@@ -4,6 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
+from tests.utils import MongoDBTestCase
 
 
 class TestQueryFieldList:
@@ -64,6 +65,40 @@ class TestQueryFieldList:
         q = QueryFieldList()
         q += QueryFieldList(fields=["a"], value={"$slice": 5})
         assert q.as_dict() == {"a": {"$slice": 5}}
+
+
+class TestListField(MongoDBTestCase):
+    def test_list_field_empty(self):
+        class BlogPost(Document):
+            authors = ListField(default=tuple())
+            a = StringField()
+
+        def assert_authors_a_equal(blog, author_value, a_value):
+            raw_blog = BlogPost.objects(id=blog.id).as_pymongo().first()
+            assert raw_blog.get("authors") == author_value
+            assert raw_blog.get("a") == a_value
+
+        BlogPost.drop_collection()
+
+        blog = BlogPost().save()
+        assert_authors_a_equal(blog, [], None)
+
+        blog2 = BlogPost(authors=[], a="aa").save()
+        assert_authors_a_equal(blog2, [], "aa")
+
+        blog2.authors = [1]
+        blog2.save()
+        assert_authors_a_equal(blog2, [1], "aa")
+        blog2.authors = []
+        blog2.save()
+        assert_authors_a_equal(blog2, [], "aa")
+
+        blog2.authors = [1]
+        del blog2.a
+        blog2.save()
+        raw_blog = BlogPost.objects(id=blog2.id).as_pymongo().first()
+        assert raw_blog["authors"] == [1]
+        assert "a" not in raw_blog
 
 
 class TestOnlyExcludeAll(unittest.TestCase):

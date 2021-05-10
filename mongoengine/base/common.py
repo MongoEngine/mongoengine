@@ -1,6 +1,6 @@
 from mongoengine.errors import NotRegistered
 
-__all__ = ("UPDATE_OPERATORS", "get_document", "_document_registry")
+__all__ = ("UPDATE_OPERATORS", "get_document", "_document_registry", "UNSET_SENTINEL")
 
 
 UPDATE_OPERATORS = {
@@ -21,6 +21,7 @@ UPDATE_OPERATORS = {
     "rename",
 }
 
+UNSET_SENTINEL = object()
 
 _document_registry = {}
 

@@ -76,7 +76,8 @@ class TestBaseDict:
     def test___delitem___calls_mark_as_changed(self):
         base_dict = self._get_basedict({"k": "v"})
         del base_dict["k"]
-        assert base_dict._instance._changed_fields == ["my_name.k"]
+        assert base_dict._instance._changed_fields == []
+        assert base_dict._instance._unset_fields == ["my_name.k"]
         assert base_dict == {}
 
     def test___getitem____KeyError(self):
@@ -155,7 +156,8 @@ class TestBaseDict:
         base_dict = self._get_basedict({})
         base_dict.a_new_attr = "test"
         del base_dict.a_new_attr
-        assert base_dict._instance._changed_fields == ["my_name.a_new_attr"]
+        assert base_dict._instance._changed_fields == []
+        assert base_dict._instance._unset_fields == ["my_name.a_new_attr"]
 
 
 class TestBaseList:
