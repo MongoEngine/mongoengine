@@ -284,7 +284,8 @@ class Document(BaseDocument):
                     proxy_client.instance().bulk(cls, cls.get_bulk_attr(cls.PROXY_BULK_OP), unordered)
                 else:
                     bulk_ops = cls.get_bulk_attr(cls.BULK_OP)
-                    cls._pymongo().bulk_write(bulk_ops, ordered=not unordered)
+                    # yiguo: hardcode ordered to True, or it will break unittests
+                    cls._pymongo().bulk_write(bulk_ops, ordered=True)
 
                 for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
                     instance = props['obj']
@@ -798,7 +799,6 @@ class Document(BaseDocument):
             })
             warnings.warn('Avoid noTimeout cursors on primaries')
             del kwargs["timeout"]
-        cls._transformKwargs(kwargs)
 
         is_scatter_gather = cls.is_scatter_gather(spec)
 
@@ -814,6 +814,7 @@ class Document(BaseDocument):
                 'trace': trace
             })
 
+        cls._transform_find_kwargs(kwargs)
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
@@ -847,7 +848,8 @@ class Document(BaseDocument):
         # in case count passed in instead of limit
         if 'count' in kwargs and limit == 0:
             limit = kwargs['count']
-
+        if limit is None:
+            limit = 0
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 set_comment = False
@@ -881,9 +883,8 @@ class Document(BaseDocument):
                     cur.comment(comment)
 
                     if find_one:
-                        cur.limit(-1)
-                        for doc in cls._iterate_cursor(cur):
-                            return doc, set_comment
+                        for result in cur.limit(-1):
+                            return result, set_comment
                         return None, set_comment
                     else:
                         cur.batch_size(batch_size)
@@ -985,6 +986,8 @@ class Document(BaseDocument):
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
                   slave_ok=True, timeout=True, batch_size=10000,
                   excluded_fields=None, max_time_ms=0, **kwargs):
+        # max_time_ms disabled for find_iter
+        max_time_ms = -1
         def _old_find_iter():
             last_doc = None
             cur, set_comment = cls.find_raw(spec, fields, skip, limit,
@@ -1045,8 +1048,9 @@ class Document(BaseDocument):
                     results.append(doc)
                 return {'result': results}
         cls._transformKwargs(kwargs)
+        cls._transform_aggregate_kwargs(kwargs)
         cur = cls._pymongo(
-                read_preference=pymongo.read_preferences.ReadPreference.SECONDARY
+                read_preference=pymongo.read_preferences.ReadPreference.SECONDARY_PREFERRED
             ).aggregate(
                 pipeline,
                 **kwargs
@@ -1079,8 +1083,6 @@ class Document(BaseDocument):
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 read_pref = _get_slave_ok(slave_ok).read_pref
-                if max_time_ms:
-                    kwargs["maxTimeMS"] = max_time_ms
                 cls._transformKwargs(kwargs)
                 return cls._pymongo(read_preference=read_pref).distinct(
                     cls._transform_key(key, cls)[0], spec, **kwargs
@@ -1096,41 +1098,22 @@ class Document(BaseDocument):
         """
             Iterates over a cursor, gracefully handling AutoReconnect exceptions
         """
-        if isinstance(cur, pymongo.cursor.Cursor) or isinstance(cur, pymongo.command_cursor.CommandCursor):
-            while True:
-                with log_slow_event('getmore', cls.__name__, None):
-                    # the StopIteration from .next() will bubble up and kill
-                    # this while loop
-                    doc = cur.next()
+        while True:
+            with log_slow_event('getmore', cls.__name__, None):
+                # the StopIteration from .next() will bubble up and kill
+                # this while loop
+                doc = cur.next()
 
-                    # handle pymongo letting an error document slip through
-                    # (T18431 / CS-22167). convert it into an exception
-                    if '$err' in doc:
-                        err_code = None
-                        if 'code' in doc:
-                            err_code = doc['code']
+                # handle pymongo letting an error document slip through
+                # (T18431 / CS-22167). convert it into an exception
+                if '$err' in doc:
+                    err_code = None
+                    if 'code' in doc:
+                        err_code = doc['code']
 
-                        raise pymongo.errors.OperationFailure(doc['$err'],
-                                                            err_code)
-                yield doc
-        else:
-            # Motor
-            while cur.fetch_next:
-                with log_slow_event('getmore', cls.__name__, None):
-                    doc = cur.next_object()
-                    if doc is None:
-                        raise StopIteration
-
-                    # handle pymongo letting an error document slip through
-                    # (T18431 / CS-22167). convert it into an exception
-                    if '$err' in doc:
-                        err_code = None
-                        if 'code' in doc:
-                            err_code = doc['code']
-
-                        raise pymongo.errors.OperationFailure(doc['$err'],
-                                                            err_code)
-                yield doc
+                    raise pymongo.errors.OperationFailure(doc['$err'],
+                                                        err_code)
+            yield doc
 
     @classmethod
     def find_one(cls, spec, fields=None, skip=0, sort=None, slave_ok=True,
@@ -1230,9 +1213,9 @@ class Document(BaseDocument):
                     )
                 finally:
                     cls.cleanup_trace(set_comment)
-
         try:
-            if sort == {}:
+            cls._transform_find_and_modify_kwargs(kwargs)
+            if sort is None or sort == {}:
                 new_sort = None
             else:
                 new_sort = []
@@ -1252,6 +1235,27 @@ class Document(BaseDocument):
                         return_document=ret,
                         upsert=upsert, **kwargs
                     )
+            if result:
+                return cls._from_augmented_son(result, fields, excluded_fields)
+            else:
+                return None
+        except pymongo.errors.OperationFailure:
+            # yiguo: hack
+            # if meet OperationFailure, retry with removing 'hint' to mitigate 'bad hint' error
+            kwargs.pop('hint', None)
+            if remove:
+                result = cls._pymongo().find_one_and_delete(
+                    spec, sort=new_sort, remove=remove,
+                    projection=transformed_fields, **kwargs
+                )
+            else:
+                ret = ReturnDocument.AFTER if new else ReturnDocument.BEFORE
+                result = cls._pymongo().find_one_and_update(
+                    spec, sort=new_sort, update=update,
+                    projection=transformed_fields,
+                    return_document=ret,
+                    upsert=upsert, **kwargs
+                )
             if result:
                 return cls._from_augmented_son(result, fields, excluded_fields)
             else:
@@ -1287,7 +1291,7 @@ class Document(BaseDocument):
                 read_pref = _get_slave_ok(slave_ok).read_pref
                 if max_time_ms:
                     kwargs["maxTimeMS"] = max_time_ms
-                cls._transformKwargs(kwargs)
+                cls._transform_count_kwargs(kwargs)
                 return cls._pymongo(read_preference=read_pref).count_documents(
                     spec, **kwargs
                 )
@@ -1296,6 +1300,14 @@ class Document(BaseDocument):
                     raise
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
+            except pymongo.errors.OperationFailure:
+                # yiguo: hack
+                # if meet OperationFailure, retry with removing 'hint' to mitigate 'bad hint' error
+                kwargs.pop('hint', None)
+                return cls._pymongo(read_preference=read_pref).count_documents(
+                    spec, **kwargs
+                )
+ 
             # except pymongo.errors.ExecutionTimeout:
             #     pycur = cls._pycursor(cur)
             #     execution_timeout_logger.info({
@@ -1419,6 +1431,7 @@ class Document(BaseDocument):
 
         try:
             with log_slow_event("remove", cls._meta['collection'], spec):
+                cls._transform_delete_many_kwargs(kwargs)
                 result = cls._pymongo().delete_many(
                     spec,
                     **kwargs
@@ -2041,8 +2054,74 @@ class Document(BaseDocument):
         if maxTimeMS:
             kwargs["maxTimeMS"] = maxTimeMS
         timeout = kwargs.pop("timeout", None)
-        if timeout is not None:
+        if timeout:
             kwargs["no_cursor_timeout"] = not timeout
+
+    @staticmethod
+    def _transform_aggregate_kwargs(kwargs):
+        if "slave_ok" in kwargs:
+            kwargs.pop("slave_ok")
+
+    @staticmethod
+    def _transform_delete_many_kwargs(kwargs):
+        if "multi" in kwargs:
+            kwargs.pop("multi")
+
+    @staticmethod
+    def _transform_count_kwargs(kwargs):
+        valid_para = { 'session', 'skip', 'limit', 'maxTimeMS', 'collation', 'hint'}
+        illegal_para = set(kwargs.keys()) - valid_para
+        for para in illegal_para:
+                kwargs.pop(para)
+
+    @staticmethod
+    def _transform_find_and_modify_kwargs(kwargs):
+        kwargs.pop("slave_ok", None)
+
+    @staticmethod
+    def _transform_find_kwargs(kwargs):
+        # adaptor to migrate from pymongo 2.8 to 3.11
+        # https://github.com/mongodb/mongo-python-driver/blob/master/doc/migrate-to-pymongo3.rst
+
+        # "spec" renamed "filter"
+        spec = kwargs.pop("spec", None)
+        if spec:
+            kwargs["filter"] = spec
+
+        # "fields" renamed "projection"
+        fields = kwargs.pop("fields", None)
+        if fields:
+            kwargs["projection"] = fields
+
+        # "partial" renamed "allow_partial_results"
+        partial = kwargs.pop("partial", None)
+        if  partial:
+            kwargs["allow_partial_results"] = partial
+
+        #  "timeout" replaced by "no_cursor_timeout" (negtive)
+        #  if you were previously passing False for timeout you must pass True for no_cursor_timeout to keep the previous behavior
+        timeout = kwargs.pop("timeout", True)
+        if not timeout:
+            kwargs["no_cursor_timeout"] = not timeout
+
+        # "network_timeout" is removed, renamed to max_time_ms with pymongo 3.5 or later
+        network_timeout = kwargs.pop("network_timeout", None)
+        if network_timeout:
+            kwargs["max_time_ms"] = network_timeout
+
+        # TODO: The tailable and await_data options have been replaced by cursor_type
+
+        # # The slave_okay, read_preference, tag_sets, and secondary_acceptable_latency_ms options have been removed
+        # if kwargs.pop("slave_okay", None) or kwargs.pop("read_preference", None) or kwargs.pop("tag_sets", None) or kwargs.pop("secondary_acceptable_latency_ms", None):
+        #     # TODO: log as error
+        #     pass
+
+        # In pymongo 3.11, Cursor constructor removes **kwargs and has fixed parameters
+        valid_para = {'filter', 'projection', 'skip', 'limit', 'no_cursor_timeout', 'cursor_type', 'sort', 'allow_partial_results', 'oplog_replay', 'modifiers', 'batch_size', 'manipulate',
+            'collation', 'hint', 'max_scan', 'max_time_ms', 'max', 'min', 'return_key', 'show_record_id', 'snapshot', 'comment', 'session', 'allow_disk_use'}
+        illegal_para = set(kwargs.keys()) - valid_para
+        for para in illegal_para:
+                kwargs.pop(para)
 
 class MapReduceDocument(object):
     """A document returned from a map/reduce query.
