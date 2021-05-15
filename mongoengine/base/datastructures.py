@@ -54,14 +54,14 @@ class BaseDict(dict):
     """A special dict so we can watch any changes."""
 
     _dereferenced = False
-    _instance = None
-    _name = None
 
     def __init__(self, dict_items, instance, name):
         BaseDocument = _import_class("BaseDocument")
 
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
+        else:
+            self._instance = instance
         self._name = name
         super().__init__(dict_items)
 
@@ -88,9 +88,8 @@ class BaseDict(dict):
             super().__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
-            value = BaseList(value, None, resolved_key)
+            value = BaseList(value, self._instance, resolved_key)
             super().__setitem__(key, value)
-            value._instance = self._instance
         return value
 
     def __getstate__(self):
@@ -126,14 +125,15 @@ class BaseList(list):
     """A special list so we can watch any changes."""
 
     _dereferenced = False
-    _instance = None
-    _name = None
 
     def __init__(self, list_items, instance, name):
         BaseDocument = _import_class("BaseDocument")
 
         if isinstance(instance, BaseDocument):
             self._instance = weakref.proxy(instance)
+        else:
+            self._instance = instance
+
         self._name = name
         super().__init__(list_items)
 
@@ -166,9 +166,8 @@ class BaseList(list):
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
             # Replace list by BaseList
-            value = BaseList(value, None, resolved_key)
+            value = BaseList(value, self._instance, resolved_key)
             super().__setitem__(key, value)
-            value._instance = self._instance
         return value
 
     def __iter__(self):

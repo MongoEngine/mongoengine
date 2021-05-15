@@ -165,10 +165,7 @@ class TestBaseList:
     def _get_baselist(list_items):
         """Get a BaseList bound to a fake document instance"""
         fake_doc = DocumentStub()
-        base_list = BaseList(list_items, instance=None, name="my_name")
-        base_list._instance = (
-            fake_doc  # hack to inject the mock, it does not work in the constructor
-        )
+        base_list = BaseList(list_items, instance=fake_doc, name="my_name")
         return base_list
 
     def test___init___(self):
@@ -187,7 +184,7 @@ class TestBaseList:
         base_list = BaseList(values, instance=None, name="my_name")
         assert values == list(base_list)
 
-    def test___iter___allow_modification_while_iterating_withou_error(self):
+    def test___iter___allow_modification_while_iterating_without_error(self):
         # regular list allows for this, thus this subclass must comply to that
         base_list = BaseList([True, False, True, False], instance=None, name="my_name")
         for idx, val in enumerate(base_list):
