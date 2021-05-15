@@ -564,13 +564,13 @@ class BaseDocument:
                         self._changed_fields.remove(field)
 
     def _clear_changed_fields(self):
-        """Using _get_changed_fields iterate and remove any fields that
+        """Using _get_updated_fields iterate and remove any fields that
         are marked as changed.
         """
         ReferenceField = _import_class("ReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        changed_, unset = self._get_changed_fields()
+        changed_, unset = self._get_updated_fields()
         updated_fields = changed_ + unset
         for updated_field in updated_fields:
             parts = updated_field.split(".")
@@ -621,7 +621,7 @@ class BaseDocument:
             iterator = data.items()
 
         for _index_or_key, value in iterator:
-            if hasattr(value, "_get_changed_fields") and not isinstance(
+            if hasattr(value, "_get_updated_fields") and not isinstance(
                 value, Document
             ):  # don't follow references
                 value._clear_changed_fields()
@@ -652,8 +652,8 @@ class BaseDocument:
             if item_key[:-1] in changed_fields or item_key[:-1] in unset_fields:
                 continue
 
-            if hasattr(value, "_get_changed_fields"):
-                changed, unset = value._get_changed_fields()
+            if hasattr(value, "_get_updated_fields"):
+                changed, unset = value._get_updated_fields()
                 changed_fields += [f"{item_key}{k}" for k in changed if k]
                 unset_fields += [f"{item_key}{k}" for k in unset if k]
             elif isinstance(value, (list, tuple, dict)):
@@ -692,7 +692,7 @@ class BaseDocument:
 
             if isinstance(data, EmbeddedDocument):
                 # Find all embedded fields that have been changed
-                changed, unset = data._get_changed_fields()
+                changed, unset = data._get_updated_fields()
                 changed_fields += [f"{key}{k}" for k in changed if k]
                 unset_fields += [f"{key}{k}" for k in unset if k]
             elif isinstance(data, (list, tuple, dict)):
@@ -728,7 +728,7 @@ class BaseDocument:
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
 
-        set_fields, unset_fields = self._get_changed_fields()
+        set_fields, unset_fields = self._get_updated_fields()
 
         if hasattr(self, "_changed_fields"):
             set_data = {}

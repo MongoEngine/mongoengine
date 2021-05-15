@@ -409,7 +409,7 @@ class FieldTest(MongoDBTestCase):
 
         daughter.relations.append(mother)
         daughter.relations.append(daughter)
-        assert daughter._get_changed_fields() == (["relations"], [])
+        assert daughter._get_updated_fields() == (["relations"], [])
         daughter.save()
 
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
