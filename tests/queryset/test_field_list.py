@@ -131,6 +131,38 @@ class TestListField(MongoDBTestCase):
         a = A.objects(id=app.id).only("my_list").get()
         assert a.my_list == []
 
+    def test_item_frequencies_with_empty_list_edge_cases(self):
+        class TestDocument(Document):
+            fruit = ListField(StringField())
+
+        TestDocument.drop_collection()
+
+        doc1 = TestDocument(fruit=["a", "a", "b"]).save()
+        doc2 = TestDocument(fruit=["b", "c"]).save()
+
+        assert TestDocument.objects.item_frequencies("fruit") == {
+            "a": 2,
+            "b": 2,
+            "c": 1,
+        }
+
+        doc2.delete()
+        assert TestDocument.objects.item_frequencies("fruit") == {"a": 2, "b": 1}
+
+        doc1.fruit = []
+        doc1.save()
+        assert TestDocument.objects.item_frequencies("fruit") == {}
+
+        # delete the fruit field from db
+        # this creates weird item_frequencies result
+        # but somehow it is consistent
+        del doc1.fruit
+        doc1.save()
+        assert get_as_pymongo(doc1) == {
+            "_id": doc1.id,
+        }
+        assert TestDocument.objects.item_frequencies("fruit") == {None: 1}
+
 
 class TestOnlyExcludeAll(unittest.TestCase):
     def setUp(self):
