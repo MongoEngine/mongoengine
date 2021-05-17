@@ -4,7 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestQueryFieldList:
@@ -70,35 +70,66 @@ class TestQueryFieldList:
 class TestListField(MongoDBTestCase):
     def test_list_field_empty(self):
         class BlogPost(Document):
-            authors = ListField(default=tuple())
-            a = StringField()
-
-        def assert_authors_a_equal(blog, author_value, a_value):
-            raw_blog = BlogPost.objects(id=blog.id).as_pymongo().first()
-            assert raw_blog.get("authors") == author_value
-            assert raw_blog.get("a") == a_value
+            authors = ListField(default=[])
 
         BlogPost.drop_collection()
 
         blog = BlogPost().save()
-        assert_authors_a_equal(blog, [], None)
 
-        blog2 = BlogPost(authors=[], a="aa").save()
-        assert_authors_a_equal(blog2, [], "aa")
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+            "authors": [],
+        }
 
-        blog2.authors = [1]
-        blog2.save()
-        assert_authors_a_equal(blog2, [1], "aa")
-        blog2.authors = []
-        blog2.save()
-        assert_authors_a_equal(blog2, [], "aa")
+        blog.authors = []
+        blog.save()
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+            "authors": [],
+        }
 
-        blog2.authors = [1]
-        del blog2.a
-        blog2.save()
-        raw_blog = BlogPost.objects(id=blog2.id).as_pymongo().first()
-        assert raw_blog["authors"] == [1]
-        assert "a" not in raw_blog
+        blog.authors = [1]
+        blog.save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": [1]}
+
+        del blog.authors
+        blog.save()
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+        }
+
+        # set empty list in constructor
+        blog2 = BlogPost(authors=[]).save()
+        assert get_as_pymongo(blog2) == {
+            "_id": blog2.id,
+            "authors": [],
+        }
+
+        # set None in constructor
+        blog3 = BlogPost(authors=None).save()
+        assert get_as_pymongo(blog3) == {
+            "_id": blog3.id,
+            "authors": [],
+        }
+
+    def test_only_on_list_field_without_key_return_default(self):
+        # Ensure no regression of #938
+        class A(Document):
+            my_list = ListField(IntField())
+
+        A.drop_collection()
+
+        app = A(my_list=[]).save()
+        app.save()
+
+        del app.my_list
+        app.save()
+
+        assert get_as_pymongo(app) == {
+            "_id": app.id,
+        }
+        a = A.objects(id=app.id).only("my_list").get()
+        assert a.my_list == []
 
 
 class TestOnlyExcludeAll(unittest.TestCase):
