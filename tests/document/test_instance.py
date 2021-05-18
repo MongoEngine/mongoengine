@@ -407,6 +407,16 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.name == "Test User"
         assert person.age == 30
 
+    def test__qs_property_does_not_raise(self):
+        # ensures no regression of #2500
+        class MyDocument(Document):
+            pass
+
+        MyDocument.drop_collection()
+        object = MyDocument()
+        object._qs().insert([MyDocument()])
+        assert MyDocument.objects.count() == 1
+
     def test_to_dbref(self):
         """Ensure that you can get a dbref of a document."""
         person = self.Person(name="Test User", age=30)
