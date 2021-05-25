@@ -167,7 +167,7 @@ class Document(BaseDocument):
                     if self._get_write_decider():
                         proxy_client.instance().update(
                             self.__class__,
-                            {"_id" : doc["_id"]},
+                            self.__class__.get_upsert_filter(doc),
                             doc,
                             upsert=True,
                             write_concern=w,
@@ -187,6 +187,19 @@ class Document(BaseDocument):
             raise OperationError(message % unicode(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
+
+    # For Mongo 4.2 and above, the filter must contain shard key if upsert is true.
+    @classmethod
+    def get_upsert_filter(cls, doc):
+        filter = {"_id" : doc["_id"]}
+        shard_keys = cls._meta.get('shard_key', "")
+        shard_fields = [s.split(':')[0] for s in shard_keys.split(',')]
+        for field in shard_fields:
+            if field in cls._fields:
+                mongo_field = cls._fields.get(field).db_field
+                if mongo_field in doc:
+                    filter[mongo_field] = doc[mongo_field]
+        return filter
 
     def delete(self, safe=True):
         """Delete the :class:`~mongoengine.Document` from the database. This
