@@ -1043,9 +1043,9 @@ class DocumentTest(unittest.TestCase):
                           { "_id": "abcd" })
 	    self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd"}),
                           { "_id": "abcd" })
-        self.assertEquals(NonIdShardedCollection.get_upsert_filter({"_id":"abcd", "n": "foo"}),
+            self.assertEquals(NonIdShardedCollection.get_upsert_filter({"_id":"abcd", "n": "foo"}),
                           { "_id": "abcd", "n": "foo" })
-        self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
+            self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
                           { "_id": "abcd", "n": "foo", "age":10 })
 
 

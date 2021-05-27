@@ -638,6 +638,8 @@ class Document(BaseDocument):
         """
         key = {'_id': doc_id}
 
+        # NOTE(mzeng): The 'hash_field' and 'shard_hash' are Wish-specific hacks to hash shard
+        # a collection before Mongo support hash sharding. They should not be in use now.
         if cls._meta['hash_field'] == cls._meta['id_field'] \
            and cls._meta['sharded']:
             key['shard_hash'] = cls._hash(doc_id)
