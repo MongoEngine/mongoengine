@@ -1033,19 +1033,19 @@ class DocumentTest(unittest.TestCase):
             name = mongoengine.fields.StringField(db_field="n")
             age  = mongoengine.fields.IntField()
 
-	    self.assertEquals(NotShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
+        self.assertEquals(NotShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
                           { "_id": "abcd" })
-	    self.assertEquals(IdShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
+        self.assertEquals(IdShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
                           { "_id": "abcd" })
-	    self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd", "n":"bar"}),
+        self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd", "n":"bar"}),
                           { "_id": "abcd", "n":"bar" })
-	    self.assertEquals(IdShardedCollection3.get_upsert_filter({"_id":"abcd", "n":"bar"}),
+        self.assertEquals(IdShardedCollection3.get_upsert_filter({"_id":"abcd", "n":"bar"}),
                           { "_id": "abcd" })
-	    self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd"}),
+        self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd"}),
                           { "_id": "abcd" })
-            self.assertEquals(NonIdShardedCollection.get_upsert_filter({"_id":"abcd", "n": "foo"}),
+        self.assertEquals(NonIdShardedCollection.get_upsert_filter({"_id":"abcd", "n": "foo"}),
                           { "_id": "abcd", "n": "foo" })
-            self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
+        self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
                           { "_id": "abcd", "n": "foo", "age":10 })
 
 
