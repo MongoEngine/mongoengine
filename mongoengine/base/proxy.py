@@ -25,6 +25,7 @@ class LazyPrefetchBase:
     # mapping from field path to map of id -> (data, is_doc) tuple
     # data is Document object if `is_doc`, else it is SON
     _reference_cache = None
+    _lazy_prefetch_disabled = False
 
     def _init_reference(self):
         if self._reference_cache_count is None:
@@ -32,9 +33,12 @@ class LazyPrefetchBase:
         if self._reference_cache is None:
             self._reference_cache = defaultdict(dict)
 
+    def disable_lazy_prefetch(self):
+        self._lazy_prefetch_disabled = True
+
     def lazy_prefetch_available(self):
         # make sure we have initialized reference dicts and have data in `_result_cache`
-        return self._reference_cache_count is not None and self._result_cache
+        return (not self._lazy_prefetch_disabled) and (self._reference_cache_count is not None) and self._result_cache
 
     def try_fetch_document(self, value, cls, fields):
         # tries to fetch document of class `cls` at the path given by `fields` from the reference `value`

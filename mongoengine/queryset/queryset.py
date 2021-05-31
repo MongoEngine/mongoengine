@@ -45,6 +45,8 @@ class QuerySet(BaseQuerySet, LazyPrefetchBase):
         )
 
         if self._scalar:
+            # LazyPrefetchBase expects `doc` to be returned, not some scalar. disabling optimization till issue is fixed
+            self.disable_lazy_prefetch()
             return self._get_scalar(doc)
 
         return doc
