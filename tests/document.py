@@ -533,7 +533,7 @@ class DocumentTest(unittest.TestCase):
     def test_addtoset_on_null_list(self):
         person = self.Person(
             name = 'Bruce Banner',
-            id   = bson.ObjectId(), 
+            id   = bson.ObjectId(),
             uid  = bson.ObjectId(),
             friends = None
         )
@@ -1010,6 +1010,44 @@ class DocumentTest(unittest.TestCase):
         self.assertEquals(IdShardedCollection._by_ids_key([]),
                           {'_id': {'$in': []},
                            'shard_hash': {'$in': []}})
+    def test_upsert_sharded(self):
+        class NotShardedCollection(Document):
+            pass
+        class IdShardedCollection(Document):
+            meta = {'shard_key': 'id:hashed' }
+
+        class IdShardedCollection2(Document):
+            meta = {'shard_key': 'id:hashed,name:1' }
+            name = mongoengine.fields.StringField(db_field="n")
+
+        class IdShardedCollection3(Document):
+            meta = {'shard_key': '_id:hashed,name:1' }
+            # missing field 'name'
+
+        class NonIdShardedCollection(Document):
+            meta = {'shard_key': 'name:1'}
+            name = mongoengine.fields.StringField(db_field="n")
+
+        class NonIdShardedCollection2(Document):
+            meta = {'shard_key': 'name:1,age:-1'}
+            name = mongoengine.fields.StringField(db_field="n")
+            age  = mongoengine.fields.IntField()
+
+        self.assertEquals(NotShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
+                          { "_id": "abcd" })
+        self.assertEquals(IdShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
+                          { "_id": "abcd" })
+        self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd", "n":"bar"}),
+                          { "_id": "abcd", "n":"bar" })
+        self.assertEquals(IdShardedCollection3.get_upsert_filter({"_id":"abcd", "n":"bar"}),
+                          { "_id": "abcd" })
+        self.assertEquals(IdShardedCollection2.get_upsert_filter({"_id":"abcd"}),
+                          { "_id": "abcd" })
+        self.assertEquals(NonIdShardedCollection.get_upsert_filter({"_id":"abcd", "n": "foo"}),
+                          { "_id": "abcd", "n": "foo" })
+        self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
+                          { "_id": "abcd", "n": "foo", "age":10 })
+
 
     def test_can_pickle(self):
         person = Citizen(age=20)
