@@ -1,22 +1,22 @@
 fail_fast: false
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.0.1
     hooks:
       - id: check-merge-conflict
       - id: debug-statements
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/ambv/black
-    rev: 21.4b2
+    rev: 21.5b2
     hooks:
       - id: black
   - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.1
+    rev: 3.9.2
     hooks:
       - id: flake8
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.14.0
+    rev: v2.19.1
     hooks:
       - id: pyupgrade
         args: [--py36-plus]
