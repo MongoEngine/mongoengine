@@ -31,13 +31,23 @@ def count_documents(
     # count_documents appeared in pymongo 3.7
     if IS_PYMONGO_GTE_37:
         try:
-            return collection.count_documents(filter=filter, **kwargs)
-        except OperationFailure:
+            if not filter and set(kwargs) <= {"max_time_ms"}:
+                # when no filter is provided, estimated_document_count
+                # is a lot faster as it uses the collection metadata
+                return collection.estimated_document_count(**kwargs)
+            else:
+                return collection.count_documents(filter=filter, **kwargs)
+        except OperationFailure as exc:
             # OperationFailure - accounts for some operators that used to work
             # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
-            pass
+            if (
+                "$geoNear, $near, and $nearSphere are not allowed in this context"
+                not in str(exc)
+                and "$where is not allowed in this context" not in str(exc)
+            ):
+                raise
 
     cursor = collection.find(filter)
     for option, option_value in kwargs.items():
