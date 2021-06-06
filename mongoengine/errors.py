@@ -17,11 +17,15 @@ __all__ = (
 )
 
 
-class NotRegistered(Exception):
+class MongoEngineException(Exception):
     pass
 
 
-class InvalidDocumentError(Exception):
+class NotRegistered(MongoEngineException):
+    pass
+
+
+class InvalidDocumentError(MongoEngineException):
     pass
 
 
@@ -29,19 +33,19 @@ class LookUpError(AttributeError):
     pass
 
 
-class DoesNotExist(Exception):
+class DoesNotExist(MongoEngineException):
     pass
 
 
-class MultipleObjectsReturned(Exception):
+class MultipleObjectsReturned(MongoEngineException):
     pass
 
 
-class InvalidQueryError(Exception):
+class InvalidQueryError(MongoEngineException):
     pass
 
 
-class OperationError(Exception):
+class OperationError(MongoEngineException):
     pass
 
 
@@ -57,7 +61,7 @@ class SaveConditionError(OperationError):
     pass
 
 
-class FieldDoesNotExist(Exception):
+class FieldDoesNotExist(MongoEngineException):
     """Raised when trying to set a field
     not declared in a :class:`~mongoengine.Document`
     or an :class:`~mongoengine.EmbeddedDocument`.
@@ -155,7 +159,7 @@ class ValidationError(AssertionError):
         return " ".join([f"{k}: {v}" for k, v in error_dict.items()])
 
 
-class DeprecatedError(Exception):
+class DeprecatedError(MongoEngineException):
     """Raise when a user uses a feature that has been Deprecated"""
 
     pass
