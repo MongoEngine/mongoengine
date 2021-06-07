@@ -1,3 +1,5 @@
+import json
+import random
 from decimal import Decimal
 
 import pytest
@@ -109,3 +111,11 @@ class TestDecimal128Field(MongoDBTestCase):
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
         }
+
+    def test_json(self):
+        Decimal128Document.drop_collection()
+        f = random.random()
+        Decimal128Document(dec128_fld=f).save()
+        json_str = Decimal128Document.objects.to_json()
+        array = json.loads(json_str)
+        assert array[0]["dec128_fld"] == {"$numberDecimal": str(f)}
