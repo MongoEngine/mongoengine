@@ -5,42 +5,67 @@ from mongoengine import *
 from tests.utils import MongoDBTestCase
 
 
-def generate_test_cls() -> Document:
-    class TestDocument(Document):
-        dec128_fld = Decimal128Field()
+class Decimal128Document(Document):
+    dec128_fld = Decimal128Field()
+    dec128_min_0 = Decimal128Field(min_value=0)
+    dec128_max_100 = Decimal128Field(max_value=100)
 
-    TestDocument.drop_collection()
-    TestDocument(dec128_fld=None).save()
-    TestDocument(dec128_fld=Decimal128("1")).save()
-    return TestDocument
+
+def generate_test_cls() -> Document:
+    Decimal128Document.drop_collection()
+    Decimal128Document(dec128_fld=None).save()
+    Decimal128Document(dec128_fld=Decimal128("1")).save()
+    return Decimal128Document
 
 
 class TestDecimal128Field(MongoDBTestCase):
-    def test_decimal128_validation(self):
-        """Ensure that invalid values cannot be assigned to int fields."""
+    def test_decimal128_validation_good(self):
+        """Ensure that invalid values cannot be assigned."""
 
-        class Person(Document):
-            age = Decimal128Field(min_value=0, max_value=110)
+        doc = Decimal128Document()
 
-        person = Person()
-        person.age = Decimal128("0")
-        person.validate()
+        doc.dec128_fld = Decimal128("0")
+        doc.validate()
 
-        person.age = Decimal128("50")
-        person.validate()
+        doc.dec128_fld = Decimal128("50")
+        doc.validate()
 
-        person.age = Decimal128("110")
-        person.validate()
+        doc.dec128_fld = Decimal128("110")
+        doc.validate()
 
-        person.age = Decimal128("-1")
+    def test_decimal128_validation_invalid(self):
+        """Ensure that invalid values cannot be assigned."""
+
+        doc = Decimal128Document()
+
+        doc.dec128_fld = "ten"
+
         with pytest.raises(ValidationError):
-            person.validate()
-        person.age = Decimal128("120")
+            doc.validate()
+
+    def test_decimal128_validation_min(self):
+        """Ensure that out of bounds values cannot be assigned."""
+
+        doc = Decimal128Document()
+
+        doc.dec128_min_0 = Decimal128("50")
+        doc.validate()
+
+        doc.dec128_min_0 = Decimal128("-1")
         with pytest.raises(ValidationError):
-            person.validate()
-        person.age = "ten"
+            doc.validate()
+
+    def test_decimal128_validation_max(self):
+        """Ensure that out of bounds values cannot be assigned."""
+
+        doc = Decimal128Document()
+
+        doc.dec128_max_100 = Decimal128("50")
+        doc.validate()
+
+        doc.dec128_max_100 = Decimal128("101")
         with pytest.raises(ValidationError):
-            person.validate()
+            doc.validate()
 
     def test_eq_operator(self):
         cls = generate_test_cls()
