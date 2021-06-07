@@ -2,7 +2,7 @@ import pytest
 from bson.decimal128 import Decimal128
 
 from mongoengine import *
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class Decimal128Document(Document):
@@ -85,3 +85,10 @@ class TestDecimal128Field(MongoDBTestCase):
     def test_lt_operator(self):
         cls = generate_test_cls()
         assert 1 == cls.objects(dec128_fld__lt=1.5).count()
+
+    def test_storage(self):
+        model = Decimal128Document(dec128_fld=100).save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100"),
+        }
