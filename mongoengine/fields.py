@@ -2659,9 +2659,7 @@ class Decimal128Field(BaseField):
             return None
         if isinstance(value, Decimal128):
             return value
-        if isinstance(value, int):
-            return Decimal128(str(value))
-        if isinstance(value, float):
+        if isinstance(value, (int, float)):
             return Decimal128(str(value))
         return Decimal128(value)
 
