@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from bson.decimal128 import Decimal128
 
@@ -31,6 +33,9 @@ class TestDecimal128Field(MongoDBTestCase):
         doc.validate()
 
         doc.dec128_fld = Decimal128("110")
+        doc.validate()
+
+        doc.dec128_fld = Decimal("110")
         doc.validate()
 
     def test_decimal128_validation_invalid(self):
@@ -88,6 +93,18 @@ class TestDecimal128Field(MongoDBTestCase):
 
     def test_storage(self):
         model = Decimal128Document(dec128_fld=100).save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100"),
+        }
+
+        model = Decimal128Document(dec128_fld=Decimal128("100")).save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100"),
+        }
+
+        model = Decimal128Document(dec128_fld=Decimal("100")).save()
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
