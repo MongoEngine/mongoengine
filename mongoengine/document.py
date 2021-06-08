@@ -193,6 +193,8 @@ class Document(BaseDocument):
     def get_upsert_filter(cls, doc):
         filter = {"_id" : doc["_id"]}
         shard_keys = cls._meta.get('shard_key', "")
+        if not shard_keys:
+            return filter
         shard_fields = [s.split(':')[0] for s in shard_keys.split(',')]
         for field in shard_fields:
             if field in cls._fields:
