@@ -1013,6 +1013,9 @@ class DocumentTest(unittest.TestCase):
     def test_upsert_sharded(self):
         class NotShardedCollection(Document):
             pass
+        class NotShardedCollection2(Document):
+            meta = { 'shard_key': False }
+
         class IdShardedCollection(Document):
             meta = {'shard_key': 'id:hashed' }
 
@@ -1034,6 +1037,8 @@ class DocumentTest(unittest.TestCase):
             age  = mongoengine.fields.IntField()
 
         self.assertEquals(NotShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
+                          { "_id": "abcd" })
+        self.assertEquals(NotShardedCollection2.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
                           { "_id": "abcd" })
         self.assertEquals(IdShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
                           { "_id": "abcd" })
