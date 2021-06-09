@@ -2664,7 +2664,9 @@ class Decimal128Field(BaseField):
         return Decimal128(value)
 
     def to_python(self, value):
-        return self.to_mongo(value)
+        if value is None:
+            return None
+        return self.to_mongo(value).to_decimal()
 
     def validate(self, value):
         if not isinstance(value, Decimal128):

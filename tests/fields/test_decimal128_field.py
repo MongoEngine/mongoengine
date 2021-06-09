@@ -18,7 +18,7 @@ class Decimal128Document(Document):
 def generate_test_cls() -> Document:
     Decimal128Document.drop_collection()
     Decimal128Document(dec128_fld=None).save()
-    Decimal128Document(dec128_fld=Decimal128("1")).save()
+    Decimal128Document(dec128_fld=Decimal(1)).save()
     return Decimal128Document
 
 
@@ -28,16 +28,16 @@ class TestDecimal128Field(MongoDBTestCase):
 
         doc = Decimal128Document()
 
-        doc.dec128_fld = Decimal128("0")
+        doc.dec128_fld = Decimal(0)
         doc.validate()
 
-        doc.dec128_fld = Decimal128("50")
+        doc.dec128_fld = Decimal(50)
         doc.validate()
 
-        doc.dec128_fld = Decimal128("110")
+        doc.dec128_fld = Decimal(110)
         doc.validate()
 
-        doc.dec128_fld = Decimal("110")
+        doc.dec128_fld = Decimal(110)
         doc.validate()
 
     def test_decimal128_validation_invalid(self):
@@ -55,10 +55,10 @@ class TestDecimal128Field(MongoDBTestCase):
 
         doc = Decimal128Document()
 
-        doc.dec128_min_0 = Decimal128("50")
+        doc.dec128_min_0 = Decimal(50)
         doc.validate()
 
-        doc.dec128_min_0 = Decimal128("-1")
+        doc.dec128_min_0 = Decimal(-1)
         with pytest.raises(ValidationError):
             doc.validate()
 
@@ -67,10 +67,10 @@ class TestDecimal128Field(MongoDBTestCase):
 
         doc = Decimal128Document()
 
-        doc.dec128_max_100 = Decimal128("50")
+        doc.dec128_max_100 = Decimal(50)
         doc.validate()
 
-        doc.dec128_max_100 = Decimal128("101")
+        doc.dec128_max_100 = Decimal(101)
         with pytest.raises(ValidationError):
             doc.validate()
 
@@ -94,19 +94,29 @@ class TestDecimal128Field(MongoDBTestCase):
         assert 1 == cls.objects(dec128_fld__lt=1.5).count()
 
     def test_storage(self):
+        # from int
         model = Decimal128Document(dec128_fld=100).save()
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
         }
 
-        model = Decimal128Document(dec128_fld=Decimal128("100")).save()
+        # from float
+        model = Decimal128Document(dec128_fld=100.0).save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100.0"),
+        }
+
+        # from Decimal
+        model = Decimal128Document(dec128_fld=Decimal(100)).save()
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
         }
 
-        model = Decimal128Document(dec128_fld=Decimal("100")).save()
+        # from Decimal128
+        model = Decimal128Document(dec128_fld=Decimal128("100")).save()
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
