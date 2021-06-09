@@ -105,7 +105,7 @@ class TestDecimal128Field(MongoDBTestCase):
         model = Decimal128Document(dec128_fld=100.0).save()
         assert get_as_pymongo(model) == {
             "_id": model.id,
-            "dec128_fld": Decimal128("100.0"),
+            "dec128_fld": Decimal128("100"),
         }
 
         # from Decimal
@@ -124,7 +124,7 @@ class TestDecimal128Field(MongoDBTestCase):
 
     def test_json(self):
         Decimal128Document.drop_collection()
-        f = random.random()
+        f = str(random.random())
         Decimal128Document(dec128_fld=f).save()
         json_str = Decimal128Document.objects.to_json()
         array = json.loads(json_str)

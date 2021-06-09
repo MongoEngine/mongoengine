@@ -12,7 +12,7 @@ from operator import itemgetter
 import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
-from bson.decimal128 import Decimal128
+from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.int64 import Int64
 from pymongo import ReturnDocument
 
@@ -2642,6 +2642,9 @@ class GenericLazyReferenceField(GenericReferenceField):
 
 
 class Decimal128Field(BaseField):
+
+    DECIMAL_CONTEXT = create_decimal128_context()
+
     def __init__(self, min_value=None, max_value=None, **kwargs):
         self.min_value = min_value
         self.max_value = max_value
@@ -2659,8 +2662,9 @@ class Decimal128Field(BaseField):
             return None
         if isinstance(value, Decimal128):
             return value
-        if isinstance(value, (int, float)):
-            return Decimal128(str(value))
+        if not isinstance(value, decimal.Decimal):
+            with decimal.localcontext(self.DECIMAL_CONTEXT) as ctx:
+                value = ctx.create_decimal(value)
         return Decimal128(value)
 
     def to_python(self, value):
