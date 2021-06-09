@@ -593,7 +593,7 @@ class BaseQuerySet(object):
                     warnings.warn(msg, DeprecationWarning)
                 if remove:
                     result = queryset._collection.find_one_and_delete(
-                        query, sort=sort, **self._cursor_args)
+                        query, sort=sort, **self._command_args)
                 else:
                     if new:
                         return_doc = ReturnDocument.AFTER
@@ -601,12 +601,12 @@ class BaseQuerySet(object):
                         return_doc = ReturnDocument.BEFORE
                     result = queryset._collection.find_one_and_update(
                         query, update, upsert=upsert, sort=sort, return_document=return_doc,
-                        **self._cursor_args)
+                        **self._command_args)
 
             else:
                 result = queryset._collection.find_and_modify(
                     query, update, upsert=upsert, sort=sort, remove=remove, new=new,
-                    full_response=full_response, **self._cursor_args)
+                    full_response=full_response, **self._command_args)
         except pymongo.errors.DuplicateKeyError as err:
             raise NotUniqueError(u"Update failed (%s)" % err)
         except pymongo.errors.OperationFailure as err:
@@ -1391,27 +1391,19 @@ class BaseQuerySet(object):
 
     @property
     def _cursor_args(self):
-        if not IS_PYMONGO_3:
-            fields_name = 'fields'
-            cursor_args = {
-                'timeout': self._timeout,
-                'snapshot': self._snapshot
-            }
-            if self._read_preference is not None:
-                cursor_args['read_preference'] = self._read_preference
-            else:
-                cursor_args['slave_okay'] = self._slave_okay
-        else:
-            fields_name = 'projection'
-            # snapshot is not handled at all by PyMongo 3+
-            # TODO: evaluate similar possibilities using modifiers
-            if self._snapshot:
-                msg = "The snapshot option is not anymore available with PyMongo 3+"
-                warnings.warn(msg, DeprecationWarning)
-            cursor_args = {
-                'no_cursor_timeout': not self._timeout
-            }
-            cursor_args['max_time_ms'] = self._max_time_ms
+        fields_name = 'projection'
+        # snapshot is not handled at all by PyMongo 3+
+        # TODO: evaluate similar possibilities using modifiers
+        if self._snapshot:
+            msg = "The snapshot option is not anymore available with PyMongo 3+"
+            warnings.warn(msg, DeprecationWarning)
+
+        cursor_args = {}
+        if not self._timeout:
+            cursor_args['no_cursor_timeout'] = True
+
+        cursor_args['max_time_ms'] = self._max_time_ms
+
         if self._loaded_fields:
             cursor_args[fields_name] = self._loaded_fields.as_dict()
 
@@ -1422,6 +1414,14 @@ class BaseQuerySet(object):
             cursor_args[fields_name]['_text_score'] = {'$meta': "textScore"}
 
         return cursor_args
+
+    @property
+    def _command_args(self):
+        command_args = self._cursor_args
+        command_args.pop('no_cursor_timeout', None)  # option only supported for find queries
+        if 'max_time_ms' in command_args:
+            command_args['maxTimeMS'] = command_args.pop('max_time_ms')
+        return command_args
 
     @property
     def _cursor(self):
