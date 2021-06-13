@@ -58,20 +58,20 @@ def _get_connection_settings(
 ):
     """Get the connection settings as a dict
 
-    : param db: the name of the database to use, for compatibility with connect
-    : param name: the name of the specific database to use
-    : param host: the host name of the: program: `mongod` instance to connect to
-    : param port: the port that the: program: `mongod` instance is running on
-    : param read_preference: The read preference for the collection
-    : param username: username to authenticate with
-    : param password: password to authenticate with
-    : param authentication_source: database to authenticate against
-    : param authentication_mechanism: database authentication mechanisms.
+    :param db: the name of the database to use, for compatibility with connect
+    :param name: the name of the specific database to use
+    :param host: the host name of the: program: `mongod` instance to connect to
+    :param port: the port that the: program: `mongod` instance is running on
+    :param read_preference: The read preference for the collection
+    :param username: username to authenticate with
+    :param password: password to authenticate with
+    :param authentication_source: database to authenticate against
+    :param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    : param is_mock: explicitly use mongomock for this connection
+    :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock: // ` as db host prefix)
-    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
     """
@@ -181,22 +181,21 @@ def register_connection(
 ):
     """Register the connection settings.
 
-    : param alias: the name that will be used to refer to this connection
-        throughout MongoEngine
-    : param db: the name of the database to use, for compatibility with connect
-    : param name: the name of the specific database to use
-    : param host: the host name of the: program: `mongod` instance to connect to
-    : param port: the port that the: program: `mongod` instance is running on
-    : param read_preference: The read preference for the collection
-    : param username: username to authenticate with
-    : param password: password to authenticate with
-    : param authentication_source: database to authenticate against
-    : param authentication_mechanism: database authentication mechanisms.
+    :param alias: the name that will be used to refer to this connection throughout MongoEngine
+    :param db: the name of the database to use, for compatibility with connect
+    :param name: the name of the specific database to use
+    :param host: the host name of the: program: `mongod` instance to connect to
+    :param port: the port that the: program: `mongod` instance is running on
+    :param read_preference: The read preference for the collection
+    :param username: username to authenticate with
+    :param password: password to authenticate with
+    :param authentication_source: database to authenticate against
+    :param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    : param is_mock: explicitly use mongomock for this connection
+    :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock: // ` as db host prefix)
-    : param kwargs: ad-hoc parameters to be passed into the pymongo driver,
+    :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
     """

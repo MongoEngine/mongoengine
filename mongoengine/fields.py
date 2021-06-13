@@ -1611,11 +1611,14 @@ class EnumField(BaseField):
     """Enumeration Field. Values are stored underneath as is,
     so it will only work with simple types (str, int, etc) that
     are bson encodable
-     Example usage:
+
+    Example usage:
+
     .. code-block:: python
 
         class Status(Enum):
             NEW = 'new'
+            ONGOING = 'ongoing'
             DONE = 'done'
 
         class ModelWithEnum(Document):
@@ -1625,13 +1628,18 @@ class EnumField(BaseField):
         ModelWithEnum(status=Status.DONE)
 
     Enum fields can be searched using enum or its value:
+
     .. code-block:: python
 
         ModelWithEnum.objects(status='new').count()
         ModelWithEnum.objects(status=Status.NEW).count()
 
-    Note that choices cannot be set explicitly, they are derived
-    from the provided enum class.
+    The values can be restricted to a subset of the enum by using the ``choices`` parameter:
+
+    .. code-block:: python
+
+        class ModelWithEnum(Document):
+            status = EnumField(Status, choices=[Status.NEW, Status.DONE])
     """
 
     def __init__(self, enum, **kwargs):
