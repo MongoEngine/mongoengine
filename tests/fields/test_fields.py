@@ -2077,7 +2077,7 @@ class TestField(MongoDBTestCase):
         a ComplexBaseField.
         """
 
-        class EnumField(BaseField):
+        class SomeField(BaseField):
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
 
@@ -2088,7 +2088,7 @@ class TestField(MongoDBTestCase):
                 return tuple(value)
 
         class TestDoc(Document):
-            items = ListField(EnumField())
+            items = ListField(SomeField())
 
         TestDoc.drop_collection()
 

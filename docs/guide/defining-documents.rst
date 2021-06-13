@@ -336,7 +336,6 @@ supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
 
     class ProfilePage(Document):
-        ...
         employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is

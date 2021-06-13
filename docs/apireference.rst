@@ -75,6 +75,7 @@ Fields
 .. autoclass:: mongoengine.fields.StringField
 .. autoclass:: mongoengine.fields.URLField
 .. autoclass:: mongoengine.fields.EmailField
+.. autoclass:: mongoengine.fields.EnumField
 .. autoclass:: mongoengine.fields.IntField
 .. autoclass:: mongoengine.fields.LongField
 .. autoclass:: mongoengine.fields.FloatField
