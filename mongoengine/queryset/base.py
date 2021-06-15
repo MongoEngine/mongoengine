@@ -203,11 +203,6 @@ class BaseQuerySet(object):
         queryset = self.order_by()
         return False if queryset.first() is None else True
 
-    def __nonzero__(self):
-        """ Avoid to open all records in an if stmt in Py2. """
-
-        return self._has_data()
-
     def __bool__(self):
         """ Avoid to open all records in an if stmt in Py3. """
 

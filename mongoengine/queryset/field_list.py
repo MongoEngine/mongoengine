@@ -63,7 +63,7 @@ class QueryFieldList(object):
             self._only_called = True
         return self
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.fields)
 
     def as_dict(self):

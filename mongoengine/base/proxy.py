@@ -121,7 +121,7 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.id is not None
 
     def __deepcopy__(self, memo):
