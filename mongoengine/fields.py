@@ -1660,14 +1660,25 @@ class EnumField(BaseField):
             kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
-    def __set__(self, instance, value):
-        is_legal_value = value is None or isinstance(value, self._enum_cls)
-        if not is_legal_value:
+    def validate(self, value):
+        if isinstance(value, self._enum_cls):
+            return super().validate(value)
+        try:
+            self._enum_cls(value)
+        except ValueError:
+            self.error(f"{value} is not a valid {self._enum_cls}")
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        if not isinstance(value, self._enum_cls):
             try:
-                value = self._enum_cls(value)
-            except Exception:
-                pass
-        return super().__set__(instance, value)
+                return self._enum_cls(value)
+            except ValueError:
+                return value
+        return value
+
+    def __set__(self, instance, value):
+        return super().__set__(instance, self.to_python(value))
 
     def to_mongo(self, value):
         if isinstance(value, self._enum_cls):
