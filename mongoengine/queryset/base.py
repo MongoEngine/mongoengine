@@ -1134,14 +1134,14 @@ class BaseQuerySet(object):
         if isinstance(map_f, Code):
             map_f_scope = map_f.scope
             map_f = text_type(map_f)
-        map_f = Code(queryset._sub_js_fields(map_f), map_f_scope)
+        map_f = Code(queryset._sub_js_fields(map_f), map_f_scope or None)
 
         reduce_f_scope = {}
         if isinstance(reduce_f, Code):
             reduce_f_scope = reduce_f.scope
             reduce_f = text_type(reduce_f)
         reduce_f_code = queryset._sub_js_fields(reduce_f)
-        reduce_f = Code(reduce_f_code, reduce_f_scope)
+        reduce_f = Code(reduce_f_code, reduce_f_scope or None)
 
         mr_args = {'query': queryset._query}
 
@@ -1151,7 +1151,7 @@ class BaseQuerySet(object):
                 finalize_f_scope = finalize_f.scope
                 finalize_f = text_type(finalize_f)
             finalize_f_code = queryset._sub_js_fields(finalize_f)
-            finalize_f = Code(finalize_f_code, finalize_f_scope)
+            finalize_f = Code(finalize_f_code, finalize_f_scope or None)
             mr_args['finalize'] = finalize_f
 
         if scope:
