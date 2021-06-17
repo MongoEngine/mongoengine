@@ -332,6 +332,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         _refs=None,
         save_condition=None,
         signal_kwargs=None,
+        upsert=None,
         **kwargs,
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
@@ -361,6 +362,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             Raises :class:`OperationError` if the conditions are not satisfied
         :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
+        :param upsert: (optional) explicitly forces upsert to value if it is an
+            update
 
         .. versionchanged:: 0.5
             In existing documents it only saves changed fields using
@@ -407,7 +410,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 object_id = self._save_create(doc, force_insert, write_concern)
             else:
                 object_id, created = self._save_update(
-                    doc, save_condition, write_concern
+                    doc, save_condition, write_concern, upsert
                 )
 
             if cascade is None:
@@ -505,7 +508,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return select_dict
 
-    def _save_update(self, doc, save_condition, write_concern):
+    def _save_update(self, doc, save_condition, write_concern, upsert=None):
         """Update an existing document.
 
         Helper method, should only be used inside save().
@@ -524,12 +527,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         update_doc = self._get_update_doc()
         if update_doc:
-            upsert = save_condition is None
+            if upsert is None:
+                upsert = save_condition is None
             with set_write_concern(collection, write_concern) as wc_collection:
                 last_error = wc_collection.update_one(
                     select_dict, update_doc, upsert=upsert
                 ).raw_result
-            if not upsert and last_error["n"] == 0:
+            if save_condition is not None and last_error["n"] == 0:
                 raise SaveConditionError(
                     "Race condition preventing document update detected"
                 )
