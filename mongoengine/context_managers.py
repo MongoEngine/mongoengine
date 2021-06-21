@@ -84,6 +84,11 @@ class query_counter(object):
         """ Construct the query_counter. """
         self.counter = 0
         self.db = get_db()
+        self.ignore_query = {
+            "ns": {"$ne": "%s.system.indexes" % self.db.name},
+            "command.killCursors": {"$exists": False},  # don't count kill cursor commands
+            "command.createIndexes": {"$exists": False},  # don't count index creation
+        }
 
     def __enter__(self):
         """ On every with block we need to drop the profile collection. """
@@ -136,6 +141,4 @@ class query_counter(object):
         return count
 
     def get_queries(self):
-        ignore_query = {"ns": {"$ne": "%s.system.indexes" % self.db.name}}
-        return self.db.system.profile.find(ignore_query)
-
+        return self.db.system.profile.find(self.ignore_query)
