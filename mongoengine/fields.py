@@ -267,7 +267,7 @@ class EmbeddedDocumentField(BaseField):
         return self.document_type_obj
 
     def to_python(self, value):
-        if not isinstance(value, self.document_type):
+        if value is not None and not isinstance(value, self.document_type):
             doc = self.document_type._from_son(value)
             doc._all_loaded = True
             doc._default_load_status = FieldStatus.LOADED
