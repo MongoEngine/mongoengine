@@ -27,6 +27,8 @@ objects** as class attributes to the document class::
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
 
+.. _dynamic-document-schemas:
+
 Dynamic document schemas
 ========================
 One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
@@ -230,6 +232,9 @@ document class as the first argument::
     comment1 = Comment(content='Good work!')
     comment2 = Comment(content='Nice article!')
     page = Page(comments=[comment1, comment2])
+
+Embedded documents can also leverage the flexibility of :ref:`dynamic-document-schemas:`
+by inheriting :class:`~mongoengine.DynamicEmbeddedDocument`.
 
 Dictionary Fields
 -----------------
