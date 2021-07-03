@@ -1840,10 +1840,10 @@ class TestField(MongoDBTestCase):
         doc2 = Doc2(ref=doc1, refs=[doc11]).save()
 
         doc2.ref.name = "garbage2"
-        assert doc2._get_changed_fields() == []
+        assert doc2._get_updated_fields() == ([], [])
 
         doc2.refs[0].name = "garbage3"
-        assert doc2._get_changed_fields() == []
+        assert doc2._get_updated_fields() == ([], [])
         assert doc2._delta() == ({}, {})
 
     def test_generic_reference_field(self):

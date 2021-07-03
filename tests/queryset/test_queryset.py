@@ -815,20 +815,18 @@ class TestQueryset(unittest.TestCase):
         o.owner = p
         p.name = "p2"
 
-        assert o._get_changed_fields() == ["owner"]
-        assert p._get_changed_fields() == ["name"]
+        assert o._get_updated_fields() == (["owner"], [])
+        assert p._get_updated_fields() == (["name"], [])
 
         o.save()
 
-        assert o._get_changed_fields() == []
-        assert p._get_changed_fields() == ["name"]  # Fails; it's empty
+        assert o._get_updated_fields() == ([], [])
+        assert p._get_updated_fields() == (["name"], [])
 
-        # This will do NOTHING at all, even though we changed the name
         p.save()
-
         p.reload()
 
-        assert p.name == "p2"  # Fails; it's still `p1`
+        assert p.name == "p2"
 
     def test_upsert(self):
         self.Person.drop_collection()
@@ -1080,7 +1078,7 @@ class TestQueryset(unittest.TestCase):
         with pytest.raises(NotUniqueError):
             Comment.objects.insert(com1)
 
-    def test_get_changed_fields_query_count(self):
+    def test_get_updated_fields_query_count(self):
         """Make sure we don't perform unnecessary db operations when
         none of document's fields were updated.
         """
@@ -1118,7 +1116,7 @@ class TestQueryset(unittest.TestCase):
 
             # Checking changed fields of a newly fetched document should not
             # result in a query.
-            org._get_changed_fields()
+            org._get_updated_fields()
             assert q == 1
 
         # Saving a doc without changing any of its fields should not result

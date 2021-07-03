@@ -4,6 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestQueryFieldList:
@@ -64,6 +65,103 @@ class TestQueryFieldList:
         q = QueryFieldList()
         q += QueryFieldList(fields=["a"], value={"$slice": 5})
         assert q.as_dict() == {"a": {"$slice": 5}}
+
+
+class TestListField(MongoDBTestCase):
+    def test_list_field_empty(self):
+        class BlogPost(Document):
+            authors = ListField(default=[])
+
+        BlogPost.drop_collection()
+
+        blog = BlogPost().save()
+
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+            "authors": [],
+        }
+
+        blog.authors = []
+        blog.save()
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+            "authors": [],
+        }
+
+        blog.authors = [1]
+        blog.save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": [1]}
+
+        del blog.authors
+        blog.save()
+        assert get_as_pymongo(blog) == {
+            "_id": blog.id,
+        }
+
+        # set empty list in constructor
+        blog2 = BlogPost(authors=[]).save()
+        assert get_as_pymongo(blog2) == {
+            "_id": blog2.id,
+            "authors": [],
+        }
+
+        # set None in constructor
+        blog3 = BlogPost(authors=None).save()
+        assert get_as_pymongo(blog3) == {
+            "_id": blog3.id,
+            "authors": [],
+        }
+
+    def test_only_on_list_field_without_key_return_default(self):
+        # Ensure no regression of #938
+        class A(Document):
+            my_list = ListField(IntField())
+
+        A.drop_collection()
+
+        app = A(my_list=[]).save()
+        app.save()
+
+        del app.my_list
+        app.save()
+
+        assert get_as_pymongo(app) == {
+            "_id": app.id,
+        }
+        a = A.objects(id=app.id).only("my_list").get()
+        assert a.my_list == []
+
+    def test_item_frequencies_with_empty_list_edge_cases(self):
+        class TestDocument(Document):
+            fruit = ListField(StringField())
+
+        TestDocument.drop_collection()
+
+        doc1 = TestDocument(fruit=["a", "a", "b"]).save()
+        doc2 = TestDocument(fruit=["b", "c"]).save()
+
+        assert TestDocument.objects.item_frequencies("fruit") == {
+            "a": 2,
+            "b": 2,
+            "c": 1,
+        }
+
+        doc2.delete()
+        assert TestDocument.objects.item_frequencies("fruit") == {"a": 2, "b": 1}
+
+        doc1.fruit = []
+        doc1.save()
+        assert TestDocument.objects.item_frequencies("fruit") == {}
+
+        # delete the fruit field from db
+        # this creates weird item_frequencies result
+        # but somehow it is consistent
+        del doc1.fruit
+        doc1.save()
+        assert get_as_pymongo(doc1) == {
+            "_id": doc1.id,
+        }
+        assert TestDocument.objects.item_frequencies("fruit") == {None: 1}
 
 
 class TestOnlyExcludeAll(unittest.TestCase):

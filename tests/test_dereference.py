@@ -4,17 +4,10 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.context_managers import query_counter
+from tests.utils import MongoDBTestCase
 
 
-class FieldTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.db = connect(db="mongoenginetest")
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.db.drop_database("mongoenginetest")
-
+class FieldTest(MongoDBTestCase):
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced."""
 
@@ -416,7 +409,7 @@ class FieldTest(unittest.TestCase):
 
         daughter.relations.append(mother)
         daughter.relations.append(daughter)
-        assert daughter._get_changed_fields() == ["relations"]
+        assert daughter._get_updated_fields() == (["relations"], [])
         daughter.save()
 
         assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % Person.objects()
