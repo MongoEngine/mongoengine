@@ -1179,8 +1179,19 @@ class CachedReferenceField(BaseField):
     def start_listener(self):
         from mongoengine import signals
 
-        signals.post_save.connect(self.on_document_pre_save,
-                                  sender=self.document_type)
+        # listen to save signals on all document types that can be stored in this field
+        # this includes `self.document_type`, its subclasses, subclasses' subclasses and so on
+        computed = set()
+        remaining = {self.document_type}
+        while remaining:
+            klass = remaining.pop()
+            remaining.update(klass.__subclasses__())
+            computed.add(klass)
+
+        for klass in computed:
+            signals.post_save.connect(self.on_document_pre_save,
+                                      sender=klass)
+            
 
     def on_document_pre_save(self, sender, document, created, _changed_fields, **kwargs):
         if not created and _changed_fields:
