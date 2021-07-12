@@ -12,10 +12,6 @@ class InvalidCollectionError(Exception):
     pass
 
 
-# mockable function that controls whether indexes are automatically created
-def should_auto_create_index(flag):
-    return flag
-
 class ConnectionManager(object):
     connections_registry = defaultdict(lambda: defaultdict(dict))
 
@@ -35,7 +31,7 @@ class ConnectionManager(object):
         _collection = self.connections_registry[alias][registry_collection_name].get(read_preference_str)
         if not _collection:
             _collection = self.get_collection(doc_cls, alias, collection_name, read_preference=read_preference)
-            if should_auto_create_index(doc_cls._meta.get('auto_create_index', False)):
+            if doc_cls._meta.get('auto_create_index', False):
                 doc_cls.ensure_indexes(_collection)
             self.connections_registry[alias][registry_collection_name][read_preference_str] = _collection
         return self.connections_registry[alias][registry_collection_name][read_preference_str]

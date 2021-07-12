@@ -644,15 +644,16 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         collection = collection or connection_manager.get_collection(cls)
         try:
             collection.create_index(*args, **kwargs)
-        except pymongo.errors.OperationFailure as e:
-            m = re.search("Index with name: (.*) already exists with different options", str(e.details))
-            if m:
-                indexName = m.group(1)
-                logging.warning("Dropping index: %s on %s due to diff index options", indexName, collection.name)
-                connection_manager.get_collection(cls).drop_index(indexName)
-                connection_manager.get_collection(cls).create_index(*args, **kwargs)
-            else:
-                raise
+        except Exception as e:
+            if str(e.__class__) == "OperationFailure" and hasattr(e, 'message'):
+                m = re.match("Index with name: (.*) already exists with different options", e.message)
+                if m:
+                    indexName = m.group(1)
+                    logging.warning("Dropping index: %s on %s due to diff index options", indexName, collection.name)
+                    connection_manager.get_collection(cls).drop_index(indexName)
+                    connection_manager.get_collection(cls).create_index(*args, **kwargs)
+                else:
+                    raise
             
 
     @classmethod
@@ -768,7 +769,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                                         **index_opts)
 
     @classmethod
-    def list_indexes(cls, include_options=False):
+    def list_indexes(cls, include_partial_filter_expressions=False):
         """ Lists all of the indexes that should be created for given
         collection. It includes all the indexes from super- and sub-classes.
         """
@@ -812,8 +813,8 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 for spec in index_spec:
                     spec = spec.copy()
                     fields = spec.pop('fields')
-                    indexes.append(fields if include_options is False else
-                                   (fields, spec.get('partialFilterExpression', {}), spec.get('expireAfterSeconds', None)))
+                    indexes.append(fields if include_partial_filter_expressions is False else
+                                   (fields, spec.get('partialFilterExpression', {})))
             return indexes
 
         indexes = []
@@ -824,14 +825,14 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
 
-        id_index = [(u'_id', 1)] if include_options is False else ([(u'_id', 1)], {}, None)
+        id_index = [(u'_id', 1)] if include_partial_filter_expressions is False else ([(u'_id', 1)], {})
 
         if id_index not in indexes:
             indexes.append(id_index)
 
         if (cls._meta.get('index_cls', True) and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
-            indexes.append([(u'_cls', 1)] if include_options is False else ([(u'_cls', 1)], {}, None))
+            indexes.append([(u'_cls', 1)] if include_partial_filter_expressions is False else ([(u'_cls', 1)], {}))
 
         return indexes
 
@@ -874,16 +875,18 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         return {'missing': missing, 'extra': extra}
 
     @classmethod
-    def compare_indexes_including_options(cls):
-        """ `compare_indexes()` method  does not consider options like partial filters or expireAfterSeconds while comparing indexes,
-        this method is written in order to consider these as well, notice the change in signature as well """
+    def compare_indexes_including_partial_filters(cls):
+        """ Compare index method  does not consider partial filters while comparing indexes,
+        this method is writter in order to consider partial filter as well, notice the change in signature as well """
         
-        required = cls.list_indexes(include_options=True)
+        def add_partial_filter(index,partial_filter={}):
+            return (index,partial_filter)
+        
+        required = cls.list_indexes(include_partial_filter_expressions=True)
         existing = []
         for info in cls._get_collection().index_information().values():
             from bson import SON
             partial_filter = info.get('partialFilterExpression', SON()).to_dict()
-            expire_after_seconds = info.get('expireAfterSeconds', None)
             if '_fts' in [k[0] for k in info['key']]:
                 spec = []
                 index_type = None
@@ -895,31 +898,14 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                         break
                 text_index_fields = sorted(info.get('weights').keys())
                 spec.extend([(key, index_type) for key in text_index_fields])
-                spec = (spec, partial_filter, expire_after_seconds)
+                spec = (spec, partial_filter)
                 existing.append(spec)
             else:
-                existing.append((info['key'], partial_filter, expire_after_seconds))
+                existing.append((info['key'], partial_filter))
                 
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
-
-        # if only `expireAfterSeconds` changed, then we consider the index as modified
-        modified = []
-        for missing_index in missing:
-            if missing_index[2] is None:
-                continue
-            extra_without_expire_after = [x[:2] for x in extra]
-            try:
-                pos = extra_without_expire_after.index(missing_index[:2])
-            except ValueError:
-                pos = None
-            if pos is not None and extra[pos][2] is not None:
-                # `missing_index` is a modification of `extra[pos]`
-                modified.append(missing_index)
-                extra.pop(pos)
-        missing = [index for index in missing if index not in modified]
- 
-        class_index= ([(u'_cls', 1)], {}, None)
+        class_index= add_partial_filter([(u'_cls', 1)])
         if class_index in missing:
             cls_obsolete = False
             for index in existing:
@@ -928,7 +914,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                     break
             if cls_obsolete:
                 missing.remove(class_index)
-        return {'missing': missing, 'extra': extra, 'modified': modified}
+        return {'missing': missing, 'extra': extra}
 
 
 class DynamicDocument(with_metaclass(TopLevelDocumentMetaclass, Document)):
