@@ -1036,6 +1036,9 @@ class DocumentTest(unittest.TestCase):
             name = mongoengine.fields.StringField(db_field="n")
             age  = mongoengine.fields.IntField()
 
+        class OldShardedCollection(Document):
+            meta = {'shard_key': 'id:hashed', 'hash_field': 'id', 'hash_db_field': '_xy'}
+
         self.assertEquals(NotShardedCollection.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
                           { "_id": "abcd" })
         self.assertEquals(NotShardedCollection2.get_upsert_filter({"_id":"abcd", "foo":"bar"}),
@@ -1052,7 +1055,10 @@ class DocumentTest(unittest.TestCase):
                           { "_id": "abcd", "n": "foo" })
         self.assertEquals(NonIdShardedCollection2.get_upsert_filter({"_id":"abcd", "n": "foo", "age":10}),
                           { "_id": "abcd", "n": "foo", "age":10 })
-
+        self.assertEquals(OldShardedCollection.get_upsert_filter({"_id":"abcd", "_xy": 1234}),
+                          { "_id": "abcd", "_xy": 1234 })
+        self.assertEquals(OldShardedCollection.get_upsert_filter({"_id":"abcd", "_h": 1234}),
+                          { "_id": "abcd" })
 
     def test_can_pickle(self):
         person = Citizen(age=20)

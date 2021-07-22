@@ -195,6 +195,15 @@ class Document(BaseDocument):
         shard_keys = cls._meta.get('shard_key', "")
         if not shard_keys:
             return filter
+        if cls._meta.get('hash_field'):
+            # When hash_field specified, in Mongo the collection is actually sharded on a
+            # field specified by 'hash_db_field'(usually 'h' or '_h'). The field specified by 'shard_key'
+            # is hashed into a number by mongoengine and stored in hash_db_field. So we want to ensure
+            # the hash_db_field is in the filter if it exist.
+            hash_db_field = cls._meta.get('hash_db_field')
+            if hash_db_field and hash_db_field in doc:
+                filter[hash_db_field] = doc[hash_db_field]
+
         shard_fields = [s.split(':')[0] for s in shard_keys.split(',')]
         for field in shard_fields:
             if field in cls._fields:
@@ -641,7 +650,8 @@ class Document(BaseDocument):
         key = {'_id': doc_id}
 
         # NOTE(mzeng): The 'hash_field' and 'shard_hash' are Wish-specific hacks to hash shard
-        # a collection before Mongo support hash sharding. They should not be in use now.
+        # a collection before Mongo support hash sharding. There are still 15 to 20 collections
+        # that are sharded this way.
         if cls._meta['hash_field'] == cls._meta['id_field'] \
            and cls._meta['sharded']:
             key['shard_hash'] = cls._hash(doc_id)
