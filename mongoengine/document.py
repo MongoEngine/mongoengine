@@ -674,11 +674,11 @@ class Document(BaseDocument):
         for i, index_field in enumerate(hint_doc):
             field, direction = hint_doc[i]
             db_field, context = cls._transform_key(field, cls)
-            print "xxxxxxxxxxxxxxxx transform_hit"
-            print db_field
-            print direction
             # yiguo: change direction to int type, some legacy application codes is using string
-            new_hint_doc.append((db_field, int(direction)))
+            if not isinstance(direction, int):
+                print "hint direction is not int; try to convert direction to int"
+                direction = int(direction)
+            new_hint_doc.append((db_field, direction))
 
         return new_hint_doc
 
