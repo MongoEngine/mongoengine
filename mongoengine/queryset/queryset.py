@@ -33,7 +33,7 @@ class QuerySet(BaseQuerySet[_T], LazyPrefetchBase):
         Override parent function for lazy pre-fetching.
         """
         if self._limit == 0 or self._none:
-            raise StopIteration
+            return
 
         raw_doc = next(self._cursor)
         if self._as_pymongo:
@@ -108,7 +108,7 @@ class QuerySet(BaseQuerySet[_T], LazyPrefetchBase):
                 yield self._result_cache[pos]
                 pos += 1
             if not self._has_more:
-                raise StopIteration
+                return
             if len(self._result_cache) <= pos:
                 self._populate_cache()
 
