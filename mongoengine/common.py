@@ -25,6 +25,30 @@ class ReadOnlyContext(object):
     def deactivate(cls):
         ReadOnlyContext.read_only = False
 
+class SpoofContext(object):
+    _access_level = None
+
+    def __init__(self, access_level):
+        self._access_level = access_level
+
+    def __enter__(self):
+        SpoofContext.set_access_level(self._access_level)
+
+    def __exit__(self, *args):
+        SpoofContext.reset()
+
+    @classmethod
+    def get_access_level(cls):
+        return cls._access_level
+
+    @classmethod
+    def set_access_level(cls, access_level):
+        cls._access_level = access_level
+
+    @classmethod
+    def reset(cls):
+        cls._access_level = None
+
 
 def _import_class(cls_name):
     """Cache mechanism for imports.

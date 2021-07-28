@@ -16,7 +16,7 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.common import ReadOnlyContext
+from mongoengine.common import ReadOnlyContext, SpoofContext
 
 from mongoengine.base.datastructures import (
     BaseDict,
@@ -843,7 +843,8 @@ class BaseDocument(object):
         class_alias = cls._meta.get('db_alias', None)
         if class_alias is not None and class_alias in aliases:
             alias = class_alias
-        if ReadOnlyContext.isActive():
+        if ReadOnlyContext.isActive() \
+            or SpoofContext.get_access_level() == 'READ_FULL':
             alias += '_read_only'
         return alias
 
