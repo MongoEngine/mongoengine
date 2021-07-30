@@ -170,10 +170,10 @@ class Document(BaseDocument):
                         )
                     else:
                         collection = self._pymongo()
-                        collection.replace_one({"_id" : doc["_id"]}, doc, upsert=True)
+                        collection.replace_one(self.__class__.get_upsert_filter(doc),  doc, upsert=True)
                 else:
                     collection = self._pymongo()
-                    collection.replace_one({"_id" : doc["_id"]}, doc, upsert=True)
+                    collection.replace_one(self.__class__.get_upsert_filter(doc) ,  doc, upsert=True)
                 object_id = doc["_id"]
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
