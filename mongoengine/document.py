@@ -101,7 +101,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
 
     def __getstate__(self):
         data = super().__getstate__()
-        data["_instance"] = self._instance
+        data["_instance"] = None
         return data
 
     def __setstate__(self, state):
@@ -135,7 +135,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     create a specialised version of the document that will be stored in the
     same collection. To facilitate this behaviour a `_cls`
     field is added to documents (hidden though the MongoEngine interface).
-    To enable this behaviourset :attr:`allow_inheritance` to ``True`` in the
+    To enable this behaviour set :attr:`allow_inheritance` to ``True`` in the
     :attr:`meta` dictionary.
 
     A :class:`~mongoengine.Document` may use a **Capped Collection** by

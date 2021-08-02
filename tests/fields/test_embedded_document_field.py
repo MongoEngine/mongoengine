@@ -1,4 +1,7 @@
+from copy import deepcopy
+
 import pytest
+from bson import ObjectId
 
 from mongoengine import (
     Document,
@@ -9,6 +12,7 @@ from mongoengine import (
     InvalidQueryError,
     ListField,
     LookUpError,
+    MapField,
     StringField,
     ValidationError,
 )
@@ -350,3 +354,30 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
         assert Person.objects(settings__sub_foo="subfoo").first().id == p.id
+
+    def test_deepcopy_set__instance(self):
+        """Ensure that the _instance attribute on EmbeddedDocument exists after a deepcopy"""
+
+        class Wallet(EmbeddedDocument):
+            money = IntField()
+
+        class Person(Document):
+            wallet = EmbeddedDocumentField(Wallet)
+            wallet_map = MapField(EmbeddedDocumentField(Wallet))
+
+        # Test on fresh EmbeddedDoc
+        emb_doc = Wallet(money=1)
+        assert emb_doc._instance is None
+        copied_emb_doc = deepcopy(emb_doc)
+        assert copied_emb_doc._instance is None
+
+        # Test on attached EmbeddedDoc
+        doc = Person(
+            id=ObjectId(), wallet=Wallet(money=2), wallet_map={"test": Wallet(money=2)}
+        )
+        assert doc.wallet._instance == doc
+        copied_emb_doc = deepcopy(doc.wallet)
+        assert copied_emb_doc._instance == doc
+
+        copied_map_emb_doc = deepcopy(doc.wallet_map)
+        assert copied_map_emb_doc["test"]._instance == doc

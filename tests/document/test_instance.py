@@ -3,7 +3,6 @@ import pickle
 import unittest
 import uuid
 import weakref
-from copy import deepcopy
 from datetime import datetime
 
 import bson
@@ -78,14 +77,6 @@ class TestDocumentInstance(MongoDBTestCase):
             assert field._instance.__eq__(instance)
         else:
             assert field._instance == instance
-
-    def test_deepcopy(self):
-        """Ensure that the _instance attribute on EmbeddedDocument exists after a deepcopy"""
-
-        doc = self.Job()
-        assert doc._instance is None
-        copied = deepcopy(doc)
-        assert copied._instance is None
 
     def test_capped_collection(self):
         """Ensure that capped collections work properly."""
