@@ -377,7 +377,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         )
         assert doc.wallet._instance == doc
         copied_emb_doc = deepcopy(doc.wallet)
-        assert copied_emb_doc._instance == doc
+        assert copied_emb_doc._instance is None
 
         copied_map_emb_doc = deepcopy(doc.wallet_map)
-        assert copied_map_emb_doc["test"]._instance == doc
+        assert copied_map_emb_doc["test"]._instance is None
