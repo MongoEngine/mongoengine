@@ -285,7 +285,12 @@ class Document(BaseDocument):
                 else:
                     bulk_ops = cls.get_bulk_attr(cls.BULK_OP)
                     # yiguo: hardcode ordered to True, or it will break unittests
-                    cls._pymongo().bulk_write(bulk_ops, ordered=True)
+                    # cls._pymongo().bulk_write(bulk_ops, ordered=True)
+                    print "xxxxxxxxxxxxxx yiguo"
+                    print unordered
+                    print "xxxxxxxxxxxxxxx yiguo"
+                    print  bulk_ops
+                    cls._pymongo().bulk_write(bulk_ops, ordered=not  unordered)
 
                 for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
                     instance = props['obj']
