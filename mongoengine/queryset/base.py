@@ -946,6 +946,36 @@ class BaseQuerySet(object):
             plan = pprint.pformat(plan)
         return plan
 
+    def explain_query_plan(self):
+        db = self._document._get_db()
+        cursor = self._cursor.clone()
+        query = cursor._query_class(cursor._Cursor__query_flags,
+                                    cursor._Cursor__collection.database.name,
+                                    cursor._Cursor__collection.name,
+                                    cursor._Cursor__skip,
+                                    cursor._Cursor__query_spec(),
+                                    cursor._Cursor__projection,
+                                    cursor._Cursor__codec_options,
+                                    cursor._read_preference(),
+                                    cursor._Cursor__limit,
+                                    cursor._Cursor__batch_size,
+                                    cursor._Cursor__read_concern,
+                                    cursor._Cursor__collation,
+                                    cursor._Cursor__session,
+                                    cursor._Cursor__collection.database.client,
+                                    cursor._Cursor__allow_disk_use,
+                                    # `exhaust` arg present in newer pymongo version
+                                    #cursor._Cursor__exhaust,
+                                    )
+        class FakeSockInfo():
+            def add_server_api(self, *args, **kwargs):
+                pass
+            def send_cluster_time(self, *args, **kwargs):
+                pass
+        cmd = query.as_command(FakeSockInfo())[0]
+        explained = db.command('explain', cmd, verbosity="queryPlanner")
+        return explained
+
     # DEPRECATED. Has no more impact on PyMongo 3+
     def snapshot(self, enabled):
         """Enable or disable snapshot mode when querying.
