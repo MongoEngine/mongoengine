@@ -840,7 +840,8 @@ class Document(BaseDocument):
             slave_ok = _get_slave_ok(slave_ok)
         except KeyError:
             raise ValueError("Invalid slave_ok preference: %s" % slave_ok)
-
+        print "xxxxxxxxxxxxxxxxxx yiguo"
+        print slave_ok
         # do field name transformation on hints
         #
         # the mongodb index {f1: 1, f2: 1} is expressed to pymongo as
