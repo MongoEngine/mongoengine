@@ -630,6 +630,8 @@ class Document(BaseDocument):
                 else:
                     return cls._pymongo_collection[use_async].with_options(read_preference=SecondaryPreferred(tag_sets))
             else:
+                print "xxxxxxxxxxxxxx  _pymongo"
+                print read_preference
                 return cls._pymongo_collection[use_async].with_options(read_preference=read_preference)
         return cls._pymongo_collection[use_async]
 
