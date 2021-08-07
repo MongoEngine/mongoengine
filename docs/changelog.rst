@@ -9,6 +9,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - EnumField improvements: now `choices` limits the values of an enum to allow
 - Fix deepcopy of EmbeddedDocument #2202
+- Fix error when using precision=0 with DecimalField #2535
 
 Changes in 0.23.1
 ===========

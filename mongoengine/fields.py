@@ -468,6 +468,10 @@ class DecimalField(BaseField):
         self.min_value = min_value
         self.max_value = max_value
         self.force_string = force_string
+
+        if precision < 0 or not isinstance(precision, int):
+            self.error("precision must be a positive integer")
+
         self.precision = precision
         self.rounding = rounding
 
@@ -483,10 +487,12 @@ class DecimalField(BaseField):
         except (TypeError, ValueError, decimal.InvalidOperation):
             return value
         if self.precision > 0:
-            return value.quantize(decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding)
+            return value.quantize(
+                decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding
+            )
         else:
             return value.quantize(decimal.Decimal(), rounding=self.rounding)
-        
+
     def to_mongo(self, value):
         if value is None:
             return value
