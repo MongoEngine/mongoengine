@@ -19,7 +19,7 @@ class TestFindAndModify(unittest.TestCase):
         connect(db="mongoenginetest")
         Doc.drop_collection()
 
-    def assertDbEqual(self, docs):
+    def _assert_db_equal(self, docs):
         assert list(Doc._collection.find().sort("id")) == docs
 
     def test_modify(self):
@@ -28,7 +28,7 @@ class TestFindAndModify(unittest.TestCase):
 
         old_doc = Doc.objects(id=1).modify(set__value=-1)
         assert old_doc.to_json() == doc.to_json()
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
 
     def test_modify_with_new(self):
         Doc(id=0, value=0).save()
@@ -37,18 +37,18 @@ class TestFindAndModify(unittest.TestCase):
         new_doc = Doc.objects(id=1).modify(set__value=-1, new=True)
         doc.value = -1
         assert new_doc.to_json() == doc.to_json()
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
 
     def test_modify_not_existing(self):
         Doc(id=0, value=0).save()
         assert Doc.objects(id=1).modify(set__value=-1) is None
-        self.assertDbEqual([{"_id": 0, "value": 0}])
+        self._assert_db_equal([{"_id": 0, "value": 0}])
 
     def test_modify_with_upsert(self):
         Doc(id=0, value=0).save()
         old_doc = Doc.objects(id=1).modify(set__value=1, upsert=True)
         assert old_doc is None
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": 1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": 1}])
 
     def test_modify_with_upsert_existing(self):
         Doc(id=0, value=0).save()
@@ -56,13 +56,13 @@ class TestFindAndModify(unittest.TestCase):
 
         old_doc = Doc.objects(id=1).modify(set__value=-1, upsert=True)
         assert old_doc.to_json() == doc.to_json()
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
 
     def test_modify_with_upsert_with_new(self):
         Doc(id=0, value=0).save()
         new_doc = Doc.objects(id=1).modify(upsert=True, new=True, set__value=1)
         assert new_doc.to_mongo() == {"_id": 1, "value": 1}
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": 1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": 1}])
 
     def test_modify_with_remove(self):
         Doc(id=0, value=0).save()
@@ -70,12 +70,12 @@ class TestFindAndModify(unittest.TestCase):
 
         old_doc = Doc.objects(id=1).modify(remove=True)
         assert old_doc.to_json() == doc.to_json()
-        self.assertDbEqual([{"_id": 0, "value": 0}])
+        self._assert_db_equal([{"_id": 0, "value": 0}])
 
     def test_find_and_modify_with_remove_not_existing(self):
         Doc(id=0, value=0).save()
         assert Doc.objects(id=1).modify(remove=True) is None
-        self.assertDbEqual([{"_id": 0, "value": 0}])
+        self._assert_db_equal([{"_id": 0, "value": 0}])
 
     def test_modify_with_order_by(self):
         Doc(id=0, value=3).save()
@@ -85,7 +85,7 @@ class TestFindAndModify(unittest.TestCase):
 
         old_doc = Doc.objects().order_by("-id").modify(set__value=-1)
         assert old_doc.to_json() == doc.to_json()
-        self.assertDbEqual(
+        self._assert_db_equal(
             [
                 {"_id": 0, "value": 3},
                 {"_id": 1, "value": 2},
@@ -100,7 +100,7 @@ class TestFindAndModify(unittest.TestCase):
 
         old_doc = Doc.objects(id=1).only("id").modify(set__value=-1)
         assert old_doc.to_mongo() == {"_id": 1}
-        self.assertDbEqual([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+        self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
 
     def test_modify_with_push(self):
         class BlogPost(Document):

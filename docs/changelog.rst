@@ -8,6 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - EnumField improvements: now `choices` limits the values of an enum to allow
+- Fix deepcopy of EmbeddedDocument #2202
 
 Changes in 0.23.1
 ===========

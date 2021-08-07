@@ -65,12 +65,12 @@ class TestDocumentInstance(MongoDBTestCase):
         for collection in list_collection_names(self.db):
             self.db.drop_collection(collection)
 
-    def assertDbEqual(self, docs):
+    def _assert_db_equal(self, docs):
         assert list(self.Person._get_collection().find().sort("id")) == sorted(
             docs, key=lambda doc: doc["_id"]
         )
 
-    def assertHasInstance(self, field, instance):
+    def _assert_has_instance(self, field, instance):
         assert hasattr(field, "_instance")
         assert field._instance is not None
         if isinstance(field._instance, weakref.ProxyType):
@@ -740,11 +740,11 @@ class TestDocumentInstance(MongoDBTestCase):
         Doc.drop_collection()
 
         doc = Doc(embedded_field=Embedded(string="Hi"))
-        self.assertHasInstance(doc.embedded_field, doc)
+        self._assert_has_instance(doc.embedded_field, doc)
 
         doc.save()
         doc = Doc.objects.get()
-        self.assertHasInstance(doc.embedded_field, doc)
+        self._assert_has_instance(doc.embedded_field, doc)
 
     def test_embedded_document_complex_instance(self):
         """Ensure that embedded documents in complex fields can reference
@@ -759,11 +759,11 @@ class TestDocumentInstance(MongoDBTestCase):
 
         Doc.drop_collection()
         doc = Doc(embedded_field=[Embedded(string="Hi")])
-        self.assertHasInstance(doc.embedded_field[0], doc)
+        self._assert_has_instance(doc.embedded_field[0], doc)
 
         doc.save()
         doc = Doc.objects.get()
-        self.assertHasInstance(doc.embedded_field[0], doc)
+        self._assert_has_instance(doc.embedded_field[0], doc)
 
     def test_embedded_document_complex_instance_no_use_db_field(self):
         """Ensure that use_db_field is propagated to list of Emb Docs."""
@@ -792,11 +792,11 @@ class TestDocumentInstance(MongoDBTestCase):
 
         acc = Account()
         acc.email = Email(email="test@example.com")
-        self.assertHasInstance(acc._data["email"], acc)
+        self._assert_has_instance(acc._data["email"], acc)
         acc.save()
 
         acc1 = Account.objects.first()
-        self.assertHasInstance(acc1._data["email"], acc1)
+        self._assert_has_instance(acc1._data["email"], acc1)
 
     def test_instance_is_set_on_setattr_on_embedded_document_list(self):
         class Email(EmbeddedDocument):
@@ -808,11 +808,11 @@ class TestDocumentInstance(MongoDBTestCase):
         Account.drop_collection()
         acc = Account()
         acc.emails = [Email(email="test@example.com")]
-        self.assertHasInstance(acc._data["emails"][0], acc)
+        self._assert_has_instance(acc._data["emails"][0], acc)
         acc.save()
 
         acc1 = Account.objects.first()
-        self.assertHasInstance(acc1._data["emails"][0], acc1)
+        self._assert_has_instance(acc1._data["emails"][0], acc1)
 
     def test_save_checks_that_clean_is_called(self):
         class CustomError(Exception):
@@ -921,7 +921,7 @@ class TestDocumentInstance(MongoDBTestCase):
         with pytest.raises(InvalidDocumentError):
             self.Person().modify(set__age=10)
 
-        self.assertDbEqual([dict(doc.to_mongo())])
+        self._assert_db_equal([dict(doc.to_mongo())])
 
     def test_modify_invalid_query(self):
         doc1 = self.Person(name="bob", age=10).save()
@@ -931,7 +931,7 @@ class TestDocumentInstance(MongoDBTestCase):
         with pytest.raises(InvalidQueryError):
             doc1.modify({"id": doc2.id}, set__value=20)
 
-        self.assertDbEqual(docs)
+        self._assert_db_equal(docs)
 
     def test_modify_match_another_document(self):
         doc1 = self.Person(name="bob", age=10).save()
@@ -941,7 +941,7 @@ class TestDocumentInstance(MongoDBTestCase):
         n_modified = doc1.modify({"name": doc2.name}, set__age=100)
         assert n_modified == 0
 
-        self.assertDbEqual(docs)
+        self._assert_db_equal(docs)
 
     def test_modify_not_exists(self):
         doc1 = self.Person(name="bob", age=10).save()
@@ -951,7 +951,7 @@ class TestDocumentInstance(MongoDBTestCase):
         n_modified = doc2.modify({"name": doc2.name}, set__age=100)
         assert n_modified == 0
 
-        self.assertDbEqual(docs)
+        self._assert_db_equal(docs)
 
     def test_modify_update(self):
         other_doc = self.Person(name="bob", age=10).save()
@@ -977,7 +977,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert doc.to_json() == doc_copy.to_json()
         assert doc._get_changed_fields() == []
 
-        self.assertDbEqual([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
+        self._assert_db_equal([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
     def test_modify_with_positional_push(self):
         class Content(EmbeddedDocument):
