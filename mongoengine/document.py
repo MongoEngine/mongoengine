@@ -531,13 +531,13 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
         if not self.pk:
             raise self.DoesNotExist("Document does not exist")
-        obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
-            **self._object_key).only(*fields).limit(
-            1).select_related(max_depth=max_depth)
 
-        if obj:
+        obj = self._qs.read_preference(ReadPreference.PRIMARY).filter(
+            **self._object_key).only(*fields).limit(1)
+
+        try:
             obj = obj[0]
-        else:
+        except IndexError:
             raise self.DoesNotExist("Document does not exist")
 
         for field in obj._data:
