@@ -576,6 +576,9 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         """Used by :meth:`~mongoengine.Document.reload` to ensure the
         correct instance is linked to self.
         """
+        from mongoengine.base.proxy import DocumentProxy
+        if type(value) is DocumentProxy:
+            return value
         if isinstance(value, BaseDict):
             value = [(k, self._reload(k, v)) for k, v in value.items()]
             value = BaseDict(value, self, key)
