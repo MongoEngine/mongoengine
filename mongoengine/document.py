@@ -880,13 +880,14 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     def compare_indexes_including_options(cls):
         """ `compare_indexes()` method  does not consider options like partial filters or expireAfterSeconds while comparing indexes,
         this method is written in order to consider these as well, notice the change in signature as well """
-        
+
         required = cls.list_indexes(include_options=True)
-        existing = []
-        for info in cls._get_collection().index_information().values():
+        existing = {}
+        for index_name, info in cls._get_collection().index_information().items():
             from bson import SON
             partial_filter = info.get('partialFilterExpression', SON()).to_dict()
             expire_after_seconds = info.get('expireAfterSeconds', None)
+
             if '_fts' in [k[0] for k in info['key']]:
                 spec = []
                 index_type = None
@@ -899,34 +900,34 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 text_index_fields = sorted(info.get('weights').keys())
                 spec.extend([(key, index_type) for key in text_index_fields])
                 spec = (spec, partial_filter, expire_after_seconds)
-                existing.append(spec)
+                existing[index_name] = spec
             else:
-                existing.append((info['key'], partial_filter, expire_after_seconds))
-                
-        missing = [index for index in required if index not in existing]
-        extra = [index for index in existing if index not in required]
+                existing[index_name] = (info['key'], partial_filter, expire_after_seconds)
+
+        missing = [index for index in required if index not in existing.values()]
+        extra = {index_name: index for index_name, index in existing.items() if index not in required}
 
         # if only `expireAfterSeconds` changed, then we consider the index as modified
         modified = []
-        for missing_index in missing:
-            if missing_index[2] is None:
+        not_extra = set()
+        for index_name, index in extra.items():
+            if index[2] is None:  # index[2] contains TTL
                 continue
-            extra_without_expire_after = [x[:2] for x in extra]
-            try:
-                pos = extra_without_expire_after.index(missing_index[:2])
-            except ValueError:
-                pos = None
-            if pos is not None and extra[pos][2] is not None:
-                # `missing_index` is a modification of `extra[pos]`
-                modified.append(missing_index)
-                extra.pop(pos)
+            for missing_index in missing:
+                if missing_index[2] is not None and missing_index[:2] == index[:2]:
+                    # everything apart from TTL matches for `missing_index` and `index`
+                    # TTL of `index` can be modified to get the `missing_index`
+                    modified.append(missing_index)
+                    not_extra.add(index_name)
+                    break
         missing = [index for index in missing if index not in modified]
- 
+        extra = {index_name: index for index_name, index in extra.items() if index_name not in not_extra}
+
         class_index= ([(u'_cls', 1)], {}, None)
         if class_index in missing:
             cls_obsolete = False
-            for index in existing:
-                if includes_cls(index[0]) and index not in extra:
+            for index_name, index in existing.items():
+                if includes_cls(index[0]) and index_name not in extra:
                     cls_obsolete = True
                     break
             if cls_obsolete:
