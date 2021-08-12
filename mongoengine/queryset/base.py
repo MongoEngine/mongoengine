@@ -378,6 +378,27 @@ class BaseQuerySet(object):
             return 0
         return self._cursor.count(with_limit_and_skip=with_limit_and_skip)
 
+    def explain_count(self, with_limit_and_skip=False, verbosity="allPlansExecution"):
+        """Explain execution plan for `.count()` operation"""
+        # code copied from pymongo.cursor.count
+        cursor = self._cursor
+        db = self._document._get_db()
+        cmd = {"count": cursor._Cursor__collection.name, "query": cursor._Cursor__spec}
+        if cursor._Cursor__max_time_ms is not None:
+            cmd["maxTimeMS"] = cursor._Cursor__max_time_ms
+        if cursor._Cursor__comment:
+            cmd["comment"] = cursor._Cursor__comment
+
+        if cursor._Cursor__hint is not None:
+            cmd["hint"] = cursor._Cursor__hint
+
+        if with_limit_and_skip:
+            if cursor._Cursor__limit:
+                cmd["limit"] = cursor._Cursor__limit
+            if cursor._Cursor__skip:
+                cmd["skip"] = cursor._Cursor__skip
+        return db.command("explain", cmd, verbosity=verbosity)
+
     def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
         """Delete the documents matched by the query.
 
