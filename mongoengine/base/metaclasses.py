@@ -458,7 +458,7 @@ class MetaDict(dict):
     def merge(self, new_options):
         for k, v in new_options.items():
             if k in self._merge_options:
-                self[k] = self.get(k, []) + v
+                self[k] = self.get(k, []) + list(v)
             else:
                 self[k] = v
 
