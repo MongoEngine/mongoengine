@@ -1,0 +1,17 @@
+version: '3.4'
+services:
+  mongoengine:
+    build:
+      context: .
+    image: mongoengine:latest
+    network_mode: host
+    depends_on:
+      - mongo
+    working_dir: /app
+    volumes:
+      - .:/app
+  mongo:
+    image: mongo:4
+    restart: always
+    ports:
+      - 27017:27017
