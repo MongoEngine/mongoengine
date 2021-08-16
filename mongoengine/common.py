@@ -1,8 +1,28 @@
 from __future__ import absolute_import
+
 _class_registry_cache = {}
 _field_list_cache = []
 
 from mongoengine import connection
+
+
+class AnalyticsContext(object):
+    """
+    AnalyticsContext represents reading data from mongodb analytics nodes.
+    Read more here: https://docs.atlas.mongodb.com/cluster-config/multi-cloud-distribution/#analytics-nodes-for-workload-isolation
+    """
+    _in_context = False
+
+    def __enter__(self):
+        AnalyticsContext._in_context = True
+
+    def __exit__(self, *args):
+        AnalyticsContext._in_context = False
+
+    @classmethod
+    def isActive(cls):
+        return cls._in_context
+
 
 class ReadOnlyContext(object):
     read_only = False
