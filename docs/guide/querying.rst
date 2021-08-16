@@ -239,7 +239,7 @@ Limiting and skipping results
 Just as with traditional ORMs, you may limit the number of results returned or
 skip a number or results in you query.
 :meth:`~mongoengine.queryset.QuerySet.limit` and
-:meth:`~mongoengine.queryset.QuerySet.skip` and methods are available on
+:meth:`~mongoengine.queryset.QuerySet.skip` methods are available on
 :class:`~mongoengine.queryset.QuerySet` objects, but the `array-slicing` syntax
 is preferred for achieving this::
 
