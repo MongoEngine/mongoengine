@@ -6,18 +6,17 @@ from six import string_types, iteritems
 __all__ = ['ConnectionError', 'connect', 'register_connection',
            'DEFAULT_CONNECTION_NAME', 'aliases']
 
+
 DEFAULT_CONNECTION_NAME = 'default'
 if IS_PYMONGO_3:
     READ_PREFERENCE = ReadPreference.PRIMARY
 else:
     from pymongo import MongoReplicaSetClient
-
     READ_PREFERENCE = False
 
 
 class ConnectionError(Exception):
     pass
-
 
 aliases = []
 _connection_settings = {}
@@ -79,21 +78,6 @@ def register_connection(alias, name=None, host=None, port=None,
             conn_settings['replicaSet'] = True
         if 'authsource' in uri_options:
             conn_settings['authentication_source'] = uri_options['authsource']
-        if "readpreference" in uri_options:
-            read_preferences = (
-                ReadPreference.NEAREST,
-                ReadPreference.PRIMARY,
-                ReadPreference.PRIMARY_PREFERRED,
-                ReadPreference.SECONDARY,
-                ReadPreference.SECONDARY_PREFERRED,
-            )
-            read_pf_mode = uri_options["readpreference"]
-            if isinstance(read_pf_mode, str):
-                read_pf_mode = read_pf_mode.lower()
-            for preference in read_preferences:
-                if (preference.name.lower() == read_pf_mode or preference.mode == read_pf_mode):
-                    conn_settings["read_preference"] = preference
-                    break
 
     # Deprecated parameters that should not be passed on
     kwargs.pop('slaves', None)

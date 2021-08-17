@@ -16,7 +16,7 @@ from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
 from mongoengine.base.common import get_document, ALLOW_INHERITANCE
-from mongoengine.common import ReadOnlyContext, AnalyticsContext
+from mongoengine.common import ReadOnlyContext
 
 from mongoengine.base.datastructures import (
     BaseDict,
@@ -845,8 +845,6 @@ class BaseDocument(object):
             alias = class_alias
         if ReadOnlyContext.isActive():
             alias += '_read_only'
-        if AnalyticsContext.isActive():
-            alias += '_analytics'
         return alias
 
     @classmethod
