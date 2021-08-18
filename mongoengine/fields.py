@@ -999,13 +999,14 @@ class ReferenceField(BaseField):
     """
 
     def __init__(self, document_type, dbref=False,
-                 reverse_delete_rule=DO_NOTHING, **kwargs):
+                 reverse_delete_rule=DO_NOTHING, no_index=False, **kwargs):
         """Initialises the Reference Field.
 
         :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
           or as the :class:`~pymongo.objectid.ObjectId`.id .
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+        :param no_index: Determines whether an index is created for this reference field
 
         .. note ::
             A reference to an abstract document type is always stored as a
@@ -1019,6 +1020,7 @@ class ReferenceField(BaseField):
         self.dbref = dbref
         self.document_type_obj = document_type
         self.reverse_delete_rule = reverse_delete_rule
+        self.no_index = no_index
         super(ReferenceField, self).__init__(**kwargs)
 
     @property
@@ -1153,12 +1155,13 @@ class CachedReferenceField(BaseField):
     .. versionadded:: 0.9
     """
 
-    def __init__(self, document_type, fields=[], auto_sync=True, reload_reference=False, **kwargs):
+    def __init__(self, document_type, fields=[], auto_sync=True, reload_reference=False, no_index=False, **kwargs):
         """Initialises the Cached Reference Field.
 
         :param fields:  A list of fields to be cached in document
         :param auto_sync: if True documents are auto updated.
         :param reload_reference: if True, we load the full object.
+        :param no_index: Determines whether an index is created for this field
         """
         if not isinstance(document_type, string_types) and \
                 not issubclass(document_type, (Document, string_types)):
@@ -1169,6 +1172,7 @@ class CachedReferenceField(BaseField):
         self.reload_reference = reload_reference
         self.document_type_obj = document_type
         self.fields = fields
+        self.no_index = no_index
         super(CachedReferenceField, self).__init__(**kwargs)
 
     def start_listener(self):
