@@ -1225,7 +1225,7 @@ class CachedReferenceField(BaseField):
         if isinstance(value, DBRef):
             fields_copy = _fields[:] if _fields is not None else None
             value = DocumentProxy(
-                lambda: dereference_dbref(value, self.document_type, _lazy_prefetch_base, _fields),
+                lambda: dereference_dbref(value, self.document_type, _lazy_prefetch_base, fields_copy),
                 value.id,
                 value.collection,
                 lazy_prefetch_base = _lazy_prefetch_base if _fields else None
