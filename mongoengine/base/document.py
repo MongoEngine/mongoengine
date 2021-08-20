@@ -960,10 +960,15 @@ class BaseDocument(object):
     @classmethod
     def _build_reference_indices(cls):
         res = []
+        if cls._meta.get('no_reference_index', False):
+            return res
+
+        ReferenceField = _import_class('ReferenceField')
+        CachedReferenceField = _import_class('CachedReferenceField')
         for name, field in iteritems(cls._fields):
-            if 'fields.ReferenceField' in str(field):
+            if isinstance(field, ReferenceField) and not field.no_index:
                 res.append({ 'fields': [(name, 1)] })
-            if 'fields.CachedReferenceField' in str(field):
+            if isinstance(field, CachedReferenceField) and not field.no_index:
                 res.append({ 'fields': [("%s._id" % name, 1)] })
         return res
         
