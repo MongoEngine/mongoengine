@@ -17,13 +17,7 @@ from mongoengine.base.proxy import DocumentProxy, ListFieldProxy, LazyPrefetchBa
 from six.moves import map, range
 
 PST_TIMEZONE = pytz.timezone("US/Pacific")
-
-try:
-    import dateutil
-except ImportError:
-    dateutil = None
-else:
-    import dateutil.parser
+import dateutil.parser
 
 import pymongo
 import gridfs

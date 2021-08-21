@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from typing import Any
 from collections import defaultdict
 
 from mongoengine.connection import get_connection, get_db
@@ -17,7 +18,7 @@ def should_auto_create_index(flag):
     return flag
 
 class ConnectionManager(object):
-    connections_registry = defaultdict(lambda: defaultdict(dict))
+    connections_registry: Any = defaultdict(lambda: defaultdict(dict))
 
     def get_and_setup(self, doc_cls, alias=None, collection_name=None, read_preference=None):
         read_preference = read_preference or Primary()

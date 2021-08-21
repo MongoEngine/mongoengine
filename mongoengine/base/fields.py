@@ -267,12 +267,12 @@ class BaseField(object):
     def owner_document(self):
         return self._owner_document
 
-    def _set_owner_document(self, owner_document):
-        self._owner_document = owner_document
-
     @owner_document.setter
     def owner_document(self, owner_document):
         self._set_owner_document(owner_document)
+
+    def _set_owner_document(self, owner_document):
+        self._owner_document = owner_document
 
 
 class ComplexBaseField(BaseField):
