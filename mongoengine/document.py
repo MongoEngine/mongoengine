@@ -153,7 +153,6 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
 
     __slots__ = ('__objects',)
 
-    @staticmethod
     def pk():
         """Primary key alias
         """

@@ -1,0 +1,3 @@
+from pymongo import mongo_client
+
+class MongoReplicaSetClient(mongo_client.MongoClient): ...
