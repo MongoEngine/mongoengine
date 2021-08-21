@@ -5,6 +5,7 @@ __all__ = ['pre_init', 'post_init', 'pre_save', 'pre_save_post_validation',
            'post_save', 'pre_delete', 'post_delete']
 
 from blinker import Namespace
+signals_available = True
 
 # the namespace for code signals.  If you are not mongoengine code, do
 # not put signals in here.  Create your own namespace instead.
