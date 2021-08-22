@@ -51,7 +51,7 @@ CLASSIFIERS = [
     'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 
-extra_opts = {"packages": find_packages(exclude=["tests", "tests.*"]) + ['pymongo-stubs', 'bson-stubs', 'django-mongoengine-stubs']}
+extra_opts = {"packages": find_packages(exclude=["tests", "tests.*"]) + ['pymongo-stubs', 'bson-stubs', 'django_mongoengine-stubs']}
 if sys.version_info[0] == 3:
     extra_opts['use_2to3'] = True
     extra_opts['tests_require'] = ['nose', 'rednose', 'coverage==3.7.1', 'blinker', 'Pillow>=2.0.0']
@@ -78,7 +78,7 @@ setup(name='mongoengine',
           "mongoengine": ["py.typed", "*.pyi", "base/*.pyi", "queryset/*.pyi"],
           "pymongo-stubs": ["*.pyi"],
           "bson-stubs": ["*.pyi"],
-          "django-mongoengine-stubs": ["*.pyi"],
+          "django_mongoengine-stubs": ["*.pyi"],
       },
       include_package_data=True,
       description=DESCRIPTION,
