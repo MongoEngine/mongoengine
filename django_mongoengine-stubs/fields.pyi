@@ -25,6 +25,7 @@ from mongoengine.base import BaseField, ComplexBaseField
 from mongoengine.document import Document
 from typing_extensions import Literal
 
+_DT = TypeVar("_DT", bound=Document)
 _T = TypeVar("_T")
 
 _ST = TypeVar("_ST")
@@ -886,39 +887,35 @@ class EmbeddedDocumentField(Generic[_ST, _GT], BaseField):
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
+        *,
         blank: Literal[True],
+        default: Union[_DT, Callable[[], _DT]],
+        required: bool = ...,
         help_text: str = ...,
-    ) -> EmbeddedDocumentField[Optional[_T], Optional[_T]]: ...
+        **kwargs,
+    ) -> EmbeddedDocumentField[Optional[_DT], _DT]: ...
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
+        *,
         blank: Literal[True],
-        *,
+        default: None,
         required: bool = ...,
-        default: Union[_T, Callable[[], _T]],
         help_text: str = ...,
-    ) -> EmbeddedDocumentField[Optional[_T], _T]: ...
+        **kwargs,
+    ) -> EmbeddedDocumentField[Optional[_DT], Optional[_DT]]: ...
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
         *,
-        required: bool = ...,
         blank: Literal[False] = False,
-        help_text: str = ...,
-    ) -> EmbeddedDocumentField[_T, _T]: ...
-    @overload
-    def __new__(
-        cls,
-        document_type: Type[_T],
-        *,
         required: bool = ...,
-        blank: Literal[False] = False,
-        default: Union[_T, Callable[[], _T]],
         help_text: str = ...,
-    ) -> EmbeddedDocumentField[Optional[_T], _T]: ...
+        **kwargs,
+    ) -> EmbeddedDocumentField[_DT, _DT]: ...
     def __set__(
         self: EmbeddedDocumentField[_ST, Any], instance: Any, value: _ST
     ) -> None: ...
@@ -939,6 +936,7 @@ class ListField(Generic[_T], ComplexBaseField):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = False,
+        **kwargs,
     ) -> ListField[StringField[Any, Any]]: ...
     @overload
     def __new__(
@@ -949,6 +947,7 @@ class ListField(Generic[_T], ComplexBaseField):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = False,
+        **kwargs,
     ) -> ListField[DictField[Any]]: ...
     @overload
     def __new__(
@@ -959,6 +958,7 @@ class ListField(Generic[_T], ComplexBaseField):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = False,
+        **kwargs,
     ) -> ListField[Any]: ...
     def __getitem__(self, arg: Any) -> _T: ...
     def __iter__(self) -> Iterator[_T]: ...
@@ -1391,22 +1391,26 @@ _MapType = Dict[str, Any]
 class MapField(DictField[_T]):
     pass
 
-# TODO(sbdchd): we can make this generic if we want better typing for assignment
-#     workflow = fields.ReferenceField("Dialog")
-# if we monkey patch we can make this generic like:
-#     workflow = fields.ReferenceField[Dialog]("Dialog")
-
-class ReferenceField(BaseField):
-    def __init__(
-        self,
-        model: str,
+class ReferenceField(Generic[_ST, _GT], BaseField):
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T],
+        blank: Literal[True],
         required: bool = ...,
-        name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        blank: bool = ...,
+        help_text: str = ...,
         **kwargs,
-    ) -> None: ...
-    def __getitem__(self, arg: Any) -> Any: ...
+    ) -> ReferenceField[Optional[_T], Optional[_T]]: ...
+
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T],
+        blank: Literal[False] = False,
+        required: bool = ...,
+        help_text: str = ...,
+        **kwargs,
+    ) -> ReferenceField[_T, _T]: ...
 
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
