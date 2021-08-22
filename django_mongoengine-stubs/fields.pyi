@@ -890,6 +890,17 @@ class EmbeddedDocumentField(Generic[_ST, _GT], BaseField):
         document_type: Type[_DT],
         *,
         blank: Literal[True],
+        default: None = None,
+        required: bool = ...,
+        help_text: str = ...,
+        **kwargs,
+    ) -> EmbeddedDocumentField[Optional[_DT], Optional[_DT]]: ...
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_DT],
+        *,
+        blank: Literal[True],
         default: Union[_DT, Callable[[], _DT]],
         required: bool = ...,
         help_text: str = ...,
@@ -900,19 +911,8 @@ class EmbeddedDocumentField(Generic[_ST, _GT], BaseField):
         cls,
         document_type: Type[_DT],
         *,
-        blank: Literal[True],
-        default: None,
-        required: bool = ...,
-        help_text: str = ...,
-        **kwargs,
-    ) -> EmbeddedDocumentField[Optional[_DT], Optional[_DT]]: ...
-    @overload
-    def __new__(
-        cls,
-        document_type: Type[_DT],
-        *,
         blank: Literal[False] = False,
-        default: Optional[Union[_DT, Callable[[], _DT]]] = ...,
+        default: Optional[Union[_DT, Callable[[], _DT]]] = None,
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
