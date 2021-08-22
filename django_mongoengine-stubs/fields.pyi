@@ -912,6 +912,7 @@ class EmbeddedDocumentField(Generic[_ST, _GT], BaseField):
         document_type: Type[_DT],
         *,
         blank: Literal[False] = False,
+        default: Optional[Union[_DT, Callable[[], _DT]]] = ...,
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
