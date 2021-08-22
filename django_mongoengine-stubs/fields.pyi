@@ -1412,6 +1412,27 @@ class ReferenceField(Generic[_ST, _GT], BaseField):
         **kwargs,
     ) -> ReferenceField[_T, _T]: ...
 
+class CachedReferenceField(Generic[_ST, _GT], BaseField):
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T],
+        blank: Literal[True],
+        required: bool = ...,
+        help_text: str = ...,
+        **kwargs,
+    ) -> CachedReferenceField[Optional[_T], Optional[_T]]: ...
+
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T],
+        blank: Literal[False] = False,
+        required: bool = ...,
+        help_text: str = ...,
+        **kwargs,
+    ) -> CachedReferenceField[_T, _T]: ...
+
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
 class EnumField(Generic[_ST, _GT], BaseField):
