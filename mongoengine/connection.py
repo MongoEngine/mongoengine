@@ -8,11 +8,7 @@ __all__ = ['ConnectionError', 'connect', 'register_connection',
 
 
 DEFAULT_CONNECTION_NAME = 'default'
-if IS_PYMONGO_3:
-    READ_PREFERENCE = ReadPreference.PRIMARY
-else:
-    from pymongo import MongoReplicaSetClient
-    READ_PREFERENCE = False
+READ_PREFERENCE = ReadPreference.PRIMARY
 
 
 class ConnectionError(Exception):

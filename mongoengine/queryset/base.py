@@ -25,10 +25,9 @@ from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
 from six import string_types, iteritems, text_type
+from pymongo.collection import ReturnDocument
 
-if IS_PYMONGO_3:
-    from pymongo.collection import ReturnDocument
-
+from typing import GenericMeta
 
 __all__ = ('BaseQuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
 
@@ -42,7 +41,7 @@ PULL = 4
 RE_TYPE = type(re.compile(''))
 
 
-class BaseQuerySet(object):
+class BaseQuerySet(object, metaclass=GenericMeta):
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """

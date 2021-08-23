@@ -6,7 +6,7 @@ from mongoengine.base.proxy import LazyPrefetchBase
 from collections import defaultdict
 from six.moves import range
 
-__all__ = ('QuerySet', 'QuerySetNoCache', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
+__all__ = ('QuerySet', 'QuerySetNoCache', 'QuerySetNoDeRef', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
            'DENY', 'PULL')
 
 # The maximum number of items to display in a QuerySet.__repr__

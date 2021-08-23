@@ -8,5 +8,25 @@ from mongoengine.queryset.queryset import *
 from mongoengine.queryset.transform import *
 from mongoengine.queryset.visitor import *
 
-__all__ = (field_list.__all__ + manager.__all__ + queryset.__all__ +
-           transform.__all__ + visitor.__all__)
+__all__ = (
+    "QuerySet",
+    "QuerySetNoCache",
+    "QuerySetNoDeRef",
+    "Q",
+    "queryset_manager",
+    "QuerySetManager",
+    "QueryFieldList",
+    "DO_NOTHING",
+    "NULLIFY",
+    "CASCADE",
+    "DENY",
+    "PULL",
+    # Errors that might be related to a queryset, mostly here for backward
+    # compatibility
+    "DoesNotExist",
+    "InvalidQueryError",
+    "MultipleObjectsReturned",
+    "NotUniqueError",
+    "OperationError",
+)
+
