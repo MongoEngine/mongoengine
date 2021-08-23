@@ -1,0 +1,47 @@
+---
+# Code Review Policy Configuration File
+#
+# Configuration for advanced code review requirements
+#
+# Please make sure rules are documented to include which team owns the rule.
+# Please check that any changes are also made to CODEOWNERS if applicable.
+#
+# Documentation here: https://github.com/palantir/policy-bot#policyyml-specification
+#
+
+policy:
+  approval:
+    - and:
+        - peer_review
+        - storage_review
+
+approval_rules:
+  # All files should require at least peer_review
+  # OWNER: N/A
+  - name: peer_review
+    requires:
+      count: 1
+      organizations: ["ContextLogic"]
+    options:
+      # If true, pushing new commits to a pull request will invalidate existing
+      # approvals for this rule. False by default.
+      invalidate_on_push: true
+      # Ignore people clicking update branch in the UI
+      ignore_update_merges: true
+      methods:
+        github_review: true
+
+  # Core storage review required
+  # OWNER: infra-core@wish.com
+  - name: storage_review
+    if:
+      changed_files:
+        paths:
+          - ".policy.ya?ml"
+          - ".github/.*"
+          - ".gitlab-ci.ya?ml"
+          - "mongoengine/.*"
+    requires:
+      count: 1
+      teams: ["ContextLogic/core-storage-team"]
+
