@@ -1396,43 +1396,51 @@ class ReferenceField(Generic[_ST, _GT], BaseField):
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
         blank: Literal[True],
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
-    ) -> ReferenceField[Optional[_T], Optional[_T]]: ...
+    ) -> ReferenceField[Optional[_DT], Optional[_DT]]: ...
 
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
         blank: Literal[False] = False,
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
-    ) -> ReferenceField[_T, _T]: ...
+    ) -> ReferenceField[_DT, _DT]: ...
+
+    def __set__(self, instance: Any, value: _ST) -> None: ...
+    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class CachedReferenceField(Generic[_ST, _GT], BaseField):
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
         blank: Literal[True],
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
-    ) -> CachedReferenceField[Optional[_T], Optional[_T]]: ...
+    ) -> CachedReferenceField[Optional[_DT], Optional[_DT]]: ...
 
     @overload
     def __new__(
         cls,
-        document_type: Type[_T],
+        document_type: Type[_DT],
         blank: Literal[False] = False,
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
-    ) -> CachedReferenceField[_T, _T]: ...
+    ) -> CachedReferenceField[_DT, _DT]: ...
+
+    def __set__(self, instance: Any, value: _ST) -> None: ...
+    def __get__(self, instance: Any, owner: Any) -> _GT: ...
+
+
 
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
