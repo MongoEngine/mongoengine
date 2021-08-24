@@ -5,6 +5,7 @@ from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
 from mongoengine.base.proxy import LazyPrefetchBase
 from collections import defaultdict
 from six.moves import range
+from typing import TypeVar
 
 __all__ = ('QuerySet', 'QuerySetNoCache', 'QuerySetNoDeRef', 'DO_NOTHING', 'NULLIFY', 'CASCADE',
            'DENY', 'PULL')
@@ -14,7 +15,8 @@ REPR_OUTPUT_SIZE = 20
 ITER_CHUNK_SIZE = 100
 
 
-class QuerySet(BaseQuerySet, LazyPrefetchBase):
+_T = TypeVar('_T')
+class QuerySet(BaseQuerySet[_T], LazyPrefetchBase):
     """The default queryset, that builds queries and handles a set of results
     returned from a query.
 

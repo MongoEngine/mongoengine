@@ -2,7 +2,7 @@ from typing import Optional
 
 from mongoengine.document import Document, DynamicDocument, EmbeddedDocument
 from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
-from mongoengine.queryset.queryset import QuerySet
+from mongoengine.queryset import QuerySet, QuerySetManager
 from mongoengine.queryset.visitor import Q
 from pymongo import MongoClient, ReadPreference
 
@@ -24,6 +24,7 @@ __all__ = [
     "Q",
     "DoesNotExist",
     "QuerySet",
+    "QuerySetManager",
     "DynamicDocument",
     "EmbeddedDocument",
     "Document",

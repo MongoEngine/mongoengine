@@ -27,7 +27,7 @@ from mongoengine.queryset.visitor import Q, QNode
 from six import string_types, iteritems, text_type
 from pymongo.collection import ReturnDocument
 
-from typing import GenericMeta
+from typing import Generic, TypeVar
 
 __all__ = ('BaseQuerySet', 'DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
 
@@ -41,7 +41,8 @@ PULL = 4
 RE_TYPE = type(re.compile(''))
 
 
-class BaseQuerySet(object, metaclass=GenericMeta):
+_T = TypeVar('_T')
+class BaseQuerySet(Generic[_T]):
     """A set of results returned from a query. Wraps a MongoDB cursor,
     providing :class:`~mongoengine.Document` objects as the results.
     """

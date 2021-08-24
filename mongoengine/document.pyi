@@ -3,7 +3,7 @@ from typing import Any, Dict, Mapping, Optional, Type, TypeVar
 import mongoengine.errors as errors
 from mongoengine.base import BaseDocument
 from mongoengine.fields import StringField
-from mongoengine.queryset import QuerySet
+from mongoengine.queryset import QuerySet, QuerySetManager
 from pymongo.collection import Collection
 from typing_extensions import TypedDict
 
@@ -21,10 +21,9 @@ class Document(BaseDocument):
     _fields: Dict[str, Any]
 
     pk = StringField(required=True)
+    objects = QuerySetManager()
     @classmethod
     def _get_collection(cls) -> Collection: ...
-    @classmethod
-    def objects(cls: Type[_U], **kwargs: Any) -> QuerySet[_U]: ...
     def modify(self, query: Optional[object] = ..., **update: object) -> bool: ...
     def update(self, **update: object) -> int: ...
     def __contains__(self, key: str) -> bool: ...

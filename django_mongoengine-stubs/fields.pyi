@@ -25,7 +25,7 @@ from mongoengine.base import BaseField, ComplexBaseField
 from mongoengine.document import Document
 from typing_extensions import Literal
 
-_DT = TypeVar("_DT", bound=Document)
+_DT = TypeVar("_DT")
 _T = TypeVar("_T")
 
 _ST = TypeVar("_ST")
