@@ -3,6 +3,7 @@ from typing import Any, Dict, Mapping, Optional, Type, TypeVar
 import mongoengine.errors as errors
 from mongoengine.base import BaseDocument
 from mongoengine.fields import StringField
+from mongoengine.queryset import QuerySet
 from pymongo.collection import Collection
 from typing_extensions import TypedDict
 
@@ -22,17 +23,8 @@ class Document(BaseDocument):
     pk = StringField(required=True)
     @classmethod
     def _get_collection(cls) -> Collection: ...
-    # NOTE(sbdchd): if we are willing to change all Document.objects.filter()
-    # to Document.objects().filter() then we can define this method and we
-    # won't need to provide the `objects = ObjectManager[T]()` in each mongo model.
-    #
-    # @classmethod
-    # def objects(cls: Type[U]) -> QuerySet[U]:
-    #     """
-    #     from:
-    #     https://github.com/python/peps/blob/50a31d14b467aba0cc0168408369d2bb28e9b4e2/pep-0484.txt#L1260-L1270
-    #     """
-    #     ...
+    @classmethod
+    def objects(cls: Type[_U]) -> QuerySet[_U]: ...
     def modify(self, query: Optional[object] = ..., **update: object) -> bool: ...
     def update(self, **update: object) -> int: ...
     def __contains__(self, key: str) -> bool: ...
