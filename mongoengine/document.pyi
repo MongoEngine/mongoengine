@@ -2,10 +2,11 @@ from typing import Any, Dict, Mapping, Optional, Type, TypeVar
 
 import mongoengine.errors as errors
 from mongoengine.base import BaseDocument
-from mongoengine.fields import StringField
+from mongoengine.fields import StringField, ObjectIdField
 from mongoengine.queryset import QuerySet, QuerySetManager
 from pymongo.collection import Collection
 from typing_extensions import TypedDict
+from bson import ObjectId
 
 _U = TypeVar("_U", bound="Document")
 
@@ -21,6 +22,7 @@ class Document(BaseDocument):
     _fields: Dict[str, Any]
 
     pk = StringField(required=True)
+    id = ObjectIdField(name="_id", primary_key=True, default=ObjectId)
     objects = QuerySetManager()
     @classmethod
     def _get_collection(cls) -> Collection: ...
