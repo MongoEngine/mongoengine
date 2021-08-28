@@ -513,6 +513,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         Helper method, should only be used inside save().
         """
+        if upsert and (save_condition is not None):
+            raise ValueError(
+                "Updating with a save_condition implies upsert is False or None but upsert is True"
+            )
         collection = self._get_collection()
         object_id = doc["_id"]
         created = False

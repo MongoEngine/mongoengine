@@ -1504,6 +1504,18 @@ class TestDocumentInstance(MongoDBTestCase):
 
         assert Person.objects.count() == 1
 
+    def test_save_upsert_raises_value_error_when_upsert_and_save_condition_set(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+        p1.name = "Bob Snr"
+        with pytest.raises(ValueError):
+            p1.save(save_condition={}, upsert=True)
+
     def test_can_save_if_not_included(self):
         class EmbeddedDoc(EmbeddedDocument):
             pass
