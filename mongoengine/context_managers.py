@@ -4,7 +4,12 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import (
+    DEFAULT_CONNECTION_NAME,
+    _set_session,
+    get_connection,
+    get_db,
+)
 from mongoengine.pymongo_support import count_documents
 
 __all__ = (
@@ -289,3 +294,29 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
         write_concern=WriteConcern(**combined_write_concerns),
         read_concern=ReadConcern(**combined_read_concerns),
     )
+
+
+@contextmanager
+def run_in_transaction(alias=DEFAULT_CONNECTION_NAME):
+    """
+    TODO: A session for a transaction begins with a client connection and can span DBs within that connection.
+
+    What should be done if a session/transaction uses a  document bound to a different connection? Should we do
+    anything?
+
+    When I say "connection" I don't just mean a different alias - I mean a completely different host. The way
+    I understand mongoengine's code to function is that I could have multiple aliases binding to the same host.
+
+    pymongo ClientSession provides access to the pymongo Client, which could be used to compare against the
+    mongoengine connection aka pymongo Client instance.
+
+    Might require some hoops to jump through, but would provide users of this a "fail fast" option to prevent
+    themselves from assuming cross connection transactions are a thing. That said, the docs are pretty clear
+    about "a session  may only be used with the MongoClient that started it."
+    """
+
+    conn = get_connection(alias)
+    with conn.start_session() as session:
+        _set_session(session, alias)
+        yield
+        _set_session(None, alias)
