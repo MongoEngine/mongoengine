@@ -22,7 +22,7 @@ DEFAULT_PORT = 27017
 _connection_settings = {}
 _connections = {}
 _dbs = {}
-_sessions = {}
+_session = None
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -235,8 +235,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     if alias in _connection_settings:
         del _connection_settings[alias]
 
-    if alias in _sessions:
-        del _sessions[alias]
+    _clear_session()
 
 
 def disconnect_all():
@@ -402,14 +401,19 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     return get_connection(alias)
 
 
-def _set_session(session, alias=DEFAULT_CONNECTION_NAME):
-    global _sessions
-    _sessions[alias] = session
+def _set_session(session):
+    global _session
+    _session = session
 
 
-def _get_session(alias=DEFAULT_CONNECTION_NAME):
-    global _sessions
-    return _sessions.get(alias)
+def _get_session():
+    global _session
+    return _session
+
+
+def _clear_session():
+    global _session
+    _session = None
 
 
 # Support old naming convention
