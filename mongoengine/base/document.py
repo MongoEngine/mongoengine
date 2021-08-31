@@ -470,6 +470,14 @@ class BaseDocument:
         # If the value is a dict with '_cls' in it, turn it into a document
         is_dict = isinstance(value, dict)
         if is_dict and "_cls" in value:
+
+            # If the value is a referenced document, dereference it
+            if "_ref" in value:
+                _dereference = _import_class("DeReference")()
+                documents = _dereference([value])
+                if documents:
+                    return documents[0]
+
             cls = get_document(value["_cls"])
             return cls(**value)
 
