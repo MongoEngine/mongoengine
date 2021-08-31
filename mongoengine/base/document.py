@@ -520,13 +520,14 @@ class BaseDocument:
                     if field.startswith(level):
                         remove(field)
 
-    def _clear_changed_fields(self):
+    def _clear_changed_fields(self, cache_obj=None):
         """Using _get_changed_fields iterate and remove any fields that
         are marked as changed.
         """
         ReferenceField = _import_class("ReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
-
+        if cache_obj is None:
+            cache_obj = set()
         for changed in self._get_changed_fields():
             parts = changed.split(".")
             data = self
@@ -541,7 +542,9 @@ class BaseDocument:
                 else:
                     field_name = data._reverse_db_field_map.get(part, part)
                     data = getattr(data, field_name, None)
-
+                if id(data) in cache_obj:
+                    continue
+                cache_obj.add(id(data))
                 if not isinstance(data, LazyReference) and hasattr(
                     data, "_changed_fields"
                 ):
@@ -554,12 +557,12 @@ class BaseDocument:
                         data.field, (ReferenceField, GenericReferenceField)
                     ):
                         continue
-                    BaseDocument._nestable_types_clear_changed_fields(data)
+                    BaseDocument._nestable_types_clear_changed_fields(data, cache_obj)
 
         self._changed_fields = []
 
     @staticmethod
-    def _nestable_types_clear_changed_fields(data):
+    def _nestable_types_clear_changed_fields(data, cache_obj):
         """Inspect nested data for changed fields
 
         :param data: data to inspect for changes
@@ -577,9 +580,12 @@ class BaseDocument:
             if hasattr(value, "_get_changed_fields") and not isinstance(
                 value, Document
             ):  # don't follow references
-                value._clear_changed_fields()
+                value._clear_changed_fields(cache_obj)
             elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_clear_changed_fields(value)
+                if id(data) in cache_obj:
+                    continue
+                cache_obj.add(id(data))
+                BaseDocument._nestable_types_clear_changed_fields(value, cache_obj)
 
     @staticmethod
     def _nestable_types_changed_fields(changed_fields, base_key, data):
