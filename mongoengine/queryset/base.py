@@ -15,7 +15,7 @@ from pymongo.read_concern import ReadConcern
 from mongoengine import signals
 from mongoengine.base import get_document
 from mongoengine.common import _import_class
-from mongoengine.connection import get_db
+from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
     set_read_write_concern,
     set_write_concern,
@@ -346,7 +346,7 @@ class BaseQuerySet:
                 insert_func = collection.insert_one
 
         try:
-            inserted_result = insert_func(raw)
+            inserted_result = insert_func(raw, session=_get_session())
             ids = (
                 [inserted_result.inserted_id]
                 if return_one
@@ -509,7 +509,7 @@ class BaseQuerySet:
                 )
 
         with set_write_concern(queryset._collection, write_concern) as collection:
-            result = collection.delete_many(queryset._query)
+            result = collection.delete_many(queryset._query, session=_get_session())
 
             # If we're using an unack'd write concern, we don't really know how
             # many items have been deleted at this point, hence we only return
@@ -567,7 +567,9 @@ class BaseQuerySet:
                 update_func = collection.update_one
                 if multi:
                     update_func = collection.update_many
-                result = update_func(query, update, upsert=upsert)
+                result = update_func(
+                    query, update, upsert=upsert, session=_get_session()
+                )
             if full_result:
                 return result
             elif result.raw_result:
@@ -677,7 +679,7 @@ class BaseQuerySet:
                 warnings.warn(msg, DeprecationWarning)
             if remove:
                 result = queryset._collection.find_one_and_delete(
-                    query, sort=sort, **self._cursor_args
+                    query, sort=sort, session=_get_session(), **self._cursor_args
                 )
             else:
                 if new:
@@ -690,6 +692,7 @@ class BaseQuerySet:
                     upsert=upsert,
                     sort=sort,
                     return_document=return_doc,
+                    session=_get_session(),
                     **self._cursor_args,
                 )
         except pymongo.errors.DuplicateKeyError as err:
@@ -728,7 +731,9 @@ class BaseQuerySet:
         """
         doc_map = {}
 
-        docs = self._collection.find({"_id": {"$in": object_ids}}, **self._cursor_args)
+        docs = self._collection.find(
+            {"_id": {"$in": object_ids}}, session=_get_session(), **self._cursor_args
+        )
         if self._scalar:
             for doc in docs:
                 doc_map[doc["_id"]] = self._get_scalar(self._document._from_son(doc))
@@ -1312,7 +1317,9 @@ class BaseQuerySet:
                 read_preference=self._read_preference, read_concern=self._read_concern
             )
 
-        return collection.aggregate(final_pipeline, cursor={}, **kwargs)
+        return collection.aggregate(
+            final_pipeline, cursor={}, session=_get_session(), **kwargs
+        )
 
     # JS functionality
     def map_reduce(
@@ -1418,7 +1425,7 @@ class BaseQuerySet:
                 mr_args["out"] = SON(ordered_output)
 
         results = getattr(queryset._collection, map_reduce_function)(
-            map_f, reduce_f, **mr_args
+            map_f, reduce_f, session=_get_session(), **mr_args
         )
 
         if map_reduce_function == "map_reduce":
@@ -1507,7 +1514,9 @@ class BaseQuerySet:
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = tuple(self._document._get_collection().aggregate(pipeline))
+        result = tuple(
+            self._document._get_collection().aggregate(pipeline, session=_get_session())
+        )
 
         if result:
             return result[0]["total"]
@@ -1534,7 +1543,9 @@ class BaseQuerySet:
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = tuple(self._document._get_collection().aggregate(pipeline))
+        result = tuple(
+            self._document._get_collection().aggregate(pipeline, session=_get_session())
+        )
         if result:
             return result[0]["total"]
         return 0
@@ -1640,9 +1651,11 @@ class BaseQuerySet:
         if self._read_preference is not None or self._read_concern is not None:
             self._cursor_obj = self._collection.with_options(
                 read_preference=self._read_preference, read_concern=self._read_concern
-            ).find(self._query, **self._cursor_args)
+            ).find(self._query, session=_get_session(), **self._cursor_args)
         else:
-            self._cursor_obj = self._collection.find(self._query, **self._cursor_args)
+            self._cursor_obj = self._collection.find(
+                self._query, session=_get_session(), **self._cursor_args
+            )
 
         # Apply "where" clauses to cursor
         if self._where_clause:
@@ -1715,29 +1728,29 @@ class BaseQuerySet:
 
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.');
+            function() {{
+                var path = '{{{{~{field}}}}}'.split('.');
                 var field = this;
 
-                for (p in path) {
+                for (p in path) {{
                     if (typeof field != 'undefined')
                        field = field[path[p]];
                     else
                        break;
-                }
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
+                }}
+                if (field && field.constructor == Array) {{
+                    field.forEach(function(item) {{
                         emit(item, 1);
-                    });
-                } else if (typeof field != 'undefined') {
+                    }});
+                }} else if (typeof field != 'undefined') {{
                     emit(field, 1);
-                } else {
+                }} else {{
                     emit(null, 1);
-                }
-            }
-        """ % {
-            "field": field
-        }
+                }}
+            }}
+        """.format(
+            field=field
+        )
         reduce_func = """
             function(key, values) {
                 var total = 0;

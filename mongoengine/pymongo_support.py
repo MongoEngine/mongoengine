@@ -4,6 +4,8 @@ Helper functions, constants, and types to aid with PyMongo v2.7 - v3.x support.
 import pymongo
 from pymongo.errors import OperationFailure
 
+from mongoengine.connection import _get_session
+
 _PYMONGO_37 = (3, 7)
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
@@ -31,7 +33,9 @@ def count_documents(
     # count_documents appeared in pymongo 3.7
     if IS_PYMONGO_GTE_37:
         try:
-            return collection.count_documents(filter=filter, **kwargs)
+            return collection.count_documents(
+                filter=filter, session=_get_session(), **kwargs
+            )
         except OperationFailure:
             # OperationFailure - accounts for some operators that used to work
             # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
@@ -50,7 +54,7 @@ def count_documents(
 def list_collection_names(db, include_system_collections=False):
     """Pymongo>3.7 deprecates collection_names in favour of list_collection_names"""
     if IS_PYMONGO_GTE_37:
-        collections = db.list_collection_names()
+        collections = db.list_collection_names(session=_get_session())
     else:
         collections = db.collection_names()
 

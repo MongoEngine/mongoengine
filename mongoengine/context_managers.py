@@ -7,6 +7,7 @@ from mongoengine.common import _import_class
 from mongoengine.connection import (
     DEFAULT_CONNECTION_NAME,
     _clear_session,
+    _get_session,
     _set_session,
     get_connection,
     get_db,
@@ -216,10 +217,10 @@ class query_counter:
         }
 
     def _turn_on_profiling(self):
-        self.initial_profiling_level = self.db.profiling_level()
-        self.db.set_profiling_level(0)
-        self.db.system.profile.drop()
-        self.db.set_profiling_level(2)
+        self.initial_profiling_level = self.db.profiling_level(session=_get_session())
+        self.db.set_profiling_level(0, session=_get_session())
+        self.db.system.profile.drop(session=_get_session())
+        self.db.set_profiling_level(2, session=_get_session())
 
     def _resets_profiling(self):
         self.db.set_profiling_level(self.initial_profiling_level)
