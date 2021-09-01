@@ -8,6 +8,7 @@ from mongoengine.context_managers import (
     no_dereference,
     no_sub_classes,
     query_counter,
+    run_in_transaction,
     set_read_write_concern,
     set_write_concern,
     switch_collection,
@@ -411,6 +412,34 @@ class TestContextManagers:
                 db.system.indexes.find_one()
             )  # queries on db.system.indexes are ignored as well
             assert q == 1
+
+    def test_updating_a_document_within_a_transaction_succeeds(self):
+        connect("mongoenginetest")
+
+        class A(Document):
+            name = StringField()
+
+        a_doc = A.objects.create(name="a")
+
+        with run_in_transaction():
+            a_doc.update(name="b")
+        assert "b" == A.objects.get(id=a_doc.id).name
+
+    def test_an_exception_raised_in_a_transaction_rolls_back_updates(self):
+        connect("mongoenginetest")
+
+        class A(Document):
+            name = StringField()
+
+        a_doc = A.objects.create(name="a")
+
+        try:
+            with run_in_transaction():
+                a_doc.update(name="b")
+                raise Exception("Exception")
+        except Exception:
+            pass
+        assert "a" == A.objects.get(id=a_doc.id).name
 
 
 if __name__ == "__main__":
