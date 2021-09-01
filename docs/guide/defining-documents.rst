@@ -628,8 +628,8 @@ point. To create a geospatial index you must prefix the field with the
             ],
         }
 
-Time To Live indexes
---------------------
+Time To Live (TTL) indexes
+--------------------------
 
 A special index type that allows you to automatically expire data from a
 collection after a given period. See the official

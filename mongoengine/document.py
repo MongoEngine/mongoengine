@@ -885,6 +885,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         Global defaults can be set in the meta - see :doc:`guide/defining-documents`
 
+        By default, this will get called automatically upon first interaction with the
+        Document collection (query, save, etc) so unless you disabled `auto_create_index`, you
+        shouldn't have to call this manually.
+
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
         """
@@ -938,8 +942,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def list_indexes(cls):
-        """Lists all of the indexes that should be created for given
-        collection. It includes all the indexes from super- and sub-classes.
+        """Lists all indexes that should be created for the Document collection.
+        It includes all the indexes from super- and sub-classes.
+
+        Note that it will only return the indexes' fields, not the indexes' options
         """
         if cls._meta.get("abstract"):
             return []
