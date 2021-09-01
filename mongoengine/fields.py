@@ -33,7 +33,11 @@ from mongoengine.base import (
 )
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import (
+    DEFAULT_CONNECTION_NAME,
+    _get_session,
+    get_db,
+)
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import (
     DoesNotExist,
@@ -903,7 +907,9 @@ class DynamicField(BaseField):
         if isinstance(value, dict) and "_cls" in value:
             doc_cls = get_document(value["_cls"])
             if "_ref" in value:
-                value = doc_cls._get_db().dereference(value["_ref"])
+                value = doc_cls._get_db().dereference(
+                    value["_ref"], session=_get_session()
+                )
             return doc_cls._from_son(value)
 
         return super().to_python(value)
@@ -1206,7 +1212,7 @@ class ReferenceField(BaseField):
 
     @staticmethod
     def _lazy_load_ref(ref_cls, dbref):
-        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        dereferenced_son = ref_cls._get_db().dereference(dbref, session=_get_session())
         if dereferenced_son is None:
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
 
@@ -1354,7 +1360,7 @@ class CachedReferenceField(BaseField):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value["_id"]))
             return self.document_type._from_son(
-                self.document_type._get_db().dereference(value)
+                self.document_type._get_db().dereference(value, session=_get_session())
             )
 
         return value
@@ -1370,7 +1376,7 @@ class CachedReferenceField(BaseField):
 
     @staticmethod
     def _lazy_load_ref(ref_cls, dbref):
-        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        dereferenced_son = ref_cls._get_db().dereference(dbref, session=_get_session())
         if dereferenced_son is None:
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
 
@@ -1514,7 +1520,7 @@ class GenericReferenceField(BaseField):
 
     @staticmethod
     def _lazy_load_ref(ref_cls, dbref):
-        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        dereferenced_son = ref_cls._get_db().dereference(dbref, session=_get_session())
         if dereferenced_son is None:
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
 
@@ -1780,7 +1786,7 @@ class GridFSProxy:
 
         try:
             if self.gridout is None:
-                self.gridout = self.fs.get(self.grid_id)
+                self.gridout = self.fs.get(self.grid_id, session=_get_session())
             return self.gridout
         except Exception:
             # File has been deleted
@@ -1829,7 +1835,7 @@ class GridFSProxy:
 
     def delete(self):
         # Delete file from GridFS, FileField still remains
-        self.fs.delete(self.grid_id)
+        self.fs.delete(self.grid_id, session=_get_session())
         self.grid_id = None
         self.gridout = None
         self._mark_as_changed()
@@ -2005,7 +2011,7 @@ class ImageGridFsProxy(GridFSProxy):
         # deletes thumbnail
         out = self.get()
         if out and out.thumbnail_id:
-            self.fs.delete(out.thumbnail_id)
+            self.fs.delete(out.thumbnail_id, session=_get_session())
 
         return super().delete()
 
@@ -2045,7 +2051,7 @@ class ImageGridFsProxy(GridFSProxy):
         """
         out = self.get()
         if out and out.thumbnail_id:
-            return self.fs.get(out.thumbnail_id)
+            return self.fs.get(out.thumbnail_id, session=_get_session())
 
     def write(self, *args, **kwargs):
         raise RuntimeError('Please use "put" method instead')
@@ -2148,6 +2154,7 @@ class SequenceField(BaseField):
             update={"$inc": {"next": 1}},
             return_document=ReturnDocument.AFTER,
             upsert=True,
+            session=_get_session(),
         )
         return self.value_decorator(counter["next"])
 
@@ -2161,6 +2168,7 @@ class SequenceField(BaseField):
             update={"$set": {"next": value}},
             return_document=ReturnDocument.AFTER,
             upsert=True,
+            session=_get_session(),
         )
         return self.value_decorator(counter["next"])
 
@@ -2173,7 +2181,7 @@ class SequenceField(BaseField):
         sequence_name = self.get_sequence_name()
         sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
-        data = collection.find_one({"_id": sequence_id})
+        data = collection.find_one({"_id": sequence_id}, session=_get_session())
 
         if data:
             return self.value_decorator(data["next"] + 1)
