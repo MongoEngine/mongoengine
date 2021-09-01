@@ -20,6 +20,7 @@ __all__ = (
     "no_dereference",
     "no_sub_classes",
     "query_counter",
+    "run_in_transaction",
     "set_write_concern",
     "set_read_write_concern",
 )
@@ -303,6 +304,8 @@ def run_in_transaction(alias=DEFAULT_CONNECTION_NAME):
     conn = get_connection(alias)
     with conn.start_session() as session:
         with session.start_transaction():
-            _set_session(session)
-            yield
-            _clear_session()
+            try:
+                _set_session(session)
+                yield
+            finally:
+                _clear_session()
