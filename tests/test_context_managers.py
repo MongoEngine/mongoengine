@@ -419,27 +419,90 @@ class TestContextManagers:
         class A(Document):
             name = StringField()
 
+        A.drop_collection()
+
         a_doc = A.objects.create(name="a")
 
         with run_in_transaction():
             a_doc.update(name="b")
         assert "b" == A.objects.get(id=a_doc.id).name
 
-    def test_an_exception_raised_in_a_transaction_rolls_back_updates(self):
+    def test_transaction_updates_across_databases_succeeds(self):
         connect("mongoenginetest")
+        connect("test2", "test2")
 
         class A(Document):
             name = StringField()
 
+        A.drop_collection()
+
         a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            meta = {"db_alias": "test2"}
+            name = StringField()
+
+        B.drop_collection()
+
+        b_doc = B.objects.create(name="b")
+
+        with run_in_transaction():
+            a_doc.update(name="a2")
+            b_doc.update(name="b2")
+
+        assert "a2" == A.objects.get(id=a_doc.id).name
+        assert "b2" == B.objects.get(id=b_doc.id).name
+
+        with run_in_transaction():
+            a_doc.update(name="a3")
+            with switch_db(A, "test2"):
+                a_doc.update(name="a4", upsert=True)
+                b_doc.update(name="b3")
+            b_doc.update(name="b4")
+
+        assert "a3" == A.objects.get(id=a_doc.id).name
+        assert "b4" == B.objects.get(id=b_doc.id).name
+        with switch_db(A, "test2"):
+            assert "a4" == A.objects.get(id=a_doc.id).name
+
+    def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
+        self,
+    ):
+        connect("mongoenginetest")
+        connect("test2", "test2")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        with switch_db(A, "test2"):
+            A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            meta = {"db_alias": "test2"}
+            name = StringField()
+
+        B.drop_collection()
+
+        b_doc = B.objects.create(name="b")
 
         try:
             with run_in_transaction():
-                a_doc.update(name="b")
-                raise Exception("Exception")
+                a_doc.update(name="a3")
+                with switch_db(A, "test2"):
+                    a_doc.update(name="a4", upsert=True)
+                    b_doc.update(name="b3")
+                    b_doc.update(name="b4")
+                raise Exception
         except Exception:
             pass
+
         assert "a" == A.objects.get(id=a_doc.id).name
+        assert "b" == B.objects.get(id=b_doc.id).name
+        with switch_db(A, "test2"):
+            assert 0 == A.objects.all().count()
 
 
 if __name__ == "__main__":
