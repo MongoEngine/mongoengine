@@ -6,7 +6,7 @@ import contextlib
 import pymongo
 from pymongo.collection import ReturnDocument
 from pymongo.read_preferences import ReadPreference
-from pymongo.read_preferences import PrimaryPreferred, SecondaryPreferred
+from pymongo.read_preferences import PrimaryPreferred, SecondaryPreferred, Secondary, Nearest
 import time
 import greenlet
 import smtplib
@@ -622,8 +622,14 @@ class Document(BaseDocument):
             if tag_sets:
                 if read_preference == ReadPreference.PRIMARY_PREFERRED:
                     return cls._pymongo_collection[use_async].with_options(read_preference=PrimaryPreferred(tag_sets))
-                else:
+                elif read_preference == ReadPreference.SECONDARY_PREFERRED:
                     return cls._pymongo_collection[use_async].with_options(read_preference=SecondaryPreferred(tag_sets))
+                elif read_preference == ReadPreference.SECONDARY:
+                    return cls._pymongo_collection[use_async].with_options(read_preference=Secondary(tag_sets))
+                elif read_preference == ReadPreference.NEAREST:
+                    return cls._pymongo_collection[use_async].with_options(read_preference=Nearest(tag_sets))
+                else:
+                    return cls._pymongo_collection[use_async].with_options(read_preference=read_preference)
             else:
                 return cls._pymongo_collection[use_async].with_options(read_preference=read_preference)
         return cls._pymongo_collection[use_async]
