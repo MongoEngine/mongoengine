@@ -5,7 +5,15 @@ _field_list_cache = []
 from mongoengine import connection
 
 class ReadOnlyContext(object):
-    read_only = False
+    """Make the current context read-only.
+
+    Usage:
+        with ReadOnlyContext():
+            ... # stuff that should not be allowed to modify the database.
+
+    This applies only to the current thread.
+    """
+    thread = threading.local()
 
     def __enter__(self):
         ReadOnlyContext.activate()
@@ -15,16 +23,17 @@ class ReadOnlyContext(object):
 
     @classmethod
     def isActive(cls):
-        return cls.read_only
+        # The read_only attribute is the count of the number of times we have entered a ReadOnlyContext.
+        return bool(getattr(ReadOnlyContext.thread, 'read_only', 0))
 
     @classmethod
     def activate(cls):
-        ReadOnlyContext.read_only = True
+        ReadOnlyContext.thread.read_only = getattr(ReadOnlyContext.thread, 'read_only', 0) + 1
 
     @classmethod
     def deactivate(cls):
-        ReadOnlyContext.read_only = False
-
+        state = getattr(ReadOnlyContext.thread, 'read_only', 0)
+        ReadOnlyContext.thread.read_only = (state - 1) if state > 0 else 0
 
 def _import_class(cls_name):
     """Cache mechanism for imports.
