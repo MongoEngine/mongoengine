@@ -1257,6 +1257,35 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
         assert obj is None
 
+
+        # Test has_word
+        obj = self.Person.objects(name__has_word="Guido").first()
+        assert obj == person
+        obj = self.Person.objects(name__has_word="rossum").first()
+        assert obj is None
+        obj = self.Person.objects(name__has_word="Rossu").first()
+        assert obj is None
+
+        # Test ihas_word
+        obj = self.Person.objects(name__ihas_word="rOSSUM").first()
+        assert obj == person
+        obj = self.Person.objects(name__ihas_word="rOSSU").first()
+        assert obj is None
+
+        # Test regex
+        obj = self.Person.objects(name__regex="^[Guido].*[Rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__regex="^[guido].*[rossum]$").first()
+        assert obj is None
+        obj = self.Person.objects(name__regex="^[uido].*[Rossum]$").first()
+        assert obj is None
+
+        # Test iregex
+        obj = self.Person.objects(name__iregex="^[guido].*[rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__iregex="^[Uido].*[Rossum]$").first()
+        assert obj is None
+
         # Test unsafe expressions
         person = self.Person(name="Guido van Rossum [.'Geek']")
         person.save()
@@ -1341,7 +1370,12 @@ class TestQueryset(unittest.TestCase):
         person.save()
 
         people = self.Person.objects
-        people = people.filter(name__startswith="Gui").filter(name__not__endswith="tum")
+        people = people.filter(name__startswith="Gui")\
+            .filter(name__not__endswith="tum")\
+            .filter(name__icontains="VAN")\
+            .filter(name__regex="^Guido")\
+            .filter(name__has_word="Guido")\
+            .filter(name__has_word="van")
         assert people.count() == 1
 
     def assertSequence(self, qs, expected):
