@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+
+import threading
+
 _class_registry_cache = {}
 _field_list_cache = []
 
