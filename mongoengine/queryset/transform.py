@@ -53,8 +53,8 @@ STRING_OPERATORS = (
     "iexact",
     "regex",
     "iregex",
-    "has_word",
-    "ihas_word",
+    "wholeword",
+    "iwholeword",
 )
 CUSTOM_OPERATORS = ("match",)
 MATCH_OPERATORS = (

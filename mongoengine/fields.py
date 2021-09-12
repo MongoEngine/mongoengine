@@ -157,7 +157,7 @@ class StringField(BaseField):
                 regex = r"%s$"
             elif op == "exact":
                 regex = r"^%s$"
-            elif op == "has_word":
+            elif op == "wholeword":
                 regex = r"\b%s\b"
             elif op == "regex":
                 regex = value
@@ -1094,14 +1094,7 @@ class DictField(ComplexBaseField):
 
     def prepare_query_value(self, op, value):
         match_operators = [
-            "contains",
-            "icontains",
-            "startswith",
-            "istartswith",
-            "endswith",
-            "iendswith",
-            "exact",
-            "iexact",
+            *STRING_OPERATORS
         ]
 
         if op in match_operators and isinstance(value, str):

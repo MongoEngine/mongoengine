@@ -86,6 +86,10 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``wholeword`` -- string field contains whole word
+* ``iwholeword`` -- string field contains whole word (case insensitive)
+* ``regex`` -- string field match by regex
+* ``iregex`` -- string field match by regex (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 

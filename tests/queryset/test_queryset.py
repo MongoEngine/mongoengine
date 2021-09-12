@@ -1258,18 +1258,18 @@ class TestQueryset(unittest.TestCase):
         assert obj is None
 
 
-        # Test has_word
-        obj = self.Person.objects(name__has_word="Guido").first()
+        # Test wholeword
+        obj = self.Person.objects(name__wholeword="Guido").first()
         assert obj == person
-        obj = self.Person.objects(name__has_word="rossum").first()
+        obj = self.Person.objects(name__wholeword="rossum").first()
         assert obj is None
-        obj = self.Person.objects(name__has_word="Rossu").first()
+        obj = self.Person.objects(name__wholeword="Rossu").first()
         assert obj is None
 
-        # Test ihas_word
-        obj = self.Person.objects(name__ihas_word="rOSSUM").first()
+        # Test iwholeword
+        obj = self.Person.objects(name__iwholeword="rOSSUM").first()
         assert obj == person
-        obj = self.Person.objects(name__ihas_word="rOSSU").first()
+        obj = self.Person.objects(name__iwholeword="rOSSU").first()
         assert obj is None
 
         # Test regex
@@ -1374,8 +1374,8 @@ class TestQueryset(unittest.TestCase):
             .filter(name__not__endswith="tum")\
             .filter(name__icontains="VAN")\
             .filter(name__regex="^Guido")\
-            .filter(name__has_word="Guido")\
-            .filter(name__has_word="van")
+            .filter(name__wholeword="Guido")\
+            .filter(name__wholeword="van")
         assert people.count() == 1
 
     def assertSequence(self, qs, expected):
