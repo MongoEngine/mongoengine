@@ -284,8 +284,7 @@ class Document(BaseDocument):
                     proxy_client.instance().bulk(cls, cls.get_bulk_attr(cls.PROXY_BULK_OP), unordered)
                 else:
                     bulk_ops = cls.get_bulk_attr(cls.BULK_OP)
-                    # yiguo: hardcode ordered to True, or it will break unittests
-                    cls._pymongo().bulk_write(bulk_ops, ordered=True)
+                    cls._pymongo().bulk_write(bulk_ops, ordered=not unordered)
 
                 for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
                     instance = props['obj']
