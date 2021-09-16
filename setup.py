@@ -31,6 +31,9 @@ init = os.path.join(os.path.dirname(__file__), 'mongoengine', '__init__.py')
 version_line = list([l for l in open(init) if l.startswith('VERSION')])[0]
 
 VERSION = get_version(eval(version_line.split('=')[-1]))
+if os.environ.get('__PROJECT_GIT_COMMIT_SHA', '') != '':
+    VERSION = VERSION + "." + os.environ.get('__PROJECT_GIT_COMMIT_SHA')
+
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',

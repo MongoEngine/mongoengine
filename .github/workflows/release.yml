@@ -1,0 +1,42 @@
+name: release
+
+# on:
+#   push:
+#    branches:
+#      - 'master'
+
+on: [ push ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ 3.6 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip -V
+
+      - name: Build and Publish to Rippling Artifactory
+        run: |
+          pip install twine
+          export AWS_ACCESS_KEY_ID=${{ secrets.GH_USER_AWS_ACCESS_KEY_ID }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.GH_USER_AWS_SECRET_ACCESS_KEY }}
+          export AWS_DEFAULT_REGION=us-west-2
+          export AWS_CODEARTIFACT_DOMAIN_OWNER_ID=${{ secrets.AWS_CODEARTIFACT_DOMAIN_OWNER_ID }}
+          export AWS_CODEARTIFACT_DOMAIN=${{ secrets.AWS_CODEARTIFACT_DOMAIN }}
+          export TWINE_USERNAME=aws
+          export TWINE_PASSWORD=`aws codeartifact get-authorization-token --domain $AWS_CODEARTIFACT_DOMAIN --domain-owner $AWS_CODEARTIFACT_DOMAIN_OWNER_ID --query authorizationToken --output text`
+          export TWINE_REPOSITORY_URL=`aws codeartifact get-repository-endpoint --domain $AWS_CODEARTIFACT_DOMAIN --domain-owner $AWS_CODEARTIFACT_DOMAIN_OWNER_ID --repository pyrippler --format pypi --query repositoryEndpoint --output text`
+          __PROJECT_GIT_COMMIT_SHA=$GITHUB_SHA python setup.py sdist
+          twine upload dist/*
+
