@@ -491,6 +491,9 @@ class ObjectIdField(BaseField):
         if isinstance(value, DBRef):
             return ObjectId(text_type(value.id))
         if not isinstance(value, ObjectId):
+            from mongoengine.document import Document
+            if isinstance(value, Document):
+                return value.id
             try:
                 return ObjectId(text_type(value))
             except Exception as e:
