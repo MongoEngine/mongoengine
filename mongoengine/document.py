@@ -1400,22 +1400,22 @@ class Document(BaseDocument):
             with log_slow_event("update", cls._meta['collection'], spec):
                 cls._transform_update_kwargs(kwargs)
                 if multi:
-                    result = cls._pymongo().update_many(spec,
+                    result = cls._transform_raw_result(cls._pymongo().update_many(spec,
                                                         document,
                                                         upsert=upsert,
-                                                        **kwargs).raw_result
+                                                        **kwargs))
                 else:
                     try:
-                        result = cls._pymongo().update_one(spec,
+                        result = cls._transform_raw_result(cls._pymongo().update_one(spec,
                                                            document,
                                                            upsert=upsert,
-                                                           **kwargs).raw_result
+                                                           **kwargs))
                     except ValueError as e:
                         if "update only works with $ operators" in e.message:
-                            result = cls._pymongo().replace_one(spec,
+                            result = cls._transform_raw_result(cls._pymongo().replace_one(spec,
                                                                 document,
                                                                 upsert=upsert,
-                                                                **kwargs).raw_result
+                                                                **kwargs))
             return result
         finally:
             cls.cleanup_trace(set_comment)
@@ -1446,10 +1446,10 @@ class Document(BaseDocument):
         try:
             with log_slow_event("remove", cls._meta['collection'], spec):
                 cls._transform_delete_many_kwargs(kwargs)
-                result = cls._pymongo().delete_many(
+                result = cls._transform_raw_result(cls._pymongo().delete_many(
                     spec,
                     **kwargs
-                ).raw_result
+                ))
             return result
         finally:
             cls.cleanup_trace(set_comment)
@@ -1561,10 +1561,10 @@ class Document(BaseDocument):
         set_comment = self.attach_trace(comment, is_scatter_gather)
         try:
             with log_slow_event("update_one", self._meta['collection'], spec):
-                result = self._pymongo().update_one(query_spec,
+                result = self._transform_raw_result(self._pymongo().update_one(query_spec,
                                                     document,
                                                     upsert=upsert,
-                                                    **kwargs).raw_result
+                                                    **kwargs))
 
             # do in-memory updates on the object if the query succeeded
             if result['n'] == 1:
@@ -2105,6 +2105,27 @@ class Document(BaseDocument):
     @staticmethod
     def _transform_find_and_modify_kwargs(kwargs):
         kwargs.pop("slave_ok", None)
+
+    # add nModified, nMatched and nRemoved to raw_result to make it compatible with application codes
+    @staticmethod
+    def _transform_raw_result(result):
+        raw_result = result.raw_result
+        # these fields may already in raw_result
+        nModified = raw_result.get('nModified', 0)
+        nMatched = raw_result.get('nMatched', 0)
+        nRemoved = raw_result.get('nRemoved', 0)
+
+        if hasattr(result, 'modified_count'):
+            nModified = result.modified_count
+        if hasattr(result, 'matched_count'):
+            nMatched = result.matched_count
+        if hasattr(result, 'deleted_count'):
+          nRemoved  = result.deleted_count
+
+        raw_result['nModified'] = nModified
+        raw_result['nMatched'] = nMatched
+        raw_result['nRemoved'] = nRemoved
+        return raw_result
 
     @staticmethod
     def _transform_find_kwargs(kwargs):
