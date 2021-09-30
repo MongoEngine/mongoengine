@@ -867,6 +867,23 @@ class TestQueryset(unittest.TestCase):
         assert "Bob" == bob.name
         assert 30 == bob.age
 
+    def test_rename(self):
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo", age=11)
+
+        bob = self.Person.objects.as_pymongo().first()
+        assert 'age' in bob
+        assert bob['age'] == 11
+
+        self.Person.objects(name="Foo").update(
+            rename__age='person_age'
+        )
+
+        bob = self.Person.objects.as_pymongo().first()
+        assert 'age' not in bob
+        assert 'person_age' in bob
+        assert bob['person_age'] == 11
+
     def test_save_and_only_on_fields_with_default(self):
         class Embed(EmbeddedDocument):
             field = IntField()
