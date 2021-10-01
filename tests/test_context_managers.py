@@ -14,6 +14,10 @@ from mongoengine.context_managers import (
     switch_collection,
     switch_db,
 )
+from mongoengine.mongodb_support import (
+    MONGODB_42,
+    get_mongodb_version,
+)
 from mongoengine.pymongo_support import count_documents
 
 
@@ -413,8 +417,9 @@ class TestContextManagers:
             )  # queries on db.system.indexes are ignored as well
             assert q == 1
 
-    def test_updating_a_document_within_a_transaction_succeeds(self):
+    def test_updating_a_document_within_a_transaction(self):
         connect("mongoenginetest")
+        mongodb_version = get_mongodb_version()
 
         class A(Document):
             name = StringField()
@@ -423,13 +428,15 @@ class TestContextManagers:
 
         a_doc = A.objects.create(name="a")
 
-        with run_in_transaction():
-            a_doc.update(name="b")
-        assert "b" == A.objects.get(id=a_doc.id).name
+        if mongodb_version >= MONGODB_42:
+            with run_in_transaction():
+                a_doc.update(name="b")
+                assert "b" == A.objects.get(id=a_doc.id).name
 
-    def test_transaction_updates_across_databases_succeeds(self):
+    def test_transaction_updates_across_databases(self):
         connect("mongoenginetest")
         connect("test2", "test2")
+        mongodb_version = get_mongodb_version()
 
         class A(Document):
             name = StringField()
@@ -446,24 +453,27 @@ class TestContextManagers:
 
         b_doc = B.objects.create(name="b")
 
-        with run_in_transaction():
-            a_doc.update(name="a2")
-            b_doc.update(name="b2")
+        if mongodb_version >= MONGODB_42:
+            with run_in_transaction():
+                a_doc.update(name="a2")
+                b_doc.update(name="b2")
 
-        assert "a2" == A.objects.get(id=a_doc.id).name
-        assert "b2" == B.objects.get(id=b_doc.id).name
+            assert "a2" == A.objects.get(id=a_doc.id).name
+            assert "b2" == B.objects.get(id=b_doc.id).name
 
-        with run_in_transaction():
-            a_doc.update(name="a3")
+        # Creating collections via upserts in a transaction started in 4.4
+        if mongodb_version > MONGODB_42:
+            with run_in_transaction():
+                a_doc.update(name="a3")
+                with switch_db(A, "test2"):
+                    a_doc.update(name="a4", upsert=True)
+                    b_doc.update(name="b3")
+                b_doc.update(name="b4")
+
+            assert "a3" == A.objects.get(id=a_doc.id).name
+            assert "b4" == B.objects.get(id=b_doc.id).name
             with switch_db(A, "test2"):
-                a_doc.update(name="a4", upsert=True)
-                b_doc.update(name="b3")
-            b_doc.update(name="b4")
-
-        assert "a3" == A.objects.get(id=a_doc.id).name
-        assert "b4" == B.objects.get(id=b_doc.id).name
-        with switch_db(A, "test2"):
-            assert "a4" == A.objects.get(id=a_doc.id).name
+                assert "a4" == A.objects.get(id=a_doc.id).name
 
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
         self,
