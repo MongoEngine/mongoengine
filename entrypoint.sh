@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 mongod --replSet mongoengine --fork --logpath=/var/log/mongodb.log
 mongo db --eval "rs.initiate()"
