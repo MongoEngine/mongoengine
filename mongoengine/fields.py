@@ -163,7 +163,7 @@ class StringField(BaseField):
                 regex = value
 
             # escape unsafe characters which could lead to a re.error
-            if op == 'regex':
+            if op == "regex":
                 value = re.compile(regex, flags)
             else:
                 value = re.escape(value)
@@ -1093,9 +1093,7 @@ class DictField(ComplexBaseField):
         return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
-        match_operators = [
-            *STRING_OPERATORS
-        ]
+        match_operators = [*STRING_OPERATORS]
 
         if op in match_operators and isinstance(value, str):
             return StringField().prepare_query_value(op, value)

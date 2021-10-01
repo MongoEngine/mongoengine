@@ -872,17 +872,15 @@ class TestQueryset(unittest.TestCase):
         self.Person.objects.create(name="Foo", age=11)
 
         bob = self.Person.objects.as_pymongo().first()
-        assert 'age' in bob
-        assert bob['age'] == 11
+        assert "age" in bob
+        assert bob["age"] == 11
 
-        self.Person.objects(name="Foo").update(
-            rename__age='person_age'
-        )
+        self.Person.objects(name="Foo").update(rename__age="person_age")
 
         bob = self.Person.objects.as_pymongo().first()
-        assert 'age' not in bob
-        assert 'person_age' in bob
-        assert bob['person_age'] == 11
+        assert "age" not in bob
+        assert "person_age" in bob
+        assert bob["person_age"] == 11
 
     def test_save_and_only_on_fields_with_default(self):
         class Embed(EmbeddedDocument):
@@ -1257,7 +1255,6 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
         assert obj is None
 
-
         # Test wholeword
         obj = self.Person.objects(name__wholeword="Guido").first()
         assert obj == person
@@ -1370,12 +1367,14 @@ class TestQueryset(unittest.TestCase):
         person.save()
 
         people = self.Person.objects
-        people = people.filter(name__startswith="Gui")\
-            .filter(name__not__endswith="tum")\
-            .filter(name__icontains="VAN")\
-            .filter(name__regex="^Guido")\
-            .filter(name__wholeword="Guido")\
+        people = (
+            people.filter(name__startswith="Gui")
+            .filter(name__not__endswith="tum")
+            .filter(name__icontains="VAN")
+            .filter(name__regex="^Guido")
+            .filter(name__wholeword="Guido")
             .filter(name__wholeword="van")
+        )
         assert people.count() == 1
 
     def assertSequence(self, qs, expected):
