@@ -613,7 +613,11 @@ class EmbeddedDocumentField(BaseField):
         self.document_type.validate(value, clean)
 
     def lookup_member(self, member_name):
-        return self.document_type._fields.get(member_name)
+        doc_and_subclasses = [self.document_type] + self.document_type.__subclasses__()
+        for doc_type in doc_and_subclasses:
+            field = doc_type._fields.get(member_name)
+            if field:
+                return field
 
     def prepare_query_value(self, op, value):
         if not isinstance(value, self.document_type):
@@ -649,6 +653,15 @@ class GenericEmbeddedDocumentField(BaseField):
                        'GenericEmbeddedDocumentField')
 
         value.validate(clean=clean)
+
+    def lookup_member(self, member_name):
+        document_choices = self.choices or []
+        for document_choice in document_choices:
+            doc_and_subclasses = [document_choice] + document_choice.__subclasses__()
+            for doc_type in doc_and_subclasses:
+                field = doc_type._fields.get(member_name)
+                if field:
+                    return field
 
     def to_mongo(self, document, **kwargs):
         if document is None:
