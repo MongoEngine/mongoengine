@@ -18,7 +18,10 @@ from mongoengine.mongodb_support import (
     MONGODB_44,
     get_mongodb_version,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.pymongo_support import (
+    IS_PYMONGO_GTE_37,
+    count_documents,
+)
 
 
 class TestContextManagers:
@@ -428,7 +431,7 @@ class TestContextManagers:
 
         a_doc = A.objects.create(name="a")
 
-        if mongodb_version[0] >= 4:
+        if mongodb_version[0] >= 4 and IS_PYMONGO_GTE_37:
             with run_in_transaction():
                 a_doc.update(name="b")
                 assert "b" == A.objects.get(id=a_doc.id).name
@@ -453,7 +456,7 @@ class TestContextManagers:
 
         b_doc = B.objects.create(name="b")
 
-        if mongodb_version[0] >= 4:
+        if mongodb_version[0] >= 4 and IS_PYMONGO_GTE_37:
             with run_in_transaction():
                 a_doc.update(name="a2")
                 b_doc.update(name="b2")
@@ -462,7 +465,7 @@ class TestContextManagers:
             assert "b2" == B.objects.get(id=b_doc.id).name
 
         # Creating collections via upserts in a transaction started in 4.4
-        if mongodb_version >= MONGODB_44:
+        if mongodb_version >= MONGODB_44 and IS_PYMONGO_GTE_37:
             with run_in_transaction():
                 a_doc.update(name="a3")
                 with switch_db(A, "test2"):
