@@ -51,6 +51,10 @@ STRING_OPERATORS = (
     "iendswith",
     "exact",
     "iexact",
+    "regex",
+    "iregex",
+    "wholeword",
+    "iwholeword",
 )
 CUSTOM_OPERATORS = ("match",)
 MATCH_OPERATORS = (
