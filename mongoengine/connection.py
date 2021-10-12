@@ -1,5 +1,5 @@
 from pymongo.mongo_client import MongoClient
-from pymongo_greenlet import GreenletClient
+from soa.services.greenmotor.greenmotor import GreenMotorClient
 from pymongo.read_preferences import ReadPreference
 import collections
 
@@ -124,7 +124,7 @@ def connect(host='localhost', conn_name=None, db_names=None, allow_async=False,
     if conn_name not in _connections:
         try:
             if allow_async:
-                async_conn = GreenletClient.sync_connect(host, **kwargs)
+                async_conn = GreenMotorClient(host, **kwargs)
             else:
                 async_conn = None
 
