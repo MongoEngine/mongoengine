@@ -477,7 +477,7 @@ dictionary containing a full index definition.
 
 A direction may be specified on fields by prefixing the field name with a
 **+** (for ascending) or a **-** sign (for descending). Note that direction
-only matters on multi-field indexes. Text indexes may be specified by prefixing
+only matters on compound indexes. Text indexes may be specified by prefixing
 the field name with a **$**. Hashed indexes may be specified by prefixing
 the field name with a **#**::
 
@@ -488,14 +488,14 @@ the field name with a **#**::
         created = DateTimeField()
         meta = {
             'indexes': [
-                'title',
+                'title',   # single-field index
                 '$title',  # text index
                 '#title',  # hashed index
-                ('title', '-rating'),
-                ('category', '_cls'),
+                ('title', '-rating'),  # compound index
+                ('category', '_cls'),  # compound index
                 {
                     'fields': ['created'],
-                    'expireAfterSeconds': 3600
+                    'expireAfterSeconds': 3600  # ttl index
                 }
             ]
         }
