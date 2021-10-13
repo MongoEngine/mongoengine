@@ -210,7 +210,6 @@ class BaseQuerySet:
             return queryset._document._from_son(
                 queryset._cursor[key],
                 _auto_dereference=self._auto_dereference,
-                only_fields=self.only_fields,
                 _requested_fields=_requested_fields,
                 _requested_fields_value=_requested_fields_value,
             )

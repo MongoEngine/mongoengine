@@ -860,7 +860,6 @@ class BaseDocument:
         obj = cls(
             __auto_convert=False,
             _created=created,
-            __only_fields=only_fields,
             _requested_fields=_requested_fields_dict.keys(),
             _requested_fields_value=_requested_fields_value,
             **data
