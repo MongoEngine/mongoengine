@@ -14,6 +14,7 @@ __all__ = (
     "ValidationError",
     "SaveConditionError",
     "DeprecatedError",
+    "FieldIsNotRetrieved"
 )
 
 
@@ -70,6 +71,12 @@ class FieldDoesNotExist(MongoEngineException):
     you should set the :attr:`strict` to ``False``
     in the :attr:`meta` dictionary.
     """
+
+class FieldIsNotRetrieved(Exception):
+    """Raised when try to get field not in .only() or in .exclude()
+    Works only if 'check_fields_retrieved' is True in meta
+    """
+    pass
 
 
 class ValidationError(AssertionError):
