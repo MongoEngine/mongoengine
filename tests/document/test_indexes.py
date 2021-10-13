@@ -1,13 +1,16 @@
-# -*- coding: utf-8 -*-
 import unittest
 from datetime import datetime
 
+import pytest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
-import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
+from mongoengine.mongodb_support import (
+    MONGODB_42,
+    get_mongodb_version,
+)
 
 
 class TestIndexes(unittest.TestCase):
@@ -172,8 +175,7 @@ class TestIndexes(unittest.TestCase):
         assert MyDoc._meta["index_specs"] == [{"fields": [("keywords", 1)]}]
 
     def test_embedded_document_index_meta(self):
-        """Ensure that embedded document indexes are created explicitly
-        """
+        """Ensure that embedded document indexes are created explicitly"""
 
         class Rank(EmbeddedDocument):
             title = StringField(required=True)
@@ -195,8 +197,7 @@ class TestIndexes(unittest.TestCase):
         assert [("rank.title", 1)] in info
 
     def test_explicit_geo2d_index(self):
-        """Ensure that geo2d indexes work when created via meta[indexes]
-        """
+        """Ensure that geo2d indexes work when created via meta[indexes]"""
 
         class Place(Document):
             location = DictField()
@@ -210,8 +211,7 @@ class TestIndexes(unittest.TestCase):
         assert [("location.point", "2d")] in info
 
     def test_explicit_geo2d_index_embedded(self):
-        """Ensure that geo2d indexes work when created via meta[indexes]
-        """
+        """Ensure that geo2d indexes work when created via meta[indexes]"""
 
         class EmbeddedLocation(EmbeddedDocument):
             location = DictField()
@@ -230,8 +230,7 @@ class TestIndexes(unittest.TestCase):
         assert [("current.location.point", "2d")] in info
 
     def test_explicit_geosphere_index(self):
-        """Ensure that geosphere indexes work when created via meta[indexes]
-        """
+        """Ensure that geosphere indexes work when created via meta[indexes]"""
 
         class Place(Document):
             location = DictField()
@@ -247,8 +246,7 @@ class TestIndexes(unittest.TestCase):
         assert [("location.point", "2dsphere")] in info
 
     def test_explicit_geohaystack_index(self):
-        """Ensure that geohaystack indexes work when created via meta[indexes]
-        """
+        """Ensure that geohaystack indexes work when created via meta[indexes]"""
         pytest.skip(
             "GeoHaystack index creation is not supported for now"
             "from meta, as it requires a bucketSize parameter."
@@ -269,8 +267,7 @@ class TestIndexes(unittest.TestCase):
         assert [("location.point", "geoHaystack")] in info
 
     def test_create_geohaystack_index(self):
-        """Ensure that geohaystack indexes can be created
-        """
+        """Ensure that geohaystack indexes can be created"""
 
         class Place(Document):
             location = DictField()
@@ -365,8 +362,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_cls_1_user_guid_1", "_id_"]
 
     def test_embedded_document_index(self):
-        """Tests settings an index on an embedded document
-        """
+        """Tests settings an index on an embedded document"""
 
         class Date(EmbeddedDocument):
             year = IntField(db_field="yr")
@@ -383,8 +379,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_id_", "date.yr_-1"]
 
     def test_list_embedded_document_index(self):
-        """Ensure list embedded documents can be indexed
-        """
+        """Ensure list embedded documents can be indexed"""
 
         class Tag(EmbeddedDocument):
             name = StringField(db_field="tag")
@@ -420,8 +415,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_cls_1", "_id_"]
 
     def test_covered_index(self):
-        """Ensure that covered indexes can be used
-        """
+        """Ensure that covered indexes can be used"""
 
         class Test(Document):
             a = IntField()
@@ -462,9 +456,11 @@ class TestIndexes(unittest.TestCase):
             .get("stage")
             == "IXSCAN"
         )
+        mongo_db = get_mongodb_version()
+        PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
         assert (
             query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == "PROJECTION"
+            == PROJECTION_STR
         )
 
         query_plan = Test.objects(a=1).explain()
@@ -551,15 +547,15 @@ class TestIndexes(unittest.TestCase):
         assert 5 == query_result.count()
 
         incorrect_collation = {"arndom": "wrdo"}
-        with pytest.raises(OperationFailure):
+        with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
+        assert "Missing expected field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)
 
     def test_unique(self):
-        """Ensure that uniqueness constraints are applied to fields.
-        """
+        """Ensure that uniqueness constraints are applied to fields."""
 
         class BlogPost(Document):
             title = StringField()
@@ -607,8 +603,7 @@ class TestIndexes(unittest.TestCase):
         )
 
     def test_unique_with(self):
-        """Ensure that unique_with constraints are applied to fields.
-        """
+        """Ensure that unique_with constraints are applied to fields."""
 
         class Date(EmbeddedDocument):
             year = IntField(db_field="yr")
@@ -633,8 +628,7 @@ class TestIndexes(unittest.TestCase):
             post3.save()
 
     def test_unique_embedded_document(self):
-        """Ensure that uniqueness constraints are applied to fields on embedded documents.
-        """
+        """Ensure that uniqueness constraints are applied to fields on embedded documents."""
 
         class SubDocument(EmbeddedDocument):
             year = IntField(db_field="yr")

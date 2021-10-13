@@ -3,15 +3,23 @@ import unittest
 import pytest
 
 from mongoengine import Document
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    StrictDict,
+)
 
 
-class DocumentStub(object):
+class DocumentStub:
     def __init__(self):
         self._changed_fields = []
+        self._unset_fields = []
 
     def _mark_as_changed(self, key):
         self._changed_fields.append(key)
+
+    def _mark_as_unset(self, key):
+        self._unset_fields.append(key)
 
 
 class TestBaseDict:
@@ -314,7 +322,7 @@ class TestBaseList:
     def test___setitem___item_0_calls_mark_as_changed(self):
         base_list = self._get_baselist([True])
         base_list[0] = False
-        assert base_list._instance._changed_fields == ["my_name"]
+        assert base_list._instance._changed_fields == ["my_name.0"]
         assert base_list == [False]
 
     def test___setitem___item_1_calls_mark_as_changed(self):
@@ -417,7 +425,7 @@ class TestStrictDict(unittest.TestCase):
         d.a = 1
         assert d.a == 1
         with pytest.raises(AttributeError):
-            getattr(d, "b")
+            d.b
 
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()

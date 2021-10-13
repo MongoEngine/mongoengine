@@ -1,8 +1,7 @@
 import re
-import warnings
 
-from bson.dbref import DBRef
 import pymongo
+from bson.dbref import DBRef
 from pymongo.read_preferences import ReadPreference
 
 from mongoengine import signals
@@ -17,14 +16,23 @@ from mongoengine.base import (
 )
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
-from mongoengine.context_managers import set_write_concern, switch_collection, switch_db
+from mongoengine.context_managers import (
+    set_write_concern,
+    switch_collection,
+    switch_db,
+)
 from mongoengine.errors import (
     InvalidDocumentError,
     InvalidQueryError,
     SaveConditionError,
 )
 from mongoengine.pymongo_support import list_collection_names
-from mongoengine.queryset import NotUniqueError, OperationError, QuerySet, transform
+from mongoengine.queryset import (
+    NotUniqueError,
+    OperationError,
+    QuerySet,
+    transform,
+)
 
 __all__ = (
     "Document",
@@ -91,6 +99,15 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __getstate__(self):
+        data = super().__getstate__()
+        data["_instance"] = None
+        return data
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._instance = state["_instance"]
+
     def to_mongo(self, *args, **kwargs):
         data = super().to_mongo(*args, **kwargs)
 
@@ -110,7 +127,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     By default, the MongoDB collection used to store documents created using a
     :class:`~mongoengine.Document` subclass will be the name of the subclass
-    converted to lowercase. A different collection may be specified by
+    converted to snake_case. A different collection may be specified by
     providing :attr:`collection` to the :attr:`meta` dictionary in the class
     definition.
 
@@ -118,7 +135,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     create a specialised version of the document that will be stored in the
     same collection. To facilitate this behaviour a `_cls`
     field is added to documents (hidden though the MongoEngine interface).
-    To enable this behaviourset :attr:`allow_inheritance` to ``True`` in the
+    To enable this behaviour set :attr:`allow_inheritance` to ``True`` in the
     :attr:`meta` dictionary.
 
     A :class:`~mongoengine.Document` may use a **Capped Collection** by
@@ -324,7 +341,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         _refs=None,
         save_condition=None,
         signal_kwargs=None,
-        **kwargs
+        **kwargs,
     ):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -367,15 +384,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
-        .. versionchanged:: 0.8.5
-            Optional save_condition that only overwrites existing documents
-            if the condition is satisfied in the current db record.
-        .. versionchanged:: 0.10
-            :class:`OperationError` exception raised if save_condition fails.
-        .. versionchanged:: 0.10.1
-            :class: save_condition failure now raises a `SaveConditionError`
-        .. versionchanged:: 0.10.7
-            Add signal_kwargs argument
         """
         signal_kwargs = signal_kwargs or {}
 
@@ -464,9 +472,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             # insert_one will provoke UniqueError alongside save does not
             # therefore, it need to catch and call replace_one.
             if "_id" in doc:
-                raw_object = wc_collection.find_one_and_replace(
-                    {"_id": doc["_id"]}, doc
-                )
+                select_dict = {"_id": doc["_id"]}
+                select_dict = self._integrate_shard_key(doc, select_dict)
+                raw_object = wc_collection.find_one_and_replace(select_dict, doc)
                 if raw_object:
                     return doc["_id"]
 
@@ -489,6 +497,23 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return update_doc
 
+    def _integrate_shard_key(self, doc, select_dict):
+        """Integrates the collection's shard key to the `select_dict`, which will be used for the query.
+        The value from the shard key is taken from the `doc` and finally the select_dict is returned.
+        """
+
+        # Need to add shard key to query, or you get an error
+        shard_key = self._meta.get("shard_key", tuple())
+        for k in shard_key:
+            path = self._lookup_field(k.split("."))
+            actual_key = [p.db_field for p in path]
+            val = doc
+            for ak in actual_key:
+                val = val[ak]
+            select_dict[".".join(actual_key)] = val
+
+        return select_dict
+
     def _save_update(self, doc, save_condition, write_concern):
         """Update an existing document.
 
@@ -504,15 +529,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         select_dict["_id"] = object_id
 
-        # Need to add shard key to query, or you get an error
-        shard_key = self._meta.get("shard_key", tuple())
-        for k in shard_key:
-            path = self._lookup_field(k.split("."))
-            actual_key = [p.db_field for p in path]
-            val = doc
-            for ak in actual_key:
-                val = val[ak]
-            select_dict[".".join(actual_key)] = val
+        select_dict = self._integrate_shard_key(doc, select_dict)
 
         update_doc = self._get_update_doc()
         if update_doc:
@@ -555,7 +572,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if not getattr(ref, "_changed_fields", True):
                 continue
 
-            ref_id = "{},{}".format(ref.__class__.__name__, str(ref._data))
+            ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
             if ref and ref_id not in _refs:
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
@@ -566,7 +583,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     def _qs(self):
         """Return the default queryset corresponding to this document."""
         if not hasattr(self, "__objects"):
-            self.__objects = QuerySet(self, self._get_collection())
+            self.__objects = QuerySet(self.__class__, self._get_collection())
         return self.__objects
 
     @property
@@ -621,9 +638,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             For example, ``save(..., w: 2, fsync: True)`` will
             wait until at least two servers have recorded the write and
             will force an fsync on the primary server.
-
-        .. versionchanged:: 0.10.7
-            Add signal_kwargs argument
         """
         signal_kwargs = signal_kwargs or {}
         signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
@@ -639,7 +653,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 write_concern=write_concern, _from_doc_delete=True
             )
         except pymongo.errors.OperationFailure as err:
-            message = "Could not delete document (%s)" % err.message
+            message = "Could not delete document (%s)" % err.args
             raise OperationError(message)
         signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
 
@@ -705,8 +719,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     def select_related(self, max_depth=1):
         """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
         a maximum depth in order to cut down the number queries to mongodb.
-
-        .. versionadded:: 0.5
         """
         DeReference = _import_class("DeReference")
         DeReference()([self], max_depth + 1)
@@ -717,10 +729,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         :param fields: (optional) args list of fields to reload
         :param max_depth: (optional) depth of dereferencing to follow
-
-        .. versionadded:: 0.1.2
-        .. versionchanged:: 0.6  Now chainable
-        .. versionchanged:: 0.9  Can provide specific fields to reload
         """
         max_depth = 1
         if fields and isinstance(fields[0], int):
@@ -822,9 +830,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         Raises :class:`OperationError` if the document has no collection set
         (i.g. if it is `abstract`)
-
-        .. versionchanged:: 0.10.7
-            :class:`OperationError` exception raised if no collection available
         """
         coll_name = cls._get_collection_name()
         if not coll_name:
@@ -869,6 +874,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         """Checks the document meta data and ensures all the indexes exist.
 
         Global defaults can be set in the meta - see :doc:`guide/defining-documents`
+
+        By default, this will get called automatically upon first interaction with the
+        Document collection (query, save, etc) so unless you disabled `auto_create_index`, you
+        shouldn't have to call this manually.
 
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
@@ -919,8 +928,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def list_indexes(cls):
-        """ Lists all of the indexes that should be created for given
-        collection. It includes all the indexes from super- and sub-classes.
+        """Lists all indexes that should be created for the Document collection.
+        It includes all the indexes from super- and sub-classes.
+
+        Note that it will only return the indexes' fields, not the indexes' options
         """
         if cls._meta.get("abstract"):
             return []
@@ -984,7 +995,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @classmethod
     def compare_indexes(cls):
-        """ Compares the indexes defined in MongoEngine with the ones
+        """Compares the indexes defined in MongoEngine with the ones
         existing in the database. Returns any missing/extra indexes.
         """
 
@@ -1079,8 +1090,6 @@ class MapReduceDocument:
                 an ``ObjectId`` found in the given ``collection``,
                 the object can be accessed via the ``object`` property.
     :param value: The result(s) for this key.
-
-    .. versionadded:: 0.3
     """
 
     def __init__(self, document, collection, key, value):

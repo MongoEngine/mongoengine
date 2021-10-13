@@ -45,7 +45,7 @@ def test_basic():
 
     print(
         "Doc setattr: %.3fus"
-        % (timeit(lambda: setattr(b, "name", "New name"), 10000) * 10 ** 6)
+        % (timeit(lambda: setattr(b, "name", "New name"), 10000) * 10 ** 6)  # noqa B010
     )
 
     print("Doc to mongo: %.3fus" % (timeit(b.to_mongo, 1000) * 10 ** 6))

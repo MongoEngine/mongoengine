@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import datetime as dt
 
 import pytest
@@ -10,7 +9,6 @@ except ImportError:
 
 from mongoengine import *
 from mongoengine import connection
-
 from tests.utils import MongoDBTestCase
 
 

@@ -1,7 +1,7 @@
 import unittest
 
-from bson.son import SON
 import pytest
+from bson.son import SON
 
 from mongoengine import *
 from mongoengine.queryset import Q, transform
@@ -12,8 +12,7 @@ class TestTransform(unittest.TestCase):
         connect(db="mongoenginetest")
 
     def test_transform_query(self):
-        """Ensure that the _transform_query function operates correctly.
-        """
+        """Ensure that the _transform_query function operates correctly."""
         assert transform.query(name="test", age=30) == {"name": "test", "age": 30}
         assert transform.query(age__lt=30) == {"age": {"$lt": 30}}
         assert transform.query(age__gt=20, age__lt=50) == {
@@ -88,8 +87,7 @@ class TestTransform(unittest.TestCase):
         assert update == {"$set": {"tags": ["mongo", "db"]}}
 
     def test_query_field_name(self):
-        """Ensure that the correct field name is used when querying.
-        """
+        """Ensure that the correct field name is used when querying."""
 
         class Comment(EmbeddedDocument):
             content = StringField(db_field="commentContent")
@@ -106,18 +104,17 @@ class TestTransform(unittest.TestCase):
         post = BlogPost(**data)
         post.save()
 
-        assert "postTitle" in BlogPost.objects(title=data["title"])._query
-        assert not ("title" in BlogPost.objects(title=data["title"])._query)
-        assert BlogPost.objects(title=data["title"]).count() == 1
+        qs = BlogPost.objects(title=data["title"])
+        assert qs._query == {"postTitle": data["title"]}
+        assert qs.count() == 1
 
-        assert "_id" in BlogPost.objects(pk=post.id)._query
-        assert BlogPost.objects(pk=post.id).count() == 1
+        qs = BlogPost.objects(pk=post.id)
+        assert qs._query == {"_id": post.id}
+        assert qs.count() == 1
 
-        assert (
-            "postComments.commentContent"
-            in BlogPost.objects(comments__content="test")._query
-        )
-        assert BlogPost.objects(comments__content="test").count() == 1
+        qs = BlogPost.objects(comments__content="test")
+        assert qs._query == {"postComments.commentContent": "test"}
+        assert qs.count() == 1
 
         BlogPost.drop_collection()
 
@@ -330,7 +327,7 @@ class TestTransform(unittest.TestCase):
         word = Word(word="abc", index=1)
         update = transform.update(MainDoc, pull__content__text=word)
         assert update == {
-            "$pull": {"content.text": SON([("word", u"abc"), ("index", 1)])}
+            "$pull": {"content.text": SON([("word", "abc"), ("index", 1)])}
         }
 
         update = transform.update(MainDoc, pull__content__heading="xyz")
@@ -343,6 +340,31 @@ class TestTransform(unittest.TestCase):
             MainDoc, pull__content__text__word__nin=["foo", "bar"]
         )
         assert update == {"$pull": {"content.text": {"word": {"$nin": ["foo", "bar"]}}}}
+
+    def test_transform_embedded_document_list_fields(self):
+        """
+        Test added to check filtering
+        EmbeddedDocumentListField which is inside a EmbeddedDocumentField
+        """
+
+        class Drink(EmbeddedDocument):
+            id = StringField()
+            meta = {"strict": False}
+
+        class Shop(Document):
+            drinks = EmbeddedDocumentListField(Drink)
+
+        Shop.drop_collection()
+        drinks = [Drink(id="drink_1"), Drink(id="drink_2")]
+        Shop.objects.create(drinks=drinks)
+        q_obj = transform.query(
+            Shop, drinks__all=[{"$elemMatch": {"_id": x.id}} for x in drinks]
+        )
+        assert q_obj == {
+            "drinks": {"$all": [{"$elemMatch": {"_id": x.id}} for x in drinks]}
+        }
+
+        Shop.drop_collection()
 
 
 if __name__ == "__main__":

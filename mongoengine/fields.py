@@ -1,5 +1,6 @@
 import datetime
 import decimal
+import inspect
 import itertools
 import re
 import socket
@@ -8,10 +9,10 @@ import uuid
 from io import BytesIO
 from operator import itemgetter
 
-from bson import Binary, DBRef, ObjectId, SON
-from bson.int64 import Int64
 import gridfs
 import pymongo
+from bson import SON, Binary, DBRef, ObjectId
+from bson.int64 import Int64
 from pymongo import ReturnDocument
 
 try:
@@ -20,7 +21,6 @@ except ImportError:
     dateutil = None
 else:
     import dateutil.parser
-
 
 from mongoengine.base import (
     BaseDocument,
@@ -35,8 +35,11 @@ from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
-from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
+from mongoengine.errors import (
+    DoesNotExist,
+    InvalidQueryError,
+    ValidationError,
+)
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
@@ -87,6 +90,7 @@ __all__ = (
     "PolygonField",
     "SequenceField",
     "UUIDField",
+    "EnumField",
     "MultiPointField",
     "MultiLineStringField",
     "MultiPolygonField",
@@ -100,6 +104,12 @@ class StringField(BaseField):
     """A unicode string field."""
 
     def __init__(self, regex=None, max_length=None, min_length=None, **kwargs):
+        """
+        :param regex: (optional) A string pattern that will be applied during validation
+        :param max_length: (optional) A max length that will be applied during validation
+        :param min_length: (optional) A min length that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
+        """
         self.regex = re.compile(regex) if regex else None
         self.max_length = max_length
         self.min_length = min_length
@@ -147,18 +157,22 @@ class StringField(BaseField):
                 regex = r"%s$"
             elif op == "exact":
                 regex = r"^%s$"
+            elif op == "wholeword":
+                regex = r"\b%s\b"
+            elif op == "regex":
+                regex = value
 
-            # escape unsafe characters which could lead to a re.error
-            value = re.escape(value)
-            value = re.compile(regex % value, flags)
+            if op == "regex":
+                value = re.compile(regex, flags)
+            else:
+                # escape unsafe characters which could lead to a re.error
+                value = re.escape(value)
+                value = re.compile(regex % value, flags)
         return super().prepare_query_value(op, value)
 
 
 class URLField(StringField):
-    """A field that validates input as an URL.
-
-    .. versionadded:: 0.3
-    """
+    """A field that validates input as an URL."""
 
     _URL_REGEX = LazyRegexCompiler(
         r"^(?:[a-z0-9\.\-]*)://"  # scheme is validated separately
@@ -173,6 +187,11 @@ class URLField(StringField):
     _URL_SCHEMES = ["http", "https", "ftp", "ftps"]
 
     def __init__(self, url_regex=None, schemes=None, **kwargs):
+        """
+        :param url_regex: (optional) Overwrite the default regex used for validation
+        :param schemes: (optional) Overwrite the default URL schemes that are allowed
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
+        """
         self.url_regex = url_regex or self._URL_REGEX
         self.schemes = schemes or self._URL_SCHEMES
         super().__init__(**kwargs)
@@ -181,18 +200,15 @@ class URLField(StringField):
         # Check first if the scheme is valid
         scheme = value.split("://")[0].lower()
         if scheme not in self.schemes:
-            self.error("Invalid scheme {} in URL: {}".format(scheme, value))
+            self.error(f"Invalid scheme {scheme} in URL: {value}")
 
         # Then check full URL
         if not self.url_regex.match(value):
-            self.error("Invalid URL: {}".format(value))
+            self.error(f"Invalid URL: {value}")
 
 
 class EmailField(StringField):
-    """A field that validates input as an email address.
-
-    .. versionadded:: 0.4
-    """
+    """A field that validates input as an email address."""
 
     USER_REGEX = LazyRegexCompiler(
         # `dot-atom` defined in RFC 5322 Section 3.2.3.
@@ -226,18 +242,13 @@ class EmailField(StringField):
         allow_utf8_user=False,
         allow_ip_domain=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
-        """Initialize the EmailField.
-
-        Args:
-            domain_whitelist (list) - list of otherwise invalid domain
-                                      names which you'd like to support.
-            allow_utf8_user (bool) - if True, the user part of the email
-                                     address can contain UTF8 characters.
-                                     False by default.
-            allow_ip_domain (bool) - if True, the domain part of the email
-                                     can be a valid IPv4 or IPv6 address.
+        """
+        :param domain_whitelist: (optional) list of valid domain names applied during validation
+        :param allow_utf8_user: Allow user part of the email to contain utf8 char
+        :param allow_ip_domain: Allow domain part of the email to be an IPv4 or IPv6 address
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
         """
         self.domain_whitelist = domain_whitelist or []
         self.allow_utf8_user = allow_utf8_user
@@ -309,6 +320,11 @@ class IntField(BaseField):
     """32-bit integer field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -342,6 +358,11 @@ class LongField(BaseField):
     """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -378,6 +399,11 @@ class FloatField(BaseField):
     """Floating point number field."""
 
     def __init__(self, min_value=None, max_value=None, **kwargs):
+        """
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
+        """
         self.min_value, self.max_value = min_value, max_value
         super().__init__(**kwargs)
 
@@ -414,9 +440,6 @@ class FloatField(BaseField):
 class DecimalField(BaseField):
     """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
-
-    .. versionchanged:: 0.8
-    .. versionadded:: 0.3
     """
 
     def __init__(
@@ -426,14 +449,14 @@ class DecimalField(BaseField):
         force_string=False,
         precision=2,
         rounding=decimal.ROUND_HALF_UP,
-        **kwargs
+        **kwargs,
     ):
         """
-        :param min_value: Validation rule for the minimum acceptable value.
-        :param max_value: Validation rule for the maximum acceptable value.
+        :param min_value: (optional) A min value that will be applied during validation
+        :param max_value: (optional) A max value that will be applied during validation
         :param force_string: Store the value as a string (instead of a float).
          Be aware that this affects query sorting and operation like lte, gte (as string comparison is applied)
-         and some query operator won't work (e.g: inc, dec)
+         and some query operator won't work (e.g. inc, dec)
         :param precision: Number of decimal places to store.
         :param rounding: The rounding rule from the python decimal library:
 
@@ -447,11 +470,15 @@ class DecimalField(BaseField):
             - decimal.ROUND_05UP (away from zero if last digit after rounding towards zero would have been 0 or 5; otherwise towards zero)
 
             Defaults to: ``decimal.ROUND_HALF_UP``
-
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         self.min_value = min_value
         self.max_value = max_value
         self.force_string = force_string
+
+        if precision < 0 or not isinstance(precision, int):
+            self.error("precision must be a positive integer")
+
         self.precision = precision
         self.rounding = rounding
 
@@ -466,9 +493,12 @@ class DecimalField(BaseField):
             value = decimal.Decimal("%s" % value)
         except (TypeError, ValueError, decimal.InvalidOperation):
             return value
-        return value.quantize(
-            decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding
-        )
+        if self.precision > 0:
+            return value.quantize(
+                decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding
+            )
+        else:
+            return value.quantize(decimal.Decimal(), rounding=self.rounding)
 
     def to_mongo(self, value):
         if value is None:
@@ -497,15 +527,12 @@ class DecimalField(BaseField):
 
 
 class BooleanField(BaseField):
-    """Boolean field type.
-
-    .. versionadded:: 0.1.2
-    """
+    """Boolean field type."""
 
     def to_python(self, value):
         try:
             value = bool(value)
-        except ValueError:
+        except (ValueError, TypeError):
             pass
         return value
 
@@ -545,12 +572,13 @@ class DateTimeField(BaseField):
         if callable(value):
             return value()
 
-        if not isinstance(value, str):
+        if isinstance(value, str):
+            return self._parse_datetime(value)
+        else:
             return None
 
-        return self._parse_datetime(value)
-
-    def _parse_datetime(self, value):
+    @staticmethod
+    def _parse_datetime(value):
         # Attempt to parse a datetime from a string
         value = value.strip()
         if not value:
@@ -626,13 +654,12 @@ class ComplexDateTimeField(StringField):
     keyword when initializing the field.
 
     Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
-
-    .. versionadded:: 0.5
     """
 
     def __init__(self, separator=",", **kwargs):
         """
         :param separator: Allows to customize the separator used for storage (default ``,``)
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
         """
         self.separator = separator
         self.format = separator.join(["%Y", "%m", "%d", "%H", "%M", "%S", "%f"])
@@ -776,6 +803,9 @@ class EmbeddedDocumentField(BaseField):
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
+            # Short circuit for special operators, returning them as is
+            if isinstance(value, dict) and all(k.startswith("$") for k in value.keys()):
+                return value
             try:
                 value = self.document_type._from_son(value)
             except ValueError:
@@ -847,8 +877,7 @@ class DynamicField(BaseField):
     Used by :class:`~mongoengine.DynamicDocument` to handle dynamic data"""
 
     def to_mongo(self, value, use_db_field=True, fields=None):
-        """Convert a Python type to a MongoDB compatible type.
-        """
+        """Convert a Python type to a MongoDB compatible type."""
 
         if isinstance(value, str):
             return value
@@ -906,17 +935,16 @@ class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
-    If using with ReferenceFields see: :ref:`one-to-many-with-listfields`
+    If using with ReferenceFields see: :ref:`many-to-many-with-listfields`
 
     .. note::
         Required means it cannot be empty - as the default for ListFields is []
     """
 
     def __init__(self, field=None, max_length=None, **kwargs):
-        self.field = field
         self.max_length = max_length
         kwargs.setdefault("default", lambda: [])
-        super().__init__(**kwargs)
+        super().__init__(field=field, **kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -975,16 +1003,13 @@ class EmbeddedDocumentListField(ListField):
     .. note::
         The only valid list values are subclasses of
         :class:`~mongoengine.EmbeddedDocument`.
-
-    .. versionadded:: 0.9
     """
 
     def __init__(self, document_type, **kwargs):
         """
         :param document_type: The type of
          :class:`~mongoengine.EmbeddedDocument` the list will hold.
-        :param kwargs: Keyword arguments passed directly into the parent
-         :class:`~mongoengine.ListField`.
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.ListField`
         """
         super().__init__(field=EmbeddedDocumentField(document_type), **kwargs)
 
@@ -999,19 +1024,11 @@ class SortedListField(ListField):
         save the whole list then other processes trying to save the whole list
         as well could overwrite changes.  The safest way to append to a list is
         to perform a push operation.
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.6 - added reverse keyword
     """
 
-    _ordering = None
-    _order_reverse = False
-
     def __init__(self, field, **kwargs):
-        if "ordering" in kwargs.keys():
-            self._ordering = kwargs.pop("ordering")
-        if "reverse" in kwargs.keys():
-            self._order_reverse = kwargs.pop("reverse")
+        self._ordering = kwargs.pop("ordering", None)
+        self._order_reverse = kwargs.pop("reverse", False)
         super().__init__(field, **kwargs)
 
     def to_mongo(self, value, use_db_field=True, fields=None):
@@ -1032,17 +1049,6 @@ def key_not_string(d):
             return True
 
 
-def key_has_dot_or_dollar(d):
-    """Helper function to recursively determine if any key in a
-    dictionary contains a dot or a dollar sign.
-    """
-    for k, v in d.items():
-        if ("." in k or k.startswith("$")) or (
-            isinstance(v, dict) and key_has_dot_or_dollar(v)
-        ):
-            return True
-
-
 def key_starts_with_dollar(d):
     """Helper function to recursively determine if any key in a
     dictionary starts with a dollar
@@ -1058,17 +1064,13 @@ class DictField(ComplexBaseField):
 
     .. note::
         Required means it cannot be empty - as the default for DictFields is {}
-
-    .. versionadded:: 0.3
-    .. versionchanged:: 0.5 - Can now handle complex / varying types of data
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        self.field = field
         self._auto_dereference = False
 
         kwargs.setdefault("default", lambda: {})
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, field=field, **kwargs)
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
@@ -1094,16 +1096,7 @@ class DictField(ComplexBaseField):
         return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
-        match_operators = [
-            "contains",
-            "icontains",
-            "startswith",
-            "istartswith",
-            "endswith",
-            "iendswith",
-            "exact",
-            "iexact",
-        ]
+        match_operators = [*STRING_OPERATORS]
 
         if op in match_operators and isinstance(value, str):
             return StringField().prepare_query_value(op, value)
@@ -1124,8 +1117,6 @@ class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
-
-    .. versionadded:: 0.5
     """
 
     def __init__(self, field=None, *args, **kwargs):
@@ -1173,8 +1164,6 @@ class ReferenceField(BaseField):
             org = ReferenceField('Org', reverse_delete_rule=CASCADE)
 
         User.register_delete_rule(Org, 'owner', DENY)
-
-    .. versionchanged:: 0.5 added `reverse_delete_rule`
     """
 
     def __init__(
@@ -1182,10 +1171,12 @@ class ReferenceField(BaseField):
     ):
         """Initialises the Reference Field.
 
+        :param document_type: The type of Document that will be referenced
         :param dbref:  Store the reference as :class:`~pymongo.dbref.DBRef`
-          or as the :class:`~pymongo.objectid.ObjectId`.id .
+          or as the :class:`~pymongo.objectid.ObjectId`.
         :param reverse_delete_rule: Determines what to do when the referring
           object is deleted
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
 
         .. note ::
             A reference to an abstract document type is always stored as a
@@ -1214,6 +1205,14 @@ class ReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         """Descriptor to allow lazy dereferencing."""
         if instance is None:
@@ -1221,20 +1220,17 @@ class ReferenceField(BaseField):
             return self
 
         # Get value from document instance if available
-        value = instance._data.get(self.name)
+        ref_value = instance._data.get(self.name)
         auto_dereference = instance._fields[self.name]._auto_dereference
         # Dereference DBRefs
-        if auto_dereference and isinstance(value, DBRef):
-            if hasattr(value, "cls"):
+        if auto_dereference and isinstance(ref_value, DBRef):
+            if hasattr(ref_value, "cls"):
                 # Dereference using the class type specified in the reference
-                cls = get_document(value.cls)
+                cls = get_document(ref_value.cls)
             else:
                 cls = self.document_type
-            dereferenced = cls._get_db().dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = cls._from_son(dereferenced)
+
+            instance._data[self.name] = self._lazy_load_ref(cls, ref_value)
 
         return super().__get__(instance, owner)
 
@@ -1307,24 +1303,22 @@ class ReferenceField(BaseField):
 
 
 class CachedReferenceField(BaseField):
-    """
-    A referencefield with cache fields to purpose pseudo-joins
-
-    .. versionadded:: 0.9
-    """
+    """A referencefield with cache fields to purpose pseudo-joins"""
 
     def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
         """Initialises the Cached Reference Field.
 
+        :param document_type: The type of Document that will be referenced
         :param fields:  A list of fields to be cached in document
-        :param auto_sync: if True documents are auto updated.
+        :param auto_sync: if True documents are auto updated
+        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
         """
         if fields is None:
             fields = []
 
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, str) and not issubclass(
-            document_type, Document
+        if not isinstance(document_type, str) and not (
+            inspect.isclass(document_type) and issubclass(document_type, Document)
         ):
             self.error(
                 "Argument to CachedReferenceField constructor must be a"
@@ -1346,7 +1340,7 @@ class CachedReferenceField(BaseField):
             return None
 
         update_kwargs = {
-            "set__{}__{}".format(self.name, key): val
+            f"set__{self.name}__{key}": val
             for key, val in document._delta()[0].items()
             if key in self.fields
         }
@@ -1375,6 +1369,14 @@ class CachedReferenceField(BaseField):
                 self.document_type_obj = get_document(self.document_type_obj)
         return self.document_type_obj
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         if instance is None:
             # Document class being used rather than a document object
@@ -1386,11 +1388,7 @@ class CachedReferenceField(BaseField):
 
         # Dereference DBRefs
         if auto_dereference and isinstance(value, DBRef):
-            dereferenced = self.document_type._get_db().dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = self.document_type._from_son(dereferenced)
+            instance._data[self.name] = self._lazy_load_ref(self.document_type, value)
 
         return super().__get__(instance, owner)
 
@@ -1485,8 +1483,6 @@ class GenericReferenceField(BaseField):
           it.
 
         * You can use the choices param to limit the acceptable Document types
-
-    .. versionadded:: 0.3
     """
 
     def __init__(self, *args, **kwargs):
@@ -1517,6 +1513,14 @@ class GenericReferenceField(BaseField):
             value = value._class_name
         super()._validate_choices(value)
 
+    @staticmethod
+    def _lazy_load_ref(ref_cls, dbref):
+        dereferenced_son = ref_cls._get_db().dereference(dbref)
+        if dereferenced_son is None:
+            raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
+
+        return ref_cls._from_son(dereferenced_son)
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -1524,12 +1528,9 @@ class GenericReferenceField(BaseField):
         value = instance._data.get(self.name)
 
         auto_dereference = instance._fields[self.name]._auto_dereference
-        if auto_dereference and isinstance(value, (dict, SON)):
-            dereferenced = self.dereference(value)
-            if dereferenced is None:
-                raise DoesNotExist("Trying to dereference unknown document %s" % value)
-            else:
-                instance._data[self.name] = dereferenced
+        if auto_dereference and isinstance(value, dict):
+            doc_cls = get_document(value["_cls"])
+            instance._data[self.name] = self._lazy_load_ref(doc_cls, value["_ref"])
 
         return super().__get__(instance, owner)
 
@@ -1547,14 +1548,6 @@ class GenericReferenceField(BaseField):
                 "You can only reference documents once they have been"
                 " saved to the database"
             )
-
-    def dereference(self, value):
-        doc_cls = get_document(value["_cls"])
-        reference = value["_ref"]
-        doc = doc_cls._get_db().dereference(reference)
-        if doc is not None:
-            doc = doc_cls._from_son(doc)
-        return doc
 
     def to_mongo(self, document):
         if document is None:
@@ -1622,17 +1615,80 @@ class BinaryField(BaseField):
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
+class EnumField(BaseField):
+    """Enumeration Field. Values are stored underneath as is,
+    so it will only work with simple types (str, int, etc) that
+    are bson encodable
+
+    Example usage:
+
+    .. code-block:: python
+
+        class Status(Enum):
+            NEW = 'new'
+            ONGOING = 'ongoing'
+            DONE = 'done'
+
+        class ModelWithEnum(Document):
+            status = EnumField(Status, default=Status.NEW)
+
+        ModelWithEnum(status='done')
+        ModelWithEnum(status=Status.DONE)
+
+    Enum fields can be searched using enum or its value:
+
+    .. code-block:: python
+
+        ModelWithEnum.objects(status='new').count()
+        ModelWithEnum.objects(status=Status.NEW).count()
+
+    The values can be restricted to a subset of the enum by using the ``choices`` parameter:
+
+    .. code-block:: python
+
+        class ModelWithEnum(Document):
+            status = EnumField(Status, choices=[Status.NEW, Status.DONE])
+    """
+
+    def __init__(self, enum, **kwargs):
+        self._enum_cls = enum
+        if kwargs.get("choices"):
+            invalid_choices = []
+            for choice in kwargs["choices"]:
+                if not isinstance(choice, enum):
+                    invalid_choices.append(choice)
+            if invalid_choices:
+                raise ValueError("Invalid choices: %r" % invalid_choices)
+        else:
+            kwargs["choices"] = list(self._enum_cls)  # Implicit validator
+        super().__init__(**kwargs)
+
+    def __set__(self, instance, value):
+        is_legal_value = value is None or isinstance(value, self._enum_cls)
+        if not is_legal_value:
+            try:
+                value = self._enum_cls(value)
+            except Exception:
+                pass
+        return super().__set__(instance, value)
+
+    def to_mongo(self, value):
+        if isinstance(value, self._enum_cls):
+            return value.value
+        return value
+
+    def prepare_query_value(self, op, value):
+        if value is None:
+            return value
+        return super().prepare_query_value(op, self.to_mongo(value))
+
+
 class GridFSError(Exception):
     pass
 
 
 class GridFSProxy:
-    """Proxy object to handle writing and reading of files to and from GridFS
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.5 - added optional size param to read
-    .. versionchanged:: 0.6 - added collection name param
-    """
+    """Proxy object to handle writing and reading of files to and from GridFS"""
 
     _fs = None
 
@@ -1690,12 +1746,12 @@ class GridFSProxy:
         return self.__copy__()
 
     def __repr__(self):
-        return "<{}: {}>".format(self.__class__.__name__, self.grid_id)
+        return f"<{self.__class__.__name__}: {self.grid_id}>"
 
     def __str__(self):
         gridout = self.get()
-        filename = getattr(gridout, "filename") if gridout else "<no file>"
-        return "<{}: {} ({})>".format(self.__class__.__name__, filename, self.grid_id)
+        filename = gridout.filename if gridout else "<no file>"
+        return f"<{self.__class__.__name__}: {filename} ({self.grid_id})>"
 
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
@@ -1794,12 +1850,7 @@ class GridFSProxy:
 
 
 class FileField(BaseField):
-    """A GridFS storage field.
-
-    .. versionadded:: 0.4
-    .. versionchanged:: 0.5 added optional size param for read
-    .. versionchanged:: 0.6 added db_alias for multidb support
-    """
+    """A GridFS storage field."""
 
     proxy_class = GridFSProxy
 
@@ -1881,11 +1932,7 @@ class FileField(BaseField):
 
 
 class ImageGridFsProxy(GridFSProxy):
-    """
-    Proxy for ImageField
-
-    versionadded: 0.6
-    """
+    """Proxy for ImageField"""
 
     def put(self, file_obj, **kwargs):
         """
@@ -2019,8 +2066,6 @@ class ImageField(FileField):
     :param size: max size to store images, provided as (width, height, force)
         if larger, it will be automatically resized (ex: size=(800, 600, True))
     :param thumbnail_size: size to generate a thumbnail, provided as (width, height, force)
-
-    .. versionadded:: 0.6
     """
 
     proxy_class = ImageGridFsProxy
@@ -2045,7 +2090,7 @@ class ImageField(FileField):
 
 class SequenceField(BaseField):
     """Provides a sequential counter see:
-     http://www.mongodb.org/display/DOCS/Object+IDs#ObjectIDs-SequenceNumbers
+     https://docs.mongodb.com/manual/reference/method/ObjectId/#ObjectIDs-SequenceNumbers
 
     .. note::
 
@@ -2068,9 +2113,6 @@ class SequenceField(BaseField):
         In case the counter is defined in the abstract document, it will be
         common to all inherited documents and the default sequence name will
         be the class name of the abstract document.
-
-    .. versionadded:: 0.5
-    .. versionchanged:: 0.8 added `value_decorator`
     """
 
     _auto_gen = True
@@ -2084,7 +2126,7 @@ class SequenceField(BaseField):
         sequence_name=None,
         value_decorator=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
@@ -2099,7 +2141,7 @@ class SequenceField(BaseField):
         Generate and Increment the counter
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
 
         counter = collection.find_one_and_update(
@@ -2113,7 +2155,7 @@ class SequenceField(BaseField):
     def set_next_value(self, value):
         """Helper method to set the next sequence value"""
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
         counter = collection.find_one_and_update(
             filter={"_id": sequence_id},
@@ -2130,7 +2172,7 @@ class SequenceField(BaseField):
         as it is only fixed on set.
         """
         sequence_name = self.get_sequence_name()
-        sequence_id = "{}.{}".format(sequence_name, self.name)
+        sequence_id = f"{sequence_name}.{self.name}"
         collection = get_db(alias=self.db_alias)[self.collection_name]
         data = collection.find_one({"_id": sequence_id})
 
@@ -2183,10 +2225,7 @@ class SequenceField(BaseField):
 
 
 class UUIDField(BaseField):
-    """A UUID field.
-
-    .. versionadded:: 0.6
-    """
+    """A UUID field."""
 
     _binary = None
 
@@ -2195,9 +2234,6 @@ class UUIDField(BaseField):
         Store UUID data in the database
 
         :param binary: if False store as a string.
-
-        .. versionchanged:: 0.8.0
-        .. versionchanged:: 0.6.19
         """
         self._binary = binary
         super().__init__(**kwargs)
@@ -2242,8 +2278,6 @@ class GeoPointField(BaseField):
         representing a geo point. It admits 2d indexes but not "2dsphere" indexes
         in MongoDB > 2.4 which are more natural for modeling geospatial points.
         See :ref:`geospatial-indexes`
-
-    .. versionadded:: 0.4
     """
 
     _geo_index = pymongo.GEO2D
@@ -2275,8 +2309,6 @@ class PointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "Point"
@@ -2295,8 +2327,6 @@ class LineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "LineString"
@@ -2318,8 +2348,6 @@ class PolygonField(GeoJsonBaseField):
     holes.
 
     Requires mongodb >= 2.4
-
-    .. versionadded:: 0.8
     """
 
     _type = "Polygon"
@@ -2339,8 +2367,6 @@ class MultiPointField(GeoJsonBaseField):
     to set the value.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiPoint"
@@ -2360,8 +2386,6 @@ class MultiLineStringField(GeoJsonBaseField):
     You can either pass a dict with the full information or a list of points.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiLineString"
@@ -2388,8 +2412,6 @@ class MultiPolygonField(GeoJsonBaseField):
     of Polygons.
 
     Requires mongodb >= 2.6
-
-    .. versionadded:: 0.9
     """
 
     _type = "MultiPolygon"
@@ -2402,8 +2424,6 @@ class LazyReferenceField(BaseField):
     Instead, access will return a :class:`~mongoengine.base.LazyReference` class
     instance, allowing access to `pk` or manual dereference by using
     ``fetch()`` method.
-
-    .. versionadded:: 0.15
     """
 
     def __init__(
@@ -2412,7 +2432,7 @@ class LazyReferenceField(BaseField):
         passthrough=False,
         dbref=False,
         reverse_delete_rule=DO_NOTHING,
-        **kwargs
+        **kwargs,
     ):
         """Initialises the Reference Field.
 
@@ -2422,7 +2442,7 @@ class LazyReferenceField(BaseField):
           object is deleted
         :param passthrough: When trying to access unknown fields, the
           :class:`~mongoengine.base.datastructure.LazyReference` instance will
-          automatically call `fetch()` and try to retrive the field on the fetched
+          automatically call `fetch()` and try to retrieve the field on the fetched
           document. Note this only work getting field (not setting or deleting).
         """
         # XXX ValidationError raised outside of the "validate" method.
@@ -2506,6 +2526,7 @@ class LazyReferenceField(BaseField):
         if not isinstance(value, (DBRef, Document, EmbeddedDocument)):
             collection = self.document_type._get_collection_name()
             value = DBRef(collection, self.document_type.id.to_python(value))
+            value = self.build_lazyref(value)
         return value
 
     def validate(self, value):
@@ -2566,8 +2587,6 @@ class GenericLazyReferenceField(GenericReferenceField):
           it.
 
         * You can use the choices param to limit the acceptable Document types
-
-    .. versionadded:: 0.15
     """
 
     def __init__(self, *args, **kwargs):

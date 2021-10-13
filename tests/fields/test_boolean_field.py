@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pytest
 
 from mongoengine import *
@@ -13,6 +12,17 @@ class TestBooleanField(MongoDBTestCase):
         person = Person(admin=True)
         person.save()
         assert get_as_pymongo(person) == {"_id": person.id, "admin": True}
+
+    def test_construction_does_not_fail_uncastable_value(self):
+        class BoolFail:
+            def __bool__(self):
+                return "bogus"
+
+        class Person(Document):
+            admin = BooleanField()
+
+        person = Person(admin=BoolFail())
+        person.admin == "bogus"
 
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to boolean

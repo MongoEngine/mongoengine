@@ -86,6 +86,10 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``wholeword`` -- string field contains whole word
+* ``iwholeword`` -- string field contains whole word (case insensitive)
+* ``regex`` -- string field match by regex
+* ``iregex`` -- string field match by regex (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 
@@ -239,7 +243,7 @@ Limiting and skipping results
 Just as with traditional ORMs, you may limit the number of results returned or
 skip a number or results in you query.
 :meth:`~mongoengine.queryset.QuerySet.limit` and
-:meth:`~mongoengine.queryset.QuerySet.skip` and methods are available on
+:meth:`~mongoengine.queryset.QuerySet.skip` methods are available on
 :class:`~mongoengine.queryset.QuerySet` objects, but the `array-slicing` syntax
 is preferred for achieving this::
 
@@ -543,7 +547,10 @@ Documents may be updated atomically by using the
 There are several different "modifiers" that you may use with these methods:
 
 * ``set`` -- set a particular value
+* ``set_on_insert`` -- set only if this is new document  `need to add upsert=True`_
 * ``unset`` -- delete a particular value (since MongoDB v1.3)
+* ``max`` -- update only if value is bigger
+* ``min`` -- update only if value is smaller
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
 * ``push`` -- append a value to a list
@@ -552,6 +559,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``pull`` -- remove a value from a list
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
+* ``rename`` -- rename the key name
 
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 
@@ -609,7 +617,7 @@ to push values with index::
 .. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
-    operator <http://www.mongodb.org/display/DOCS/Updating#Updating-The%24positionaloperator>`_.
+    operator <https://docs.mongodb.com/manual/tutorial/update-documents/#Updating-The%24positionaloperator>`_.
 
 Server-side javascript execution
 ================================

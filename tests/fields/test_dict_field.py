@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
-from bson import InvalidDocument
 import pytest
+from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
-from mongoengine.mongodb_support import MONGODB_36, get_mongodb_version
-
+from mongoengine.mongodb_support import (
+    MONGODB_36,
+    get_mongodb_version,
+)
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -113,7 +114,7 @@ class TestDictField(MongoDBTestCase):
         post.info.setdefault("authors", [])
         post.save()
         post.reload()
-        assert [] == post.info["authors"]
+        assert post.info["authors"] == []
 
     def test_dictfield_dump_document(self):
         """Ensure a DictField can handle another document's dump."""

@@ -27,6 +27,8 @@ objects** as class attributes to the document class::
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
 
+.. _dynamic-document-schemas:
+
 Dynamic document schemas
 ========================
 One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
@@ -76,6 +78,7 @@ are as follows:
 * :class:`~mongoengine.fields.EmailField`
 * :class:`~mongoengine.fields.EmbeddedDocumentField`
 * :class:`~mongoengine.fields.EmbeddedDocumentListField`
+* :class:`~mongoengine.fields.EnumField`
 * :class:`~mongoengine.fields.FileField`
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
@@ -230,6 +233,9 @@ document class as the first argument::
     comment2 = Comment(content='Nice article!')
     page = Page(comments=[comment1, comment2])
 
+Embedded documents can also leverage the flexibility of :ref:`dynamic-document-schemas:`
+by inheriting :class:`~mongoengine.DynamicEmbeddedDocument`.
+
 Dictionary Fields
 -----------------
 Often, an embedded document may be used instead of a dictionary – generally
@@ -289,12 +295,12 @@ as the constructor's argument::
         content = StringField()
 
 
-.. _one-to-many-with-listfields:
+.. _many-to-many-with-listfields:
 
-One to Many with ListFields
+Many to Many with ListFields
 '''''''''''''''''''''''''''
 
-If you are implementing a one to many relationship via a list of references,
+If you are implementing a many to many relationship via a list of references,
 then the references are stored as DBRefs and to query you need to pass an
 instance of the object to the query::
 
@@ -335,7 +341,6 @@ supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
 
     class ProfilePage(Document):
-        ...
         employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
@@ -426,28 +431,15 @@ either a single field name, or a list or tuple of field names::
         first_name = StringField()
         last_name = StringField(unique_with='first_name')
 
-Skipping Document validation on save
-------------------------------------
-You can also skip the whole document validation process by setting
-``validate=False`` when calling the :meth:`~mongoengine.document.Document.save`
-method::
-
-    class Recipient(Document):
-        name = StringField()
-        email = EmailField()
-
-    recipient = Recipient(name='admin', email='root@localhost')
-    recipient.save()               # will raise a ValidationError while
-    recipient.save(validate=False) # won't
 
 Document collections
 ====================
 Document classes that inherit **directly** from :class:`~mongoengine.Document`
 will have their own **collection** in the database. The name of the collection
-is by default the name of the class, converted to lowercase (so in the example
-above, the collection would be called `page`). If you need to change the name
-of the collection (e.g. to use MongoEngine with an existing database), then
-create a class dictionary attribute called :attr:`meta` on your document, and
+is by default the name of the class converted to snake_case (e.g if your Document class
+is named `CompanyUser`, the corresponding collection would be `company_user`). If you need
+to change the name of the collection (e.g. to use MongoEngine with an existing database),
+then create a class dictionary attribute called :attr:`meta` on your document, and
 set :attr:`collection` to the name of the collection that you want your
 document class to use::
 
@@ -485,7 +477,7 @@ dictionary containing a full index definition.
 
 A direction may be specified on fields by prefixing the field name with a
 **+** (for ascending) or a **-** sign (for descending). Note that direction
-only matters on multi-field indexes. Text indexes may be specified by prefixing
+only matters on compound indexes. Text indexes may be specified by prefixing
 the field name with a **$**. Hashed indexes may be specified by prefixing
 the field name with a **#**::
 
@@ -496,14 +488,14 @@ the field name with a **#**::
         created = DateTimeField()
         meta = {
             'indexes': [
-                'title',
+                'title',   # single-field index
                 '$title',  # text index
                 '#title',  # hashed index
-                ('title', '-rating'),
-                ('category', '_cls'),
+                ('title', '-rating'),  # compound index
+                ('category', '_cls'),  # compound index
                 {
                     'fields': ['created'],
-                    'expireAfterSeconds': 3600
+                    'expireAfterSeconds': 3600  # ttl index
                 }
             ]
         }
@@ -636,8 +628,8 @@ point. To create a geospatial index you must prefix the field with the
             ],
         }
 
-Time To Live indexes
---------------------
+Time To Live (TTL) indexes
+--------------------------
 
 A special index type that allows you to automatically expire data from a
 collection after a given period. See the official

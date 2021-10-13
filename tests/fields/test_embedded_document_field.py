@@ -1,5 +1,7 @@
-# -*- coding: utf-8 -*-
+from copy import deepcopy
+
 import pytest
+from bson import ObjectId
 
 from mongoengine import (
     Document,
@@ -10,10 +12,10 @@ from mongoengine import (
     InvalidQueryError,
     ListField,
     LookUpError,
+    MapField,
     StringField,
     ValidationError,
 )
-
 from tests.utils import MongoDBTestCase
 
 
@@ -75,7 +77,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -111,7 +113,7 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
@@ -319,7 +321,7 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             Person.objects(settings__notexist="bar").first()
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         with pytest.raises(LookUpError):
             Person.objects.only("settings.notexist")
@@ -347,8 +349,35 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
             assert Person.objects(settings__notexist="bar").first().id == p.id
-        assert str(exc_info.value) == u'Cannot resolve field "notexist"'
+        assert str(exc_info.value) == 'Cannot resolve field "notexist"'
 
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
         assert Person.objects(settings__sub_foo="subfoo").first().id == p.id
+
+    def test_deepcopy_set__instance(self):
+        """Ensure that the _instance attribute on EmbeddedDocument exists after a deepcopy"""
+
+        class Wallet(EmbeddedDocument):
+            money = IntField()
+
+        class Person(Document):
+            wallet = EmbeddedDocumentField(Wallet)
+            wallet_map = MapField(EmbeddedDocumentField(Wallet))
+
+        # Test on fresh EmbeddedDoc
+        emb_doc = Wallet(money=1)
+        assert emb_doc._instance is None
+        copied_emb_doc = deepcopy(emb_doc)
+        assert copied_emb_doc._instance is None
+
+        # Test on attached EmbeddedDoc
+        doc = Person(
+            id=ObjectId(), wallet=Wallet(money=2), wallet_map={"test": Wallet(money=2)}
+        )
+        assert doc.wallet._instance == doc
+        copied_emb_doc = deepcopy(doc.wallet)
+        assert copied_emb_doc._instance is None
+
+        copied_map_emb_doc = deepcopy(doc.wallet_map)
+        assert copied_map_emb_doc["test"]._instance is None

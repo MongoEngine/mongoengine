@@ -13,17 +13,14 @@ def warn_empty_is_deprecated():
 
 
 class QNodeVisitor:
-    """Base visitor class for visiting Q-object nodes in a query tree.
-    """
+    """Base visitor class for visiting Q-object nodes in a query tree."""
 
     def visit_combination(self, combination):
-        """Called by QCombination objects.
-        """
+        """Called by QCombination objects."""
         return combination
 
     def visit_query(self, query):
-        """Called by (New)Q objects.
-        """
+        """Called by (New)Q objects."""
         return query
 
 
@@ -49,8 +46,7 @@ class SimplificationVisitor(QNodeVisitor):
         return combination
 
     def _query_conjunction(self, queries):
-        """Merges query dicts - effectively &ing them together.
-        """
+        """Merges query dicts - effectively &ing them together."""
         query_ops = set()
         combined_query = {}
         for query in queries:

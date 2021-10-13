@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import unittest
 
 from mongoengine import *
@@ -9,7 +8,7 @@ class TestGeoField(MongoDBTestCase):
     def _test_for_expected_error(self, Cls, loc, expected):
         try:
             Cls(loc=loc).validate()
-            self.fail("Should not validate the location {0}".format(loc))
+            self.fail(f"Should not validate the location {loc}")
         except ValidationError as e:
             assert expected == e.to_dict()["loc"]
 
@@ -291,8 +290,7 @@ class TestGeoField(MongoDBTestCase):
         Location(loc=[[[[1, 2], [3, 4], [5, 6], [1, 2]]]]).validate()
 
     def test_indexes_geopoint(self):
-        """Ensure that indexes are created automatically for GeoPointFields.
-        """
+        """Ensure that indexes are created automatically for GeoPointFields."""
 
         class Event(Document):
             title = StringField()
@@ -318,8 +316,7 @@ class TestGeoField(MongoDBTestCase):
         assert geo_indicies == [{"fields": [("venue.location", "2d")]}]
 
     def test_indexes_2dsphere(self):
-        """Ensure that indexes are created automatically for GeoPointFields.
-        """
+        """Ensure that indexes are created automatically for GeoPointFields."""
 
         class Event(Document):
             title = StringField()
@@ -333,8 +330,7 @@ class TestGeoField(MongoDBTestCase):
         assert {"fields": [("point", "2dsphere")]} in geo_indicies
 
     def test_indexes_2dsphere_embedded(self):
-        """Ensure that indexes are created automatically for GeoPointFields.
-        """
+        """Ensure that indexes are created automatically for GeoPointFields."""
 
         class Venue(EmbeddedDocument):
             name = StringField()
@@ -381,7 +377,7 @@ class TestGeoField(MongoDBTestCase):
 
             meta = {"indexes": [[("location", "2dsphere"), ("datetime", 1)]]}
 
-        assert [] == Log._geo_indices()
+        assert Log._geo_indices() == []
 
         Log.drop_collection()
         Log.ensure_indexes()
@@ -401,7 +397,7 @@ class TestGeoField(MongoDBTestCase):
                 "indexes": [{"fields": [("location", "2dsphere"), ("datetime", 1)]}]
             }
 
-        assert [] == Log._geo_indices()
+        assert Log._geo_indices() == []
 
         Log.drop_collection()
         Log.ensure_indexes()

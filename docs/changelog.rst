@@ -1,4 +1,5 @@
 
+
 =========
 Changelog
 =========
@@ -6,8 +7,49 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- EnumField improvements: now `choices` limits the values of an enum to allow
+- Fix deepcopy of EmbeddedDocument #2202
+- Fix error when using precision=0 with DecimalField #2535
+- Add support for regex and whole word text search query #2568
+
+Changes in 0.23.1
+===========
+- Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
+- Improve connection doc #2481
+
+Changes in 0.23.0
+=================
+- Bugfix: manually setting SequenceField in DynamicDocument doesn't increment the counter #2471
+- Add MongoDB 4.2 and 4.4 to CI
+- Add support for allowDiskUse on querysets #2468
+
+Changes in 0.22.1
+=================
+- Declare that Py3.5 is not supported in package metadata #2449
+- Moved CI from Travis to Github-Actions
+
+Changes in 0.22.0
+=================
+- Fix LazyReferenceField dereferencing in embedded documents #2426
+- Fix regarding the recent use of Cursor.__spec in .count() that was interfering with mongomock #2425
+- Drop support for Python 3.5 by introducing f-strings in the codebase
+
+Changes in 0.21.0
+=================
+- Bug fix in DynamicDocument which is not parsing known fields in constructor like Document do #2412
+- When using pymongo >= 3.7, make use of Collection.count_documents instead of Collection.count
+    and Cursor.count that got deprecated in pymongo >= 3.7.
+    This should have a negative impact on performance of count see Issue #2219
 - Fix a bug that made the queryset drop the read_preference after clone().
-- Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
+- Remove Py3.5 from CI as it reached EOL and add Python 3.9
+- Fix some issues related with db_field/field conflict in constructor #2414
+- BREAKING CHANGE: Fix the behavior of Doc.objects.limit(0) which should return all documents (similar to mongodb) #2311
+- Bug fix in ListField when updating the first item, it was saving the whole list, instead of
+    just replacing the first item (as usually done when updating 1 item of the list) #2392
+- Add EnumField: ``mongoengine.fields.EnumField``
+- Refactoring - Remove useless code related to Document.__only_fields and Queryset.only_fields
+- Fix query transformation regarding special operators #2365
+- Bug Fix: Document.save() fails when shard_key is not _id #2154
 
 Changes in 0.20.0
 =================
@@ -458,9 +500,6 @@ Changes in 0.8.3
 - Document.select_related() now respects ``db_alias`` (#377)
 - Reload uses shard_key if applicable (#384)
 - Dynamic fields are ordered based on creation and stored in _fields_ordered (#396)
-
-  **Potential breaking change:** http://docs.mongoengine.org/en/latest/upgrade.html#to-0-8-3
-
 - Fixed pickling dynamic documents ``_dynamic_fields`` (#387)
 - Fixed ListField setslice and delslice dirty tracking (#390)
 - Added Django 1.5 PY3 support (#392)

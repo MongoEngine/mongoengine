@@ -1,3 +1,0 @@
-pymongo>=3.4
-Sphinx==1.5.5
-sphinx-rtd-theme==0.2.4

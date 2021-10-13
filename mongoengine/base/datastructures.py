@@ -67,11 +67,11 @@ class BaseDict(dict):
         if isinstance(value, EmbeddedDocument) and value._instance is None:
             value._instance = self._instance
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, None, "{}.{}".format(self._name, key))
+            value = BaseDict(value, None, f"{self._name}.{key}")
             super().__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
-            value = BaseList(value, None, "{}.{}".format(self._name, key))
+            value = BaseList(value, None, f"{self._name}.{key}")
             super().__setitem__(key, value)
             value._instance = self._instance
         return value
@@ -97,7 +97,7 @@ class BaseDict(dict):
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, "_mark_as_changed"):
             if key:
-                self._instance._mark_as_changed("{}.{}".format(self._name, key))
+                self._instance._mark_as_changed(f"{self._name}.{key}")
             else:
                 self._instance._mark_as_changed(self._name)
 
@@ -133,12 +133,12 @@ class BaseList(list):
             value._instance = self._instance
         elif isinstance(value, dict) and not isinstance(value, BaseDict):
             # Replace dict by BaseDict
-            value = BaseDict(value, None, "{}.{}".format(self._name, key))
+            value = BaseDict(value, None, f"{self._name}.{key}")
             super().__setitem__(key, value)
             value._instance = self._instance
         elif isinstance(value, list) and not isinstance(value, BaseList):
             # Replace list by BaseList
-            value = BaseList(value, None, "{}.{}".format(self._name, key))
+            value = BaseList(value, None, f"{self._name}.{key}")
             super().__setitem__(key, value)
             value._instance = self._instance
         return value
@@ -179,10 +179,8 @@ class BaseList(list):
 
     def _mark_as_changed(self, key=None):
         if hasattr(self._instance, "_mark_as_changed"):
-            if key:
-                self._instance._mark_as_changed(
-                    "{}.{}".format(self._name, key % len(self))
-                )
+            if key is not None:
+                self._instance._mark_as_changed(f"{self._name}.{key % len(self)}")
             else:
                 self._instance._mark_as_changed(self._name)
 
@@ -215,7 +213,7 @@ class EmbeddedDocumentList(BaseList):
         Filters the list by only including embedded documents with the
         given keyword arguments.
 
-        This method only supports simple comparison (e.g: .filter(name='John Doe'))
+        This method only supports simple comparison (e.g. .filter(name='John Doe'))
         and does not support operators like __gte, __lte, __icontains like queryset.filter does
 
         :param kwargs: The keyword arguments corresponding to the fields to
@@ -429,7 +427,7 @@ class StrictDict:
 
                 def __repr__(self):
                     return "{%s}" % ", ".join(
-                        '"{!s}": {!r}'.format(k, v) for k, v in self.items()
+                        f'"{k!s}": {v!r}' for k, v in self.items()
                     )
 
             cls._classes[allowed_keys] = SpecificStrictDict
@@ -472,4 +470,4 @@ class LazyReference(DBRef):
             raise AttributeError()
 
     def __repr__(self):
-        return "<LazyReference({}, {!r})>".format(self.document_type, self.pk)
+        return f"<LazyReference({self.document_type}, {self.pk!r})>"

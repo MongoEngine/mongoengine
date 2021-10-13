@@ -10,7 +10,7 @@ __all__ = ("TestDynamicDocument",)
 
 class TestDynamicDocument(MongoDBTestCase):
     def setUp(self):
-        super(TestDynamicDocument, self).setUp()
+        super().setUp()
 
         class Person(DynamicDocument):
             name = StringField()
@@ -36,6 +36,19 @@ class TestDynamicDocument(MongoDBTestCase):
 
         # Confirm no changes to self.Person
         assert not hasattr(self.Person, "age")
+
+    def test_dynamic_document_parse_values_in_constructor_like_document_do(self):
+        class ProductDynamicDocument(DynamicDocument):
+            title = StringField()
+            price = FloatField()
+
+        class ProductDocument(Document):
+            title = StringField()
+            price = FloatField()
+
+        product = ProductDocument(title="Blabla", price="12.5")
+        dyn_product = ProductDynamicDocument(title="Blabla", price="12.5")
+        assert product.price == dyn_product.price == 12.5
 
     def test_change_scope_of_variable(self):
         """Test changing the scope of a dynamic field has no adverse effects"""
@@ -105,17 +118,17 @@ class TestDynamicDocument(MongoDBTestCase):
         p.save()
 
         raw_p = Person.objects.as_pymongo().get(id=p.id)
-        assert raw_p == {"_cls": u"Person", "_id": p.id, "name": u"Dean"}
+        assert raw_p == {"_cls": "Person", "_id": p.id, "name": "Dean"}
 
         p.name = "OldDean"
         p.newattr = "garbage"
         p.save()
         raw_p = Person.objects.as_pymongo().get(id=p.id)
         assert raw_p == {
-            "_cls": u"Person",
+            "_cls": "Person",
             "_id": p.id,
             "name": "OldDean",
-            "newattr": u"garbage",
+            "newattr": "garbage",
         }
 
     def test_fields_containing_underscore(self):
@@ -131,14 +144,14 @@ class TestDynamicDocument(MongoDBTestCase):
         p.save()
 
         raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
-        assert raw_p == {"_id": p.id, "_name": u"Dean", "name": u"Dean"}
+        assert raw_p == {"_id": p.id, "_name": "Dean", "name": "Dean"}
 
         p.name = "OldDean"
         p._name = "NewDean"
         p._newattr1 = "garbage"  # Unknown fields won't be added
         p.save()
         raw_p = WeirdPerson.objects.as_pymongo().get(id=p.id)
-        assert raw_p == {"_id": p.id, "_name": u"NewDean", "name": u"OldDean"}
+        assert raw_p == {"_id": p.id, "_name": "NewDean", "name": "OldDean"}
 
     def test_dynamic_document_queries(self):
         """Ensure we can query dynamic fields"""
