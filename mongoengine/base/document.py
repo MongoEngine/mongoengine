@@ -759,7 +759,6 @@ class BaseDocument:
         cls,
         son,
         _auto_dereference=True,
-        only_fields=None,
         created=False,
         _requested_fields=None,
         _requested_fields_value=None,
@@ -767,9 +766,6 @@ class BaseDocument:
         """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
         EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
         ComplexBaseField = _import_class("ComplexBaseField")
-
-        if not only_fields:
-            only_fields = []
 
         if son and not isinstance(son, dict):
             raise ValueError(
