@@ -80,19 +80,8 @@ class BaseDocument:
         _created = values.pop("_created", True)
 
         # will raise exception if we try to retrieve fields not in .only() and in .exclude()
-        _requested_fields = values.pop("_requested_fields", None)
-        _requested_fields_value = values.pop("_requested_fields_value", None)
-
-        if _requested_fields is not None:
-            all_dbfields = set(self._reverse_db_field_map)
-            _requested_fields = _requested_fields or []
-            if _requested_fields_value is None or _requested_fields_value == 1:
-                if _requested_fields:
-                    self._requested_fields = set(_requested_fields)
-                else:
-                    self._requested_fields = set(all_dbfields)
-            else:
-                self._requested_fields = set(all_dbfields) - set(_requested_fields)
+        self._requested_fields = values.pop("_requested_fields", None)
+        self._requested_fields_value = values.pop("_requested_fields_value", None)
 
         signals.pre_init.send(self.__class__, document=self, values=values)
 
@@ -813,12 +802,11 @@ class BaseDocument:
             fields = copy.deepcopy(fields)
 
         _requested_fields_dict = {}
-        if _requested_fields is not None:
-            for field_ in _requested_fields:
-                base, _, rest = field_.partition(".")
-                _requested_fields_dict[base] = _requested_fields_dict.get(base, [])
-                if rest:
-                    _requested_fields_dict[base].append(rest)
+        for field_ in _requested_fields or []:
+            base, _, rest = field_.partition(".")
+            _requested_fields_dict[base] = _requested_fields_dict.get(base, [])
+            if rest:
+                _requested_fields_dict[base].append(rest)
 
         for field_name, field in fields.items():
             field._auto_dereference = _auto_dereference

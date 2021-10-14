@@ -126,16 +126,20 @@ class BaseField:
             # Document class being used rather than a document object
             return self
 
-        if (
-            instance._initialised
-            and hasattr(instance, "_requested_fields")
-            and self.db_field not in instance._requested_fields
-        ):
-            raise FieldIsNotRetrieved(
-                'Field "{}" of model "{}" does not retrieved'.format(
-                    self.name, owner.__name__
+        requested_fields = getattr(instance, "_requested_fields", None)
+        requested_fields_value = getattr(instance, "_requested_fields_value", None)
+        if instance._initialised and requested_fields:
+            requested_fields_contains_field = self.db_field in instance._requested_fields
+            if (
+                    requested_fields_value == 0 and requested_fields_contains_field
+            ) or (
+                    requested_fields_value == 1 and not requested_fields_contains_field
+            ):
+                raise FieldIsNotRetrieved(
+                    'Field "{}" of model "{}" does not retrieved'.format(
+                        self.name, owner.__name__
+                    )
                 )
-            )
 
         # Get value from document instance if available
         return instance._data.get(self.name)
@@ -165,7 +169,7 @@ class BaseField:
                 # attempt to do so (e.g. tz-naive and tz-aware datetimes).
                 # Mark the field as changed in such cases.
                 instance._mark_as_changed(self.name)
-            if hasattr(instance, "_requested_fields"):
+            if getattr(instance, "_requested_fields", None) is not None:
                 instance._requested_fields.add(self.db_field)
 
         EmbeddedDocument = _import_class("EmbeddedDocument")
