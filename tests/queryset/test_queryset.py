@@ -2217,6 +2217,25 @@ class TestQueryset(unittest.TestCase):
         post.reload()
         assert post.tags == ["code", "mongodb"]
 
+        BlogPost.objects(slug="test").update(
+            __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
+            aggregation_update=True,
+        )
+        post.reload()
+        assert post.slug == "test test"
+
+        BlogPost.objects(slug="test test").update(
+            __raw__=[
+                {"$set": {"slug": {"$concat": ["$slug", " ", "it"]}}},  # test test it
+                {
+                    "$set": {"slug": {"$concat": ["When", " ", "$slug"]}}
+                },  # When test test it
+            ],
+            aggregation_update=True,
+        )
+        post.reload()
+        assert post.slug == "When test test it"
+
     def test_add_to_set_each(self):
         class Item(Document):
             name = StringField(required=True)
