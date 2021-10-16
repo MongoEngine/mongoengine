@@ -554,6 +554,10 @@ class BaseQuerySet:
         queryset = self.clone()
         query = queryset._query
         if aggregation_update:
+            if "__raw__" not in update:
+                raise OperationError(
+                    "Currently aggregation_update works only with __raw__ value"
+                )
             update = [
                 transform.update(queryset._document, **{"__raw__": u})
                 for u in update["__raw__"]

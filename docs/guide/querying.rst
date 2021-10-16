@@ -218,11 +218,34 @@ However, this doesn't map well to the syntax so you can also use a capital S ins
 
 Raw queries
 -----------
-It is possible to provide a raw :mod:`PyMongo` query as a query parameter, which will
-be integrated directly into the query. This is done using the ``__raw__``
+It is possible to provide a raw :mod:`PyMongo` query as a query parameter or update as a update parameter , which will
+be integrated directly into the query or update. This is done using the ``__raw__``
 keyword argument::
 
     Page.objects(__raw__={'tags': 'coding'})
+
+    # or for update
+
+    Page.objects(__raw__={'tags': 'coding'}).update(__raw__={'$set': {'tags': 'coding'}})
+
+    Page.objects(tags='coding').update(__raw__={'$set': {'tags': 'coding'}})
+
+.. versionadded:: 0.4
+
+
+Update with Aggregation Pipeline
+-----------
+It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
+be integrated directly into the update. This is done using the ``aggregation_update=True`` and ``__raw__``
+keyword argument::
+
+
+    # 'tags' field is set to 'coding is fun'
+    Page.objects(tags='coding').update(__raw__=[
+        {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
+        ],
+        aggregation_update=True,
+    )
 
 .. versionadded:: 0.4
 
