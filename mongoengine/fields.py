@@ -162,10 +162,10 @@ class StringField(BaseField):
             elif op == "regex":
                 regex = value
 
-            # escape unsafe characters which could lead to a re.error
             if op == "regex":
                 value = re.compile(regex, flags)
             else:
+                # escape unsafe characters which could lead to a re.error
                 value = re.escape(value)
                 value = re.compile(regex % value, flags)
         return super().prepare_query_value(op, value)
