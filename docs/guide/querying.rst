@@ -237,8 +237,9 @@ Update with Aggregation Pipeline
 -----------
 It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
 be integrated directly into the update. This is done using the ``aggregation_update=True`` and ``__raw__``
+pipeline
+`Update with Aggregation Pipeline <https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
 keyword argument::
-
 
     # 'tags' field is set to 'coding is fun'
     Page.objects(tags='coding').update(__raw__=[
