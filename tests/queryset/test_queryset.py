@@ -25,6 +25,7 @@ from mongoengine.queryset import (
     queryset_manager,
 )
 from tests.utils import (
+    requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
 )
@@ -2216,6 +2217,19 @@ class TestQueryset(unittest.TestCase):
         )
         post.reload()
         assert post.tags == ["code", "mongodb"]
+
+    @requires_mongodb_gte_42
+    def test_aggregation_update(self):
+        """Ensure that the 'aggregation_update' update works correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
+        post.save()
 
         BlogPost.objects(slug="test").update(
             __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
