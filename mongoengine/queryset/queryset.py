@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from mongoengine.common import is_py_39
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (BaseQuerySet, DO_NOTHING, NULLIFY,
                                        CASCADE, DENY, PULL)
@@ -13,6 +14,7 @@ __all__ = ('QuerySet', 'QuerySetNoCache', 'QuerySetNoDeRef', 'DO_NOTHING', 'NULL
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 ITER_CHUNK_SIZE = 100
+IS_PY39 = is_py_39()
 
 
 _T = TypeVar('_T')
@@ -107,8 +109,13 @@ class QuerySet(BaseQuerySet[_T], LazyPrefetchBase):
             while pos < upper:
                 yield self._result_cache[pos]
                 pos += 1
+
             if not self._has_more:
-                return
+                if IS_PY39:
+                    return
+                else:
+                    raise StopIteration
+
             if len(self._result_cache) <= pos:
                 self._populate_cache()
 

@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import sys
 import threading
 
 _class_registry_cache = {}
@@ -89,3 +90,8 @@ def _import_class(cls_name):
         _class_registry_cache[cls] = getattr(module, cls)
 
     return _class_registry_cache.get(cls_name)
+
+
+def is_py_39():
+    """check if current python version is 3.9"""
+    return sys.version_info.major == 3 and sys.version_info.minor == 9
