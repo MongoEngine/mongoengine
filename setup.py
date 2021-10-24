@@ -112,7 +112,7 @@ CLASSIFIERS = [
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
     "tests_require": [
-        "pytest<5.0",
+        "pytest",
         "pytest-cov",
         "coverage",
         "blinker",
