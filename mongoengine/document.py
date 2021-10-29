@@ -467,18 +467,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         """
         collection = self._get_collection()
         with set_write_concern(collection, write_concern) as wc_collection:
-            if force_insert:
-                return wc_collection.insert_one(doc).inserted_id
-            # insert_one will provoke UniqueError alongside save does not
-            # therefore, it need to catch and call replace_one.
-            if "_id" in doc:
+            if force_insert or "_id" not in doc:
+                insert_one_result = wc_collection.insert_one(doc)
+                return insert_one_result.inserted_id
+            else:
                 select_dict = {"_id": doc["_id"]}
                 select_dict = self._integrate_shard_key(doc, select_dict)
                 wc_collection.find_one_and_replace(select_dict, doc, upsert=True)
                 return doc["_id"]
-
-            insert_one_result = wc_collection.insert_one(doc)
-            return insert_one_result.inserted_id
 
     def _get_update_doc(self):
         """Return a dict containing all the $set and $unset operations
