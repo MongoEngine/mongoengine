@@ -147,7 +147,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -169,7 +169,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -191,7 +191,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -213,7 +213,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -235,7 +235,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[True],
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -988,6 +988,8 @@ class ListField(Generic[_T], ComplexBaseField):
         self: ListField[DictField[Any]], instance: Any, owner: Any
     ) -> List[Dict[str, Any]]: ...
 
+class SortedListField(ListField): ...
+
 class DictField(Generic[_T], ComplexBaseField):
     # not sure we need the init method overloads
     @overload
@@ -1441,6 +1443,28 @@ class CachedReferenceField(Generic[_ST, _GT], BaseField):
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 
+class GenericReferenceField(Generic[_ST, _GT], BaseField):
+    @overload
+    def __new__(
+        cls,
+        *,
+        blank: Literal[True],
+        help_text: str = ...,
+        choices: Iterable[type] = ...,
+        **kwargs,
+    ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        blank: Literal[False] = False,
+        help_text: str = ...,
+        choices: Iterable[type] = ...,
+        **kwargs,
+    ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
+    def __set__(self, instance: Any, value: _ST) -> None: ...
+    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
@@ -1527,3 +1551,31 @@ class EnumField(Generic[_ST, _GT], BaseField):
     ) -> EnumField[Optional[_T_ENUM], _T_ENUM]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
+
+class LongField(BaseField):
+    @overload
+    def __new__(
+        cls,
+        *,
+        default: Optional[int] = ...,
+        blank: Literal[True],
+        help_text: str = ...,
+        **kwargs,
+    ) -> LongField: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        default: Optional[int] = ...,
+        blank: Literal[False] = False,
+        help_text: str = ...,
+        **kwargs,
+    ) -> LongField: ...
+
+
+class ComplexDateTimeField(BaseField): ...
+
+class GenericEmbeddedDocumentField(BaseField): ...
+
+class BinaryField(BaseField): ...
