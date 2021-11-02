@@ -147,7 +147,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -169,7 +169,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -191,7 +191,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -213,7 +213,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -235,7 +235,7 @@ class StringField(Generic[_ST, _GT], BaseField):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[True],
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[Tuple[str, str]]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -1572,6 +1572,7 @@ class LongField(BaseField):
         help_text: str = ...,
         **kwargs,
     ) -> LongField: ...
+
 
 class ComplexDateTimeField(BaseField): ...
 
