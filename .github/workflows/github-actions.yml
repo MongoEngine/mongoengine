@@ -53,7 +53,7 @@ jobs:
             PYMONGO: $PYMONGO_3_9
           - python-version: 3.7
             MONGODB: $MONGODB_4_2
-            PYMONGO: $PYMONGO_3_6
+            PYMONGO: $PYMONGO_3_9
           - python-version: 3.7
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_11
