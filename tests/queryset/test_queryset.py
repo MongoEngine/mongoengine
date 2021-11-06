@@ -2233,7 +2233,6 @@ class TestQueryset(unittest.TestCase):
 
         BlogPost.objects(slug="test").update(
             __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
-            aggregation_update=True,
         )
         post.reload()
         assert post.slug == "test test"
@@ -2245,7 +2244,6 @@ class TestQueryset(unittest.TestCase):
                     "$set": {"slug": {"$concat": ["When", " ", "$slug"]}}
                 },  # When test test it
             ],
-            aggregation_update=True,
         )
         post.reload()
         assert post.slug == "When test test it"

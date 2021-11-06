@@ -236,7 +236,7 @@ keyword argument::
 Update with Aggregation Pipeline
 -----------
 It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
-be integrated directly into the update. This is done using the ``aggregation_update=True`` and ``__raw__``
+be integrated directly into the update. This is done by using ``__raw__`` field and value of array
 pipeline
 `Update with Aggregation Pipeline <https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
 keyword argument::
@@ -245,7 +245,6 @@ keyword argument::
     Page.objects(tags='coding').update(__raw__=[
         {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
         ],
-        aggregation_update=True,
     )
 
 .. versionadded:: 0.4

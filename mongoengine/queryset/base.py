@@ -524,7 +524,6 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
-        aggregation_update=False,
         **update,
     ):
         """Perform an atomic update on the fields matched by the query.
@@ -540,7 +539,6 @@ class BaseQuerySet:
         :param read_concern: Override the read concern for the operation
         :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
             updated items
-        :param aggregation_update: Update with Aggregation Pipeline https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation-pipeline
         :param update: Django-style update keyword arguments
 
         :returns the number of updated documents (unless ``full_result`` is True)
@@ -553,11 +551,7 @@ class BaseQuerySet:
 
         queryset = self.clone()
         query = queryset._query
-        if aggregation_update:
-            if "__raw__" not in update:
-                raise OperationError(
-                    "Currently aggregation_update works only with __raw__ value"
-                )
+        if "__raw__" in update and isinstance(update["__raw__"], list):
             update = [
                 transform.update(queryset._document, **{"__raw__": u})
                 for u in update["__raw__"]
