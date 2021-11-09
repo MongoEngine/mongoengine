@@ -723,7 +723,7 @@ class BaseQuerySet:
         return queryset.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
-        """ "Retrieve a set of documents by their ids.
+        """Retrieve a set of documents by their ids.
 
         :param object_ids: a list or tuple of ObjectId's
         :rtype: dict of ObjectId's as keys and collection-specific
