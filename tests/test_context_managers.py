@@ -528,6 +528,62 @@ class TestContextManagers:
         with switch_db(A, "test2"):
             assert 0 == A.objects.all().count()
 
+    def test_exception_in_child_of_a_nested_transaction_rolls_parent_back(self):
+        connect("mongoenginetest")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            name = StringField()
+
+        B.drop_collection()
+        b_doc = B.objects.create(name="b")
+
+        try:
+            with run_in_transaction():
+                a_doc.update(name="trx-parent")
+                with run_in_transaction():
+                    b_doc.update(name="trx-child")
+                    raise Exception
+        except Exception:
+            pass
+
+        assert "a" == A.objects.get(id=a_doc.id).name
+        assert "b" == B.objects.get(id=b_doc.id).name
+
+    def test_exception_in_parent_of_nested_of_transaction_after_child_completed_only_rolls_parent_back(
+        self,
+    ):
+        connect("mongoenginetest")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            name = StringField()
+
+        B.drop_collection()
+        b_doc = B.objects.create(name="b")
+
+        try:
+            with run_in_transaction():
+                a_doc.update(name="trx-parent")
+                with run_in_transaction():
+                    b_doc.update(name="trx-child")
+                raise Exception
+        except Exception:
+            pass
+
+        assert "a" == A.objects.get(id=a_doc.id).name
+        assert "trx-child" == B.objects.get(id=b_doc.id).name
+
 
 if __name__ == "__main__":
     unittest.main()
