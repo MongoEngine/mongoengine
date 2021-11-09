@@ -41,6 +41,10 @@ def requires_mongodb_gte_44(func):
     return _decorated_with_ver_requirement(func, (4, 4), oper=operator.ge)
 
 
+def requires_mongodb_gte_40(func):
+    return _decorated_with_ver_requirement(func, (4, 0), oper=operator.ge)
+
+
 def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     """Return a MongoDB version requirement decorator.
 
