@@ -6,7 +6,7 @@ import unittest
 import pytest
 
 from mongoengine import *
-from mongoengine.connection import get_db
+from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
     no_dereference,
     no_sub_classes,
@@ -589,6 +589,20 @@ class TestContextManagers:
 
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "trx-child" == B.objects.get(id=b_doc.id).name
+
+    @requires_mongodb_gte_40
+    def test_nested_transactions_create_and_release_sessions_accordingly(self):
+        connect("mongoenginetest")
+        with run_in_transaction():
+            s1 = _get_session()
+            with run_in_transaction():
+                s2 = _get_session()
+                assert s1 != s2
+                with run_in_transaction():
+                    pass
+                assert s2 == _get_session()
+            assert s1 == _get_session()
+        assert _get_session() is None
 
     @requires_mongodb_gte_40
     def test_thread_safety_of_transactions(self):
