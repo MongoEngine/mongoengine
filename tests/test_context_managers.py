@@ -1,3 +1,6 @@
+import random
+import threading
+import time
 import unittest
 
 import pytest
@@ -489,6 +492,7 @@ class TestContextManagers:
         with switch_db(A, "test2"):
             assert "a4" == A.objects.get(id=a_doc.id).name
 
+    @requires_mongodb_gte_40
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
         self,
     ):
@@ -528,6 +532,7 @@ class TestContextManagers:
         with switch_db(A, "test2"):
             assert 0 == A.objects.all().count()
 
+    @requires_mongodb_gte_40
     def test_exception_in_child_of_a_nested_transaction_rolls_parent_back(self):
         connect("mongoenginetest")
 
@@ -555,6 +560,7 @@ class TestContextManagers:
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "b" == B.objects.get(id=b_doc.id).name
 
+    @requires_mongodb_gte_40
     def test_exception_in_parent_of_nested_of_transaction_after_child_completed_only_rolls_parent_back(
         self,
     ):
@@ -583,6 +589,72 @@ class TestContextManagers:
 
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "trx-child" == B.objects.get(id=b_doc.id).name
+
+    @requires_mongodb_gte_40
+    def test_thread_safety_of_transactions(self):
+        """
+        Make sure transactions don't step over each other. Each
+        session should be isolated to each thread. If this is the
+        case, then no amount of runtime variability should have
+        an effect on the output.
+
+        This test sets up 10 records, each with an integer field
+        of value 0 - 9.
+
+        We then spin up 10 threads and attempt to update a target
+        record by multiplying it's integer value by 10. Then, if
+        the target record is even, throw an exception, which
+        should then roll the transaction back. The odd rows always
+        succeed.
+
+        If the sessions are properly thread safe, we should ALWAYS
+        net out with the following sum across the integer fields
+        of the 10 records:
+
+        0 + 10 + 2 + 30 + 4 + 50 + 6 + 70 + 8 + 90 = 270
+        """
+        connect("mongoenginetest")
+
+        class A(Document):
+            i = IntField()
+
+        A.drop_collection()
+
+        def thread_fn(idx):
+            # Open the transaction at some unknown interval
+            time.sleep(random.uniform(0.01, 0.1))
+            with run_in_transaction():
+
+                a = A.objects.get(i=idx)
+                a.i = idx * 10
+                # Save at some unknown interval
+                time.sleep(random.uniform(0.01, 0.1))
+                a.save()
+
+                # Force roll backs for the even runs...
+                if idx % 2 == 0:
+                    raise Exception
+
+        thread_count = 10
+        for i in range(thread_count):
+            A.objects.create(i=i)
+
+        threads = [
+            threading.Thread(target=thread_fn, args=(i,)) for i in range(thread_count)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        expected_sum = 0
+        for i in range(thread_count):
+            if i % 2 == 0:
+                expected_sum += i
+            else:
+                expected_sum += i * 10
+        assert expected_sum == 270
+        assert expected_sum == sum(a.i for a in A.objects.all())
 
 
 if __name__ == "__main__":
