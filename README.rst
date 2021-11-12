@@ -15,6 +15,12 @@ MongoEngine
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
   :target: https://github.com/ambv/black
 
+.. image:: https://pepy.tech/badge/mongoengine/month
+  :target: https://pepy.tech/project/mongoengine
+
+.. image:: https://img.shields.io/pypi/v/mongoengine.svg
+  :target: https://pypi.python.org/pypi/mongoengine
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
