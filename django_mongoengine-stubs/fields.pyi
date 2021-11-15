@@ -581,6 +581,14 @@ class DecimalField(Generic[_ST, _GT], BaseField):
     def __new__(
         cls,
         *,
+        default: Union[int, float],
+        write_permission: int = ...,
+        **kwargs,
+    ) -> DecimalField[Optional[Decimal], Optional[Decimal]]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
         required: bool = ...,
         min_value: Decimal = ...,
         max_value: Decimal = ...,
@@ -689,6 +697,47 @@ class DecimalField(Generic[_ST, _GT], BaseField):
         choices: Optional[Iterable[Decimal]] = ...,
         null: bool = False,
         verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
+        **kwargs,
+    ) -> DecimalField[Decimal, Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        max_value: int = ...,
+        blank: bool = ...,
+        precision: int = ...,
+        help_text: Optional[str] = ...,
+        **kwargs,
+    ) -> DecimalField[Decimal, Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        max_value: int = ...,
+        blank: bool = ...,
+        precision: int = ...,
+        help_text: Optional[str] = ...,
+        **kwargs,
+    ) -> DecimalField[Decimal, Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        blank: bool = ...,
+        precision: int = ...,
+        help_text: Optional[str] = ...,
+        **kwargs,
+    ) -> DecimalField[Decimal, Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        blank: bool = ...,
+        precision: int = ...,
         help_text: Optional[str] = ...,
         **kwargs,
     ) -> DecimalField[Decimal, Decimal]: ...
@@ -1398,8 +1447,8 @@ class ReferenceField(Generic[_ST, _GT], BaseField):
     @overload
     def __new__(
         cls,
-        document_type: Type[_DT],
-        blank: Literal[True],
+        document_type: Union[Type[_DT], str],
+        blank: Literal[True] = True,
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
@@ -1408,7 +1457,7 @@ class ReferenceField(Generic[_ST, _GT], BaseField):
     @overload
     def __new__(
         cls,
-        document_type: Type[_DT],
+        document_type: Union[Type[_DT], str],
         blank: Literal[False] = False,
         required: bool = ...,
         help_text: str = ...,
@@ -1573,6 +1622,7 @@ class LongField(BaseField):
         **kwargs,
     ) -> LongField: ...
 
+class FileField(BaseField): ...
 
 class ComplexDateTimeField(BaseField): ...
 
