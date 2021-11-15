@@ -1448,7 +1448,7 @@ class ReferenceField(Generic[_ST, _GT], BaseField):
     def __new__(
         cls,
         document_type: Union[Type[_DT], str],
-        blank: Literal[True] = True,
+        blank: Literal[True],
         required: bool = ...,
         help_text: str = ...,
         **kwargs,
