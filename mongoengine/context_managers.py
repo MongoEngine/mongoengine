@@ -78,7 +78,10 @@ class no_sub_classes(object):
 
 
 class query_counter(object):
-    """ Query_counter context manager to get the number of queries. """
+    """ Query_counter context manager to get the number of queries.
+
+    Use in production is disabled.
+    """
 
     def __init__(self):
         """ Construct the query_counter. """
@@ -90,16 +93,28 @@ class query_counter(object):
             "command.createIndexes": {"$exists": False},  # don't count index creation
         }
 
+    @staticmethod
+    def _is_production():
+        """Utility to detect production environment."""
+        try:
+            if os.environ.get("ENVIRONMENT") == "PRODUCTION":
+                return True
+        except Exception:
+            return False
+        return False
+
     def __enter__(self):
         """ On every with block we need to drop the profile collection. """
-        self.db.set_profiling_level(0)
-        self.db.system.profile.drop()
-        self.db.set_profiling_level(2)
+        if not self._is_production():
+            self.db.set_profiling_level(0)
+            self.db.system.profile.drop()
+            self.db.set_profiling_level(2)
         return self
 
     def __exit__(self, t, value, traceback):
         """ Reset the profiling level. """
-        self.db.set_profiling_level(0)
+        if not self._is_production():
+            self.db.set_profiling_level(0)
 
     def __eq__(self, value):
         """ == Compare querycounter. """
@@ -136,9 +151,15 @@ class query_counter(object):
 
     def _get_count(self):
         """ Get the number of queries. """
+        if self._is_production():
+            # Profiling is disabled in production.
+            return 0
         count = self.get_queries().count() - self.counter
         self.counter += 1
         return count
 
     def get_queries(self):
+        if self._is_production():
+            # Profiling is disabled in production.
+            return []
         return self.db.system.profile.find(self.ignore_query)
