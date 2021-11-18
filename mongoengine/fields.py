@@ -1064,7 +1064,7 @@ class ReferenceField(BaseField):
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.deference, instance=instance, owner=owner, value=value),
-                value.id, value.collection, instance)
+                value.id, value.collection, instance, wrapped_document_type=self.document_type)
 
         return super(ReferenceField, self).__get__(instance, owner)
 
@@ -1122,7 +1122,8 @@ class ReferenceField(BaseField):
                 lambda v=value, t=self.document_type, l=_lazy_prefetch_base, f=fields_copy: dereference_dbref(v, t, l, f),
                 value.id,
                 value.collection,
-                lazy_prefetch_base=_lazy_prefetch_base if _fields else None
+                lazy_prefetch_base=_lazy_prefetch_base if _fields else None,
+                wrapped_document_type=self.document_type,
             )
 
         return value
@@ -1135,10 +1136,20 @@ class ReferenceField(BaseField):
 
     def validate(self, value):
         if type(value) is DocumentProxy:
+            # `DocumentProxy.wrapped_document_type` stores the class of proxied document
+            # Check whether this field is allowed to reference the document
+            # Note: `issubclass()` check failing doesn't mean the type is wrong. `value.wrapped_document_type` could be a parent of `self.document_type` in allow_inheritance heirarchy. The actual type of `value` will depend on `_cls` field stored in the DB
+            if value.wrapped_document_type and issubclass(value.wrapped_document_type, self.document_type):
+                return
+                
+            # Either document type is not available or the subclass check might be a false positive
+            # No way to check validity apart from dereferencing
+            if value != None and not isinstance(value, self.document_type):
+                self.error("ReferenceField expected document of type {}. Found {}".format(self.document_type, type(value())))
             return
 
         if not isinstance(value, (self.document_type, DBRef, ObjectId)):
-            self.error("A ReferenceField only accepts DBRef or documents")
+            self.error("A ReferenceField only accepts DBRef or documents. Found {}".format(type(value)))
 
         if isinstance(value, Document) and value.id is None:
             self.error('You can only reference documents once they have been '
@@ -1239,7 +1250,8 @@ class CachedReferenceField(BaseField):
                 lambda v=value, t=self.document_type, l=_lazy_prefetch_base, f=fields_copy: dereference_dbref(v, t, l, f),
                 value.id,
                 value.collection,
-                lazy_prefetch_base = _lazy_prefetch_base if _fields else None
+                lazy_prefetch_base = _lazy_prefetch_base if _fields else None,
+                wrapped_document_type = self.document_type,
             )
 
         return value
@@ -1273,7 +1285,7 @@ class CachedReferenceField(BaseField):
         if self._auto_dereference and isinstance(value, DBRef):
             return DocumentProxy(
                 functools.partial(self.dereference, instance=instance, owner=owner, value=value),
-                value.id, value.collection, instance)
+                value.id, value.collection, instance, wrapped_document_type=self.document_type)
         return super(CachedReferenceField, self).__get__(instance, owner)
 
 
@@ -1410,7 +1422,7 @@ class GenericReferenceField(BaseField):
             reference = value['_ref']
             return DocumentProxy(
                 functools.partial(self.dereference, doc_cls=doc_cls, reference=reference, instance=instance),
-                reference.id, doc_cls, instance)
+                reference.id, doc_cls, instance, wrapped_document_type=doc_cls)
 
         return super(GenericReferenceField, self).__get__(instance, owner)
 

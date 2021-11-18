@@ -99,8 +99,9 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     wrapped = None
     _instance = None
     _lazy_prefetch_optimized = False
+    wrapped_document_type = None
 
-    def __init__(self, wrapped, id, collection, instance=None, lazy_prefetch_base=None):
+    def __init__(self, wrapped, id, collection, instance=None, lazy_prefetch_base=None, wrapped_document_type=None):
         super(DocumentProxy, self).__init__(wrapped)
         self.id = id
         self.collection = collection
@@ -108,6 +109,7 @@ class DocumentProxy(lazy_object_proxy.Proxy):
             self._instance = weakref.proxy(instance)
         if lazy_prefetch_base is not None:
             self._lazy_prefetch_optimized = lazy_prefetch_base.lazy_prefetch_available()
+        self.wrapped_document_type = wrapped_document_type
 
     def __call__(self, *args, **kwargs):
         # Hack as callable(lazy_object_proxy.Proxy) return True
