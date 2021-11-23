@@ -979,6 +979,8 @@ class BaseDocument(object):
         indexes = []
         autoIdIndex = {'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}}
         indexes.append(autoIdIndex)
+        if 'history_indexes' in cls.instance_type._meta:
+            indexes.extend(cls.instance_type._meta.get('history_indexes'))
 
         historyTTL = cls.instance_type._meta.get('historyTTL')
         if historyTTL:
@@ -1013,7 +1015,7 @@ class BaseDocument(object):
             args = spec.get("args", {})
             args['noCompanyPrefix'] = True
             spec['args'] = args
-        
+
         if "text" in [f[1] for f in spec['fields']]:
             # text indexes don't have ordering sensitivity
             # sorting will help in compare_indexes correctness
