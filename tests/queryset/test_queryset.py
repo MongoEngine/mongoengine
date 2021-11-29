@@ -3931,7 +3931,7 @@ class TestQueryset(unittest.TestCase):
         Post.drop_collection()
 
         assert isinstance(Post.objects, CustomQuerySet)
-        assert not Post.objects.delete()
+        assert Post.objects.delete() == 0
 
         post = Post()
         post.save()
