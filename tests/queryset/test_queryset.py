@@ -3914,6 +3914,33 @@ class TestQueryset(unittest.TestCase):
 
         Post.drop_collection()
 
+    def test_custom_querysets_set_manager_methods(self):
+        """Ensure that custom QuerySet classes methods may be used."""
+
+        class CustomQuerySet(QuerySet):
+            def delete(self, *args, **kwargs):
+                """Example of method when one want to change default behaviour of it"""
+                return 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Post(Document):
+            objects = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        assert isinstance(Post.objects, CustomQuerySet)
+        assert Post.objects.delete() == 0
+
+        post = Post()
+        post.save()
+        assert Post.objects.count() == 1
+        post.delete()
+        assert Post.objects.count() == 1
+
+        Post.drop_collection()
+
     def test_custom_querysets_managers_directly(self):
         """Ensure that custom QuerySet classes may be used."""
 

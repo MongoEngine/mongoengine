@@ -591,7 +591,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     def _qs(self):
         """Return the default queryset corresponding to this document."""
         if not hasattr(self, "__objects"):
-            self.__objects = QuerySet(self.__class__, self._get_collection())
+            queryset_class = self._meta.get("queryset_class", QuerySet)
+            self.__objects = queryset_class(self.__class__, self._get_collection())
         return self.__objects
 
     @property
