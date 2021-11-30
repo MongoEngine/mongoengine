@@ -238,7 +238,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     if alias in _connection_settings:
         del _connection_settings[alias]
 
-    _clear_session()
+    _local_sessions.clear_all()
 
 
 def disconnect_all():
@@ -423,6 +423,9 @@ class _LocalSessions(threading.local):
     def clear_current(self):
         if len(self.sessions):
             self.sessions.pop()
+
+    def clear_all(self):
+        self.sessions.clear()
 
 
 _local_sessions = _LocalSessions()
