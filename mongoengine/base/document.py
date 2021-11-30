@@ -977,8 +977,8 @@ class BaseDocument(object):
         if not cls.__name__.startswith("Historical"):
             return []
         indexes = []
-        autoIdIndex = {'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}}
-        indexes.append(autoIdIndex)
+        indexes.append({'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}})
+        indexes.append({'fields': [('_auto_id_0', "hashed")], 'args': {'noCompanyPrefix': True}, 'cls': False})
         if 'history_indexes' in cls.instance_type._meta:
             indexes.extend(cls.instance_type._meta.get('history_indexes'))
 
