@@ -888,10 +888,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         index_cls = cls._meta.get("index_cls", True)
 
         collection = cls._get_collection()
-        # 746: when connection is via mongos, the read preference is not necessarily an indication that
-        # this code runs on a secondary
-        if not collection.is_mongos and collection.read_preference > 1:
-            return
 
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating
