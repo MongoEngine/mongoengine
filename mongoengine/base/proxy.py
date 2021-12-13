@@ -5,6 +5,7 @@ import copy
 import lazy_object_proxy
 from contextlib2 import contextmanager
 from collections import defaultdict
+from mongoengine.read_preference import RPReadPreferenceContext
 
 
 def _get_field(doc, fields):
@@ -59,7 +60,15 @@ class LazyPrefetchBase:
             return (False, None)
 
         # Fetching is inevitable
-        cursor = cls._get_db()[value.collection].find({"_id": {"$in": ids}})
+        # Fetching is inevitable
+        cursor = (
+            cls._get_db()
+            .get_collection(
+                value.collection,
+                read_preference=RPReadPreferenceContext.get_read_preference(),
+            )
+            .find({"_id": {"$in": ids}})
+        )
         id_son_map = dict((son['_id'], son) for son in cursor)
 
         self._reference_cache[field_path].update(dict((id, (id_son_map.get(id, None), False)) for id in ids))

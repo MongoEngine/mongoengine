@@ -14,6 +14,7 @@ import warnings
 from bson import Decimal128
 from contextlib2 import contextmanager
 from mongoengine.base.proxy import DocumentProxy, ListFieldProxy, LazyPrefetchBase
+from mongoengine.read_preference import RPReadPreferenceContext
 from six.moves import map, range
 
 PST_TIMEZONE = pytz.timezone("US/Pacific")
@@ -942,10 +943,15 @@ class MapField(DictField):
 
 
 def _dereference_dbref(value, cls):
-    value = cls._get_db().dereference(value)
-    if value is not None:
-        value = cls._from_son(value)
-    return value
+    db = cls._get_db()
+    collection = db.get_collection(
+        value.collection,
+        read_preference=RPReadPreferenceContext.get_read_preference(),
+    )
+    doc = collection.find_one({"_id": value.id})
+    if doc is not None:
+        doc = cls._from_son(doc)
+    return doc
 
 def dereference_dbref(value, document_type, _lazy_prefetch_base=None, _fields=None):
 
