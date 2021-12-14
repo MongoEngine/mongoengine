@@ -390,6 +390,22 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if self._meta.get("abstract"):
             raise InvalidDocumentError("Cannot save an abstract document.")
 
+        # Cascade save first before saving document
+        if cascade is None:
+            cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
+
+        if cascade:
+            kwargs = {
+                "force_insert": force_insert,
+                "validate": validate,
+                "write_concern": write_concern,
+                "cascade": cascade,
+            }
+            if cascade_kwargs:  # Allow granular control over cascades
+                kwargs.update(cascade_kwargs)
+            kwargs["_refs"] = _refs
+            self.cascade_save(**kwargs)
+
         signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
         if validate:
@@ -411,21 +427,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             self.ensure_indexes()
 
         try:
-            if cascade is None:
-                cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
-
-            if cascade:
-                kwargs = {
-                    "force_insert": force_insert,
-                    "validate": validate,
-                    "write_concern": write_concern,
-                    "cascade": cascade,
-                }
-                if cascade_kwargs:  # Allow granular control over cascades
-                    kwargs.update(cascade_kwargs)
-                kwargs["_refs"] = _refs
-                self.cascade_save(**kwargs)
-
             # Save a new document or update an existing one
             if created:
                 object_id = self._save_create(doc, force_insert, write_concern)
@@ -433,7 +434,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 object_id, created = self._save_update(
                     doc, save_condition, write_concern
                 )
-
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
             raise NotUniqueError(message % err)
