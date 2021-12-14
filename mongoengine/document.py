@@ -411,14 +411,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             self.ensure_indexes()
 
         try:
-            # Save a new document or update an existing one
-            if created:
-                object_id = self._save_create(doc, force_insert, write_concern)
-            else:
-                object_id, created = self._save_update(
-                    doc, save_condition, write_concern
-                )
-
             if cascade is None:
                 cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
 
@@ -433,6 +425,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                     kwargs.update(cascade_kwargs)
                 kwargs["_refs"] = _refs
                 self.cascade_save(**kwargs)
+
+            # Save a new document or update an existing one
+            if created:
+                object_id = self._save_create(doc, force_insert, write_concern)
+            else:
+                object_id, created = self._save_update(
+                    doc, save_condition, write_concern
+                )
 
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
