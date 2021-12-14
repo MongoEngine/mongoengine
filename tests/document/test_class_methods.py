@@ -344,6 +344,25 @@ class TestClassMethods(unittest.TestCase):
 
         Person.drop_collection()
 
+    def test_save_with_cascade_on_new_referencefield(self):
+        """Ensure that a new and unsaved ReferenceField is saved before 
+        the parent Document is saved to avoid validation issues.
+        """
+
+        class Job(Document):
+            employee = ReferenceField(self.Person)
+
+        person = self.Person(name="Test User")
+        job = Job(employee=person)
+        job.save(cascade=True)
+
+        employee_obj = self.Person.objects[0]
+        assert employee_obj["name"] == "Test User"
+
+        job_obj = Job.objects[0]
+        assert job_obj.employee == job.employee
+
+
 
 if __name__ == "__main__":
     unittest.main()
