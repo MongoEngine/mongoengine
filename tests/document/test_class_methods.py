@@ -362,7 +362,5 @@ class TestClassMethods(unittest.TestCase):
         job_obj = Job.objects[0]
         assert job_obj.employee == job.employee
 
-
-
 if __name__ == "__main__":
     unittest.main()
