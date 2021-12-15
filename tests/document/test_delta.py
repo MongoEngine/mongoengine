@@ -952,6 +952,31 @@ class TestDelta(MongoDBTestCase):
         assert "oops" == delta[0]["users.007.rolist"][0]["type"]
         assert uinfo.id == delta[0]["users.007.info"]
 
+    def test_delta_on_dict(self):
+        class MyDoc(Document):
+            dico = DictField()
+
+        MyDoc.drop_collection()
+
+        MyDoc(dico={"a": {"b": 0}}).save()
+
+        mydoc = MyDoc.objects.first()
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"]["b"] = 0
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"] = {"b": 0}
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico = {"a": {"b": 0}}
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"]["c"] = 1
+        assert mydoc._get_changed_fields() == ["dico.a.c"]
+        mydoc.dico["a"]["b"] = 2
+        mydoc.dico["d"] = 3
+        assert mydoc._get_changed_fields() == ["dico.a.c", "dico.a.b", "dico.d"]
+
+        mydoc._clear_changed_fields()
+        assert mydoc._get_changed_fields() == []
+
 
 if __name__ == "__main__":
     unittest.main()
