@@ -1499,7 +1499,7 @@ class GenericReferenceField(Generic[_ST, _GT], BaseField):
         *,
         blank: Literal[True],
         help_text: str = ...,
-        choices: Iterable[type] = ...,
+        choices: Iterable[Union[type, str]] = ...,
         **kwargs,
     ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
 
@@ -1509,7 +1509,7 @@ class GenericReferenceField(Generic[_ST, _GT], BaseField):
         *,
         blank: Literal[False] = False,
         help_text: str = ...,
-        choices: Iterable[type] = ...,
+        choices: Iterable[Union[type, str]] = ...,
         **kwargs,
     ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
