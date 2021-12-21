@@ -46,6 +46,18 @@ def includes_cls(fields):
     return first_field == '_cls'
 
 
+def includes_cls_id(fields):
+    """ Checks whether there's an index with prefix _cls, _id
+    """
+
+    if len(fields) >= 2:
+        if isinstance(fields[0], string_types) and isinstance(fields[1], string_types):
+            return fields[0] == "_cls" and fields[1] == "_id"
+        elif isinstance(fields[0], (list, tuple)) and len(fields[0]) and isinstance(fields[1], (list, tuple)) and len(fields[1]):
+            return fields[0][0] == "_cls" and fields[1][0] == "_id"
+    return False
+
+
 class EmbeddedDocument(with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
@@ -726,11 +738,20 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if not collection.is_mongos and collection.read_preference > 1:
             return
 
+        # TODO: index on (_cls) becomes obsolete after we have an index on (_cls, _id)
+        # remove logic related to `cls_indexed` - don't forgeyt to clean up compare_indexes, compare_indexes_including_options, and list_indexes too
+
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating
         # an extra index on _cls, as mongodb will use the existing
         # index to service queries against _cls
         cls_indexed = False
+
+        # determine if any index which we are creating includes
+        # _cls, _id as prefix; if so, we can avoid creating an extra index
+        # to support queries of type `cls.objects.no_sub_classes().order_by("-id")`
+        # used to refresh cached methods (see make_queryset_for_cached_methods_refresh in rippling-main)
+        cls_id_indexed = False
 
         # Ensure document-defined indexes are created
         if cls._meta['index_specs']:
@@ -739,6 +760,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                 spec = spec.copy()
                 fields = spec.pop('fields')
                 cls_indexed = cls_indexed or includes_cls(fields)
+                cls_id_indexed = cls_id_indexed or includes_cls_id(fields)
                 opts = index_opts.copy()
                 opts.update(spec)
 
@@ -753,22 +775,32 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                     collection.ensure_index(fields, background=background,
                                             drop_dups=drop_dups, **opts)
 
-        # If _cls is being used (for polymorphism), it needs an index,
-        # only if another index doesn't begin with _cls
-        if (index_cls and not cls_indexed and
-                cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
+        # If _cls is being used (for polymorphism), it needs extra indexes,
+        if (index_cls and cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
 
             # we shouldn't pass 'cls' to the collection.ensureIndex options
             # because of https://jira.mongodb.org/browse/SERVER-769
             if 'cls' in index_opts:
                 del index_opts['cls']
 
-            if IS_PYMONGO_3:
-                collection.create_index('_cls', background=background,
-                                        **index_opts)
-            else:
-                collection.ensure_index('_cls', background=background,
-                                        **index_opts)
+            if not cls_indexed:
+                if IS_PYMONGO_3:
+                    collection.create_index('_cls', background=background,
+                                            **index_opts)
+                else:
+                    collection.ensure_index('_cls', background=background,
+                                            **index_opts)
+
+            if not cls_id_indexed:
+                index = [("_cls", pymongo.ASCENDING), ("_id", pymongo.ASCENDING)]
+                partial_filter_expression = {'isDeleted': {'$eq': False}}
+                if IS_PYMONGO_3:
+                    collection.create_index(index, background=background, partialFilterExpression=partial_filter_expression,
+                                            **index_opts)
+                else:
+                    collection.ensure_index(index, background=background, partialFilterExpression=partial_filter_expression,
+                                            **index_opts)
+
 
     @classmethod
     def list_indexes(cls, include_options=False):
@@ -835,6 +867,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         if (cls._meta.get('index_cls', True) and
                 cls._meta.get('allow_inheritance', ALLOW_INHERITANCE) is True):
             indexes.append([(u'_cls', 1)] if include_options is False else ([(u'_cls', 1)], {}, None))
+            indexes.append([(u'_cls', 1), (u'_id', 1)] if include_options is False else ([(u'_cls', 1), (u'_id', 1)], {'isDeleted': {'$eq': False}}, None))
 
         return indexes
 
@@ -873,6 +906,16 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                     break
             if cls_obsolete:
                 missing.remove([(u'_cls', 1)])
+
+        # if { _cls: 1, _id: 1 } is missing, make sure it's *really* necessary
+        if [(u'_cls', 1), (u'_id', 1)] in missing:
+            cls_id_obsolete = False
+            for index in existing:
+                if includes_cls_id(index) and index not in extra:
+                    cls_id_obsolete = True
+                    break
+            if cls_id_obsolete:
+                missing.remove([(u'_cls', 1), (u'_id', 1)])
 
         return {'missing': missing, 'extra': extra}
 
@@ -923,6 +966,7 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
         missing = [index for index in missing if index not in modified]
         extra = {index_name: index for index_name, index in extra.items() if index_name not in not_extra}
 
+        # check whether class_index is actually required
         class_index= ([(u'_cls', 1)], {}, None)
         if class_index in missing:
             cls_obsolete = False
@@ -932,6 +976,18 @@ class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
                     break
             if cls_obsolete:
                 missing.remove(class_index)
+
+        # check whether cls_id_index is actually required
+        cls_id_index = ([(u'_cls', 1), (u'_id', 1)], {'isDeleted': {'$eq': False}}, None)
+        if cls_id_index in missing:
+            cls_id_obsolete = False
+            for index_name, index in existing.items():
+                if includes_cls_id(index[0]) and index_name not in extra:
+                    cls_id_obsolete = True
+                    break
+            if cls_id_obsolete:
+                missing.remove(cls_id_index)
+
         return {'missing': missing, 'extra': extra, 'modified': modified}
 
 
