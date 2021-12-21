@@ -13,7 +13,7 @@ from mongoengine.base.datastructures import (
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError
 
-__all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
+__all__ = ("BaseField", "SaveableBaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
 
 class BaseField:
@@ -259,7 +259,14 @@ class BaseField:
         self._set_owner_document(owner_document)
 
 
-class ComplexBaseField(BaseField):
+class SaveableBaseField(BaseField):
+    """A base class that dictates a field has the ability to save.
+    """
+    def save():
+        pass
+
+
+class ComplexBaseField(SaveableBaseField):
     """Handles complex fields, such as lists / dictionaries.
 
     Allows for nesting of embedded documents inside complex types.
@@ -482,6 +489,16 @@ class ComplexBaseField(BaseField):
         # Don't allow empty values if required
         if self.required and not value:
             self.error("Field is required and cannot be empty")
+
+    def save(self, instance, **kwargs):
+        Document = _import_class("Document")
+        value = instance._data.get(self.name)
+
+        for ref in value:
+            if isinstance(ref, SaveableBaseField):
+                ref.save(self, **kwargs)
+            elif isinstance(ref, Document):
+                ref.save(**kwargs)
 
     def prepare_query_value(self, op, value):
         return self.to_mongo(value)

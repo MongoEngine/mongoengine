@@ -362,5 +362,24 @@ class TestClassMethods(unittest.TestCase):
         job_obj = Job.objects[0]
         assert job_obj.employee == job.employee
 
+    def test_cascade_save_nested_referencefields(self):
+        """Ensure that nested ReferenceFields are saved during a cascade_save.
+        """
+
+        class Job(Document):
+            employee = ReferenceField(self.Person)
+
+        class Company(Document):
+            job_list = ListField(ReferenceField(Job))
+
+        person = self.Person(name="Test User")
+        job = Job(employee=person)
+        company = Company(job_list=[job]).save(cascade=True)
+
+        company_obj = Company.objects.first()
+        assert company_obj.job_list[0] == job
+
+        assert company_obj.job_list[0].employee["name"] == "Test User"
+
 if __name__ == "__main__":
     unittest.main()
