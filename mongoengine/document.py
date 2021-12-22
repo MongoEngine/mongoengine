@@ -1,6 +1,7 @@
 import re
 
 import pymongo
+from bson import SON
 from bson.dbref import DBRef
 from pymongo.read_preferences import ReadPreference
 
@@ -395,14 +396,25 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         try:
             signal_kwargs = signal_kwargs or {}
 
+            if write_concern is None:
+                write_concern = {}
+
             if self._meta.get("abstract"):
                 raise InvalidDocumentError("Cannot save an abstract document.")
 
-            # Cascade save first before saving document
+            # Cascade save before validation to avoid child not existing errors
             if cascade is None:
                 cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
 
+            has_placeholder_saved = False
+
             if cascade:
+                # If a cascade will occur save a placeholder version of this document to
+                #   avoid issues with cyclic saves if this doc has not been created yet
+                if self.id is None:
+                    self._save_place_holder(force_insert, write_concern)
+                    has_placeholder_saved = True
+
                 kwargs = {
                     "force_insert": force_insert,
                     "validate": validate,
@@ -414,13 +426,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 kwargs["_refs"] = _refs
                 self.cascade_save(**kwargs)
 
+            # update force_insert to reflect that we might have already run the insert for
+            #   the placeholder
+            force_insert = force_insert and not has_placeholder_saved
+
             signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
 
             if validate:
                 self.validate(clean=clean)
-
-            if write_concern is None:
-                write_concern = {}
 
             doc_id = self.to_mongo(fields=[self._meta["id_field"]])
             created = "_id" not in doc_id or self._created or force_insert
@@ -471,6 +484,16 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             self._is_saving = False
 
         return self
+
+    def _save_place_holder(self, force_insert, write_concern):
+        """Save a temp placeholder to the db with nothing but the ID.
+        """
+        data = SON()
+
+        object_id = self._save_create(data, force_insert, write_concern)
+            
+        id_field = self._meta["id_field"]
+        self[id_field] = self._fields[id_field].to_python(object_id)
 
     def _save_create(self, doc, force_insert, write_concern):
         """Save a new document.

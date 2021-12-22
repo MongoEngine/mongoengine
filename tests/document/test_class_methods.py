@@ -381,5 +381,47 @@ class TestClassMethods(unittest.TestCase):
 
         assert company_obj.job_list[0].employee["name"] == "Test User"
 
+    def test_cascade_save_with_cycles(self):
+        """Ensure that cyclic references do not break cascade saves.
+        """
+
+        class Object1(Document):
+            name = StringField()
+            oject2_reference = ReferenceField('Object2')
+            oject2_list = ListField(ReferenceField('Object2'))
+
+        class Object2(Document):
+            name = StringField()
+            oject1_reference = ReferenceField(Object1)
+            oject1_list = ListField(ReferenceField(Object1))
+
+        # TOFIX: is there a way to make it so the objects do not need to be saved
+        #   beforhand?
+        obj_1_name = "Test Object 1"
+        obj_1 = Object1(name=obj_1_name)
+        obj_2_name = "Test Object 2"
+        obj_2 = Object2(name="Has not been saved")
+
+        # Create a cyclic reference nightmare
+        obj_2.oject1_reference = obj_1
+        obj_2.oject1_list = [obj_1]
+
+        obj_1.oject2_reference = obj_2
+        obj_1.oject2_list = [obj_2]
+
+
+        obj_2.name = obj_2_name
+        obj_1.save(cascade=True)
+
+        test_1 = Object1.objects.first()
+        assert test_1.name == obj_1_name
+        assert test_1.oject2_reference.name == obj_2_name
+        assert test_1.oject2_list[0].name == obj_2_name
+
+        test_2 = Object2.objects.first()
+        assert test_2.name == obj_2_name
+        assert test_2.oject1_reference.name == obj_1_name
+        assert test_2.oject1_list[0].name == obj_1_name
+
 if __name__ == "__main__":
     unittest.main()
