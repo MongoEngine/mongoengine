@@ -18,6 +18,23 @@ try:
 except Exception:
     LONG_DESCRIPTION = None
 
+def _get_rp_version(actual_version):
+    # if __PROJECT_GIT_COMMIT_SHA is provided, that gets the highest precedence.
+    # if not available, then we can check if it's present in the file (the file
+    # is never checked in, so it's used only during the package installation step)
+    rp_commit_sha = None
+    try:
+        rp_commit_sha = open('rp-version', 'r').read()
+    except FileNotFoundError:
+        pass
+
+    rp_commit_sha = os.environ.get('__PROJECT_GIT_COMMIT_SHA', None) or rp_commit_sha
+    if rp_commit_sha is not None:
+        with open('rp-version', 'w') as f:
+            f.write(rp_commit_sha)
+        actual_version = actual_version + "+" + rp_commit_sha
+
+    return actual_version
 
 def get_version(version_tuple):
     if not isinstance(version_tuple[-1], int):
@@ -31,8 +48,7 @@ init = os.path.join(os.path.dirname(__file__), 'mongoengine', '__init__.py')
 version_line = list([l for l in open(init) if l.startswith('VERSION')])[0]
 
 VERSION = get_version(eval(version_line.split('=')[-1]))
-if os.environ.get('__PROJECT_GIT_COMMIT_SHA', '') != '':
-    VERSION = VERSION + "+" + os.environ.get('__PROJECT_GIT_COMMIT_SHA')
+VERSION = _get_rp_version(VERSION)
 
 
 CLASSIFIERS = [
