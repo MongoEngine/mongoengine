@@ -395,8 +395,6 @@ class TestClassMethods(unittest.TestCase):
             oject1_reference = ReferenceField(Object1)
             oject1_list = ListField(ReferenceField(Object1))
 
-        # TOFIX: is there a way to make it so the objects do not need to be saved
-        #   beforhand?
         obj_1_name = "Test Object 1"
         obj_1 = Object1(name=obj_1_name)
         obj_2_name = "Test Object 2"
