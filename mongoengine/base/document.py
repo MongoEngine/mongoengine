@@ -1115,6 +1115,9 @@ class BaseDocument(object):
         """
         Find and set unique indexes
         """
+        if cls.__name__.startswith("Historical"):
+            return []  # no unique indexes for history
+
         unique_indexes = []
         for field_name, field in cls._fields.items():
             sparse = field.sparse
