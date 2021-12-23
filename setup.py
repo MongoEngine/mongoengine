@@ -32,7 +32,7 @@ def _get_rp_version(actual_version):
     if rp_commit_sha is not None:
         with open('rp-version', 'w') as f:
             f.write(rp_commit_sha)
-        actual_version = actual_version + "+" + rp_commit_sha
+        actual_version = actual_version + "." + rp_commit_sha
 
     return actual_version
 
