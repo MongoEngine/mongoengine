@@ -1,9 +1,0 @@
-from typing import Any
-
-from pymongo.collection import Collection
-
-class Database:
-    name: str
-    def command(self, command: Any) -> Any: ...
-    def __getattr__(self, key: str) -> Collection: ...
-    def __getitem__(self, key: str) -> Collection: ...

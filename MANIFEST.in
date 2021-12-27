@@ -7,7 +7,6 @@ prune docs/_build
 recursive-include bson-stubs *
 recursive-include django_model_changes-stubs *
 recursive-include django_mongoengine-stubs *
-recursive-include pymongo-stubs *
 include requirements.txt
 include setup.cfg
 include rp-version
