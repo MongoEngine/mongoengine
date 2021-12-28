@@ -24,4 +24,4 @@ repos:
     rev: 5.10.1
     hooks:
       - id: isort
-        additional_dependencies: ['.[pyproject]']
+        additional_dependencies: ['setuptools']
