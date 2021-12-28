@@ -12,6 +12,7 @@ Development
 - Fix deepcopy of EmbeddedDocument #2202
 - Fix error when using precision=0 with DecimalField #2535
 - Add support for regex and whole word text search query #2568
+- Add support for update aggregation pipeline #2578
 
 Changes in 0.23.1
 ===========
