@@ -31,10 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
+    - uses: actions/setup-python@v2
       with:
-        python-version: 3.7
+        python-version: 3.8
     - run: bash .github/workflows/install_ci_python_dep.sh
     - run: pre-commit run -a
 
