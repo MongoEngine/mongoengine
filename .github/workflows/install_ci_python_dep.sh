@@ -1,5 +1,6 @@
 #!/bin/bash
-python -m pip install --upgrade pip
-python -m pip install coveralls
-python -m pip install pre-commit
-python -m pip install tox
+pip install setuptools
+pip install --upgrade pip
+pip install coveralls
+pip install pre-commit
+pip install tox
