@@ -931,6 +931,41 @@ class BaseDocument(object):
         return obj
 
     @classmethod
+    def _build_rippling_company_indices(cls):
+        """Add (company) as an index if required."""
+        res = []
+        if cls._meta.get('no_company_index', False):
+            return res
+
+        if cls.__name__.startswith("Historical"):
+            return res  # History tables do not have these access patterns.
+
+        ReferenceField = _import_class('ReferenceField')
+        if "company" in cls._fields and isinstance(cls._fields["company"], ReferenceField):
+            if "_cls" in cls._fields and cls._meta.get('allow_inheritance', ALLOW_INHERITANCE):
+                res.append({
+                    "fields": [("company", 1), ("_cls", 1)],
+                    "partialFilterExpression": {
+                        "$and": [
+                            {"company": {"$exists": True}},
+                            {"_cls": {"$exists": True}},
+                            {'isDeleted': {'$eq': False}}
+                        ],
+                    },
+                })
+            else:
+                res.append({
+                    "fields": [("company", 1)],
+                    "partialFilterExpression": {
+                        "$and": [
+                            {"company": {"$exists": True}},
+                            {'isDeleted': {'$eq': False}}
+                        ],
+                    },
+                })
+        return res
+
+    @classmethod
     def _build_index_specs(cls, meta_indexes):
         """Generate and merge the full index specs
         """
@@ -950,11 +985,25 @@ class BaseDocument(object):
                     continue
                 fields = index_spec['fields']
                 if fields in spec_fields:
+                    # BUG ALERT: If there are two indexes that operate on the same fields,
+                    # this can create bugs!! e.g., if the first processed index is unique
+                    # with a partialFilterExpression_1 & the second processed index has a
+                    # partialFilterExpression_2 but with no explicit uniqueness constraint,
+                    # then updating the index dictionary results in
+                    # (unique=True, partialFilterExpression_2) which is neither here, nor
+                    # there and just totally wrong.
                     res_index_specs[spec_fields.index(fields)].update(index_spec)
                 else:
                     res_index_specs.append(index_spec)
                     spec_fields.append(fields)
-            
+
+        # Add company indices as a backup iff no conflicting indices exist.
+        company_indices = cls._build_rippling_company_indices()
+        for index_spec in company_indices:
+            fields = index_spec["fields"]
+            if fields not in spec_fields:
+                res_index_specs.append(index_spec)
+                spec_fields.append(fields)
         return res_index_specs
     
     @classmethod
