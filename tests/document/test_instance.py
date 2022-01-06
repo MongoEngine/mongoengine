@@ -28,7 +28,10 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
-from mongoengine.pymongo_support import list_collection_names
+from mongoengine.pymongo_support import (
+    PYMONGO_VERSION,
+    list_collection_names,
+)
 from mongoengine.queryset import NULLIFY, Q
 from tests import fixtures
 from tests.fixtures import (
@@ -2943,7 +2946,11 @@ class TestDocumentInstance(MongoDBTestCase):
             }
         )
         assert [str(b) for b in custom_qs] == ["1", "2"]
-        assert custom_qs.count() == 2
+
+        # count only will work with this raw query before pymongo 4.x, but
+        # the length is also implicitly checked above
+        if PYMONGO_VERSION < (4,):
+            assert custom_qs.count() == 2
 
     def test_switch_db_instance(self):
         register_connection("testdb-1", "mongoenginetest2")

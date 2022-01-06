@@ -33,12 +33,25 @@ def count_documents(
     if PYMONGO_VERSION >= (3, 7):
         try:
             return collection.count_documents(filter=filter, **kwargs)
-        except OperationFailure:
+        except OperationFailure as err:
+            if PYMONGO_VERSION >= (4,):
+                raise
+
             # OperationFailure - accounts for some operators that used to work
             # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
-            pass
+            message = str(err)
+            if not (
+                "not allowed in this context" in message
+                and (
+                    "$where" in message
+                    or "$geoNear" in message
+                    or "$near" in message
+                    or "$nearSphere" in message
+                )
+            ):
+                raise
 
     cursor = collection.find(filter)
     for option, option_value in kwargs.items():
