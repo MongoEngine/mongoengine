@@ -4,11 +4,7 @@ Helper functions, constants, and types to aid with PyMongo v2.7 - v3.x support.
 import pymongo
 from pymongo.errors import OperationFailure
 
-_PYMONGO_37 = (3, 7)
-
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
-
-IS_PYMONGO_GTE_37 = PYMONGO_VERSION >= _PYMONGO_37
 
 
 def count_documents(
@@ -29,7 +25,7 @@ def count_documents(
         kwargs["collation"] = collation
 
     # count_documents appeared in pymongo 3.7
-    if IS_PYMONGO_GTE_37:
+    if PYMONGO_VERSION >= (3, 7):
         try:
             return collection.count_documents(filter=filter, **kwargs)
         except OperationFailure:
@@ -49,7 +45,7 @@ def count_documents(
 
 def list_collection_names(db, include_system_collections=False):
     """Pymongo>3.7 deprecates collection_names in favour of list_collection_names"""
-    if IS_PYMONGO_GTE_37:
+    if PYMONGO_VERSION >= (3, 7):
         collections = db.list_collection_names()
     else:
         collections = db.collection_names()

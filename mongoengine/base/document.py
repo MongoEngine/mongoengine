@@ -28,6 +28,11 @@ __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
 NON_FIELD_ERRORS = "__all__"
 
+try:
+    GEOHAYSTACK = pymongo.GEOHAYSTACK
+except AttributeError:
+    GEOHAYSTACK = None
+
 
 class BaseDocument:
     # TODO simplify how `_changed_fields` is used.
@@ -898,7 +903,10 @@ class BaseDocument:
             elif key.startswith("("):
                 direction = pymongo.GEOSPHERE
             elif key.startswith(")"):
-                direction = pymongo.GEOHAYSTACK
+                try:
+                    direction = pymongo.GEOHAYSTACK
+                except AttributeError:
+                    raise NotImplementedError
             elif key.startswith("*"):
                 direction = pymongo.GEO2D
             if key.startswith(("+", "-", "*", "$", "#", "(", ")")):
@@ -923,10 +931,10 @@ class BaseDocument:
             index_list.append((key, direction))
 
         # Don't add cls to a geo index
-        if include_cls and direction not in (
-            pymongo.GEO2D,
-            pymongo.GEOHAYSTACK,
-            pymongo.GEOSPHERE,
+        if (
+            include_cls
+            and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
+            and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
         ):
             index_list.insert(0, ("_cls", 1))
 
