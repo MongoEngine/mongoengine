@@ -1481,7 +1481,7 @@ class BaseQuerySet:
         code = Code(code, scope=scope)
 
         db = queryset._document._get_db()
-        return db.eval(code, *fields)
+        return db.command("eval", code, args=fields).get("retval")
 
     def where(self, where_clause):
         """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript
