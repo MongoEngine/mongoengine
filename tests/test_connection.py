@@ -23,6 +23,7 @@ from mongoengine.connection import (
     get_connection,
     get_db,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 def get_tz_awareness(connection):
@@ -482,7 +483,10 @@ class ConnectionTest(unittest.TestCase):
         conn = connect(
             "mongoenginetest", alias="max_pool_size_via_kwarg", **pool_size_kwargs
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_connection_pool_via_uri(self):
         """Ensure we can specify a max connection pool size using
@@ -492,7 +496,10 @@ class ConnectionTest(unittest.TestCase):
             host="mongodb://localhost/test?maxpoolsize=100",
             alias="max_pool_size_via_uri",
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_write_concern(self):
         """Ensure write concern can be specified in connect() via
