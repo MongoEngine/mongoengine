@@ -704,11 +704,15 @@ class TestDocumentInstance(MongoDBTestCase):
         class Employee(Person):
             salary = IntField()
 
-        assert Person(name="Bob", age=35).to_mongo().keys() == ["_cls", "name", "age"]
-        assert Employee(name="Bob", age=35, salary=0).to_mongo().keys() == [
+        assert sorted(Person(name="Bob", age=35).to_mongo().keys()) == [
             "_cls",
-            "name",
             "age",
+            "name",
+        ]
+        assert sorted(Employee(name="Bob", age=35, salary=0).to_mongo().keys()) == [
+            "_cls",
+            "age",
+            "name",
             "salary",
         ]
 
@@ -717,7 +721,7 @@ class TestDocumentInstance(MongoDBTestCase):
             id = StringField(required=True)
 
         sub_doc = SubDoc(id="abc")
-        assert sub_doc.to_mongo().keys() == ["id"]
+        assert list(sub_doc.to_mongo().keys()) == ["id"]
 
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly."""
