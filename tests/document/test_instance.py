@@ -2755,17 +2755,17 @@ class TestDocumentInstance(MongoDBTestCase):
 
         from pymongo.collection import Collection
 
-        orig_update = Collection.update
+        orig_update_one = Collection.update_one
         try:
 
-            def fake_update(*args, **kwargs):
+            def fake_update_one(*args, **kwargs):
                 self.fail("Unexpected update for %s" % args[0].name)
-                return orig_update(*args, **kwargs)
+                return orig_update_one(*args, **kwargs)
 
-            Collection.update = fake_update
+            Collection.update_one = fake_update_one
             person.save()
         finally:
-            Collection.update = orig_update
+            Collection.update_one = orig_update_one
 
     def test_db_alias_tests(self):
         """DB Alias tests."""
