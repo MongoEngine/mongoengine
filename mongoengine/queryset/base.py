@@ -28,7 +28,10 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.pymongo_support import (
+    LEGACY_JSON_OPTIONS,
+    count_documents,
+)
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -1266,6 +1269,15 @@ class BaseQuerySet:
 
     def to_json(self, *args, **kwargs):
         """Converts a queryset to JSON"""
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
     def from_json(self, json_data):

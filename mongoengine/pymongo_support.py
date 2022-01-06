@@ -1,10 +1,15 @@
 """
-Helper functions, constants, and types to aid with PyMongo v2.7 - v3.x support.
+Helper functions, constants, and types to aid with PyMongo support.
 """
 import pymongo
+from bson import binary, json_util
 from pymongo.errors import OperationFailure
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
+
+LEGACY_JSON_OPTIONS = json_util.LEGACY_JSON_OPTIONS.with_options(
+    uuid_representation=binary.UuidRepresentation.PYTHON_LEGACY,
+)
 
 
 def count_documents(

@@ -1,3 +1,5 @@
+import warnings
+
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
 
@@ -161,6 +163,18 @@ def _get_connection_settings(
     # Deprecated parameters that should not be passed on
     kwargs.pop("slaves", None)
     kwargs.pop("is_slave", None)
+
+    if "uuidRepresentation" not in kwargs:
+        warnings.warn(
+            "No uuidRepresentation is specified! Falling back to "
+            "'pythonLegacy' which is the default for pymongo 3.x. "
+            "For compatibility with other MongoDB drivers this should be "
+            "specified as 'standard' or '{java,csharp}Legacy' to work with "
+            "older drivers in those languages. This will be changed to "
+            "'standard' in a future release.",
+            DeprecationWarning,
+        )
+        kwargs["uuidRepresentation"] = "pythonLegacy"
 
     conn_settings.update(kwargs)
     return conn_settings
