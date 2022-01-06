@@ -1335,9 +1335,8 @@ class BaseQuerySet:
         :param map_f: map function, as :class:`~bson.code.Code` or string
         :param reduce_f: reduce function, as
                          :class:`~bson.code.Code` or string
-        :param output: output collection name, if set to 'inline' will try to
-           use :class:`~pymongo.collection.Collection.inline_map_reduce`
-           This can also be a dictionary containing output options
+        :param output: output collection name, if set to 'inline' will return
+           the results inline. This can also be a dictionary containing output options
            see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
@@ -1347,12 +1346,6 @@ class BaseQuerySet:
 
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
-
-        .. note::
-
-            Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
-            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-            PyMongo version **>= 1.11**.
         """
         queryset = self.clone()
 
@@ -1389,10 +1382,10 @@ class BaseQuerySet:
             mr_args["limit"] = limit
 
         if output == "inline" and not queryset._ordering:
-            map_reduce_function = "inline_map_reduce"
+            inline = True
+            mr_args["out"] = {"inline": 1}
         else:
-            map_reduce_function = "map_reduce"
-
+            inline = False
             if isinstance(output, str):
                 mr_args["out"] = output
 
@@ -1422,17 +1415,29 @@ class BaseQuerySet:
 
                 mr_args["out"] = SON(ordered_output)
 
-        results = getattr(queryset._collection, map_reduce_function)(
-            map_f, reduce_f, **mr_args
+        db = queryset._document._get_db()
+        result = db.command(
+            {
+                "mapReduce": queryset._document._get_collection_name(),
+                "map": map_f,
+                "reduce": reduce_f,
+                **mr_args,
+            }
         )
 
-        if map_reduce_function == "map_reduce":
-            results = results.find()
+        if inline:
+            docs = result["results"]
+        else:
+            if isinstance(result["result"], str):
+                docs = db[result["result"]].find()
+            else:
+                info = result["result"]
+                docs = db.client[info["db"]][info["collection"]].find()
 
         if queryset._ordering:
-            results = results.sort(queryset._ordering)
+            docs = docs.sort(queryset._ordering)
 
-        for doc in results:
+        for doc in docs:
             yield MapReduceDocument(
                 queryset._document, queryset._collection, doc["_id"], doc["value"]
             )
