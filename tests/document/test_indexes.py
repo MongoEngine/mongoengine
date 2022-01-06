@@ -250,7 +250,8 @@ class TestIndexes(unittest.TestCase):
         """Ensure that geohaystack indexes work when created via meta[indexes]"""
         # This test can be removed when pymongo 3.x is no longer supported
         if PYMONGO_VERSION >= (4,):
-            pytest.skip('GEOHAYSTACK has been removed in pymongo 4.0')
+            pytest.skip("GEOHAYSTACK has been removed in pymongo 4.0")
+
         class Place(Document):
             location = DictField()
             name = StringField()
@@ -270,13 +271,21 @@ class TestIndexes(unittest.TestCase):
 
     def test_create_geohaystack_index(self):
         """Ensure that geohaystack indexes can be created"""
+
         class Place(Document):
             location = DictField()
             name = StringField()
 
-        # This test can be removed when pymongo 3.x is no longer supported
         if PYMONGO_VERSION >= (4,):
-            with pytest.raises(NotImplementedError):
+            expected_error = NotImplementedError
+        elif get_mongodb_version() >= (4, 9):
+            expected_error = OperationFailure
+        else:
+            expected_error = None
+
+        # This test can be removed when pymongo 3.x is no longer supported
+        if expected_error:
+            with pytest.raises(expected_error):
                 Place.create_index(
                     {"fields": (")location.point", "name")},
                     bucketSize=10,
@@ -558,7 +567,9 @@ class TestIndexes(unittest.TestCase):
         incorrect_collation = {"arndom": "wrdo"}
         with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
-        assert "Missing expected field" in str(exc_info.value)
+        assert "Missing expected field" in str(
+            exc_info.value
+        ) or "unknown field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)
