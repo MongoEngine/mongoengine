@@ -7,9 +7,12 @@ from pymongo.errors import OperationFailure
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
-LEGACY_JSON_OPTIONS = json_util.LEGACY_JSON_OPTIONS.with_options(
-    uuid_representation=binary.UuidRepresentation.PYTHON_LEGACY,
-)
+if PYMONGO_VERSION >= (4,):
+    LEGACY_JSON_OPTIONS = json_util.LEGACY_JSON_OPTIONS.with_options(
+        uuid_representation=binary.UuidRepresentation.PYTHON_LEGACY,
+    )
+else:
+    LEGACY_JSON_OPTIONS = json_util.DEFAULT_JSON_OPTIONS
 
 
 def count_documents(
