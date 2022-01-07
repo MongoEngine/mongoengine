@@ -351,8 +351,14 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.system.users.delete_many({})
 
         c.admin.command("createUser", "admin", pwd="password", roles=["root"])
-        c.admin.authenticate("admin", "password")
-        c.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
+
+        adminadmin_settings = mongoengine.connection._connection_settings[
+            "adminadmin"
+        ] = mongoengine.connection._connection_settings["admin"].copy()
+        adminadmin_settings["username"] = "admin"
+        adminadmin_settings["password"] = "password"
+        ca = connect(db="mongoenginetest", alias="adminadmin")
+        ca.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
 
         connect(
             "testdb_uri", host="mongodb://username:password@localhost/mongoenginetest"
@@ -406,7 +412,10 @@ class ConnectionTest(unittest.TestCase):
         # w/ the provided username/password and failed - that's the desired
         # behavior. If the MongoDB URI would override the credentials
         with pytest.raises(OperationFailure):
-            get_db()
+            db = get_db()
+            # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
+            if PYMONGO_VERSION >= (4,):
+                db.list_collection_names()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
@@ -574,8 +583,8 @@ class ConnectionTest(unittest.TestCase):
         assert c1 is c2
 
     def test_connect_2_databases_uses_different_client_if_different_parameters(self):
-        c1 = connect(alias="testdb1", db="testdb1", username="u1")
-        c2 = connect(alias="testdb2", db="testdb2", username="u2")
+        c1 = connect(alias="testdb1", db="testdb1", username="u1", password="pass")
+        c2 = connect(alias="testdb2", db="testdb2", username="u2", password="pass")
         assert c1 is not c2
 
 
