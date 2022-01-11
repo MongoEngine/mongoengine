@@ -15,7 +15,7 @@ from mongoengine.common import _import_class
 from mongoengine.errors import (ValidationError, InvalidDocumentError,
                                 LookUpError, FieldDoesNotExist)
 from mongoengine.python_support import PY3, txt_type
-from mongoengine.base.common import get_document, ALLOW_INHERITANCE
+from mongoengine.base.common import get_document, ALLOW_INHERITANCE, IndexRegistry
 from mongoengine.common import ReadOnlyContext
 
 from mongoengine.base.datastructures import (
@@ -966,45 +966,49 @@ class BaseDocument(object):
         return res
 
     @classmethod
+    def _build_inheritance_indices(cls):
+        """Index on _cls and _id for models in inheritance hierarchy"""
+        if not (cls._meta.get("index_cls", True) and cls._meta.get("allow_inheritance", False)):
+            return []  # index present inly when allow_inheritance is True and index_cls is not False
+        return [
+            {
+                "fields": [("_cls", pymongo.ASCENDING), ("_id", pymongo.ASCENDING)],
+                "partialFilterExpression": {"isDeleted": {"$eq": False}},
+                "args": {"noCompanyPrefix": True},
+            }
+        ]
+
+    @classmethod
     def _build_index_specs(cls, meta_indexes):
         """Generate and merge the full index specs
         """
         geo_indices = cls._geo_indices()
         unique_indices = cls._unique_with_indexes()
-        base_index_specs = [cls._build_index_spec(spec) for spec in meta_indexes]
+
+        base_index_specs_with_duplicates = [cls._build_index_spec(spec) for spec in meta_indexes]
+        base_index_specs = []
+        for index_specs in base_index_specs_with_duplicates:
+            if index_specs not in base_index_specs:
+                base_index_specs.append(index_specs)
+        
         reference_indices = cls._build_reference_indices()
         history_indices = cls._build_history_indices()
-        
-        # Merge all the indices, so that uniques dont make new indexes.
-        res_index_specs = []
-        spec_fields = []
-        for index_specs in [base_index_specs, reference_indices, geo_indices, unique_indices, history_indices]:
-            for index_spec in index_specs:
-                index_spec = cls._rippling_process_index_spec(index_spec)
-                if not index_spec:
-                    continue
-                fields = index_spec['fields']
-                if fields in spec_fields:
-                    # BUG ALERT: If there are two indexes that operate on the same fields,
-                    # this can create bugs!! e.g., if the first processed index is unique
-                    # with a partialFilterExpression_1 & the second processed index has a
-                    # partialFilterExpression_2 but with no explicit uniqueness constraint,
-                    # then updating the index dictionary results in
-                    # (unique=True, partialFilterExpression_2) which is neither here, nor
-                    # there and just totally wrong.
-                    res_index_specs[spec_fields.index(fields)].update(index_spec)
-                else:
-                    res_index_specs.append(index_spec)
-                    spec_fields.append(fields)
-
-        # Add company indices as a backup iff no conflicting indices exist.
         company_indices = cls._build_rippling_company_indices()
-        for index_spec in company_indices:
-            fields = index_spec["fields"]
-            if fields not in spec_fields:
-                res_index_specs.append(index_spec)
-                spec_fields.append(fields)
-        return res_index_specs
+        inheritance_indices = cls._build_inheritance_indices()
+        
+        index_registry = IndexRegistry(cls)
+        for index_specs in [base_index_specs, geo_indices, history_indices]:
+            for index_spec in index_specs:
+                index_registry.add_index(index_spec)
+
+        for index_spec in unique_indices:
+            index_registry.add_unique_index(index_spec)
+
+        for index_specs in [reference_indices, company_indices, inheritance_indices]:
+            for index_spec in index_specs:
+                index_registry.add_field_based_index(index_spec)
+            
+        return index_registry.index_specs
     
     @classmethod
     def _build_reference_indices(cls):
@@ -1060,24 +1064,26 @@ class BaseDocument(object):
         
     @classmethod
     def _rippling_process_index_spec(cls, spec):
-        if "expireAfterSeconds" in spec:
-            args = spec.get("args", {})
+        "Cleans and prepares the index spec by sorting fields and removing rippling-specific options"
+        processed_spec = spec.copy()
+        args = processed_spec.pop('args', {})
+        fields = processed_spec.pop("fields", [])
+        if "expireAfterSeconds" in processed_spec:
             args['noCompanyPrefix'] = True
-            spec['args'] = args
 
-        if "text" in [f[1] for f in spec['fields']]:
+        if "text" in [f[1] for f in fields]:
             # text indexes don't have ordering sensitivity
             # sorting will help in compare_indexes correctness
-            spec['fields'] = sorted(spec['fields'])
+            fields = sorted(fields)
         
         # Add `company` forcibly to the front.
-        noCompanyPrefix = spec.pop('args', {}).get('noCompanyPrefix', False)
+        noCompanyPrefix = args.get('noCompanyPrefix', False)
         if not noCompanyPrefix and cls._fields.get('company'):
             # Remove `company` for spec['fields']
-            spec['fields'] = [field for field in spec['fields'] if field[0] != 'company']
-            spec['fields'].insert(0, ('company', 1))
+            fields = [("company", 1)] + [field for field in fields if field[0] != 'company']
             
-        return spec
+        processed_spec["fields"] = fields
+        return processed_spec
 
     @classmethod
     def _build_index_spec(cls, spec):
