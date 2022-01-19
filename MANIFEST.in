@@ -4,7 +4,6 @@ include LICENSE
 include AUTHORS
 recursive-include docs *
 prune docs/_build
-recursive-include bson-stubs *
 recursive-include django_model_changes-stubs *
 recursive-include django_mongoengine-stubs *
 include requirements.txt
