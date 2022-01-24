@@ -411,11 +411,14 @@ class ConnectionTest(unittest.TestCase):
         # OperationFailure means that mongoengine attempted authentication
         # w/ the provided username/password and failed - that's the desired
         # behavior. If the MongoDB URI would override the credentials
-        with pytest.raises(OperationFailure):
-            db = get_db()
-            # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
-            if PYMONGO_VERSION >= (4,):
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(OperationFailure):
+                db = get_db()
+                # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
                 db.list_collection_names()
+        else:
+            with pytest.raises(OperationFailure):
+                db = get_db()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
