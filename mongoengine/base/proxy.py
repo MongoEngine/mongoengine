@@ -6,6 +6,9 @@ import lazy_object_proxy
 from contextlib2 import contextmanager
 from collections import defaultdict
 from mongoengine.read_preference import RPReadPreferenceContext
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_field(doc, fields):
@@ -127,7 +130,22 @@ class DocumentProxy(lazy_object_proxy.Proxy):
     def __eq__(self, other):
         if type(other) is DocumentProxy or hasattr(other, 'id'):
             return self.id == other.id
-        return self.__wrapped__ == other
+        # # whether the proxied value is computed
+        # is_resolved = self.__resolved__ # uncomment after lazy-object-proxy version 1.6.0
+        try:
+            value = self.__wrapped__
+        except AttributeError:
+            # `__wrapped__` is implemented in lazy_object_proxy.cext.Proxy
+            # check if it's instead using lazy_object_proxy.slots.Proxy, causing inconsistent behaviour
+            from lazy_object_proxy.slots import Proxy as SlotsProxy
+            is_slots_proxy = isinstance(self, SlotsProxy)
+            is_cext_proxy = isinstance(self, lazy_object_proxy.Proxy)
+            logger.error("AttributeError accessing wrapped of proxy", extra={
+                "is_slots_proxy": is_slots_proxy,
+                "is_cext_proxy": is_cext_proxy,
+            })
+            value = self()  # maybe this will succeed
+        return value == other
 
     def __ne__(self, other):
         return not self.__eq__(other)
