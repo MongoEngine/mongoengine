@@ -218,13 +218,14 @@ class query_counter:
         }
 
     def _turn_on_profiling(self):
-        self.initial_profiling_level = self.db.profiling_level(session=_get_session())
-        self.db.set_profiling_level(0, session=_get_session())
-        self.db.system.profile.drop(session=_get_session())
-        self.db.set_profiling_level(2, session=_get_session())
+        profile_update_res = self.db.command({"profile": 0}, session=_get_session())
+        self.initial_profiling_level = profile_update_res["was"]
+
+        self.db.system.profile.drop()
+        self.db.command({"profile": 2}, session=_get_session())
 
     def _resets_profiling(self):
-        self.db.set_profiling_level(self.initial_profiling_level)
+        self.db.command({"profile": self.initial_profiling_level})
 
     def __enter__(self):
         self._turn_on_profiling()

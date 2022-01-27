@@ -1,16 +1,20 @@
 """
-Helper functions, constants, and types to aid with PyMongo v2.7 - v3.x support.
+Helper functions, constants, and types to aid with PyMongo support.
 """
 import pymongo
+from bson import binary, json_util
 from pymongo.errors import OperationFailure
 
-from mongoengine.connection import _get_session
-
-_PYMONGO_37 = (3, 7)
+from mongoengine import connection
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
-IS_PYMONGO_GTE_37 = PYMONGO_VERSION >= _PYMONGO_37
+if PYMONGO_VERSION >= (4,):
+    LEGACY_JSON_OPTIONS = json_util.LEGACY_JSON_OPTIONS.with_options(
+        uuid_representation=binary.UuidRepresentation.PYTHON_LEGACY,
+    )
+else:
+    LEGACY_JSON_OPTIONS = json_util.DEFAULT_JSON_OPTIONS
 
 
 def count_documents(
@@ -31,17 +35,30 @@ def count_documents(
         kwargs["collation"] = collation
 
     # count_documents appeared in pymongo 3.7
-    if IS_PYMONGO_GTE_37:
+    if PYMONGO_VERSION >= (3, 7):
         try:
             return collection.count_documents(
-                filter=filter, session=_get_session(), **kwargs
+                filter=filter, session=connection._get_session(), **kwargs
             )
-        except OperationFailure:
+        except OperationFailure as err:
+            if PYMONGO_VERSION >= (4,):
+                raise
+
             # OperationFailure - accounts for some operators that used to work
             # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
-            pass
+            message = str(err)
+            if not (
+                "not allowed in this context" in message
+                and (
+                    "$where" in message
+                    or "$geoNear" in message
+                    or "$near" in message
+                    or "$nearSphere" in message
+                )
+            ):
+                raise
 
     cursor = collection.find(filter)
     for option, option_value in kwargs.items():
@@ -53,8 +70,8 @@ def count_documents(
 
 def list_collection_names(db, include_system_collections=False):
     """Pymongo>3.7 deprecates collection_names in favour of list_collection_names"""
-    if IS_PYMONGO_GTE_37:
-        collections = db.list_collection_names(session=_get_session())
+    if PYMONGO_VERSION >= (3, 7):
+        collections = db.list_collection_names(session=connection._get_session())
     else:
         collections = db.collection_names()
 

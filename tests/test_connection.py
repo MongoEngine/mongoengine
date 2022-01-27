@@ -24,6 +24,7 @@ from mongoengine.connection import (
     get_connection,
     get_db,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 def get_tz_awareness(connection):
@@ -358,8 +359,14 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.system.users.delete_many({})
 
         c.admin.command("createUser", "admin", pwd="password", roles=["root"])
-        c.admin.authenticate("admin", "password")
-        c.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
+
+        adminadmin_settings = mongoengine.connection._connection_settings[
+            "adminadmin"
+        ] = mongoengine.connection._connection_settings["admin"].copy()
+        adminadmin_settings["username"] = "admin"
+        adminadmin_settings["password"] = "password"
+        ca = connect(db="mongoenginetest", alias="adminadmin")
+        ca.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
 
         connect(
             "testdb_uri", host="mongodb://username:password@localhost/mongoenginetest"
@@ -412,8 +419,14 @@ class ConnectionTest(unittest.TestCase):
         # OperationFailure means that mongoengine attempted authentication
         # w/ the provided username/password and failed - that's the desired
         # behavior. If the MongoDB URI would override the credentials
-        with pytest.raises(OperationFailure):
-            get_db()
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(OperationFailure):
+                db = get_db()
+                # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
+                db.list_collection_names()
+        else:
+            with pytest.raises(OperationFailure):
+                db = get_db()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
@@ -490,7 +503,10 @@ class ConnectionTest(unittest.TestCase):
         conn = connect(
             "mongoenginetest", alias="max_pool_size_via_kwarg", **pool_size_kwargs
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_connection_pool_via_uri(self):
         """Ensure we can specify a max connection pool size using
@@ -500,7 +516,10 @@ class ConnectionTest(unittest.TestCase):
             host="mongodb://localhost/test?maxpoolsize=100",
             alias="max_pool_size_via_uri",
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_write_concern(self):
         """Ensure write concern can be specified in connect() via
@@ -575,8 +594,8 @@ class ConnectionTest(unittest.TestCase):
         assert c1 is c2
 
     def test_connect_2_databases_uses_different_client_if_different_parameters(self):
-        c1 = connect(alias="testdb1", db="testdb1", username="u1")
-        c2 = connect(alias="testdb2", db="testdb2", username="u2")
+        c1 = connect(alias="testdb1", db="testdb1", username="u1", password="pass")
+        c2 = connect(alias="testdb2", db="testdb2", username="u2", password="pass")
         assert c1 is not c2
 
 

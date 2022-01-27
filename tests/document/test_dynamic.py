@@ -28,9 +28,9 @@ class TestDynamicDocument(MongoDBTestCase):
         p.age = 34
 
         assert p.to_mongo() == {"_cls": "Person", "name": "James", "age": 34}
-        assert p.to_mongo().keys() == ["_cls", "name", "age"]
+        assert sorted(p.to_mongo().keys()) == ["_cls", "age", "name"]
         p.save()
-        assert p.to_mongo().keys() == ["_id", "_cls", "name", "age"]
+        assert sorted(p.to_mongo().keys()) == ["_cls", "_id", "age", "name"]
 
         assert self.Person.objects.first().age == 34
 

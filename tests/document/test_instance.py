@@ -28,7 +28,10 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
-from mongoengine.pymongo_support import list_collection_names
+from mongoengine.pymongo_support import (
+    PYMONGO_VERSION,
+    list_collection_names,
+)
 from mongoengine.queryset import NULLIFY, Q
 from tests import fixtures
 from tests.fixtures import (
@@ -704,11 +707,15 @@ class TestDocumentInstance(MongoDBTestCase):
         class Employee(Person):
             salary = IntField()
 
-        assert Person(name="Bob", age=35).to_mongo().keys() == ["_cls", "name", "age"]
-        assert Employee(name="Bob", age=35, salary=0).to_mongo().keys() == [
+        assert sorted(Person(name="Bob", age=35).to_mongo().keys()) == [
             "_cls",
-            "name",
             "age",
+            "name",
+        ]
+        assert sorted(Employee(name="Bob", age=35, salary=0).to_mongo().keys()) == [
+            "_cls",
+            "age",
+            "name",
             "salary",
         ]
 
@@ -717,7 +724,7 @@ class TestDocumentInstance(MongoDBTestCase):
             id = StringField(required=True)
 
         sub_doc = SubDoc(id="abc")
-        assert sub_doc.to_mongo().keys() == ["id"]
+        assert list(sub_doc.to_mongo().keys()) == ["id"]
 
     def test_embedded_document(self):
         """Ensure that embedded documents are set up correctly."""
@@ -2751,17 +2758,17 @@ class TestDocumentInstance(MongoDBTestCase):
 
         from pymongo.collection import Collection
 
-        orig_update = Collection.update
+        orig_update_one = Collection.update_one
         try:
 
-            def fake_update(*args, **kwargs):
+            def fake_update_one(*args, **kwargs):
                 self.fail("Unexpected update for %s" % args[0].name)
-                return orig_update(*args, **kwargs)
+                return orig_update_one(*args, **kwargs)
 
-            Collection.update = fake_update
+            Collection.update_one = fake_update_one
             person.save()
         finally:
-            Collection.update = orig_update
+            Collection.update_one = orig_update_one
 
     def test_db_alias_tests(self):
         """DB Alias tests."""
@@ -2939,7 +2946,11 @@ class TestDocumentInstance(MongoDBTestCase):
             }
         )
         assert [str(b) for b in custom_qs] == ["1", "2"]
-        assert custom_qs.count() == 2
+
+        # count only will work with this raw query before pymongo 4.x, but
+        # the length is also implicitly checked above
+        if PYMONGO_VERSION < (4,):
+            assert custom_qs.count() == 2
 
     def test_switch_db_instance(self):
         register_connection("testdb-1", "mongoenginetest2")
