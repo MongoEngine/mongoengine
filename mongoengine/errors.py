@@ -8,7 +8,7 @@ from six import iteritems, text_type
 __all__ = ('NotRegistered', 'InvalidDocumentError', 'LookUpError',
            'DoesNotExist', 'MultipleObjectsReturned', 'InvalidQueryError',
            'OperationError', 'NotUniqueError', 'FieldDoesNotExist',
-           'ValidationError', 'SaveConditionError')
+           'ValidationError', 'SaveConditionError', 'IndexCollisionError')
 
 
 class NotRegistered(Exception):
@@ -145,3 +145,10 @@ class ValidationError(AssertionError):
         for k, v in iteritems(self.to_dict()):
             error_dict[generate_key(v)].append(k)
         return ' '.join(["%s: %s" % (k, v) for k, v in iteritems(error_dict)])
+
+
+class IndexCollisionError(Exception):
+    """
+    Raised when trying to create multiple index on same set of fields with different options.
+    Should be fixed in a newer version of Mongo https://jira.mongodb.org/browse/SERVER-25023.
+    """

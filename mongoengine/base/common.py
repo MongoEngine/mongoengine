@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from mongoengine.errors import NotRegistered
+from mongoengine.errors import NotRegistered, IndexCollisionError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -57,19 +57,9 @@ class IndexRegistry:
             if index_spec.get("args", {}).get("override_existing_index", False):
                 self.index_specs[self.index_fields.index(fields)] = processed_index_spec
             elif existing_index_spec != processed_index_spec:
-                # TODO: Fix collisions in rippling-main and start raising Exceptions here
-                logger.error(
-                    f"Index option collision on {fields} fields of {self.model_class}",
-                    extra={
-                        "model_class": str(self.model_class),
-                        "existing_index": existing_index_spec,
-                        "required_index": processed_index_spec,
-                    },
+                raise IndexCollisionError(
+                    f"Index option collision on {fields} fields of {self.model_class}. Existing index {existing_index_spec} differs from required index {processed_index_spec}"
                 )
-                existing_index_spec.update(processed_index_spec)
-                # raise Exception(
-                #     f"Error adding index to {self.model_class} on fields {fields}. Another index {existing_index_spec} is already defined on the same fields {processed_index_spec}"
-                # )
         else:
             self.index_specs.append(processed_index_spec)
             self.index_fields.append(fields)
@@ -116,18 +106,9 @@ class IndexRegistry:
                 # exsiting index has different partial filter expression
                 options_mismatch = True
             if options_mismatch:
-                # TODO: fix all issues in rippling-main and raise exception instead of merging
-                logger.error(
-                    f"Inconsistent unique index on {fields} fields of {self.model_class}",
-                    extra={
-                        "model_class": str(self.model_class),
-                        "existing_index": existing_index_spec,
-                        "required_index": processed_index_spec,
-                    },
+                raise IndexCollisionError(
+                    f"Error adding unique index on fields {fields} of {self.model_class}. Existing index {existing_index_spec} differs from required index {processed_index_spec}"
                 )
-                # raise Exception(
-                #     f"Error adding unique index to {self.model_class} on fields {fields}. Another index {existing_index_spec} has option mismatch with {processed_index_spec}"
-                # )
             # merge the index if there's no option mismatch
             existing_index_spec.update(processed_index_spec)
         else:
