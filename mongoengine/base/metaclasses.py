@@ -441,14 +441,21 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
 class MetaDict(dict):
     """Custom dictionary for meta classes.
-    Handles the merging of set indexes
+    Handles the merging of set indexes and ignoring keys that should not be merged
     """
-    _merge_options = ('indexes',)
+
+    _merge_options = ("indexes",)
+    _no_merge_keys = {
+        "register_class_complete",
+        "simple_history_manager_attribute",
+    }  # ensure history related attrs aren't inherited
 
     def merge(self, new_options):
         for k, v in iteritems(new_options):
             if k in self._merge_options:
                 self[k] = self.get(k, []) + v
+            elif k in self._no_merge_keys:
+                pass
             else:
                 self[k] = v
 
