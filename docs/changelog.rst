@@ -7,6 +7,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.24.0
+=================
 - EnumField improvements: now ``choices`` limits the values of an enum to allow
 - Fix bug that prevented instance queryset from using custom queryset_class #2589
 - Fix deepcopy of EmbeddedDocument #2202
@@ -47,7 +50,7 @@ Development
     locally.
 
 Changes in 0.23.1
-===========
+=================
 - Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
 - Improve connection doc #2481
 
