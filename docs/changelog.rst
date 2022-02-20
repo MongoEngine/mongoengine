@@ -12,6 +12,7 @@ Development
 - Fix deepcopy of EmbeddedDocument #2202
 - Fix error when using precision=0 with DecimalField #2535
 - Add support for regex and whole word text search query #2568
+- Add support for update aggregation pipeline #2578
 - BREAKING CHANGE: Updates to support pymongo 4.0. Where possible deprecated
   functionality has been migrated, but additional care should be taken when
   migrating to pymongo 4.0 as existing code may have been using deprecated
