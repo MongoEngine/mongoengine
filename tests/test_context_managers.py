@@ -269,17 +269,23 @@ class TestContextManagers:
         connect("mongoenginetest")
         db = get_db()
 
-        initial_profiling_level = db.profiling_level()
+        def _current_profiling_level():
+            return db.command({"profile": -1})["was"]
+
+        def _set_profiling_level(lvl):
+            db.command({"profile": lvl})
+
+        initial_profiling_level = _current_profiling_level()
 
         try:
             new_level = 1
-            db.set_profiling_level(new_level)
-            assert db.profiling_level() == new_level
+            _set_profiling_level(new_level)
+            assert _current_profiling_level() == new_level
             with query_counter():
-                assert db.profiling_level() == 2
-            assert db.profiling_level() == new_level
+                assert _current_profiling_level() == 2
+            assert _current_profiling_level() == new_level
         except Exception:
-            db.set_profiling_level(
+            _set_profiling_level(
                 initial_profiling_level
             )  # Ensures it gets reseted no matter the outcome of the test
             raise
