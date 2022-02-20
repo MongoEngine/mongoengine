@@ -10,6 +10,8 @@ Development
 - EnumField improvements: now ``choices`` limits the values of an enum to allow
 - Fix bug that prevented instance queryset from using custom queryset_class #2589
 - Fix deepcopy of EmbeddedDocument #2202
+- Introduce a base exception class for MongoEngine exceptions (MongoEngineException).
+  Note that this doesn't concern the pymongo errors #2515
 - Fix error when using precision=0 with DecimalField #2535
 - Add support for regex and whole word text search query #2568
 - Add support for update aggregation pipeline #2578
