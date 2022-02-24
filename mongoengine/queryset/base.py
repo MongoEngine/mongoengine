@@ -396,7 +396,7 @@ class BaseQuerySet(Generic[_T]):
                 cmd["limit"] = cursor._Cursor__limit
             if cursor._Cursor__skip:
                 cmd["skip"] = cursor._Cursor__skip
-        return db.command("explain", cmd, verbosity=verbosity)
+        return db.command("explain", cmd, read_preference=self._read_preference, verbosity=verbosity)
 
     def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
         """Delete the documents matched by the query.
@@ -993,7 +993,7 @@ class BaseQuerySet(Generic[_T]):
             def send_cluster_time(self, *args, **kwargs):
                 pass
         cmd = query.as_command(FakeSockInfo())[0]
-        explained = db.command('explain', cmd, verbosity="queryPlanner")
+        explained = db.command('explain', cmd, read_preference=self._read_preference, verbosity="queryPlanner")
         return explained
 
     # DEPRECATED. Has no more impact on PyMongo 3+
