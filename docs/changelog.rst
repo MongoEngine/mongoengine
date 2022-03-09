@@ -48,6 +48,12 @@ Changes in 0.24.0
     documents the extended functionality which is no longer supported. Rewrite
     the unsupported queries or fetch the whole result set and perform the count
     locally.
+  - Pymongo 4 removed db.authenticate(), on which we were relying for authenticating
+    with username/password. The migration involved switching to providing credentials to
+    MongoClient BUT in case the authSource isn't provided, db.authenticate used to default to
+    authSource=current-database and MongoClient defaults to authSource="admin". Long story short,
+    if you observe authentication issue after migrating, make sure you provide the authSource
+    explicitly. (see #2626)
 
 Changes in 0.23.1
 =================
