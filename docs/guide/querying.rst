@@ -211,6 +211,10 @@ However, this doesn't map well to the syntax so you can also use a capital S ins
 
     Post.objects(comments__by="joe").update(inc__comments__S__votes=1)
 
+Querying a list of string data, if we need to apply filters related to String queries, mongo needs to understand that the list is that of String fields. fields.ListField(fields.StringField), and then we can query like:
+        Page.objects(tags__iexact='db')
+
+
 .. note::
     Due to :program:`Mongo`, currently the $ operator only applies to the
     first matched item in the query.
