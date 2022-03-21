@@ -1,14 +1,14 @@
 fail_fast: false
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.1.0
     hooks:
       - id: check-merge-conflict
       - id: debug-statements
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/ambv/black
-    rev: 21.5b2
+    rev: 22.1.0
     hooks:
       - id: black
   - repo: https://gitlab.com/pycqa/flake8
@@ -16,11 +16,11 @@ repos:
     hooks:
       - id: flake8
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.19.1
+    rev: v2.31.1
     hooks:
       - id: pyupgrade
         args: [--py36-plus]
   - repo: https://github.com/pycqa/isort
-    rev: 5.8.0
+    rev: 5.10.1
     hooks:
       - id: isort

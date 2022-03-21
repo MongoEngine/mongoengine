@@ -241,7 +241,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name()
 
         # Get max document limit and max byte size from meta.
-        max_size = cls._meta.get("max_size") or 10 * 2 ** 20  # 10MB default
+        max_size = cls._meta.get("max_size") or 10 * 2**20  # 10MB default
         max_documents = cls._meta.get("max_documents")
 
         # MongoDB will automatically raise the size to make it a multiple of

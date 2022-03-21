@@ -129,7 +129,7 @@ class TestDocumentInstance(MongoDBTestCase):
         options = Log.objects._collection.options()
         assert options["capped"] is True
         assert options["max"] == 10
-        assert options["size"] == 10 * 2 ** 20
+        assert options["size"] == 10 * 2**20
 
         # Check that the document with default value can be recreated
         class Log(Document):
