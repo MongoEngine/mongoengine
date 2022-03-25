@@ -38,34 +38,34 @@ def test_basic():
             author_email="alec@example.com",
         )
 
-    print("Doc initialization: %.3fus" % (timeit(init_book, 1000) * 10 ** 6))
+    print("Doc initialization: %.3fus" % (timeit(init_book, 1000) * 10**6))
 
     b = init_book()
-    print("Doc getattr: %.3fus" % (timeit(lambda: b.name, 10000) * 10 ** 6))
+    print("Doc getattr: %.3fus" % (timeit(lambda: b.name, 10000) * 10**6))
 
     print(
         "Doc setattr: %.3fus"
-        % (timeit(lambda: setattr(b, "name", "New name"), 10000) * 10 ** 6)  # noqa B010
+        % (timeit(lambda: setattr(b, "name", "New name"), 10000) * 10**6)  # noqa B010
     )
 
-    print("Doc to mongo: %.3fus" % (timeit(b.to_mongo, 1000) * 10 ** 6))
+    print("Doc to mongo: %.3fus" % (timeit(b.to_mongo, 1000) * 10**6))
 
-    print("Doc validation: %.3fus" % (timeit(b.validate, 1000) * 10 ** 6))
+    print("Doc validation: %.3fus" % (timeit(b.validate, 1000) * 10**6))
 
     def save_book():
         b._mark_as_changed("name")
         b._mark_as_changed("tags")
         b.save()
 
-    print("Save to database: %.3fus" % (timeit(save_book, 100) * 10 ** 6))
+    print("Save to database: %.3fus" % (timeit(save_book, 100) * 10**6))
 
     son = b.to_mongo()
     print(
-        "Load from SON: %.3fus" % (timeit(lambda: Book._from_son(son), 1000) * 10 ** 6)
+        "Load from SON: %.3fus" % (timeit(lambda: Book._from_son(son), 1000) * 10**6)
     )
 
     print(
-        "Load from database: %.3fus" % (timeit(lambda: Book.objects[0], 100) * 10 ** 6)
+        "Load from database: %.3fus" % (timeit(lambda: Book.objects[0], 100) * 10**6)
     )
 
     def create_and_delete_book():
@@ -75,7 +75,7 @@ def test_basic():
 
     print(
         "Init + save to database + delete: %.3fms"
-        % (timeit(create_and_delete_book, 10) * 10 ** 3)
+        % (timeit(create_and_delete_book, 10) * 10**3)
     )
 
 
@@ -101,9 +101,9 @@ def test_big_doc():
         )
 
     company = init_company()
-    print("Big doc to mongo: %.3fms" % (timeit(company.to_mongo, 100) * 10 ** 3))
+    print("Big doc to mongo: %.3fms" % (timeit(company.to_mongo, 100) * 10**3))
 
-    print("Big doc validation: %.3fms" % (timeit(company.validate, 1000) * 10 ** 3))
+    print("Big doc validation: %.3fms" % (timeit(company.validate, 1000) * 10**3))
 
     company.save()
 
@@ -112,17 +112,17 @@ def test_big_doc():
         company._mark_as_changed("contacts")
         company.save()
 
-    print("Save to database: %.3fms" % (timeit(save_company, 100) * 10 ** 3))
+    print("Save to database: %.3fms" % (timeit(save_company, 100) * 10**3))
 
     son = company.to_mongo()
     print(
         "Load from SON: %.3fms"
-        % (timeit(lambda: Company._from_son(son), 100) * 10 ** 3)
+        % (timeit(lambda: Company._from_son(son), 100) * 10**3)
     )
 
     print(
         "Load from database: %.3fms"
-        % (timeit(lambda: Company.objects[0], 100) * 10 ** 3)
+        % (timeit(lambda: Company.objects[0], 100) * 10**3)
     )
 
     def create_and_delete_company():
@@ -132,7 +132,7 @@ def test_big_doc():
 
     print(
         "Init + save to database + delete: %.3fms"
-        % (timeit(create_and_delete_company, 10) * 10 ** 3)
+        % (timeit(create_and_delete_company, 10) * 10**3)
     )
 
 

@@ -725,7 +725,7 @@ class BaseQuerySet:
         :param object_id: the value for the id of the document to look up
         """
         queryset = self.clone()
-        if not queryset._query_obj.empty:
+        if queryset._query_obj:
             msg = "Cannot use a filter whilst using `with_id`"
             raise InvalidQueryError(msg)
         return queryset.filter(pk=object_id).first()

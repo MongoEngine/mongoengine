@@ -7,11 +7,23 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.24.1
+=================
+- Allow pymongo<5.0 to be pulled
+- Don't use deprecated property for emptiness check in queryset base #2633
+
+
+Changes in 0.24.0
+=================
 - EnumField improvements: now ``choices`` limits the values of an enum to allow
 - Fix bug that prevented instance queryset from using custom queryset_class #2589
 - Fix deepcopy of EmbeddedDocument #2202
+- Introduce a base exception class for MongoEngine exceptions (MongoEngineException).
+  Note that this doesn't concern the pymongo errors #2515
 - Fix error when using precision=0 with DecimalField #2535
 - Add support for regex and whole word text search query #2568
+- Add support for update aggregation pipeline #2578
 - BREAKING CHANGE: Updates to support pymongo 4.0. Where possible deprecated
   functionality has been migrated, but additional care should be taken when
   migrating to pymongo 4.0 as existing code may have been using deprecated
@@ -42,9 +54,15 @@ Development
     documents the extended functionality which is no longer supported. Rewrite
     the unsupported queries or fetch the whole result set and perform the count
     locally.
+  - Pymongo 4 removed db.authenticate(), on which we were relying for authenticating
+    with username/password. The migration involved switching to providing credentials to
+    MongoClient BUT in case the authSource isn't provided, db.authenticate used to default to
+    authSource=current-database and MongoClient defaults to authSource="admin". Long story short,
+    if you observe authentication issue after migrating, make sure you provide the authSource
+    explicitly. (see #2626)
 
 Changes in 0.23.1
-===========
+=================
 - Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
 - Improve connection doc #2481
 
