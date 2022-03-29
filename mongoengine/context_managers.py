@@ -301,10 +301,12 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
 
 
 @contextmanager
-def run_in_transaction(alias=DEFAULT_CONNECTION_NAME):
+def run_in_transaction(alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None):
     conn = get_connection(alias)
-    with conn.start_session() as session:
-        with session.start_transaction():
+    session_kwargs = session_kwargs or {}
+    with conn.start_session(**session_kwargs) as session:
+        transaction_kwargs = transaction_kwargs or {}
+        with session.start_transaction(**transaction_kwargs):
             try:
                 _set_session(session)
                 yield
