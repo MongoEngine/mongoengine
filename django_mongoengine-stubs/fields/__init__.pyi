@@ -1,6 +1,3 @@
-# TODO: Hack for PyCharm autocompletion
-# Be sure to to sync `../fields.pyi` and `fields/__init__.pyi` before merging
-from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -1383,7 +1380,7 @@ class GeoPointField(Generic[_ST, _GT], BaseField):
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
         **kwargs,
-    ) -> GeoPointField[Optional[_Tuple2Like], Optional[list[float]]]: ...
+    ) -> GeoPointField[_Tuple2Like | None, list[float] | None]: ...
     @overload
     def __new__(
         cls,
@@ -1401,7 +1398,7 @@ class GeoPointField(Generic[_ST, _GT], BaseField):
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
         **kwargs,
-    ) -> GeoPointField[Optional[_Tuple2Like], list[float]]: ...
+    ) -> GeoPointField[_Tuple2Like | None, list[float]]: ...
     @overload
     def __new__(
         cls,
@@ -1437,7 +1434,7 @@ class GeoPointField(Generic[_ST, _GT], BaseField):
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
         **kwargs,
-    ) -> GeoPointField[Optional[_Tuple2Like], list[float]]: ...
+    ) -> GeoPointField[_Tuple2Like | None, list[float]]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
