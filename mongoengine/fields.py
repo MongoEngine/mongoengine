@@ -38,6 +38,7 @@ from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import (
     DoesNotExist,
     InvalidQueryError,
+    LookUpError,
     ValidationError,
 )
 from mongoengine.queryset import DO_NOTHING
@@ -794,9 +795,12 @@ class EmbeddedDocumentField(BaseField):
     def lookup_member(self, member_name):
         doc_and_subclasses = [self.document_type] + self.document_type.__subclasses__()
         for doc_type in doc_and_subclasses:
-            field = doc_type._fields.get(member_name)
-            if field:
-                return field
+            try:
+                field = doc_type._lookup_field(member_name)
+                if field:
+                    return field[0]
+            except LookUpError:
+                return None
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
@@ -854,9 +858,13 @@ class GenericEmbeddedDocumentField(BaseField):
         for document_choice in document_choices:
             doc_and_subclasses = [document_choice] + document_choice.__subclasses__()
             for doc_type in doc_and_subclasses:
-                field = doc_type._fields.get(member_name)
-                if field:
-                    return field
+                try:
+                    field = doc_type._lookup_field(member_name)
+                    if field:
+                        return field[0]
+                except LookUpError:
+                    # Try with the next doc_type
+                    pass
 
     def to_mongo(self, document, use_db_field=True, fields=None):
         if document is None:

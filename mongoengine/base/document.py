@@ -1150,19 +1150,20 @@ class BaseDocument:
                 if hasattr(getattr(field, "field", None), "lookup_member"):
                     new_field = field.field.lookup_member(field_name)
 
-                # If the parent field is a DynamicField or if it's part of
-                # a DynamicDocument, mark current field as a DynamicField
+                # If the parent field is a DynamicField, mark current field as a DynamicField
                 # with db_name equal to the field name.
-                elif cls._dynamic and (
-                    isinstance(field, DynamicField)
-                    or getattr(getattr(field, "document_type", None), "_dynamic", None)
-                ):
+                elif isinstance(field, DynamicField):
                     new_field = DynamicField(db_field=field_name)
 
-                # Else, try to use the parent field's lookup_member method
+                # Try to use the parent field's lookup_member method
                 # to find the subfield.
                 elif hasattr(field, "lookup_member"):
                     new_field = field.lookup_member(field_name)
+
+                # Else, if the current field it's part of a DynamicDocument, mark current field
+                # as a DynamicField with db_name equal to the field name.
+                elif cls._dynamic and getattr(getattr(field, "document_type", None), "_dynamic", None):
+                    new_field = DynamicField(db_field=field_name)
 
                 # Raise a LookUpError if all the other conditions failed.
                 else:
