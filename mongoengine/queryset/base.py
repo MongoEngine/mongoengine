@@ -28,7 +28,10 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.pymongo_support import (
+    LEGACY_JSON_OPTIONS,
+    count_documents,
+)
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -551,8 +554,13 @@ class BaseQuerySet:
 
         queryset = self.clone()
         query = queryset._query
-        update = transform.update(queryset._document, **update)
-
+        if "__raw__" in update and isinstance(update["__raw__"], list):
+            update = [
+                transform.update(queryset._document, **{"__raw__": u})
+                for u in update["__raw__"]
+            ]
+        else:
+            update = transform.update(queryset._document, **update)
         # If doing an atomic upsert on an inheritable class
         # then ensure we add _cls to the update operation
         if upsert and "_cls" in query:
@@ -714,7 +722,7 @@ class BaseQuerySet:
         :param object_id: the value for the id of the document to look up
         """
         queryset = self.clone()
-        if not queryset._query_obj.empty:
+        if queryset._query_obj:
             msg = "Cannot use a filter whilst using `with_id`"
             raise InvalidQueryError(msg)
         return queryset.filter(pk=object_id).first()
@@ -1261,6 +1269,15 @@ class BaseQuerySet:
 
     def to_json(self, *args, **kwargs):
         """Converts a queryset to JSON"""
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
     def from_json(self, json_data):
@@ -1330,9 +1347,8 @@ class BaseQuerySet:
         :param map_f: map function, as :class:`~bson.code.Code` or string
         :param reduce_f: reduce function, as
                          :class:`~bson.code.Code` or string
-        :param output: output collection name, if set to 'inline' will try to
-           use :class:`~pymongo.collection.Collection.inline_map_reduce`
-           This can also be a dictionary containing output options
+        :param output: output collection name, if set to 'inline' will return
+           the results inline. This can also be a dictionary containing output options
            see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
@@ -1342,12 +1358,6 @@ class BaseQuerySet:
 
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
-
-        .. note::
-
-            Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
-            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-            PyMongo version **>= 1.11**.
         """
         queryset = self.clone()
 
@@ -1384,10 +1394,10 @@ class BaseQuerySet:
             mr_args["limit"] = limit
 
         if output == "inline" and not queryset._ordering:
-            map_reduce_function = "inline_map_reduce"
+            inline = True
+            mr_args["out"] = {"inline": 1}
         else:
-            map_reduce_function = "map_reduce"
-
+            inline = False
             if isinstance(output, str):
                 mr_args["out"] = output
 
@@ -1417,17 +1427,29 @@ class BaseQuerySet:
 
                 mr_args["out"] = SON(ordered_output)
 
-        results = getattr(queryset._collection, map_reduce_function)(
-            map_f, reduce_f, **mr_args
+        db = queryset._document._get_db()
+        result = db.command(
+            {
+                "mapReduce": queryset._document._get_collection_name(),
+                "map": map_f,
+                "reduce": reduce_f,
+                **mr_args,
+            }
         )
 
-        if map_reduce_function == "map_reduce":
-            results = results.find()
+        if inline:
+            docs = result["results"]
+        else:
+            if isinstance(result["result"], str):
+                docs = db[result["result"]].find()
+            else:
+                info = result["result"]
+                docs = db.client[info["db"]][info["collection"]].find()
 
         if queryset._ordering:
-            results = results.sort(queryset._ordering)
+            docs = docs.sort(queryset._ordering)
 
-        for doc in results:
+        for doc in docs:
             yield MapReduceDocument(
                 queryset._document, queryset._collection, doc["_id"], doc["value"]
             )
@@ -1471,7 +1493,7 @@ class BaseQuerySet:
         code = Code(code, scope=scope)
 
         db = queryset._document._get_db()
-        return db.eval(code, *fields)
+        return db.command("eval", code, args=fields).get("retval")
 
     def where(self, where_clause):
         """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript

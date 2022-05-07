@@ -1,5 +1,9 @@
+import warnings
+
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
+
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 __all__ = [
     "DEFAULT_CONNECTION_NAME",
@@ -162,6 +166,18 @@ def _get_connection_settings(
     kwargs.pop("slaves", None)
     kwargs.pop("is_slave", None)
 
+    if "uuidRepresentation" not in kwargs:
+        warnings.warn(
+            "No uuidRepresentation is specified! Falling back to "
+            "'pythonLegacy' which is the default for pymongo 3.x. "
+            "For compatibility with other MongoDB drivers this should be "
+            "specified as 'standard' or '{java,csharp}Legacy' to work with "
+            "older drivers in those languages. This will be changed to "
+            "'standard' in a future release.",
+            DeprecationWarning,
+        )
+        kwargs["uuidRepresentation"] = "pythonLegacy"
+
     conn_settings.update(kwargs)
     return conn_settings
 
@@ -263,15 +279,25 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         raise ConnectionFailure(msg)
 
     def _clean_settings(settings_dict):
-        irrelevant_fields_set = {
-            "name",
-            "username",
-            "password",
-            "authentication_source",
-            "authentication_mechanism",
-        }
+        if PYMONGO_VERSION < (4,):
+            irrelevant_fields_set = {
+                "name",
+                "username",
+                "password",
+                "authentication_source",
+                "authentication_mechanism",
+            }
+            rename_fields = {}
+        else:
+            irrelevant_fields_set = {"name"}
+            rename_fields = {
+                "authentication_source": "authSource",
+                "authentication_mechanism": "authMechanism",
+            }
         return {
-            k: v for k, v in settings_dict.items() if k not in irrelevant_fields_set
+            rename_fields.get(k, k): v
+            for k, v in settings_dict.items()
+            if k not in irrelevant_fields_set and v is not None
         }
 
     raw_conn_settings = _connection_settings[alias].copy()
@@ -351,14 +377,18 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings["name"]]
-        auth_kwargs = {"source": conn_settings["authentication_source"]}
-        if conn_settings["authentication_mechanism"] is not None:
-            auth_kwargs["mechanism"] = conn_settings["authentication_mechanism"]
         # Authenticate if necessary
-        if conn_settings["username"] and (
-            conn_settings["password"]
-            or conn_settings["authentication_mechanism"] == "MONGODB-X509"
+        if (
+            PYMONGO_VERSION < (4,)
+            and conn_settings["username"]
+            and (
+                conn_settings["password"]
+                or conn_settings["authentication_mechanism"] == "MONGODB-X509"
+            )
         ):
+            auth_kwargs = {"source": conn_settings["authentication_source"]}
+            if conn_settings["authentication_mechanism"] is not None:
+                auth_kwargs["mechanism"] = conn_settings["authentication_mechanism"]
             db.authenticate(
                 conn_settings["username"], conn_settings["password"], **auth_kwargs
             )

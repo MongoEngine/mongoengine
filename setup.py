@@ -142,7 +142,7 @@ setup(
     platforms=["any"],
     classifiers=CLASSIFIERS,
     python_requires=">=3.6",
-    install_requires=["pymongo>=3.4, <4.0"],
+    install_requires=["pymongo>=3.4,<5.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )
