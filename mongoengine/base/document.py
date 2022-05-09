@@ -1032,6 +1032,8 @@ class BaseDocument(object):
         indexes = []
         indexes.append({'fields': [('_auto_id_0', 1)], 'args': {'noCompanyPrefix': True}})
         indexes.append({'fields': [('_auto_id_0', "hashed")], 'args': {'noCompanyPrefix': True}, 'cls': False})
+        indexes.append({'fields': [('history_date', -1), ('_auto_id_0', 1)]})
+        indexes.append({'fields': [('_auto_id_0', 1), ('history_date', -1), ('_id', -1)]})
         if 'history_indexes' in cls.instance_type._meta:
             indexes.extend(cls.instance_type._meta.get('history_indexes'))
 
@@ -1057,8 +1059,6 @@ class BaseDocument(object):
             # append an index on history_date,
             # _rippling_process_index_spec will take care of adding company prefix if needed
             indexes.append({'fields': [('history_date', -1)]})
-            indexes.append({'fields': [('history_date', -1), ('_auto_id_0', 1)]})
-            indexes.append({'fields': [('_auto_id_0', 1), ('history_date', -1), ('_id', -1)]})
 
         return indexes
         
