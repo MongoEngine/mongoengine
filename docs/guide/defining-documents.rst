@@ -113,6 +113,33 @@ arguments can be set on all fields:
 :attr:`db_field` (Default: None)
     The MongoDB field name.
 
+    If set, operations in MongoDB will be performed with this value instead of the class attribute.
+
+    This allows you to use a different attribute than the name of the field used in MongoDB. ::
+
+            from mongoengine import *
+
+            class Page(Document):
+                page_number = IntField(db_field="pageNumber")
+
+            # Create a Page and save it
+            Page(page_number=1).save()
+
+            # How 'pageNumber' is stored in MongoDB
+            Page.objects.as_pymongo() # [{'_id': ObjectId('629dfc45ee4cc407b1586b1f'), 'pageNumber': 1}]
+
+            # Retrieve the object
+            page: Page = Page.objects.first()
+
+            print(page.page_number)  # prints 1
+
+            print(page.pageNumber) # raises AttributeError
+
+    .. note:: If set, use the name of the attribute when defining indexes in the :attr:`meta`
+        dictionary rather than the :attr:`db_field` otherwise, :class:`~mongoengine.LookUpError`
+        will be raised.
+
+
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
     :class:`~mongoengine.ValidationError` will be raised when the document is
