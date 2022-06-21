@@ -301,7 +301,9 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
 
 
 @contextmanager
-def run_in_transaction(alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None):
+def run_in_transaction(
+    alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None
+):
     conn = get_connection(alias)
     session_kwargs = session_kwargs or {}
     with conn.start_session(**session_kwargs) as session:
