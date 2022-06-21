@@ -3,6 +3,7 @@ import threading
 import time
 import unittest
 
+import pymongo
 import pytest
 
 from mongoengine import *
