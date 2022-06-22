@@ -1499,7 +1499,7 @@ class GenericReferenceField(Generic[_ST, _GT], BaseField):
         *,
         blank: Literal[True],
         help_text: str = ...,
-        choices: Iterable[Union[type, str]] = ...,
+        choices: Iterable[str] = ...,
         **kwargs,
     ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
 
@@ -1509,11 +1509,33 @@ class GenericReferenceField(Generic[_ST, _GT], BaseField):
         *,
         blank: Literal[False] = False,
         help_text: str = ...,
-        choices: Iterable[Union[type, str]] = ...,
+        choices: Iterable[str] = ...,
         **kwargs,
     ) -> GenericReferenceField[_DT, _DT]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        blank: Literal[True],
+        help_text: str = ...,
+        choices: Iterable[type[_DT]] = ...,
+        **kwargs,
+    ) -> GenericReferenceField[Optional[_DT], Optional[_DT]]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        blank: Literal[False] = False,
+        help_text: str = ...,
+        choices: Iterable[type[_DT]] = ...,
+        **kwargs,
+    ) -> GenericReferenceField[_DT, _DT]: ...
+
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
+
 
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
