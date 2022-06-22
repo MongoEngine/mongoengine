@@ -657,11 +657,16 @@ class TestContextManagers:
                     if idx % 2 == 0:
                         raise Exception
 
-            try:
-                run_tx()
-            except pymongo.errors.OperationFailure:
-                # Try one more time...
-                run_tx()
+            attempts = 0
+            max_attempts = 10
+            while attempts < max_attempts:
+                try:
+                    run_tx()
+                    break
+                except pymongo.errors.OperationFailure:
+                    # TODO: Note about max lock request timeout
+                    attempts += 1
+                    continue
 
         thread_count = 10
         for i in range(thread_count):
