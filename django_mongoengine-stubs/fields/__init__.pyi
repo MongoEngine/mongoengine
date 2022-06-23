@@ -1533,6 +1533,28 @@ class GenericReferenceField(Generic[_ST, _GT], BaseField):
         **kwargs,
     ) -> GenericReferenceField[_DT, _DT]: ...
 
+    @overload
+    def __new__(
+        cls,
+        *,
+        choices: Iterable[str] = ...,
+        **kwargs,
+    ) -> GenericReferenceField[_DT, _DT]: ...
+
+    @overload
+    def __new__(
+            cls,
+            *,
+            choices: Iterable[type[_DT]] = ...,
+            **kwargs,
+    ) -> GenericReferenceField[_DT, _DT]: ...
+
+    @overload
+    def __new__(
+            cls,
+            **kwargs,
+    ) -> GenericReferenceField[_DT, _DT]: ...
+
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
