@@ -3,6 +3,7 @@ import threading
 import time
 import unittest
 
+import pymongo
 import pytest
 
 from mongoengine import *
@@ -447,16 +448,14 @@ class TestContextManagers:
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
-
+        A.objects.all().delete()
         a_doc = A.objects.create(name="a")
 
         class B(Document):
             meta = {"db_alias": "test2"}
             name = StringField()
 
-        B.drop_collection()
-
+        B.objects.all().delete()
         b_doc = B.objects.create(name="b")
 
         with run_in_transaction():
@@ -645,15 +644,6 @@ class TestContextManagers:
             pass
 
         def thread_fn(idx):
-            """
-            Method thread should execute:
-            * Pretend to work for random interval
-            * Start a transaction
-            * Do a read
-            * Pretend to work for random interval
-            * Do a write
-            * In some instances, force tx rollback by raising Exception
-            """
             # Open the transaction at some unknown interval
             time.sleep(random.uniform(0.01, 0.1))
             try:
@@ -669,10 +659,24 @@ class TestContextManagers:
                         raise TestExc
             except TestExc:
                 pass
+            except pymongo.errors.OperationFailure as op_failure:
+                """
+                If there's a TransientTransactionError, retry - the lock could not be acquired.
 
-        for r in range(50):
+                Per MongoDB docs: The core transaction API does not incorporate retry logic for
+                "TransientTransactionError". To handle "TransientTransactionError", applications
+                should explicitly incorporate retry logic for the error.
+
+                See: https://www.mongodb.com/docs/manual/core/transactions-in-applications/#-transienttransactionerror-
+                """
+                if "TransientTransactionError" in op_failure.details.errorLabels:
+                    thread_fn(idx)
+                else:
+                    raise op_failure
+
+        for r in range(10):
             """
-            Threads & randomization are tricky - run it 50 times.
+            Threads & randomization are tricky - run it multiple times
             """
 
             # Clear out the collection for a fresh run
