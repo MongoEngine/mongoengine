@@ -448,16 +448,14 @@ class TestContextManagers:
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
-
+        A.objects.all().delete()
         a_doc = A.objects.create(name="a")
 
         class B(Document):
             meta = {"db_alias": "test2"}
             name = StringField()
 
-        B.drop_collection()
-
+        B.objects.all().delete()
         b_doc = B.objects.create(name="b")
 
         with run_in_transaction():
@@ -568,7 +566,7 @@ class TestContextManagers:
         assert "b" == B.objects.get(id=b_doc.id).name
 
     @requires_mongodb_gte_40
-    def test_exception_in_parent_of_nested_of_transaction_after_child_completed_only_rolls_parent_back(
+    def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
         self,
     ):
         connect("mongoenginetest")
@@ -585,15 +583,28 @@ class TestContextManagers:
         B.drop_collection()
         b_doc = B.objects.create(name="b")
 
-        try:
-            with run_in_transaction():
-                a_doc.update(name="trx-parent")
-                with run_in_transaction():
-                    b_doc.update(name="trx-child")
-                raise Exception
-        except Exception:
+        class TestExc(Exception):
             pass
 
+        def run_tx():
+            try:
+                with run_in_transaction():
+                    a_doc.update(name="trx-parent")
+                    with run_in_transaction():
+                        b_doc.update(name="trx-child")
+                    raise TestExc
+            except TestExc:
+                pass
+            except OperationError as op_failure:
+                """
+                See thread safety test below for more details about TransientTransctionError handling
+                """
+                if "TransientTransactionError" in str(op_failure):
+                    run_tx()
+                else:
+                    raise op_failure
+
+        run_tx()
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "trx-child" == B.objects.get(id=b_doc.id).name
 
@@ -639,13 +650,16 @@ class TestContextManagers:
         class A(Document):
             i = IntField()
 
-        A.drop_collection()
+        # Ensure the collection is created
+        A.objects.create(i=0)
+
+        class TestExc(Exception):
+            pass
 
         def thread_fn(idx):
             # Open the transaction at some unknown interval
             time.sleep(random.uniform(0.01, 0.1))
-
-            def run_tx():
+            try:
                 with run_in_transaction():
                     a = A.objects.get(i=idx)
                     a.i = idx * 10
@@ -655,39 +669,57 @@ class TestContextManagers:
 
                     # Force roll backs for the even runs...
                     if idx % 2 == 0:
-                        raise Exception
+                        raise TestExc
+            except TestExc:
+                pass
+            except pymongo.errors.OperationFailure as op_failure:
+                """
+                If there's a TransientTransactionError, retry - the lock could not be acquired.
 
-            attempts = 0
-            max_attempts = 10
-            while attempts < max_attempts:
-                try:
-                    run_tx()
-                    break
-                except pymongo.errors.OperationFailure:
-                    # TODO: Note about max lock request timeout
-                    attempts += 1
-                    continue
+                Per MongoDB docs: The core transaction API does not incorporate retry logic for
+                "TransientTransactionError". To handle "TransientTransactionError", applications
+                should explicitly incorporate retry logic for the error.
 
-        thread_count = 10
-        for i in range(thread_count):
-            A.objects.create(i=i)
+                See: https://www.mongodb.com/docs/manual/core/transactions-in-applications/#-transienttransactionerror-
+                """
+                error_labels = op_failure.details.get("errorLabels", [])
+                if "TransientTransactionError" in error_labels:
+                    thread_fn(idx)
+                else:
+                    raise op_failure
 
-        threads = [
-            threading.Thread(target=thread_fn, args=(i,)) for i in range(thread_count)
-        ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+        for r in range(10):
+            """
+            Threads & randomization are tricky - run it multiple times
+            """
 
-        expected_sum = 0
-        for i in range(thread_count):
-            if i % 2 == 0:
-                expected_sum += i
-            else:
-                expected_sum += i * 10
-        assert expected_sum == 270
-        assert expected_sum == sum(a.i for a in A.objects.all())
+            # Clear out the collection for a fresh run
+            A.objects.all().delete()
+
+            # Prepopulate the data for reads
+            thread_count = 10
+            for i in range(thread_count):
+                A.objects.create(i=i)
+
+            # Prime the threads
+            threads = [
+                threading.Thread(target=thread_fn, args=(i,))
+                for i in range(thread_count)
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            # Check the sum
+            expected_sum = 0
+            for i in range(thread_count):
+                if i % 2 == 0:
+                    expected_sum += i
+                else:
+                    expected_sum += i * 10
+            assert expected_sum == 270
+            assert expected_sum == sum(a.i for a in A.objects.all())
 
 
 if __name__ == "__main__":
