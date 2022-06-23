@@ -573,7 +573,16 @@ class ConnectionTest(unittest.TestCase):
     def test_multiple_connection_settings(self):
         connect("mongoenginetest", alias="t1", host="localhost")
 
-        connect("mongoenginetest2", alias="t2", host="127.0.0.1")
+        if PYMONGO_VERSION >= (4,):
+            """
+            pymongo>=4 changed how it handles connection addresses wrt replicaSets, which
+            is now how mongod is run for the test suites for transactions.
+            """
+            connect(
+                "mongoenginetest2", alias="t2", host="127.0.0.1", directConnection=True
+            )
+        else:
+            connect("mongoenginetest2", alias="t2", host="127.0.0.1")
 
         mongo_connections = mongoengine.connection._connections
         assert len(mongo_connections.items()) == 2
