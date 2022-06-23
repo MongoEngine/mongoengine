@@ -638,43 +638,70 @@ class TestContextManagers:
         class A(Document):
             i = IntField()
 
-        A.drop_collection()
+        # Ensure the collection is created
+        A.objects.create(i=0)
+
+        class TestExc(Exception):
+            pass
 
         def thread_fn(idx):
+            """
+            Method thread should execute:
+            * Pretend to work for random interval
+            * Start a transaction
+            * Do a read
+            * Pretend to work for random interval
+            * Do a write
+            * In some instances, force tx rollback by raising Exception
+            """
             # Open the transaction at some unknown interval
             time.sleep(random.uniform(0.01, 0.1))
-            with run_in_transaction():
+            try:
+                with run_in_transaction():
+                    a = A.objects.get(i=idx)
+                    a.i = idx * 10
+                    # Save at some unknown interval
+                    time.sleep(random.uniform(0.01, 0.1))
+                    a.save()
 
-                a = A.objects.get(i=idx)
-                a.i = idx * 10
-                # Save at some unknown interval
-                time.sleep(random.uniform(0.01, 0.1))
-                a.save()
+                    # Force roll backs for the even runs...
+                    if idx % 2 == 0:
+                        raise TestExc
+            except TestExc:
+                pass
 
-                # Force roll backs for the even runs...
-                if idx % 2 == 0:
-                    raise Exception
+        for r in range(50):
+            """
+            Threads & randomization are tricky - run it 50 times.
+            """
 
-        thread_count = 10
-        for i in range(thread_count):
-            A.objects.create(i=i)
+            # Clear out the collection for a fresh run
+            A.objects.all().delete()
 
-        threads = [
-            threading.Thread(target=thread_fn, args=(i,)) for i in range(thread_count)
-        ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+            # Prepopulate the data for reads
+            thread_count = 10
+            for i in range(thread_count):
+                A.objects.create(i=i)
 
-        expected_sum = 0
-        for i in range(thread_count):
-            if i % 2 == 0:
-                expected_sum += i
-            else:
-                expected_sum += i * 10
-        assert expected_sum == 270
-        assert expected_sum == sum(a.i for a in A.objects.all())
+            # Prime the threads
+            threads = [
+                threading.Thread(target=thread_fn, args=(i,))
+                for i in range(thread_count)
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            # Check the sum
+            expected_sum = 0
+            for i in range(thread_count):
+                if i % 2 == 0:
+                    expected_sum += i
+                else:
+                    expected_sum += i * 10
+            assert expected_sum == 270
+            assert expected_sum == sum(a.i for a in A.objects.all())
 
 
 if __name__ == "__main__":
