@@ -669,7 +669,8 @@ class TestContextManagers:
 
                 See: https://www.mongodb.com/docs/manual/core/transactions-in-applications/#-transienttransactionerror-
                 """
-                if "TransientTransactionError" in op_failure.details.errorLabels:
+                error_labels = op_failure.details.get("errorLabels", [])
+                if "TransientTransactionError" in error_labels:
                     thread_fn(idx)
                 else:
                     raise op_failure
