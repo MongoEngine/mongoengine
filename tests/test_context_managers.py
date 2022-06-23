@@ -566,7 +566,7 @@ class TestContextManagers:
         assert "b" == B.objects.get(id=b_doc.id).name
 
     @requires_mongodb_gte_40
-    def test_exception_in_parent_of_nested_of_transaction_after_child_completed_only_rolls_parent_back(
+    def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
         self,
     ):
         connect("mongoenginetest")
@@ -583,15 +583,28 @@ class TestContextManagers:
         B.drop_collection()
         b_doc = B.objects.create(name="b")
 
-        try:
-            with run_in_transaction():
-                a_doc.update(name="trx-parent")
-                with run_in_transaction():
-                    b_doc.update(name="trx-child")
-                raise Exception
-        except Exception:
+        class TestExc(Exception):
             pass
 
+        def run_tx():
+            try:
+                with run_in_transaction():
+                    a_doc.update(name="trx-parent")
+                    with run_in_transaction():
+                        b_doc.update(name="trx-child")
+                    raise TestExc
+            except TestExc:
+                pass
+            except OperationError as op_failure:
+                """
+                See thread safety test below for more details about TransientTransctionError handling
+                """
+                if "TransientTransactionError" in str(op_failure):
+                    run_tx()
+                else:
+                    raise op_failure
+
+        run_tx()
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "trx-child" == B.objects.get(id=b_doc.id).name
 
