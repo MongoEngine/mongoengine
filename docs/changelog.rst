@@ -7,12 +7,62 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- EnumField improvements: now `choices` limits the values of an enum to allow
+
+Changes in 0.24.1
+=================
+- Allow pymongo<5.0 to be pulled
+- Don't use deprecated property for emptiness check in queryset base #2633
+
+
+Changes in 0.24.0
+=================
+- EnumField improvements: now ``choices`` limits the values of an enum to allow
+- Fix bug that prevented instance queryset from using custom queryset_class #2589
 - Fix deepcopy of EmbeddedDocument #2202
+- Introduce a base exception class for MongoEngine exceptions (MongoEngineException).
+  Note that this doesn't concern the pymongo errors #2515
 - Fix error when using precision=0 with DecimalField #2535
+- Add support for regex and whole word text search query #2568
+- Add support for update aggregation pipeline #2578
+- BREAKING CHANGE: Updates to support pymongo 4.0. Where possible deprecated
+  functionality has been migrated, but additional care should be taken when
+  migrating to pymongo 4.0 as existing code may have been using deprecated
+  features which have now been removed #2614.
+
+  For the pymongo migration guide see:
+  https://pymongo.readthedocs.io/en/stable/migrate-to-pymongo4.html.
+
+  In addition to the changes in the migration guide, the following is a high
+  level overview of the changes made to MongoEngine when using pymongo 4.0:
+
+  - limited support of geohaystack indexes has been removed
+  - ``QuerySet.map_reduce`` has been migrated from ``Collection.map_reduce``
+    and ``Collection.inline_map_reduce`` to use
+    ``db.command({mapReduce: ..., ...})`` and support between the two may need
+    additional verification.
+  - UUIDs are encoded with the ``pythonLegacy`` encoding by default instead of
+    the newer and cross platform ``standard`` encoding. Existing UUIDs will
+    need to be migrated before changing the encoding, and this should be done
+    explicitly by the user rather than switching to a new default by
+    MongoEngine. This default will change at a later date, but to allow
+    specifying and then migrating to the new format a default ``json_options``
+    has been provided.
+  - ``Queryset.count`` has been using ``Collection.count_documents`` and
+    transparently falling back to ``Collection.count`` when using features that
+    are not supported by ``Collection.count_documents``. ``Collection.count``
+    has been removed and no automatic fallback is possible. The migration guide
+    documents the extended functionality which is no longer supported. Rewrite
+    the unsupported queries or fetch the whole result set and perform the count
+    locally.
+  - Pymongo 4 removed db.authenticate(), on which we were relying for authenticating
+    with username/password. The migration involved switching to providing credentials to
+    MongoClient BUT in case the authSource isn't provided, db.authenticate used to default to
+    authSource=current-database and MongoClient defaults to authSource="admin". Long story short,
+    if you observe authentication issue after migrating, make sure you provide the authSource
+    explicitly. (see #2626)
 
 Changes in 0.23.1
-===========
+=================
 - Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
 - Improve connection doc #2481
 

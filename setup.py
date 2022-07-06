@@ -101,6 +101,8 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
@@ -110,7 +112,7 @@ CLASSIFIERS = [
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
     "tests_require": [
-        "pytest<5.0",
+        "pytest",
         "pytest-cov",
         "coverage",
         "blinker",
@@ -140,7 +142,7 @@ setup(
     platforms=["any"],
     classifiers=CLASSIFIERS,
     python_requires=">=3.6",
-    install_requires=["pymongo>=3.4, <4.0"],
+    install_requires=["pymongo>=3.4,<5.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )

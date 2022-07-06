@@ -11,6 +11,7 @@ from mongoengine.mongodb_support import (
     MONGODB_42,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 class TestIndexes(unittest.TestCase):
@@ -247,10 +248,9 @@ class TestIndexes(unittest.TestCase):
 
     def test_explicit_geohaystack_index(self):
         """Ensure that geohaystack indexes work when created via meta[indexes]"""
-        pytest.skip(
-            "GeoHaystack index creation is not supported for now"
-            "from meta, as it requires a bucketSize parameter."
-        )
+        # This test can be removed when pymongo 3.x is no longer supported
+        if PYMONGO_VERSION >= (4,):
+            pytest.skip("GEOHAYSTACK has been removed in pymongo 4.0")
 
         class Place(Document):
             location = DictField()
@@ -261,10 +261,13 @@ class TestIndexes(unittest.TestCase):
             {"fields": [("location.point", "geoHaystack"), ("name", 1)]}
         ] == Place._meta["index_specs"]
 
-        Place.ensure_indexes()
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack")] in info
+        # GeoHaystack index creation is not supported for now from meta, as it
+        # requires a bucketSize parameter.
+        if False:
+            Place.ensure_indexes()
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack")] in info
 
     def test_create_geohaystack_index(self):
         """Ensure that geohaystack indexes can be created"""
@@ -273,10 +276,25 @@ class TestIndexes(unittest.TestCase):
             location = DictField()
             name = StringField()
 
-        Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack"), ("name", 1)] in info
+        if PYMONGO_VERSION >= (4,):
+            expected_error = NotImplementedError
+        elif get_mongodb_version() >= (4, 9):
+            expected_error = OperationFailure
+        else:
+            expected_error = None
+
+        # This test can be removed when pymongo 3.x is no longer supported
+        if expected_error:
+            with pytest.raises(expected_error):
+                Place.create_index(
+                    {"fields": (")location.point", "name")},
+                    bucketSize=10,
+                )
+        else:
+            Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack"), ("name", 1)] in info
 
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
@@ -549,7 +567,9 @@ class TestIndexes(unittest.TestCase):
         incorrect_collation = {"arndom": "wrdo"}
         with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
-        assert "Missing expected field" in str(exc_info.value)
+        assert "Missing expected field" in str(
+            exc_info.value
+        ) or "unknown field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)

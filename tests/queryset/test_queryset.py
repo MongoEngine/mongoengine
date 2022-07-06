@@ -25,6 +25,7 @@ from mongoengine.queryset import (
     queryset_manager,
 )
 from tests.utils import (
+    requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
 )
@@ -1255,6 +1256,34 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
         assert obj is None
 
+        # Test wholeword
+        obj = self.Person.objects(name__wholeword="Guido").first()
+        assert obj == person
+        obj = self.Person.objects(name__wholeword="rossum").first()
+        assert obj is None
+        obj = self.Person.objects(name__wholeword="Rossu").first()
+        assert obj is None
+
+        # Test iwholeword
+        obj = self.Person.objects(name__iwholeword="rOSSUM").first()
+        assert obj == person
+        obj = self.Person.objects(name__iwholeword="rOSSU").first()
+        assert obj is None
+
+        # Test regex
+        obj = self.Person.objects(name__regex="^[Guido].*[Rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__regex="^[guido].*[rossum]$").first()
+        assert obj is None
+        obj = self.Person.objects(name__regex="^[uido].*[Rossum]$").first()
+        assert obj is None
+
+        # Test iregex
+        obj = self.Person.objects(name__iregex="^[guido].*[rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__iregex="^[Uido].*[Rossum]$").first()
+        assert obj is None
+
         # Test unsafe expressions
         person = self.Person(name="Guido van Rossum [.'Geek']")
         person.save()
@@ -1339,7 +1368,14 @@ class TestQueryset(unittest.TestCase):
         person.save()
 
         people = self.Person.objects
-        people = people.filter(name__startswith="Gui").filter(name__not__endswith="tum")
+        people = (
+            people.filter(name__startswith="Gui")
+            .filter(name__not__endswith="tum")
+            .filter(name__icontains="VAN")
+            .filter(name__regex="^Guido")
+            .filter(name__wholeword="Guido")
+            .filter(name__wholeword="van")
+        )
         assert people.count() == 1
 
     def assertSequence(self, qs, expected):
@@ -2181,6 +2217,36 @@ class TestQueryset(unittest.TestCase):
         )
         post.reload()
         assert post.tags == ["code", "mongodb"]
+
+    @requires_mongodb_gte_42
+    def test_aggregation_update(self):
+        """Ensure that the 'aggregation_update' update works correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
+        post.save()
+
+        BlogPost.objects(slug="test").update(
+            __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
+        )
+        post.reload()
+        assert post.slug == "test test"
+
+        BlogPost.objects(slug="test test").update(
+            __raw__=[
+                {"$set": {"slug": {"$concat": ["$slug", " ", "it"]}}},  # test test it
+                {
+                    "$set": {"slug": {"$concat": ["When", " ", "$slug"]}}
+                },  # When test test it
+            ],
+        )
+        post.reload()
+        assert post.slug == "When test test it"
 
     def test_add_to_set_each(self):
         class Item(Document):
@@ -3878,6 +3944,33 @@ class TestQueryset(unittest.TestCase):
 
         Post().save()
         assert Post.objects.not_empty()
+
+        Post.drop_collection()
+
+    def test_custom_querysets_set_manager_methods(self):
+        """Ensure that custom QuerySet classes methods may be used."""
+
+        class CustomQuerySet(QuerySet):
+            def delete(self, *args, **kwargs):
+                """Example of method when one want to change default behaviour of it"""
+                return 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Post(Document):
+            objects = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        assert isinstance(Post.objects, CustomQuerySet)
+        assert Post.objects.delete() == 0
+
+        post = Post()
+        post.save()
+        assert Post.objects.count() == 1
+        post.delete()
+        assert Post.objects.count() == 1
 
         Post.drop_collection()
 

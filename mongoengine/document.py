@@ -241,7 +241,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name()
 
         # Get max document limit and max byte size from meta.
-        max_size = cls._meta.get("max_size") or 10 * 2 ** 20  # 10MB default
+        max_size = cls._meta.get("max_size") or 10 * 2**20  # 10MB default
         max_documents = cls._meta.get("max_documents")
 
         # MongoDB will automatically raise the size to make it a multiple of
@@ -583,7 +583,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     def _qs(self):
         """Return the default queryset corresponding to this document."""
         if not hasattr(self, "__objects"):
-            self.__objects = QuerySet(self.__class__, self._get_collection())
+            queryset_class = self._meta.get("queryset_class", QuerySet)
+            self.__objects = queryset_class(self.__class__, self._get_collection())
         return self.__objects
 
     @property
@@ -887,10 +888,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         index_cls = cls._meta.get("index_cls", True)
 
         collection = cls._get_collection()
-        # 746: when connection is via mongos, the read preference is not necessarily an indication that
-        # this code runs on a secondary
-        if not collection.is_mongos and collection.read_preference > 1:
-            return
 
         # determine if an index which we are creating includes
         # _cls as its first field; if so, we can avoid creating

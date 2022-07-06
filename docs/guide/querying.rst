@@ -86,6 +86,10 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``wholeword`` -- string field contains whole word
+* ``iwholeword`` -- string field contains whole word (case insensitive)
+* ``regex`` -- string field match by regex
+* ``iregex`` -- string field match by regex (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 
@@ -215,12 +219,34 @@ However, this doesn't map well to the syntax so you can also use a capital S ins
 Raw queries
 -----------
 It is possible to provide a raw :mod:`PyMongo` query as a query parameter, which will
-be integrated directly into the query. This is done using the ``__raw__``
-keyword argument::
+be integrated directly into the query. This is done using the ``__raw__`` keyword argument::
 
     Page.objects(__raw__={'tags': 'coding'})
 
-.. versionadded:: 0.4
+Similarly, a raw update can be provided to the :meth:`~mongoengine.queryset.QuerySet.update` method::
+
+    Page.objects(tags='coding').update(__raw__={'$set': {'tags': 'coding'}})
+
+And the two can also be combined::
+
+    Page.objects(__raw__={'tags': 'coding'}).update(__raw__={'$set': {'tags': 'coding'}})
+
+
+Update with Aggregation Pipeline
+--------------------------------
+It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
+be integrated directly into the update. This is done by using ``__raw__`` keyword argument to the update method
+and provide the pipeline as a list
+`Update with Aggregation Pipeline <https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
+::
+
+    # 'tags' field is set to 'coding is fun'
+    Page.objects(tags='coding').update(__raw__=[
+        {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
+        ],
+    )
+
+.. versionadded:: 0.23.2
 
 Sorting/Ordering results
 ========================

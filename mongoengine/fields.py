@@ -157,10 +157,17 @@ class StringField(BaseField):
                 regex = r"%s$"
             elif op == "exact":
                 regex = r"^%s$"
+            elif op == "wholeword":
+                regex = r"\b%s\b"
+            elif op == "regex":
+                regex = value
 
-            # escape unsafe characters which could lead to a re.error
-            value = re.escape(value)
-            value = re.compile(regex % value, flags)
+            if op == "regex":
+                value = re.compile(regex, flags)
+            else:
+                # escape unsafe characters which could lead to a re.error
+                value = re.escape(value)
+                value = re.compile(regex % value, flags)
         return super().prepare_query_value(op, value)
 
 
@@ -1086,16 +1093,7 @@ class DictField(ComplexBaseField):
         return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
-        match_operators = [
-            "contains",
-            "icontains",
-            "startswith",
-            "istartswith",
-            "endswith",
-            "iendswith",
-            "exact",
-            "iexact",
-        ]
+        match_operators = [*STRING_OPERATORS]
 
         if op in match_operators and isinstance(value, str):
             return StringField().prepare_query_value(op, value)

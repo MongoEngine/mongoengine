@@ -20,6 +20,8 @@ env:
   PYMONGO_3_6: 3.6
   PYMONGO_3_9: 3.9
   PYMONGO_3_11: 3.11
+  PYMONGO_3_12: 3.12
+  PYMONGO_4_0: 4.0
 
   MAIN_PYTHON_VERSION: 3.7
 
@@ -44,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
+        python-version: [3.6, 3.7, 3.8, 3.9, "3.10", pypy3]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
@@ -53,10 +55,16 @@ jobs:
             PYMONGO: $PYMONGO_3_9
           - python-version: 3.7
             MONGODB: $MONGODB_4_2
-            PYMONGO: $PYMONGO_3_6
+            PYMONGO: $PYMONGO_3_9
           - python-version: 3.7
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_11
+          - python-version: 3.7
+            MONGODB: $MONGODB_4_4
+            PYMONGO: $PYMONGO_3_12
+          - python-version: 3.9
+            MONGODB: $MONGODB_4_4
+            PYMONGO: $PYMONGO_4_0
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
