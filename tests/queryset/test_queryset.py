@@ -872,17 +872,15 @@ class TestQueryset(unittest.TestCase):
         self.Person.objects.create(name="Foo", age=11)
 
         bob = self.Person.objects.as_pymongo().first()
-        assert 'age' in bob
-        assert bob['age'] == 11
+        assert "age" in bob
+        assert bob["age"] == 11
 
-        self.Person.objects(name="Foo").update(
-            rename__age='person_age'
-        )
+        self.Person.objects(name="Foo").update(rename__age="person_age")
 
         bob = self.Person.objects.as_pymongo().first()
-        assert 'age' not in bob
-        assert 'person_age' in bob
-        assert bob['person_age'] == 11
+        assert "age" not in bob
+        assert "person_age" in bob
+        assert bob["person_age"] == 11
 
     def test_save_and_only_on_fields_with_default(self):
         class Embed(EmbeddedDocument):
@@ -3441,6 +3439,7 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar") == [bar]
+        assert Foo.objects.no_dereference().distinct("bar") == [bar.pk]
 
     def test_text_indexes(self):
         class News(Document):
@@ -3647,6 +3646,7 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar_lst") == [bar_1, bar_2]
+        assert Foo.objects.no_dereference().distinct("bar_lst") == [bar_1.pk, bar_2.pk]
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected."""
