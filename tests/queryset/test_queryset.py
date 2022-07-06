@@ -408,6 +408,19 @@ class TestQueryset(unittest.TestCase):
         A.drop_collection()
         A().save()
 
+        # validate collection not empty
+        assert A.objects.count() == 1
+
+        # update operations
+        assert A.objects.none().update(s="1") == 0
+        assert A.objects.none().update_one(s="1") == 0
+        assert A.objects.none().modify(s="1") is None
+
+        # validate noting change by update operations
+        assert A.objects(s="1").count() == 0
+
+        # fetch queries
+        assert A.objects.none().first() is None
         assert list(A.objects.none()) == []
         assert list(A.objects.none().all()) == []
         assert list(A.objects.none().limit(1)) == []
