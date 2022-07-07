@@ -264,7 +264,7 @@ def update(_doc_cls=None, **update):
             op = operator_map.get(op, op)
 
         match = None
-        if parts[-1] in COMPARISON_OPERATORS:
+        if len(parts) > 1 and parts[-1] in COMPARISON_OPERATORS:
             match = parts.pop()
 
         # Allow to escape operator-like field name by __
