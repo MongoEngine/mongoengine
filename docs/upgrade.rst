@@ -77,7 +77,7 @@ MongoDB connection before shipping v0.10.8 in production.
 ******
 
 `QuerySet.aggregate_sum` and `QuerySet.aggregate_average` are dropped. Use
-`QuerySet.sum` and `QuerySet.average` instead which use the aggreation framework
+`QuerySet.sum` and `QuerySet.average` instead which use the aggregation framework
 by default from now on.
 
 0.9.0
