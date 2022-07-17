@@ -953,12 +953,16 @@ class BaseQuerySet:
             field = self._fields_to_dbfields([field]).pop()
         except LookUpError:
             pass
+        
+        raw_values = queryset._cursor.distinct(field)
+        if not self._auto_dereference:
+            return raw_values
 
         if not self._auto_dereference:
             return queryset._cursor.distinct(field)
 
         distinct = self._dereference(
-            queryset._cursor.distinct(field), 1, name=field, instance=self._document
+            raw_values, 1, name=field, instance=self._document
         )
 
         doc_field = self._document._fields.get(field.split(".", 1)[0])
