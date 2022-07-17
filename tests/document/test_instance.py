@@ -1735,7 +1735,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user = User.objects.first()
         # Even if stored as ObjectId's internally mongoengine uses DBRefs
-        # As ObjectId's aren't automatically derefenced
+        # As ObjectId's aren't automatically dereferenced
         assert isinstance(user._data["orgs"][0], DBRef)
         assert isinstance(user.orgs[0], Organization)
         assert isinstance(user._data["orgs"][0], Organization)

@@ -237,7 +237,7 @@ class TestGeoQueries(MongoDBTestCase):
         assert events.count() == 0
 
     def test_2dsphere_near_and_min_max_distance(self):
-        """Ensure "min_distace" and "max_distance" operators work well
+        """Ensure "min_distance" and "max_distance" operators work well
         together with the "near" operator in a 2dsphere index.
         """
         event1, event2, event3 = self._create_event_data(point_field_class=PointField)

@@ -126,7 +126,7 @@ class TestField(MongoDBTestCase):
 
     def test_default_values_set_to_None(self):
         """Ensure that default field values are used even when
-        we explcitly initialize the doc with None values.
+        we explicitly initialize the doc with None values.
         """
 
         class Person(Document):
