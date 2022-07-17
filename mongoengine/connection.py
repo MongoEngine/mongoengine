@@ -166,7 +166,8 @@ def _get_connection_settings(
     kwargs.pop("slaves", None)
     kwargs.pop("is_slave", None)
 
-    if "uuidRepresentation" not in kwargs:
+    keys = set(key.lower() for key in kwargs.keys())
+    if "uuidrepresentation" not in keys:
         warnings.warn(
             "No uuidRepresentation is specified! Falling back to "
             "'pythonLegacy' which is the default for pymongo 3.x. "
