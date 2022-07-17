@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Turning off dereferencing for the results of distinct query. #2663
 
 Changes in 0.24.2
 =================
