@@ -166,7 +166,9 @@ def _get_connection_settings(
     kwargs.pop("slaves", None)
     kwargs.pop("is_slave", None)
 
-    keys = set(key.lower() for key in kwargs.keys())
+    keys = {
+        key.lower() for key in kwargs.keys()
+    }  # pymongo options are case insensitive
     if "uuidrepresentation" not in keys:
         warnings.warn(
             "No uuidRepresentation is specified! Falling back to "
