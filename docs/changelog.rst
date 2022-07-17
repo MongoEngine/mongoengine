@@ -8,11 +8,14 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.24.2
+=================
+- Bug fix regarding uuidRepresentation that was case sensitive #2650
+
 Changes in 0.24.1
 =================
 - Allow pymongo<5.0 to be pulled
 - Don't use deprecated property for emptiness check in queryset base #2633
-
 
 Changes in 0.24.0
 =================
