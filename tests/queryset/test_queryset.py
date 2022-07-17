@@ -3505,6 +3505,7 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar") == [bar]
+        assert Foo.objects.no_dereference().distinct("bar") == [bar.pk]
 
     def test_text_indexes(self):
         class News(Document):
@@ -3711,6 +3712,7 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar_lst") == [bar_1, bar_2]
+        assert Foo.objects.no_dereference().distinct("bar_lst") == [bar_1.pk, bar_2.pk]
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected."""
