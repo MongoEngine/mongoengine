@@ -507,11 +507,23 @@ class ObjectIdField(BaseField):
         return value
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return None
         return self.to_mongo(value)
 
     def validate(self, value):
+        from mongoengine import Document
+        # In an ideal world, value is of type ObjectId
+        # But if it isn't, we should also support DBRef and Document types
+        # since the to_mongo field does
+        if isinstance(value, DBRef):
+            id_to_validate = value.id
+        elif isinstance(value, Document):
+            id_to_validate = value.id
+        else:
+            id_to_validate = value
         try:
-            ObjectId(text_type(value))
+            ObjectId(text_type(id_to_validate))
         except Exception:
             self.error('Invalid Object ID')
 
