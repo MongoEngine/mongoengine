@@ -1217,27 +1217,28 @@ class CachedReferenceField(BaseField):
             
 
     def on_document_pre_save(self, sender, document, created, _changed_fields, **kwargs):
-        if not created and _changed_fields:
-            update_kwargs = dict(
-                ('set__%s__%s' % (self.name, k), document[k])
-                for k in _changed_fields
-                if k in self.fields)
+        if created or _changed_fields is None or all(cf not in self.fields for cf in _changed_fields):
+            return
+        changed_fields_son = document.to_mongo(fields=_changed_fields)
+        update_kwargs = {
+            f"set__{self.name}__{k}": v
+            for k, v in changed_fields_son.items()
+            if k in self.fields
+        }
+        filter_kwargs = {}
+        filter_kwargs[self.name] = document
+        # Optimize query for documents sharded by company
+        company = 'company'
+        if hasattr(document, company) and company in self.owner_document._fields:
+            filter_kwargs[company] = getattr(document, company)
 
-            if update_kwargs:
-                filter_kwargs = {}
-                filter_kwargs[self.name] = document
-                # Optimize query for documents sharded by company
-                company = 'company'
-                if hasattr(document, company) and company in self.owner_document._fields:
-                    filter_kwargs[company] = getattr(document, company)
-                
-                documents = [self.owner_document]
-                
-                if self.owner_document._meta['abstract']:
-                    documents = self.owner_document.__subclasses__()
+        documents = [self.owner_document]
 
-                for document in documents:
-                    document.objects(**filter_kwargs).update(**update_kwargs)
+        if self.owner_document._meta['abstract']:
+            documents = self.owner_document.__subclasses__()
+
+        for document in documents:
+            document.objects(**filter_kwargs).update(**update_kwargs)
 
     def to_python(self, value, _lazy_prefetch_base=None, _fields=None, **kwargs):
         if type(value) is DocumentProxy:
