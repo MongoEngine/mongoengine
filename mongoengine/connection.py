@@ -1,8 +1,10 @@
 import warnings
+from threading import local
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
 
+from mongoengine.errors import DatabaseAliasError
 from mongoengine.pymongo_support import PYMONGO_VERSION
 
 __all__ = [
@@ -15,6 +17,8 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
+    "set_local_db_alias",
+    "del_local_db_alias"
 ]
 
 
@@ -26,6 +30,8 @@ DEFAULT_PORT = 27017
 _connection_settings = {}
 _connections = {}
 _dbs = {}
+_local = local()
+_local.db_alias = {}
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -372,7 +378,29 @@ def _find_existing_connection(connection_settings):
             return _connections[db_alias]
 
 
+def set_local_db_alias(local_alias, alias=DEFAULT_CONNECTION_NAME):
+    if not alias or not local_alias:
+        raise DatabaseAliasError(f"db alias and local_alias cannot be empty")
+
+    if alias not in _local.db_alias:
+        _local.db_alias[alias] = local_alias
+    else:
+        raise DatabaseAliasError(f"local db alias already set: {alias}")
+
+
+def del_local_db_alias(alias):
+    if not alias:
+        raise DatabaseAliasError(f"db alias cannot be empty")
+    if alias in _local.db_alias:
+        del _local.db_alias[alias]
+    else:
+        raise DatabaseAliasError(f"local db alias not set: {alias}")
+
+
 def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+    if alias in _local.db_alias:
+        alias = _local.db_alias[alias]
+
     if reconnect:
         disconnect(alias)
 

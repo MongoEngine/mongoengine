@@ -4,10 +4,11 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db, set_local_db_alias, del_local_db_alias
 from mongoengine.pymongo_support import count_documents
 
 __all__ = (
+    "switch_db_local",
     "switch_db",
     "switch_collection",
     "no_dereference",
@@ -16,6 +17,36 @@ __all__ = (
     "set_write_concern",
     "set_read_write_concern",
 )
+
+
+class switch_db_local:
+    """switch_db_local alias context manager.
+
+    Switches a db alias in a thread-safe way.
+
+    Example ::
+        register_connection('testdb-1', 'mongoenginetest1')
+        register_connection('testdb-2', 'mongoenginetest2')
+
+        class Group(Document):
+            name = StringField()
+
+        # The following two calls to save() could be run concurrently
+        with switch_db_local('testdb-1'):
+            Group(name='test').save()
+        with switch_db_local('testdb-2'):
+            Group(name='test').save()
+    """
+
+    def __init__(self, local_alias, alias=DEFAULT_CONNECTION_NAME):
+        self.local_alias = local_alias
+        self.alias = alias
+
+    def __enter__(self):
+        set_local_db_alias(self.local_alias, self.alias)
+
+    def __exit__(self, t, value, traceback):
+        del_local_db_alias(self.alias)
 
 
 class switch_db:

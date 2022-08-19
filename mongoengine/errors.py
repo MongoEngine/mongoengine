@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 __all__ = (
+    "DatabaseAliasError",
     "NotRegistered",
     "InvalidDocumentError",
     "LookUpError",
@@ -18,6 +19,10 @@ __all__ = (
 
 
 class MongoEngineException(Exception):
+    pass
+
+
+class DatabaseAliasError(MongoEngineException):
     pass
 
 
