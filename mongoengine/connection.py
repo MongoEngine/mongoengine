@@ -383,23 +383,24 @@ def set_local_db_alias(local_alias, alias=DEFAULT_CONNECTION_NAME):
         raise DatabaseAliasError(f"db alias and local_alias cannot be empty")
 
     if alias not in _local.db_alias:
-        _local.db_alias[alias] = local_alias
-    else:
-        raise DatabaseAliasError(f"local db alias already set: {alias}")
+        _local.db_alias[alias] = []
+
+    _local.db_alias[alias].append(local_alias)
 
 
 def del_local_db_alias(alias):
     if not alias:
         raise DatabaseAliasError(f"db alias cannot be empty")
-    if alias in _local.db_alias:
-        del _local.db_alias[alias]
-    else:
+
+    if alias not in _local.db_alias or not _local.db_alias[alias]:
         raise DatabaseAliasError(f"local db alias not set: {alias}")
+
+    _local.db_alias[alias].pop()
 
 
 def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
-    if alias in _local.db_alias:
-        alias = _local.db_alias[alias]
+    if alias in _local.db_alias and _local.db_alias[alias]:
+        alias = _local.db_alias[alias][-1]
 
     if reconnect:
         disconnect(alias)
