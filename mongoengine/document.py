@@ -15,7 +15,7 @@ from mongoengine.base import (
     get_document,
 )
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db, get_local_db_alias
 from mongoengine.context_managers import (
     set_write_concern,
     switch_collection,
@@ -197,14 +197,22 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return hash(self.pk)
 
     @classmethod
+    def _get_local_db_alias(cls):
+        return get_local_db_alias(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
+
+    @classmethod
     def _get_db(cls):
         """Some Model using other db_alias"""
-        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
+        return get_db(cls._get_local_db_alias())
 
     @classmethod
     def _disconnect(cls):
-        """Detach the Document class from the (cached) database collection"""
-        cls._collection = None
+        """Detach the Document class from all (cached) database collections"""
+        cls._collections = {}
+
+    @classmethod
+    def _set_collection(cls, collection):
+        cls._collections[cls._get_local_db_alias()] = collection
 
     @classmethod
     def _get_collection(cls):
@@ -216,14 +224,15 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         2. Creates indexes defined in this document's :attr:`meta` dictionary.
            This happens only if `auto_create_index` is True.
         """
-        if not hasattr(cls, "_collection") or cls._collection is None:
+        local_db_alias = cls._get_local_db_alias()
+        if local_db_alias not in cls._collections:
             # Get the collection, either capped or regular.
             if cls._meta.get("max_size") or cls._meta.get("max_documents"):
-                cls._collection = cls._get_capped_collection()
+                cls._collections[local_db_alias] = cls._get_capped_collection()
             else:
                 db = cls._get_db()
                 collection_name = cls._get_collection_name()
-                cls._collection = db[collection_name]
+                cls._collections[local_db_alias] = db[collection_name]
 
             # Ensure indexes on the collection unless auto_create_index was
             # set to False.
@@ -232,7 +241,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if cls._meta.get("auto_create_index", True) and db.client.is_primary:
                 cls.ensure_indexes()
 
-        return cls._collection
+        return cls._collections[local_db_alias]
 
     @classmethod
     def _get_capped_collection(cls):
@@ -260,7 +269,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if options.get("max") != max_documents or options.get("size") != max_size:
                 raise InvalidCollectionError(
                     'Cannot create collection "{}" as a capped '
-                    "collection as it already exists".format(cls._collection)
+                    "collection as it already exists".format(collection_name)
                 )
 
             return collection
@@ -837,7 +846,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             raise OperationError(
                 "Document %s has no collection defined (is it abstract ?)" % cls
             )
-        cls._collection = None
+        cls._set_collection(None)
         db = cls._get_db()
         db.drop_collection(coll_name)
 

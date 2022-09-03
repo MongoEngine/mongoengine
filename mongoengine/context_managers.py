@@ -81,17 +81,21 @@ class switch_db:
     def __enter__(self):
         """Change the db_alias and clear the cached collection."""
         self.cls._meta["db_alias"] = self.db_alias
-        self.cls._collection = None
+        self.cls._set_collection(None)
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the db_alias and collection."""
         self.cls._meta["db_alias"] = self.ori_db_alias
-        self.cls._collection = self.collection
+        self.cls._set_collection(self.collection)
 
 
 class switch_collection:
     """switch_collection alias context manager.
+
+    Warning ::
+
+        ###  This is NOT completely thread-safe  ###
 
     Example ::
 
@@ -123,12 +127,12 @@ class switch_collection:
             return self.collection_name
 
         self.cls._get_collection_name = _get_collection_name
-        self.cls._collection = None
+        self.cls._set_collection(None)
         return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the collection."""
-        self.cls._collection = self.ori_collection
+        self.cls._set_collection(self.ori_collection)
         self.cls._get_collection_name = self.ori_get_collection_name
 
 

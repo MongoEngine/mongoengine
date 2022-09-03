@@ -166,7 +166,7 @@ class DocumentMetaclass(type):
         ) = mcs._import_classes()
 
         if issubclass(new_class, Document):
-            new_class._collection = None
+            new_class._collections = {}
 
         # Add class to the _document_registry
         _document_registry[new_class._class_name] = new_class

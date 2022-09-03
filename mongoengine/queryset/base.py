@@ -54,9 +54,9 @@ class BaseQuerySet:
     __dereference = False
     _auto_dereference = True
 
-    def __init__(self, document, collection):
+    def __init__(self, document, db_alias=None):
         self._document = document
-        self._collection_obj = collection
+        self._db_alias = db_alias
         self._mongo_query = None
         self._query_obj = Q()
         self._cls_query = {}
@@ -73,6 +73,8 @@ class BaseQuerySet:
         self._none = False
         self._as_pymongo = False
         self._search_text = None
+
+        self.__init_using_collection()
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -99,6 +101,12 @@ class BaseQuerySet:
         # in that case and check for it when iterating. We also unset
         # it anytime we change _limit. Inspired by how it is done in pymongo.Cursor
         self._empty = False
+
+    def __init_using_collection(self):
+        self._using_collection = None
+        if self._db_alias is not None:
+            with switch_db(self._document, self._db_alias) as cls:
+                self._using_collection = cls._get_collection()
 
     def __call__(self, q_obj=None, **query):
         """Filter the selected documents by calling the
@@ -137,9 +145,6 @@ class BaseQuerySet:
 
         obj_dict = self.__dict__.copy()
 
-        # don't picke collection, instead pickle collection params
-        obj_dict.pop("_collection_obj")
-
         # don't pickle cursor
         obj_dict["_cursor_obj"] = None
 
@@ -152,10 +157,10 @@ class BaseQuerySet:
         See https://github.com/MongoEngine/mongoengine/issues/442
         """
 
-        obj_dict["_collection_obj"] = obj_dict["_document"]._get_collection()
-
         # update attributes
         self.__dict__.update(obj_dict)
+
+        self.__init_using_collection()
 
         # forse load cursor
         # self._cursor
@@ -494,7 +499,7 @@ class BaseQuerySet:
             if rule == CASCADE:
                 cascade_refs = set() if cascade_refs is None else cascade_refs
                 # Handle recursive reference
-                if doc._collection == document_cls._collection:
+                if doc._collection == document_cls._get_collection():
                     for ref in queryset:
                         cascade_refs.add(ref.id)
                 refs = document_cls.objects(
@@ -777,14 +782,11 @@ class BaseQuerySet:
         :param alias: The database alias
         """
 
-        with switch_db(self._document, alias) as cls:
-            collection = cls._get_collection()
-
-        return self._clone_into(self.__class__(self._document, collection))
+        return self._clone_into(self.__class__(self._document, alias))
 
     def clone(self):
         """Create a copy of the current queryset."""
-        return self._clone_into(self.__class__(self._document, self._collection_obj))
+        return self._clone_into(self.__class__(self._document, self._db_alias))
 
     def _clone_into(self, new_qs):
         """Copy all of the relevant properties of this queryset to
@@ -1531,7 +1533,7 @@ class BaseQuerySet:
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = tuple(self._document._get_collection().aggregate(pipeline))
+        result = tuple(self._collection.aggregate(pipeline))
 
         if result:
             return result[0]["total"]
@@ -1558,7 +1560,7 @@ class BaseQuerySet:
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = tuple(self._document._get_collection().aggregate(pipeline))
+        result = tuple(self._collection.aggregate(pipeline))
         if result:
             return result[0]["total"]
         return 0
@@ -1620,7 +1622,8 @@ class BaseQuerySet:
         """Property that returns the collection object. This allows us to
         perform operations only if the collection is accessed.
         """
-        return self._collection_obj
+        return self._document._get_collection() \
+            if self._using_collection is None else self._using_collection
 
     @property
     def _cursor_args(self):

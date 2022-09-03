@@ -18,7 +18,8 @@ __all__ = [
     "get_db",
     "register_connection",
     "set_local_db_alias",
-    "del_local_db_alias"
+    "del_local_db_alias",
+    "get_local_db_alias"
 ]
 
 
@@ -398,9 +399,14 @@ def del_local_db_alias(alias):
     _local.db_alias[alias].pop()
 
 
-def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+def get_local_db_alias(alias):
     if alias in _local.db_alias and _local.db_alias[alias]:
         alias = _local.db_alias[alias][-1]
+    return alias
+
+
+def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+    alias = get_local_db_alias(alias)
 
     if reconnect:
         disconnect(alias)
