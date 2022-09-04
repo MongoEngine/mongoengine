@@ -287,10 +287,29 @@ class BaseQuerySet:
         return self._document(**kwargs).save(force_insert=True)
 
     def first(self):
-        """Retrieve the first object matching the query."""
+        """Retrieve the first object matching the query, or None if none match."""
         queryset = self.clone()
         try:
             result = queryset[0]
+        except IndexError:
+            result = None
+        return result
+
+    def one_or_none(self):
+        """Retrieve the object matching the query, or None if none match, raising
+        :class:`~mongoengine.queryset.MultipleObjectsReturned`if multiple results
+        are found.
+        """
+        queryset = self.clone()
+        try:
+            result = queryset[0]
+            try:
+                _ = queryset[1]
+                raise queryset._document.MultipleObjectsReturned(
+                    "2 or more items returned, instead of 0 or 1"
+                )
+            except IndexError:
+                pass
         except IndexError:
             result = None
         return result
