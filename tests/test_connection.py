@@ -418,7 +418,7 @@ class ConnectionTest(unittest.TestCase):
                 db.list_collection_names()
         else:
             with pytest.raises(OperationFailure):
-                db = get_db()
+                get_db()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`

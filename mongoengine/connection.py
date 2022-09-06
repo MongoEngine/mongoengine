@@ -89,7 +89,7 @@ def _get_connection_settings(
         "password": password,
         "authentication_source": authentication_source,
         "authentication_mechanism": authentication_mechanism,
-        "authmechanismproperties": authmechanismproperties
+        "authmechanismproperties": authmechanismproperties,
     }
 
     _check_db_name(conn_settings["name"])
@@ -161,7 +161,9 @@ def _get_connection_settings(
                         conn_settings["read_preference"] = preference
                         break
             if "authmechanismproperties" in uri_options:
-                conn_settings["authmechanismproperties"] = uri_options["authmechanismproperties"]
+                conn_settings["authmechanismproperties"] = uri_options[
+                    "authmechanismproperties"
+                ]
         else:
             resolved_hosts.append(entity)
     conn_settings["host"] = resolved_hosts
@@ -295,7 +297,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 "password",
                 "authentication_source",
                 "authentication_mechanism",
-                "authmechanismproperties"
+                "authmechanismproperties",
             }
             rename_fields = {}
         else:
@@ -395,7 +397,7 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings["password"]
                 or conn_settings["authentication_mechanism"] == "MONGODB-X509"
             )
-            and ("authmechanismproperties" not in conn_settings.keys())
+            and conn_settings["authmechanismproperties"] is None
         ):
             auth_kwargs = {"source": conn_settings["authentication_source"]}
             if conn_settings["authentication_mechanism"] is not None:
