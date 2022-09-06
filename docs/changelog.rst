@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
 
 Changes in 0.24.2
 =================
