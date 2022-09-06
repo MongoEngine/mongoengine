@@ -58,6 +58,7 @@ def _get_connection_settings(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
+    authmechanismproperties=None,
     **kwargs,
 ):
     """Get the connection settings as a dict
@@ -88,6 +89,7 @@ def _get_connection_settings(
         "password": password,
         "authentication_source": authentication_source,
         "authentication_mechanism": authentication_mechanism,
+        "authmechanismproperties": authmechanismproperties
     }
 
     _check_db_name(conn_settings["name"])
@@ -158,6 +160,8 @@ def _get_connection_settings(
                     ):
                         conn_settings["read_preference"] = preference
                         break
+            if "authmechanismproperties" in uri_options:
+                conn_settings["authmechanismproperties"] = uri_options["authmechanismproperties"]
         else:
             resolved_hosts.append(entity)
     conn_settings["host"] = resolved_hosts
@@ -196,6 +200,7 @@ def register_connection(
     password=None,
     authentication_source=None,
     authentication_mechanism=None,
+    authmechanismproperties=None,
     **kwargs,
 ):
     """Register the connection settings.
@@ -228,6 +233,7 @@ def register_connection(
         password=password,
         authentication_source=authentication_source,
         authentication_mechanism=authentication_mechanism,
+        authmechanismproperties=authmechanismproperties,
         **kwargs,
     )
     _connection_settings[alias] = conn_settings
@@ -289,6 +295,7 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 "password",
                 "authentication_source",
                 "authentication_mechanism",
+                "authmechanismproperties"
             }
             rename_fields = {}
         else:
@@ -388,6 +395,7 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
                 conn_settings["password"]
                 or conn_settings["authentication_mechanism"] == "MONGODB-X509"
             )
+            and ("authmechanismproperties" not in conn_settings.keys())
         ):
             auth_kwargs = {"source": conn_settings["authentication_source"]}
             if conn_settings["authentication_mechanism"] is not None:
