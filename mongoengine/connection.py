@@ -32,7 +32,6 @@ _connection_settings = {}
 _connections = {}
 _dbs = {}
 _local = local()
-_local.db_alias = {}
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -379,29 +378,35 @@ def _find_existing_connection(connection_settings):
             return _connections[db_alias]
 
 
+def __local_db_alias():
+    if getattr(_local, "db_alias", None) is None:
+        _local.db_alias = {}
+    return _local.db_alias
+
+
 def set_local_db_alias(local_alias, alias=DEFAULT_CONNECTION_NAME):
     if not alias or not local_alias:
         raise DatabaseAliasError(f"db alias and local_alias cannot be empty")
 
-    if alias not in _local.db_alias:
-        _local.db_alias[alias] = []
+    if alias not in __local_db_alias():
+        __local_db_alias()[alias] = []
 
-    _local.db_alias[alias].append(local_alias)
+    __local_db_alias()[alias].append(local_alias)
 
 
 def del_local_db_alias(alias):
     if not alias:
         raise DatabaseAliasError(f"db alias cannot be empty")
 
-    if alias not in _local.db_alias or not _local.db_alias[alias]:
+    if alias not in __local_db_alias() or not __local_db_alias()[alias]:
         raise DatabaseAliasError(f"local db alias not set: {alias}")
 
-    _local.db_alias[alias].pop()
+    __local_db_alias()[alias].pop()
 
 
 def get_local_db_alias(alias):
-    if alias in _local.db_alias and _local.db_alias[alias]:
-        alias = _local.db_alias[alias][-1]
+    if alias in __local_db_alias() and __local_db_alias()[alias]:
+        alias = __local_db_alias()[alias][-1]
     return alias
 
 
