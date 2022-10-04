@@ -25,6 +25,7 @@ else:
 from mongoengine.base import (
     BaseDocument,
     BaseField,
+    SaveableBaseField,
     ComplexBaseField,
     GeoJsonBaseField,
     LazyReference,
@@ -1123,7 +1124,7 @@ class MapField(DictField):
         super().__init__(field=field, *args, **kwargs)
 
 
-class ReferenceField(BaseField):
+class ReferenceField(SaveableBaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
 
@@ -1295,6 +1296,16 @@ class ReferenceField(BaseField):
                 "saved to the database"
             )
 
+    def save(self, instance, **kwargs):
+        ref = instance._data.get(self.name)
+        if not ref or isinstance(ref, DBRef):
+            return
+        
+        if not getattr(self, "_changed_fields", True):
+            return
+
+        ref.save(**kwargs)
+
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
 
@@ -1464,7 +1475,7 @@ class CachedReferenceField(BaseField):
             self.owner_document.objects(**filter_kwargs).update(**update_kwargs)
 
 
-class GenericReferenceField(BaseField):
+class GenericReferenceField(SaveableBaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
 
@@ -1545,6 +1556,16 @@ class GenericReferenceField(BaseField):
                 "You can only reference documents once they have been"
                 " saved to the database"
             )
+
+    def save(self, instance, **kwargs):
+        ref = instance._data.get(self.name)
+        if not ref or isinstance(ref, DBRef):
+            return
+
+        if not getattr(ref, "_changed_fields", True):
+            return
+
+        ref.save(**kwargs)
 
     def to_mongo(self, document):
         if document is None:
