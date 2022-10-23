@@ -9,6 +9,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
 - Turning off dereferencing for the results of distinct query. #2663
+- Add tests against Mongo 5.0 in pipeline
 
 Changes in 0.24.2
 =================
