@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - master
+  # Manual trigger from Action page
+  workflow_dispatch:
   # release tags
   create:
     tags:
