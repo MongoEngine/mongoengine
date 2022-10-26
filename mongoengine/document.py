@@ -384,6 +384,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
+        .. versionchanged:: 0.25
+           save() no longer calls :meth:`~mongoengine.Document.ensure_indexes`
+           unless ``meta['auto_create_index_on_save']`` is set to True.
+
         """
         signal_kwargs = signal_kwargs or {}
 
@@ -407,8 +411,12 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
         doc = self.to_mongo()
 
-        if self._meta.get("auto_create_index", True):
+        if self._meta.get("auto_create_index_on_save", False):
             self.ensure_indexes()
+        else:
+            # Call _get_collection so that errors from ensure_indexes are not
+            # wrapped in OperationError, see test_primary_key_unique_not_working.
+            self._get_collection()
 
         try:
             # Save a new document or update an existing one

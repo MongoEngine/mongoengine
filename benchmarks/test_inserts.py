@@ -5,15 +5,11 @@ def main():
     setup = """
 from pymongo import MongoClient
 
-connection = MongoClient()
+connection = MongoClient(w=1)
 connection.drop_database('mongoengine_benchmark_test')
 """
 
     stmt = """
-from pymongo import MongoClient
-
-connection = MongoClient()
-
 db = connection.mongoengine_benchmark_test
 noddy = db.noddy
 
@@ -29,13 +25,12 @@ myNoddys = noddy.find()
 """
 
     print("-" * 100)
-    print("PyMongo: Creating 10000 dictionaries.")
+    print('PyMongo: Creating 10000 dictionaries (write_concern={"w": 1}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(f"{t.timeit(1)}s")
 
     stmt = """
-from pymongo import MongoClient, WriteConcern
-connection = MongoClient()
+from pymongo import WriteConcern
 
 db = connection.mongoengine_benchmark_test
 noddy = db.noddy.with_options(write_concern=WriteConcern(w=0))
@@ -64,7 +59,7 @@ connection.drop_database('mongoengine_benchmark_test')
 connection.close()
 
 from mongoengine import Document, DictField, connect
-connect("mongoengine_benchmark_test")
+connect("mongoengine_benchmark_test", w=1)
 
 class Noddy(Document):
     fields = DictField()
@@ -82,7 +77,7 @@ myNoddys = Noddy.objects()
 """
 
     print("-" * 100)
-    print("MongoEngine: Creating 10000 dictionaries.")
+    print('MongoEngine: Creating 10000 dictionaries (write_concern={"w": 1}).')
     t = timeit.Timer(stmt=stmt, setup=setup)
     print(f"{t.timeit(1)}s")
 

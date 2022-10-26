@@ -10,6 +10,11 @@ Development
 - Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
 - Turning off dereferencing for the results of distinct query. #2663
 - Add tests against Mongo 5.0 in pipeline
+- BREAKING CHANGE: Improved the performance of :meth:`~mongoengine.Document.save()`
+  by removing the call to :meth:`~mongoengine.Document.ensure_indexes` unless
+  ``meta['auto_create_index_on_save']`` is set to True.
+- Added meta ``auto_create_index_on_save`` so you can enable index creation
+  on :meth:`~mongoengine.Document.save()`.
 
 Changes in 0.24.2
 =================
