@@ -294,7 +294,9 @@ class ConnectionTest(unittest.TestCase):
     def test_disconnect_does_not_close_client_used_by_another_alias(self):
         client1 = connect(alias="disconnect_reused_client_test_1")
         client2 = connect(alias="disconnect_reused_client_test_2")
+        client3 = connect(alias="disconnect_reused_client_test_3", maxPoolSize=10)
         assert client1 is client2
+        assert client1 is not client3
         client1.admin.command("ping")
         disconnect("disconnect_reused_client_test_1")
         # The client is not closed because the second alias still exists.
@@ -304,6 +306,14 @@ class ConnectionTest(unittest.TestCase):
         if PYMONGO_VERSION >= (4,):
             with pytest.raises(InvalidOperation):
                 client2.admin.command("ping")
+        # 3rd client connected to the same cluster with different options
+        # is not closed either.
+        client3.admin.command("ping")
+        disconnect("disconnect_reused_client_test_3")
+        # 3rd client is now closed:
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(InvalidOperation):
+                client3.admin.command("ping")
 
     def test_disconnect_all(self):
         connections = mongoengine.connection._connections

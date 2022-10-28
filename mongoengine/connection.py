@@ -249,7 +249,9 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     connection = _connections.pop(alias, None)
     if connection:
         # Only close the client if we're removing the final reference.
-        if connection not in _connections.values():
+        # Use 'is' instead of 'in' or '==' to ensure the clients are
+        # the same instance.
+        if all(connection is not c for c in _connections.values()):
             connection.close()
 
     if alias in _dbs:
