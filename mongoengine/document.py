@@ -1,6 +1,7 @@
 import re
 
 import pymongo
+from bson import SON
 from bson.dbref import DBRef
 from pymongo.read_preferences import ReadPreference
 
@@ -8,6 +9,7 @@ from mongoengine import signals
 from mongoengine.base import (
     BaseDict,
     BaseDocument,
+    SaveableBaseField,
     BaseList,
     DocumentMetaclass,
     EmbeddedDocumentList,
@@ -385,44 +387,34 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
         """
-        signal_kwargs = signal_kwargs or {}
-
-        if self._meta.get("abstract"):
-            raise InvalidDocumentError("Cannot save an abstract document.")
-
-        signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
-
-        if validate:
-            self.validate(clean=clean)
-
-        if write_concern is None:
-            write_concern = {}
-
-        doc_id = self.to_mongo(fields=[self._meta["id_field"]])
-        created = "_id" not in doc_id or self._created or force_insert
-
-        signals.pre_save_post_validation.send(
-            self.__class__, document=self, created=created, **signal_kwargs
-        )
-        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
-        doc = self.to_mongo()
-
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
+        # Used to avoid saving a document that is already saving (infinite loops)
+        # this can be caused by the cascade save and circular references 
+        if getattr(self, "_is_saving", False):
+            return
+        self._is_saving = True
 
         try:
-            # Save a new document or update an existing one
-            if created:
-                object_id = self._save_create(doc, force_insert, write_concern)
-            else:
-                object_id, created = self._save_update(
-                    doc, save_condition, write_concern
-                )
+            signal_kwargs = signal_kwargs or {}
 
+            if write_concern is None:
+                write_concern = {}
+
+            if self._meta.get("abstract"):
+                raise InvalidDocumentError("Cannot save an abstract document.")
+
+            # Cascade save before validation to avoid child not existing errors
             if cascade is None:
                 cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
 
+            has_placeholder_saved = False
+
             if cascade:
+                # If a cascade will occur save a placeholder version of this document to
+                #   avoid issues with cyclic saves if this doc has not been created yet
+                if self.id is None:
+                    self._save_place_holder(force_insert, write_concern)
+                    has_placeholder_saved = True
+
                 kwargs = {
                     "force_insert": force_insert,
                     "validate": validate,
@@ -434,31 +426,74 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 kwargs["_refs"] = _refs
                 self.cascade_save(**kwargs)
 
-        except pymongo.errors.DuplicateKeyError as err:
-            message = "Tried to save duplicate unique keys (%s)"
-            raise NotUniqueError(message % err)
-        except pymongo.errors.OperationFailure as err:
-            message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", str(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
+            # update force_insert to reflect that we might have already run the insert for
+            #   the placeholder
+            force_insert = force_insert and not has_placeholder_saved
+
+            signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
+
+            if validate:
+                self.validate(clean=clean)
+
+            doc_id = self.to_mongo(fields=[self._meta["id_field"]])
+            created = "_id" not in doc_id or self._created or force_insert
+
+            signals.pre_save_post_validation.send(
+                self.__class__, document=self, created=created, **signal_kwargs
+            )
+            # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+            doc = self.to_mongo()
+
+            if self._meta.get("auto_create_index", True):
+                self.ensure_indexes()
+
+            try:
+                # Save a new document or update an existing one
+                if created:
+                    object_id = self._save_create(doc, force_insert, write_concern)
+                else:
+                    object_id, created = self._save_update(
+                        doc, save_condition, write_concern
+                    )
+            except pymongo.errors.DuplicateKeyError as err:
                 message = "Tried to save duplicate unique keys (%s)"
                 raise NotUniqueError(message % err)
-            raise OperationError(message % err)
+            except pymongo.errors.OperationFailure as err:
+                message = "Could not save document (%s)"
+                if re.match("^E1100[01] duplicate key", str(err)):
+                    # E11000 - duplicate key error index
+                    # E11001 - duplicate key on update
+                    message = "Tried to save duplicate unique keys (%s)"
+                    raise NotUniqueError(message % err)
+                raise OperationError(message % err)
 
-        # Make sure we store the PK on this document now that it's saved
-        id_field = self._meta["id_field"]
-        if created or id_field not in self._meta.get("shard_key", []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
+            # Make sure we store the PK on this document now that it's saved
+            id_field = self._meta["id_field"]
+            if created or id_field not in self._meta.get("shard_key", []):
+                self[id_field] = self._fields[id_field].to_python(object_id)
 
-        signals.post_save.send(
-            self.__class__, document=self, created=created, **signal_kwargs
-        )
+            signals.post_save.send(
+                self.__class__, document=self, created=created, **signal_kwargs
+            )
 
-        self._clear_changed_fields()
-        self._created = False
+            self._clear_changed_fields()
+            self._created = False
+        except Exception as e:
+            raise e
+        finally:
+            self._is_saving = False
 
         return self
+
+    def _save_place_holder(self, force_insert, write_concern):
+        """Save a temp placeholder to the db with nothing but the ID.
+        """
+        data = SON()
+
+        object_id = self._save_create(data, force_insert, write_concern)
+            
+        id_field = self._meta["id_field"]
+        self[id_field] = self._fields[id_field].to_python(object_id)
 
     def _save_create(self, doc, force_insert, write_concern):
         """Save a new document.
@@ -556,28 +591,11 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         """Recursively save any references and generic references on the
         document.
         """
-        _refs = kwargs.get("_refs") or []
-
-        ReferenceField = _import_class("ReferenceField")
-        GenericReferenceField = _import_class("GenericReferenceField")
 
         for name, cls in self._fields.items():
-            if not isinstance(cls, (ReferenceField, GenericReferenceField)):
+            if not isinstance(cls, SaveableBaseField):
                 continue
-
-            ref = self._data.get(name)
-            if not ref or isinstance(ref, DBRef):
-                continue
-
-            if not getattr(ref, "_changed_fields", True):
-                continue
-
-            ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
-            if ref and ref_id not in _refs:
-                _refs.append(ref_id)
-                kwargs["_refs"] = _refs
-                ref.save(**kwargs)
-                ref._changed_fields = []
+            cls.save(self, **kwargs)
 
     @property
     def _qs(self):
