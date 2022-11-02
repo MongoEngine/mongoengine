@@ -169,7 +169,7 @@ class BaseDocument:
                 self._dynamic_fields[name] = field
                 self._fields_ordered += (name,)
 
-            if not name.startswith("_"):
+            if not name.startswith("_") and name not in self._dynamic_fields:
                 value = self.__expand_dynamic_values(name, value)
 
             # Handle marking data as changed
