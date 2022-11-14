@@ -344,6 +344,82 @@ class TestClassMethods(unittest.TestCase):
 
         Person.drop_collection()
 
+    def test_save_with_cascade_on_new_referencefield(self):
+        """Ensure that a new and unsaved ReferenceField is saved before 
+        the parent Document is saved to avoid validation issues.
+        """
+
+        class Job(Document):
+            employee = ReferenceField(self.Person)
+
+        person = self.Person(name="Test User")
+        job = Job(employee=person)
+        job.save(cascade=True)
+
+        employee_obj = self.Person.objects[0]
+        assert employee_obj["name"] == "Test User"
+
+        job_obj = Job.objects[0]
+        assert job_obj.employee == job.employee
+
+    def test_cascade_save_nested_referencefields(self):
+        """Ensure that nested ReferenceFields are saved during a cascade_save.
+        """
+
+        class Job(Document):
+            employee = ReferenceField(self.Person)
+
+        class Company(Document):
+            job_list = ListField(ReferenceField(Job))
+
+        person = self.Person(name="Test User")
+        job = Job(employee=person)
+        company = Company(job_list=[job]).save(cascade=True)
+
+        company_obj = Company.objects.first()
+        assert company_obj.job_list[0] == job
+
+        assert company_obj.job_list[0].employee["name"] == "Test User"
+
+    def test_cascade_save_with_cycles(self):
+        """Ensure that cyclic references do not break cascade saves.
+        """
+
+        class Object1(Document):
+            name = StringField()
+            oject2_reference = ReferenceField('Object2')
+            oject2_list = ListField(ReferenceField('Object2'))
+
+        class Object2(Document):
+            name = StringField()
+            oject1_reference = ReferenceField(Object1)
+            oject1_list = ListField(ReferenceField(Object1))
+
+        obj_1_name = "Test Object 1"
+        obj_1 = Object1(name=obj_1_name)
+        obj_2_name = "Test Object 2"
+        obj_2 = Object2(name="Has not been saved")
+
+        # Create a cyclic reference nightmare
+        obj_2.oject1_reference = obj_1
+        obj_2.oject1_list = [obj_1]
+
+        obj_1.oject2_reference = obj_2
+        obj_1.oject2_list = [obj_2]
+
+
+        obj_2.name = obj_2_name
+        obj_1.save(cascade=True)
+
+        test_1 = Object1.objects.first()
+        assert test_1.name == obj_1_name
+        assert test_1.oject2_reference.name == obj_2_name
+        assert test_1.oject2_list[0].name == obj_2_name
+
+        test_2 = Object2.objects.first()
+        assert test_2.name == obj_2_name
+        assert test_2.oject1_reference.name == obj_1_name
+        assert test_2.oject1_list[0].name == obj_1_name
 
 if __name__ == "__main__":
     unittest.main()
