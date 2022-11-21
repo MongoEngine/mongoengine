@@ -703,7 +703,7 @@ class Document(BaseDocument):
         '''
             Determine if the query is a scatter gather. Allow the caller
             to override this logic with is_scatter_gather since this method
-            isn't fullproof
+            isn't foolproof
         '''
         is_scatter_gather = False
         try:
@@ -742,44 +742,6 @@ class Document(BaseDocument):
         return is_scatter_gather
 
     @classmethod
-    def attach_trace(cls, comment, is_scatter_gather):
-        set_comment = False
-        current_greenlet = greenlet.getcurrent()
-        if hasattr(current_greenlet, "add_mongo_start"):
-            if not hasattr(current_greenlet,
-                '__mongoengine_comment__'):
-                trace_comment = comment#'%f:%s' % (time.time(), comment)
-                setattr(current_greenlet,
-                    '__mongoengine_comment__', trace_comment)
-                set_comment = True
-                current_greenlet.add_mongo_start(
-                    trace_comment, time.time())
-            else:
-                trace_comment = getattr(current_greenlet, '__mongoengine_comment__')
-                current_greenlet.add_mongo_start(
-                    trace_comment, time.time())
-            setattr(current_greenlet,
-                '__scatter_gather__', is_scatter_gather)
-
-        return set_comment
-
-    @classmethod
-    def cleanup_trace(cls, set_comment):
-        current = greenlet.getcurrent()
-        if hasattr(current, '__mongoengine_comment__'):
-            is_scatter_gather = False
-            if hasattr(current, '__scatter_gather__'):
-                is_scatter_gather = current.__scatter_gather__
-            current.add_mongo_end(
-                current.__mongoengine_comment__, time.time(),
-                is_scatter_gather)
-
-        if hasattr(
-            current,'__mongoengine_comment__'):
-            delattr(current,
-                '__mongoengine_comment__')
-
-    @classmethod
     def find_raw(cls, spec, fields=None, skip=0, limit=0, sort=None,
                  slave_ok=True, find_one=False, allow_async=True, hint=None,
                  batch_size=10000, excluded_fields=None, max_time_ms=None,
@@ -789,18 +751,13 @@ class Document(BaseDocument):
             if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                try:
-                    return proxy_client.instance().find_raw(
-                        cls, spec, fields=fields, skip=skip,
-                        limit=limit, sort=sort, slave_ok=slave_ok,
-                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                        batch_size=batch_size, hint=hint,
-                        find_one=find_one,**kwargs
-                    ), False
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().find_raw(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    batch_size=batch_size, hint=hint,
+                    find_one=find_one,**kwargs
+                ), False
         if kwargs.get("timeout") is False and slave_ok != "offline":
             trace = "".join(traceback.format_stack())
             notimeout_cursor_logger.info({
@@ -808,8 +765,6 @@ class Document(BaseDocument):
             })
             warnings.warn('Avoid noTimeout cursors on primaries')
             del kwargs["timeout"]
-
-        is_scatter_gather = cls.is_scatter_gather(spec)
 
         # HACK [adam May/2/16]: log high-offset queries with sorts to TD. these
         #      queries tend to cause significant load on mongo
@@ -887,8 +842,6 @@ class Document(BaseDocument):
                     if not comment:
                         comment = MongoComment.get_query_comment()
 
-                    set_comment = cls.attach_trace(comment, is_scatter_gather)
-
                     cur.comment(comment)
 
                     if find_one:
@@ -917,17 +870,12 @@ class Document(BaseDocument):
             if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                try:
-                    return proxy_client.instance().explain(
-                        cls, spec, fields=fields, skip=skip,
-                        limit=limit, sort=sort, slave_ok=slave_ok,
-                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                        timeout_value=timeout_value, **kwargs
-                    )
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().explain(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
         raise Exception("Explain not supported")
 
     @classmethod
@@ -940,17 +888,12 @@ class Document(BaseDocument):
             if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                try:
-                    return proxy_client.instance().find(
-                        cls, spec, fields=fields, skip=skip,
-                        limit=limit, sort=sort, slave_ok=slave_ok,
-                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                        timeout_value=timeout_value, **kwargs
-                    )
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().find(
+                    cls, spec, fields=fields, skip=skip,
+                    limit=limit, sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
 
         for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
@@ -988,8 +931,6 @@ class Document(BaseDocument):
                     raise
                 else:
                     _sleep(cls.AUTO_RECONNECT_SLEEP)
-            finally:
-                cls.cleanup_trace(set_comment)
 
     @classmethod
     def find_iter(cls, spec, fields=None, skip=0, limit=0, sort=None,
@@ -1004,20 +945,17 @@ class Document(BaseDocument):
                                batch_size=batch_size,
                                excluded_fields=excluded_fields,
                                max_time_ms=max_time_ms,**kwargs)
-            try:
-                for doc in cls._iterate_cursor(cur):
-                    try:
-                        last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
-                        yield last_doc
-                    except pymongo.errors.ExecutionTimeout:
-                        pycur = cls._pycursor(cur)
-                        execution_timeout_logger.info({
-                            '_comment' : str(pycur._Cursor__comment),
-                            '_max_time_ms' : pycur._Cursor__max_time_ms,
-                         })
-                        raise
-            finally:
-                cls.cleanup_trace(set_comment)
+            for doc in cls._iterate_cursor(cur):
+                try:
+                    last_doc = cls._from_augmented_son(doc, fields, excluded_fields)
+                    yield last_doc
+                except pymongo.errors.ExecutionTimeout:
+                    pycur = cls._pycursor(cur)
+                    execution_timeout_logger.info({
+                        '_comment' : str(pycur._Cursor__comment),
+                        '_max_time_ms' : pycur._Cursor__max_time_ms,
+                     })
+                    raise
 
         # If the client has been initialized, use the proxy
         proxy_client = cls._get_proxy_client()
@@ -1025,9 +963,6 @@ class Document(BaseDocument):
             if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                cls.cleanup_trace(set_comment)
                 for doc in proxy_client.instance().find_iter(
                     cls, spec, fields=fields, skip=skip,
                     limit=limit, sort=sort, slave_ok=slave_ok,
@@ -1135,17 +1070,12 @@ class Document(BaseDocument):
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
                 kwargs['find_one'] = True
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                try:
-                    return proxy_client.instance().find(
-                        cls, spec, fields=fields, skip=skip,
-                        sort=sort, slave_ok=slave_ok,
-                        excluded_fields=excluded_fields, max_time_ms=max_time_ms,
-                        timeout_value=timeout_value, **kwargs
-                    )
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().find(
+                    cls, spec, fields=fields, skip=skip,
+                    sort=sort, slave_ok=slave_ok,
+                    excluded_fields=excluded_fields, max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
 
         doc, set_comment = cls.find_raw(spec, fields, skip=skip, sort=sort,
                          slave_ok=slave_ok, find_one=True,
@@ -1172,8 +1102,6 @@ class Document(BaseDocument):
             if timeout_value is not cls.NO_TIMEOUT_DEFAULT:
                 return timeout_value
             raise
-        finally:
-            cls.cleanup_trace(set_comment)
 
     @classmethod
     def find_and_modify(cls, spec, update=None, sort=None, remove=False,
@@ -1206,22 +1134,14 @@ class Document(BaseDocument):
 
             transformed_fields = cls._transform_fields(fields, excluded_fields)
 
-        is_scatter_gather = cls.is_scatter_gather(spec)
-
-        set_comment = cls.attach_trace(
-            MongoComment.get_query_comment(), is_scatter_gather)
-
         proxy_client = cls._get_proxy_client()
         if proxy_client:
             if cls._get_write_decider():
-                try:
-                    return proxy_client.instance().find_and_modify(
-                        cls, spec, sort=sort, remove=remove, update=update, new=new,
-                        fields=fields, upsert=upsert, excluded_fields=excluded_fields,
-                        **kwargs
-                    )
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().find_and_modify(
+                    cls, spec, sort=sort, remove=remove, update=update, new=new,
+                    fields=fields, upsert=upsert, excluded_fields=excluded_fields,
+                    **kwargs
+                )
         try:
             cls._transform_find_and_modify_kwargs(kwargs)
             if sort is None or sort == {}:
@@ -1269,8 +1189,6 @@ class Document(BaseDocument):
                 return cls._from_augmented_son(result, fields, excluded_fields)
             else:
                 return None
-        finally:
-            cls.cleanup_trace(set_comment)
 
     @classmethod
     def count(cls, spec, slave_ok=True, comment=None, max_time_ms=None,
@@ -1282,16 +1200,11 @@ class Document(BaseDocument):
             if cls._get_read_decider():
                 if 'comment' not in kwargs or kwargs['comment'] is None:
                     kwargs['comment'] = MongoComment.get_comment()
-                is_scatter_gather = cls.is_scatter_gather(spec)
-                set_comment = cls.attach_trace(kwargs['comment'], is_scatter_gather)
-                try:
-                    return proxy_client.instance().count(
-                        cls, spec, slave_ok=slave_ok,
-                        max_time_ms=max_time_ms,
-                        timeout_value=timeout_value, **kwargs
-                    )
-                finally:
-                    cls.cleanup_trace(set_comment)
+                return proxy_client.instance().count(
+                    cls, spec, slave_ok=slave_ok,
+                    max_time_ms=max_time_ms,
+                    timeout_value=timeout_value, **kwargs
+                )
 
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
@@ -1347,7 +1260,6 @@ class Document(BaseDocument):
         # updates behave like set instead of find (None)... this is relevant for
         # setting list values since you're setting the value of the whole list,
         # not an element inside the list (like in find)
-        is_scatter_gather = cls.is_scatter_gather(spec)
 
         document = cls._transform_value(document, cls, op='$set')
         spec = cls._transform_value(spec, cls)
@@ -1393,41 +1305,32 @@ class Document(BaseDocument):
                     w=cls._meta['write_concern'], **kwargs
                 )
 
-        set_comment = cls.attach_trace(
-            MongoComment.get_query_comment(), is_scatter_gather)
-
-        try:
-            with log_slow_event("update", cls._meta['collection'], spec):
-                cls._transform_update_kwargs(kwargs)
-                if multi:
-                    result = cls._transform_raw_result(cls._pymongo().update_many(spec,
-                                                        document,
-                                                        upsert=upsert,
-                                                        **kwargs))
-                else:
-                    try:
-                        result = cls._transform_raw_result(cls._pymongo().update_one(spec,
-                                                           document,
-                                                           upsert=upsert,
-                                                           **kwargs))
-                    except ValueError as e:
-                        if "update only works with $ operators" in e.message:
-                            result = cls._transform_raw_result(cls._pymongo().replace_one(spec,
-                                                                document,
-                                                                upsert=upsert,
-                                                                **kwargs))
-            return result
-        finally:
-            cls.cleanup_trace(set_comment)
+        with log_slow_event("update", cls._meta['collection'], spec):
+            cls._transform_update_kwargs(kwargs)
+            if multi:
+                result = cls._transform_raw_result(cls._pymongo().update_many(spec,
+                                                    document,
+                                                    upsert=upsert,
+                                                    **kwargs))
+            else:
+                try:
+                    result = cls._transform_raw_result(cls._pymongo().update_one(spec,
+                                                       document,
+                                                       upsert=upsert,
+                                                       **kwargs))
+                except ValueError as e:
+                    if "update only works with $ operators" in e.message:
+                        result = cls._transform_raw_result(cls._pymongo().replace_one(spec,
+                                                            document,
+                                                            upsert=upsert,
+                                                            **kwargs))
+        return result
 
     @classmethod
     def remove(cls, spec, **kwargs):
         if not spec:
             raise ValueError("Cannot do empty specs")
 
-        is_scatter_gather = cls.is_scatter_gather(spec)
-        set_comment = cls.attach_trace(
-            MongoComment.get_query_comment(), is_scatter_gather)
         # transform query
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
@@ -1443,16 +1346,13 @@ class Document(BaseDocument):
                 )
 
 
-        try:
-            with log_slow_event("remove", cls._meta['collection'], spec):
-                cls._transform_delete_many_kwargs(kwargs)
-                result = cls._transform_raw_result(cls._pymongo().delete_many(
-                    spec,
-                    **kwargs
-                ))
-            return result
-        finally:
-            cls.cleanup_trace(set_comment)
+        with log_slow_event("remove", cls._meta['collection'], spec):
+            cls._transform_delete_many_kwargs(kwargs)
+            result = cls._transform_raw_result(cls._pymongo().delete_many(
+                spec,
+                **kwargs
+            ))
+        return result
 
     def update_one(self, document, spec=None, upsert=False,
                    criteria=None, comment=None,
@@ -1536,9 +1436,6 @@ class Document(BaseDocument):
         if not comment:
             comment = MongoComment.get_query_comment()
 
-        is_scatter_gather = self.is_scatter_gather(
-            query_spec)
-
         query_spec['$comment'] = comment
         query_spec = self._transform_value(query_spec, type(self))
 
@@ -1558,22 +1455,18 @@ class Document(BaseDocument):
 
                 return result
 
-        set_comment = self.attach_trace(comment, is_scatter_gather)
-        try:
-            with log_slow_event("update_one", self._meta['collection'], spec):
-                result = self._transform_raw_result(self._pymongo().update_one(query_spec,
-                                                    document,
-                                                    upsert=upsert,
-                                                    **kwargs))
+        with log_slow_event("update_one", self._meta['collection'], spec):
+            result = self._transform_raw_result(self._pymongo().update_one(query_spec,
+                                                document,
+                                                upsert=upsert,
+                                                **kwargs))
 
-            # do in-memory updates on the object if the query succeeded
-            if result['n'] == 1:
-                for field, new_val in ops.iteritems():
-                    self[field] = new_val
+        # do in-memory updates on the object if the query succeeded
+        if result['n'] == 1:
+            for field, new_val in ops.iteritems():
+                self[field] = new_val
 
-            return result
-        finally:
-            self.cleanup_trace(set_comment)
+        return result
 
     def set(self, **kwargs):
         return self.update_one({'$set': kwargs})
