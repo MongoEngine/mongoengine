@@ -1,7 +1,13 @@
-from base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from past.builtins import basestring
+from builtins import object
+from .base import (DocumentMetaclass, TopLevelDocumentMetaclass, BaseDocument,
                   ValidationError, MongoComment, get_document, get_embedded_doc_fields,
                   FieldStatus, FieldNotLoadedError)
-from queryset import OperationError
+from .queryset import OperationError
 import contextlib
 import pymongo
 from pymongo.collection import ReturnDocument
@@ -14,11 +20,12 @@ import socket
 import sys
 import traceback
 import logging
-from timer import log_slow_event
+from .timer import log_slow_event
 import warnings
 
 from bson import SON, ObjectId, DBRef
-from connection import _get_db, _get_slave_ok, _get_proxy_client, _get_proxy_decider, OpClass
+from .connection import _get_db, _get_slave_ok, _get_proxy_client, _get_proxy_decider, OpClass
+from future.utils import with_metaclass
 
 __all__ = ['Document', 'EmbeddedDocument', 'ValidationError',
            'OperationError', 'BulkOperationError']
@@ -40,14 +47,12 @@ class BulkOperationError(OperationError):
     pass
 
 
-class EmbeddedDocument(BaseDocument):
+class EmbeddedDocument(with_metaclass(DocumentMetaclass, BaseDocument)):
     """A :class:`~mongoengine.Document` that isn't stored in its own
     collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
     fields on :class:`~mongoengine.Document`\ s through the
     :class:`~mongoengine.EmbeddedDocumentField` field type.
     """
-
-    __metaclass__ = DocumentMetaclass
 
 
 class WrappedCounter(object):
@@ -61,7 +66,7 @@ class WrappedCounter(object):
     def get(self):
         return self.value
 
-class Document(BaseDocument):
+class Document(with_metaclass(TopLevelDocumentMetaclass, BaseDocument)):
     """The base class used for defining the structure and properties of
     collections of documents stored in MongoDB. Inherit from this class, and
     add fields as class attributes to define a document's structure.
@@ -104,8 +109,6 @@ class Document(BaseDocument):
     ALLOW_TIMEOUT_RETRY = True
     NO_TIMEOUT_DEFAULT = object()
 
-    __metaclass__ = TopLevelDocumentMetaclass
-
     def save(self, safe=True, force_insert=None, validate=True):
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
@@ -126,7 +129,7 @@ class Document(BaseDocument):
 
         if self._meta['hash_field']:
             # if we're hashing the ID and it hasn't been set yet, autogenerate it
-            from fields import ObjectIdField
+            from .fields import ObjectIdField
             if self._meta['hash_field'] == self._meta['id_field'] and \
                not self.id and isinstance(self._fields['id'], ObjectIdField):
                 self.id = ObjectId()
@@ -177,9 +180,9 @@ class Document(BaseDocument):
                 object_id = doc["_id"]
         except pymongo.errors.OperationFailure as err:
             message = 'Could not save document (%s)'
-            if u'duplicate key' in unicode(err):
+            if u'duplicate key' in str(err):
                 message = u'Tried to save duplicate unique keys (%s)'
-            raise OperationError(message % unicode(err))
+            raise OperationError(message % str(err))
         id_field = self._meta['id_field']
         self[id_field] = self._fields[id_field].to_python(object_id)
 
@@ -286,7 +289,7 @@ class Document(BaseDocument):
                     bulk_ops = cls.get_bulk_attr(cls.BULK_OP)
                     cls._pymongo().bulk_write(bulk_ops, ordered=not unordered)
 
-                for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
+                for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).items():
                     instance = props['obj']
                     if instance.id is None:
                         id_field = cls.pk_field()
@@ -301,7 +304,7 @@ class Document(BaseDocument):
                     messages = '\n'.join(_['errmsg'] for _ in wc_errors)
                     message = 'Write concern errors for bulk op: %s' % messages
                 elif w_error:
-                    for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).iteritems():
+                    for object_id, props in cls.get_bulk_attr(cls.BULK_SAVE_OBJECTS).items():
                         if props['index'] < w_error['index']:
                             instance = props['obj']
                             if instance.id is None:
@@ -493,20 +496,20 @@ class Document(BaseDocument):
         #       dict contains a $slice (forces exclude mode)
         #       otherwise include mode
 
-        if 0 in fields.itervalues():
+        if 0 in iter(fields.values()):
             dflt_load_status = FieldStatus.LOADED
-        elif 1 in fields.itervalues():
+        elif 1 in iter(fields.values()):
             dflt_load_status = FieldStatus.NOT_LOADED
         elif len(fields) > 0:
             # true if there are any '$elemMatch's
             dflt_load_status = FieldStatus.NOT_LOADED if \
                     any(isinstance(v, dict) and '$elemMatch' in v \
-                        for v in fields.itervalues()) \
+                        for v in fields.values()) \
                     else FieldStatus.LOADED
         else:
             dflt_load_status = FieldStatus.NOT_LOADED
 
-        for (field, val) in fields.iteritems():
+        for (field, val) in fields.items():
             status = FieldStatus.NOT_LOADED if val == 0 \
                     else FieldStatus.LOADED
             cls._set_field_status(field, obj, status, dflt_load_status)
@@ -526,7 +529,7 @@ class Document(BaseDocument):
             if rest and rest != "$":
                 # if the field is recursive the parent field must be loaded
                 context._fields_status[first_part] = FieldStatus.LOADED
-                name = [n for (n, f) in context._fields.iteritems()
+                name = [n for (n, f) in context._fields.items()
                         if f.db_field == first_part][0]
 
                 Document._set_field_status(rest, getattr(context, name),
@@ -548,10 +551,10 @@ class Document(BaseDocument):
             )
         if isinstance(fields, dict):
             new_fields = {}
-            for key, val in fields.iteritems():
+            for key, val in fields.items():
                 db_key, field = cls._transform_key(key, cls, is_find=True)
                 if isinstance(val, dict):
-                    if val.keys() not in (['$elemMatch'], ['$slice']):
+                    if list(val.keys()) not in (['$elemMatch'], ['$slice']):
                         raise ValueError('Invalid field value')
                     new_fields[db_key] = cls._transform_value(val, field,
                             fields=True)
@@ -681,7 +684,7 @@ class Document(BaseDocument):
             db_field, context = cls._transform_key(field, cls)
             # yiguo: change direction to int type, some legacy application codes is using string
             if not isinstance(direction, int):
-                print "hint direction is not int; try to convert direction to int"
+                print("hint direction is not int; try to convert direction to int")
                 direction = int(direction)
             new_hint_doc.append((db_field, direction))
 
@@ -814,7 +817,7 @@ class Document(BaseDocument):
             limit = kwargs['count']
         if limit is None:
             limit = 0
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+        for i in range(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 set_comment = False
 
@@ -895,7 +898,7 @@ class Document(BaseDocument):
                     timeout_value=timeout_value, **kwargs
                 )
 
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+        for i in range(cls.MAX_AUTO_RECONNECT_TRIES):
             cur, set_comment = cls.find_raw(spec, fields, skip, limit, sort,
                                slave_ok=slave_ok,
                                excluded_fields=excluded_fields,
@@ -1024,7 +1027,7 @@ class Document(BaseDocument):
 
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+        for i in range(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 read_pref = _get_slave_ok(slave_ok).read_pref
                 cls._transformKwargs(kwargs)
@@ -1046,7 +1049,7 @@ class Document(BaseDocument):
             with log_slow_event('getmore', cls.__name__, None):
                 # the StopIteration from .next() will bubble up and kill
                 # this while loop
-                doc = cur.next()
+                doc = next(cur)
 
                 # handle pymongo letting an error document slip through
                 # (T18431 / CS-22167). convert it into an exception
@@ -1126,7 +1129,7 @@ class Document(BaseDocument):
                 sort = {}
             else:
                 new_sort = {}
-                for f, dir in sort.iteritems():
+                for f, dir in sort.items():
                     f, _ = cls._transform_key(f, cls)
                     new_sort[f] = dir
 
@@ -1148,7 +1151,7 @@ class Document(BaseDocument):
                 new_sort = None
             else:
                 new_sort = []
-                for f, dir in sort.iteritems():
+                for f, dir in sort.items():
                     new_sort.append((f, dir))
             with log_slow_event("find_and_modify", cls._meta['collection'], spec):
                 if remove:
@@ -1208,7 +1211,7 @@ class Document(BaseDocument):
 
         spec = cls._transform_value(spec, cls)
         spec = cls._update_spec(spec, **kwargs)
-        for i in xrange(cls.MAX_AUTO_RECONNECT_TRIES):
+        for i in range(cls.MAX_AUTO_RECONNECT_TRIES):
             try:
                 read_pref = _get_slave_ok(slave_ok).read_pref
                 if max_time_ms:
@@ -1366,13 +1369,13 @@ class Document(BaseDocument):
         # not be correct otherwise (since we don't know if the criteria is
         # matched)
         if not criteria:
-            for operator, operand in document.iteritems():
+            for operator, operand in document.items():
                 # safety check - these updates should only have atomic ops
                 if operator[0] != '$':
                     raise ValueError("All updates should be atomic operators")
 
                 if '.' not in operand:
-                    for field, new_val in operand.iteritems():
+                    for field, new_val in operand.items():
                         # for now, skip doing in-memory sets on dicts
                         if '.' in field:
                             continue
@@ -1450,7 +1453,7 @@ class Document(BaseDocument):
                 )
                 # do in-memory updates on the object if the query succeeded
                 if result['n'] == 1:
-                    for field, new_val in ops.iteritems():
+                    for field, new_val in ops.items():
                         self[field] = new_val
 
                 return result
@@ -1463,7 +1466,7 @@ class Document(BaseDocument):
 
         # do in-memory updates on the object if the query succeeded
         if result['n'] == 1:
-            for field, new_val in ops.iteritems():
+            for field, new_val in ops.items():
                 self[field] = new_val
 
         return result
@@ -1497,7 +1500,7 @@ class Document(BaseDocument):
     @staticmethod
     def _transform_value(value, context, op=None, validate=True, fields=False,
             embeddeddoc=False):
-        from fields import DictField, EmbeddedDocumentField, ListField, \
+        from .fields import DictField, EmbeddedDocumentField, ListField, \
                            ArbitraryField
 
         VALIDATE_OPS = ['$set', '$inc', None, '$eq', '$gte', '$lte', '$lt',
@@ -1571,7 +1574,7 @@ class Document(BaseDocument):
                 if isinstance(listel, dict) and not isinstance(context, DictField):
                     transformed_value = SON()
 
-                    for key, subvalue in listel.iteritems():
+                    for key, subvalue in listel.items():
                         if key[0] == '$':
                             op = key
                         else:
@@ -1594,7 +1597,7 @@ class Document(BaseDocument):
             transformed_value = SON()
 
 
-            for key, subvalue in value.iteritems():
+            for key, subvalue in value.items():
                 embeddeddoc = False
                 if key[0] == '$':
                     op = key
@@ -1637,10 +1640,10 @@ class Document(BaseDocument):
 
             return transformed_value
         # if we're in a dict field and there's operations on it, recurse
-        elif isinstance(value, dict) and value and value.keys()[0][0] == '$':
+        elif isinstance(value, dict) and value and list(value.keys())[0][0] == '$':
             transformed_value = SON()
 
-            for key, subvalue in value.iteritems():
+            for key, subvalue in value.items():
                 op = key
 
                 new_key, value_context = Document._transform_key(key, context,
@@ -1734,7 +1737,7 @@ class Document(BaseDocument):
 
             # handle dicts (just blindly to_mongo() anything that'll take it)
             elif isinstance(context, DictField):
-                for k, v in value.iteritems():
+                for k, v in value.items():
                     if isinstance(v, BaseDocument):
                         value[k] = v.to_mongo()
 
@@ -1756,7 +1759,7 @@ class Document(BaseDocument):
             If no conversion is necessary, just return the original value
         """
 
-        from fields import ReferenceField, ObjectIdField, ListField
+        from .fields import ReferenceField, ObjectIdField, ListField
 
         # not an op we can work with
         if not op_type:
@@ -1829,7 +1832,7 @@ class Document(BaseDocument):
 
     @staticmethod
     def _transform_key(key, context, prefix='', is_find=False):
-        from fields import BaseField, DictField, ListField, \
+        from .fields import BaseField, DictField, ListField, \
                             EmbeddedDocumentField, ArbitraryField
 
         parts = key.split('.', 1)

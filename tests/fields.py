@@ -111,7 +111,7 @@ class FieldTest(unittest.TestCase):
         person = Person()
         person.age = 50
         person.validate()
-        person.age = 50L
+        person.age = 50
         person.validate()
         person.age = 50.6
         person.validate()
@@ -135,7 +135,7 @@ class FieldTest(unittest.TestCase):
 
         person.height = 2
         person.validate()
-        person.height = 2L
+        person.height = 2
         person.validate()
 
         person.height = '2.0'
@@ -217,8 +217,8 @@ class FieldTest(unittest.TestCase):
         LogEntry.drop_collection()
 
         # Post UTC - microseconds are rounded (down) nearest millisecond and dropped
-        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 999)
-        d2 = datetime.datetime(1970, 01, 01, 00, 00, 01)
+        d1 = datetime.datetime(1970, 0o1, 0o1, 00, 00, 0o1, 999)
+        d2 = datetime.datetime(1970, 0o1, 0o1, 00, 00, 0o1)
         log = LogEntry()
         log.date = d1
         log.save()
@@ -227,8 +227,8 @@ class FieldTest(unittest.TestCase):
         self.assertEquals(log.date, d2)
 
         # Post UTC - microseconds are rounded (down) nearest millisecond
-        d1 = datetime.datetime(1970, 01, 01, 00, 00, 01, 9999)
-        d2 = datetime.datetime(1970, 01, 01, 00, 00, 01, 9000)
+        d1 = datetime.datetime(1970, 0o1, 0o1, 00, 00, 0o1, 9999)
+        d2 = datetime.datetime(1970, 0o1, 0o1, 00, 00, 0o1, 9000)
         log.date = d1
         log.save()
         log.reload()

@@ -1,11 +1,12 @@
-import document
-from document import *
-import fields
-from fields import *
-import connection
-from connection import *
-import queryset
-from queryset import *
+from __future__ import absolute_import
+from . import document
+from .document import *
+from . import fields
+from .fields import *
+from . import connection
+from .connection import *
+from . import queryset
+from .queryset import *
 
 __all__ = (document.__all__ + fields.__all__ + connection.__all__ +
            queryset.__all__)

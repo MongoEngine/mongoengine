@@ -1,4 +1,9 @@
-from connection import _get_db
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from past.builtins import basestring
+from builtins import object
+from .connection import _get_db
 
 import pprint
 import pymongo
@@ -8,6 +13,7 @@ import copy
 import itertools
 import time
 import greenlet
+from functools import reduce
 
 __all__ = ['queryset_manager', 'Q', 'InvalidQueryError',
            'InvalidCollectionError']
@@ -161,7 +167,7 @@ class QueryCompilerVisitor(QNodeVisitor):
         """
         combined_query = {}
         for query in queries:
-            for field, ops in query.items():
+            for field, ops in list(query.items()):
                 if field not in combined_query:
                     combined_query[field] = ops
                 else:
@@ -480,7 +486,7 @@ class QuerySet(object):
                            'exact', 'iexact']
 
         mongo_query = {}
-        for key, value in query.items():
+        for key, value in list(query.items()):
             if key == "__raw__":
                 mongo_query.update(value)
                 continue
@@ -664,21 +670,21 @@ class QuerySet(object):
 
         return doc_map
 
-    def next(self):
+    def __next__(self):
         """Wrap the result in a :class:`~mongoengine.Document` object.
         """
         try:
             if self._limit == 0:
                 raise StopIteration
             try:
-                return self._document._from_augmented_son(self._cursor.next(),
+                return self._document._from_augmented_son(next(self._cursor),
                                                           self._query_fields)
             except pymongo.errors.AutoReconnect:
                 # if the primary changes, sleep for 100ms and try again
                 time.sleep(0.1)
-                return self._document._from_augmented_son(self._cursor.next(),
+                return self._document._from_augmented_son(next(self._cursor),
                                                           self._query_fields)
-        except StopIteration, e:
+        except StopIteration as e:
             self.rewind()
             raise e
 
@@ -761,7 +767,7 @@ class QuerySet(object):
                     self._cursor_obj = self._cursor[key]
 
                 self._skip, self._limit = key.start, key.stop
-            except IndexError, err:
+            except IndexError as err:
                 # PyMongo raises an error if key.start == key.stop, catch it,
                 # bin it, kill it.
                 start = key.start or 0
@@ -903,7 +909,7 @@ class QuerySet(object):
                      'pull', 'pull_all', 'add_to_set']
 
         mongo_update = {}
-        for key, value in update.items():
+        for key, value in list(update.items()):
             parts = key.split('__')
             # Check for an operator and transform to mongo-style if there is
             op = None
@@ -977,11 +983,11 @@ class QuerySet(object):
                                           upsert=upsert, safe=safe_update)
             if ret is not None and 'n' in ret:
                 return ret['n']
-        except pymongo.errors.OperationFailure, err:
-            if unicode(err) == u'multi not coded yet':
+        except pymongo.errors.OperationFailure as err:
+            if str(err) == u'multi not coded yet':
                 message = u'update() method requires MongoDB 1.1.3+'
                 raise OperationError(message)
-            raise OperationError(u'Update failed (%s)' % unicode(err))
+            raise OperationError(u'Update failed (%s)' % str(err))
 
     def update_one(self, safe_update=True, upsert=False, **update):
         """Perform an atomic update on first field matched by the query. When
@@ -1008,8 +1014,8 @@ class QuerySet(object):
                                               safe=safe_update)
             if ret is not None and 'n' in ret:
                 return ret['n']
-        except pymongo.errors.OperationFailure, e:
-            raise OperationError(u'Update failed [%s]' % unicode(e))
+        except pymongo.errors.OperationFailure as e:
+            raise OperationError(u'Update failed [%s]' % str(e))
 
     def __iter__(self):
         return self
@@ -1092,7 +1098,7 @@ class QuerySetManager(object):
         queryset_class = owner._meta['queryset_class'] or QuerySet
         queryset = queryset_class(owner, self._collections[(db, collection)])
         if self._manager_func:
-            if self._manager_func.func_code.co_argcount == 1:
+            if self._manager_func.__code__.co_argcount == 1:
                 queryset = self._manager_func(queryset)
             else:
                 queryset = self._manager_func(owner, queryset)
@@ -1107,7 +1113,7 @@ def queryset_manager(func):
     function should return a :class:`~mongoengine.queryset.QuerySet`, probably
     the same one that was passed in, but modified in some way.
     """
-    if func.func_code.co_argcount == 1:
+    if func.__code__.co_argcount == 1:
         import warnings
         msg = 'Methods decorated with queryset_manager should take 2 arguments'
         warnings.warn(msg, DeprecationWarning)

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import subprocess
 import os
@@ -47,7 +48,7 @@ def main():
 
     tests_info = [run_test(test) for test in test_files]
 
-    print json.dumps(tests_info)
+    print(json.dumps(tests_info))
 
 if __name__ == "__main__":
     main()

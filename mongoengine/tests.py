@@ -1,3 +1,4 @@
+from builtins import object
 from mongoengine.connection import _get_db
 
 

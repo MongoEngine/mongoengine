@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import range
 import contextlib
 import pymongo
 import unittest
@@ -236,7 +238,7 @@ class CustomQueryTest(unittest.TestCase):
         query = {'$or': [{'name': 'Chu'}, {'age': 20}] }
         result = self.Person._transform_value(query, self.Person)
         self.assertEqual(set(result.keys()), set(['$or']))
-        self.assertEqual(set(x.keys()[0] for x in result['$or']), set(['name', 'a']))
+        self.assertEqual(set(list(x.keys())[0] for x in result['$or']), set(['name', 'a']))
         self.assertEqual(result['$or'][0]['name'], 'Chu')
         self.assertEqual(result['$or'][1]['a'], 20)
 
@@ -244,9 +246,9 @@ class CustomQueryTest(unittest.TestCase):
         result = self.Person._transform_value(query, self.Person)
 
         self.assertEqual(set(result.keys()), set(['$and']))
-        self.assertEqual(set([x.keys()[0] for x in result['$and']]), set(['name', '$or']))
+        self.assertEqual(set([list(x.keys())[0] for x in result['$and']]), set(['name', '$or']))
         self.assertEqual(result['$and'][0]['name'], 'Chu')
-        self.assertEqual([x.keys()[0] for x in result['$and'][1]['$or']], ['a', 'a'])
+        self.assertEqual([list(x.keys())[0] for x in result['$and'][1]['$or']], ['a', 'a'])
         self.assertEqual(result['$and'][1]['$or'][0]['a'], 20)
         self.assertEqual(result['$and'][1]['$or'][1]['a'], 21)
 
@@ -748,17 +750,17 @@ class CustomQueryTest(unittest.TestCase):
         u = self.Person(id=ObjectId(), some_id=ObjectId())
         u.save()
 
-        ret = self.Person.update({'some_id': u.some_id}, {'some_id': u.some_id, 'number_list': range(3)}, multi=False)
+        ret = self.Person.update({'some_id': u.some_id}, {'some_id': u.some_id, 'number_list': list(range(3))}, multi=False)
         self.assertEquals(ret['n'], 1)
 
         u.reload()
-        self.assertEquals(u.number_list, range(3))
+        self.assertEquals(u.number_list, list(range(3)))
 
-        ret = self.Person.update({'some_id': u.some_id}, {'$set': {'number_list': range(5)}}, multi=False)
+        ret = self.Person.update({'some_id': u.some_id}, {'$set': {'number_list': list(range(5))}}, multi=False)
         self.assertEquals(ret['n'], 1)
 
         u.reload()
-        self.assertEquals(u.number_list, range(5))
+        self.assertEquals(u.number_list, list(range(5)))
 
         ret = self.Person.update({'some_id': u.some_id}, {'some_id': u.some_id, 'name': 'Adam'}, multi=False)
         self.assertEquals(ret['n'], 1)
@@ -1005,20 +1007,20 @@ class CustomQueryTest(unittest.TestCase):
             sort=[('age', 1)]), [23, 24])
 
     def testPushSlice(self):
-        adam = self.Person(name="Adam", number_list=range(50))
+        adam = self.Person(name="Adam", number_list=list(range(50)))
         adam.save()
 
         adam.update_one({"$push": {"number_list": {"$each": [50, 51, 52], "$slice": -20}}})
         adam.reload()
-        self.assertEquals(adam.number_list, range(33, 53))
+        self.assertEquals(adam.number_list, list(range(33, 53)))
         self.assertEquals(len(adam.number_list), 20)
 
-        adam = self.Person(name="Adam", number_list=range(50))
+        adam = self.Person(name="Adam", number_list=list(range(50)))
         adam.save()
 
         adam.update_one({"$push": {"number_list": {"$each": [50, 51, 52], "$slice": -100}}})
         adam.reload()
-        self.assertEquals(adam.number_list, range(53))
+        self.assertEquals(adam.number_list, list(range(53)))
         self.assertEquals(len(adam.number_list), 53)
 
     def testPushSliceEmbedded(self):
@@ -1105,7 +1107,7 @@ class CustomQueryTest(unittest.TestCase):
 
         # not called with shard key
         called_with = updater_mock.call_args_list[-1][0]
-        self.assertTrue('s' not in called_with[0].keys())
+        self.assertTrue('s' not in list(called_with[0].keys()))
 
         # shard key update one auto-add shard key to criteria
         existing_shard_key = 'existing'
@@ -1114,7 +1116,7 @@ class CustomQueryTest(unittest.TestCase):
 
         # called with shard key
         called_with = updater_mock.call_args_list[-1][0]
-        self.assertTrue('s' in called_with[0].keys())
+        self.assertTrue('s' in list(called_with[0].keys()))
 
     @mock.patch('pymongo.collection.Collection.find')
     @mock.patch('pymongo.collection.Collection.find_one_and_update')
@@ -1122,7 +1124,7 @@ class CustomQueryTest(unittest.TestCase):
     @mock.patch('pymongo.collection.Collection.update')
     def testComment(self, update_mock, remove_mock, fam_mock, find_mock):
         # fetch what spec keys were passed to pymongo query
-        _get_mock_spec_keys = lambda x: x.call_args_list[0][0][0].keys()
+        _get_mock_spec_keys = lambda x: list(x.call_args_list[0][0][0].keys())
 
         p = self.Person(name="Name", age=12)
         p.save() # comment currently not working for inserts..

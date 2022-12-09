@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import object
 from mongoengine import *
 
 from django.utils.hashcompat import md5_constructor, sha_constructor

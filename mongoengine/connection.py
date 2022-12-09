@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import object
 from pymongo.mongo_client import MongoClient
 from soa.services.greenmotor.greenmotor import GreenMotorClient
 from pymongo.read_preferences import ReadPreference

@@ -1,9 +1,12 @@
-from base import BaseField, ObjectIdField, GeoJsonBaseField, \
+from __future__ import absolute_import
+from builtins import str
+from past.builtins import basestring
+from .base import BaseField, ObjectIdField, GeoJsonBaseField, \
     ValidationError, get_document, FieldStatus
-from document import Document, EmbeddedDocument
-from connection import _get_db
+from .document import Document, EmbeddedDocument
+from .connection import _get_db
 from operator import itemgetter
-from queryset import DoesNotExist
+from .queryset import DoesNotExist
 
 
 import re
@@ -53,10 +56,10 @@ class StringField(BaseField):
         super(StringField, self).__init__(**kwargs)
 
     def to_python(self, value):
-        return unicode(value)
+        return str(value)
 
     def validate(self, value):
-        assert isinstance(value, (str, unicode, re._pattern_type)), \
+        assert isinstance(value, (str, re._pattern_type)), \
             "type of '%s' is not str or unicode" % value
 
         if self.max_length is not None and len(value) > self.max_length:
@@ -179,7 +182,7 @@ class FloatField(BaseField):
         return float(value)
 
     def validate(self, value):
-        if isinstance(value, (int, long)):
+        if isinstance(value, int):
             value = float(value)
         assert isinstance(value, float)
 
@@ -201,11 +204,11 @@ class DecimalField(BaseField):
 
     def to_python(self, value):
         if not isinstance(value, basestring):
-            value = unicode(value)
+            value = str(value)
         return decimal.Decimal(value)
 
     def to_mongo(self, value):
-        return unicode(value)
+        return str(value)
 
     def validate(self, value):
         if not isinstance(value, decimal.Decimal):
@@ -213,7 +216,7 @@ class DecimalField(BaseField):
                 value = str(value)
             try:
                 value = decimal.Decimal(value)
-            except Exception, exc:
+            except Exception as exc:
                 raise ValidationError('Could not convert to decimal: %s' % exc)
 
         if self.min_value is not None and value < self.min_value:
@@ -375,7 +378,7 @@ class ListField(BaseField):
 
         if len(set(value) - set(self.choices)) > 0:
             raise ValidationError("Each element must be one of %s."
-                % unicode(self.choices))
+                % str(self.choices))
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used.
@@ -386,7 +389,7 @@ class ListField(BaseField):
 
         try:
             [self.field.validate(item) for item in value]
-        except Exception, err:
+        except Exception as err:
             raise ValidationError('Invalid ListField item (%s)' % str(item))
 
     def prepare_query_value(self, op, value):
@@ -418,7 +421,7 @@ class SortedListField(ListField):
     _ordering = None
 
     def __init__(self, field, **kwargs):
-        if 'ordering' in kwargs.keys():
+        if 'ordering' in list(kwargs.keys()):
             self._ordering = kwargs.pop('ordering')
         super(SortedListField, self).__init__(field, **kwargs)
 

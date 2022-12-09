@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from builtins import object
 __all__ = ['pre_init', 'post_init', 'pre_save', 'post_save',
            'pre_delete', 'post_delete']
 
