@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
+    - uses: actions/setup-python@v4
       with:
-        python-version: 3.7
+        python-version: '3.9'
+        check-latest: true
     - run: bash .github/workflows/install_ci_python_dep.sh
     - run: pre-commit run -a
 
@@ -69,9 +69,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        check-latest: true
     - name: install mongo and ci dependencies
       run: |
         bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
@@ -95,9 +96,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.7
+        check-latest: true
     - name: install python dep
       run: |
         pip install -e .
@@ -113,10 +115,10 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
     - uses: actions/checkout@master
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+    - uses: actions/setup-python@v4
       with:
-        python-version: 3.7
+        python-version: 3.9
+        check-latest: true
     - name: build dummy wheel for test-pypi
       run: |
         pip install wheel
@@ -136,10 +138,11 @@ jobs:
     if: github.event_name == 'create' && startsWith(github.ref, 'refs/tags/v')
     steps:
     - uses: actions/checkout@master
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.7
+        python-version: 3.9
+        check-latest: true
     # todo separate build from publish
     # https://stackoverflow.com/questions/59349905/which-properties-does-github-event-in-a-github-workflow-have
     - name: build dummy wheel for test-pypi
