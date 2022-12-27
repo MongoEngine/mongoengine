@@ -19,7 +19,7 @@ out of the box. Validation runs when calling `.validate()` or `.save()`
 
 .. code-block:: python
 
-    from mongoengine import Document, EmailField
+    from mongoengine import Document, EmailField, IntField
 
     class User(Document):
         email = EmailField()
