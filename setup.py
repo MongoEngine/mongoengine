@@ -87,7 +87,7 @@ class PyTest(TestCommand):
 # import it as it depends on PyMongo and PyMongo isn't installed until this
 # file is read
 init = os.path.join(os.path.dirname(__file__), "mongoengine", "__init__.py")
-version_line = list(filter(lambda l: l.startswith("VERSION"), open(init)))[0]
+version_line = list(filter(lambda line: line.startswith("VERSION"), open(init)))[0]
 
 VERSION = get_version(eval(version_line.split("=")[-1]))
 
