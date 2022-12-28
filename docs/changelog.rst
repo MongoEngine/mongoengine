@@ -7,12 +7,15 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.25.0
+=================
 - Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
 - Turning off dereferencing for the results of distinct query. #2663
 - Add tests against Mongo 5.0 in pipeline
 - Drop support for Python 3.6 (EOL)
-- Bug fix support for PyMongo>=4 to fix "InvalidOperation: Cannot use MongoClient after close"
-  errors.
+- Bug fix support for PyMongo>=4 to fix "pymongo.errors.InvalidOperation: Cannot use MongoClient after close"
+  errors. #2627
 
 Changes in 0.24.2
 =================
