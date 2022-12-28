@@ -248,9 +248,11 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
 
     connection = _connections.pop(alias, None)
     if connection:
-        # Only close the client if we're removing the final reference.
-        # Use 'is' instead of 'in' or '==' to ensure the clients are
-        # the same instance.
+        # MongoEngine may share the same MongoClient across multiple aliases
+        # if connection settings are the same so we only close
+        # the client if we're removing the final reference.
+        # Important to use 'is' instead of '==' because clients connected to the same cluster
+        # will compare equal even with different options
         if all(connection is not c for c in _connections.values()):
             connection.close()
 
