@@ -246,9 +246,15 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     from mongoengine import Document
     from mongoengine.base.common import _get_documents_by_db
 
-    if alias in _connections:
-        get_connection(alias=alias).close()
-        del _connections[alias]
+    connection = _connections.pop(alias, None)
+    if connection:
+        # MongoEngine may share the same MongoClient across multiple aliases
+        # if connection settings are the same so we only close
+        # the client if we're removing the final reference.
+        # Important to use 'is' instead of '==' because clients connected to the same cluster
+        # will compare equal even with different options
+        if all(connection is not c for c in _connections.values()):
+            connection.close()
 
     if alias in _dbs:
         # Detach all cached collections in Documents
