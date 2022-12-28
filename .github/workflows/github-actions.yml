@@ -29,6 +29,8 @@ env:
   MAIN_PYTHON_VERSION: 3.7
 
 jobs:
+  name: MongoEngine-pipeline
+
   linting:
     # Run pre-commit (https://pre-commit.com/)
     # which runs pre-configured linter & autoformatter

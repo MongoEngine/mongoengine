@@ -12,7 +12,7 @@ Development
 - Add tests against Mongo 5.0 in pipeline
 - Drop support for Python 3.6 (EOL)
 - Bug fix support for PyMongo>=4 to fix "InvalidOperation: Cannot use MongoClient after close"
-  errors.
+  errors. #2627
 
 Changes in 0.24.2
 =================
