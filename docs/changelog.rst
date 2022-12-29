@@ -7,6 +7,11 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- BREAKING CHANGE: Improved the performance of :meth:`~mongoengine.Document.save()`
+  by removing the call to :meth:`~mongoengine.Document.ensure_indexes` unless
+  ``meta['auto_create_index_on_save']`` is set to True.
+- Added meta ``auto_create_index_on_save`` so you can enable index creation
+  on :meth:`~mongoengine.Document.save()`.
 
 Changes in 0.25.0
 =================
