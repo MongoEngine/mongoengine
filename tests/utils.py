@@ -71,7 +71,7 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
             return func(*args, **kwargs)
 
         pretty_version = ".".join(str(n) for n in mongo_version_req)
-        pytest.skip(f"Needs MongoDB v{pretty_version}+")
+        pytest.skip(f"Needs MongoDB {oper.__name__} v{pretty_version}")
 
     _inner.__name__ = func.__name__
     _inner.__doc__ = func.__doc__

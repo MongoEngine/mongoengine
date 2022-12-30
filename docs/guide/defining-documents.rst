@@ -574,6 +574,7 @@ There are a few top level defaults for all indexes that can be set::
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
+            'auto_create_index_on_save': False,
         }
 
 
@@ -588,10 +589,15 @@ There are a few top level defaults for all indexes that can be set::
 
 :attr:`auto_create_index` (Optional)
     When this is True (default), MongoEngine will ensure that the correct
-    indexes exist in MongoDB each time a command is run. This can be disabled
+    indexes exist in MongoDB when the Document is first used. This can be disabled
     in systems where indexes are managed separately. Disabling this will improve
     performance.
 
+:attr:`auto_create_index_on_save` (Optional)
+    When this is True, MongoEngine will ensure that the correct
+    indexes exist in MongoDB each time :meth:`~mongoengine.document.Document.save`
+    is run. Enabling this will degrade performance. The default is False. This
+    option was added in version 0.25.
 
 Compound Indexes and Indexing sub documents
 -------------------------------------------

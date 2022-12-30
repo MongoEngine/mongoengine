@@ -7,11 +7,18 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- BREAKING CHANGE: Improved the performance of :meth:`~mongoengine.Document.save()`
+  by removing the call to :meth:`~mongoengine.Document.ensure_indexes` unless
+  ``meta['auto_create_index_on_save']`` is set to True. With the default settings, Document indexes
+  will still be created on the fly, during the first usage of the collection (query, insert, etc),
+  they will just not be re-created whenever .save() is called.
+- Added meta ``auto_create_index_on_save`` so you can enable index creation
+  on :meth:`~mongoengine.Document.save()` (as it was < 0.26.0).
 
 Changes in 0.25.0
 =================
 - Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
-- Turning off dereferencing for the results of distinct query. #2663
+- Bug Fix - distinct query doesn't obey the ``no_dereference()``. #2663
 - Add tests against Mongo 5.0 in pipeline
 - Drop support for Python 3.6 (EOL)
 - Bug fix support for PyMongo>=4 to fix "pymongo.errors.InvalidOperation: Cannot use MongoClient after close"
