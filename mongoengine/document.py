@@ -226,8 +226,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 cls._collection = db[collection_name]
 
             # Ensure indexes on the collection unless auto_create_index was
-            # set to False.
-            # Also there is no need to ensure indexes on slave.
+            # set to False. Plus, there is no need to ensure indexes on slave.
             db = cls._get_db()
             if cls._meta.get("auto_create_index", True) and db.client.is_primary:
                 cls.ensure_indexes()
@@ -411,12 +410,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
         doc = self.to_mongo()
 
-        if self._meta.get("auto_create_index_on_save", False):
+        # Initialize the Document underlying pymongo.Collection (+create indexes) if not already initialized
+        # Important to do this here to avoid that the index creation gets wrapped in the try/except block below
+        # and turned into mongoengine.OperationError
+        if self._collection is None:
+            _ = self._get_collection()
+        elif self._meta.get("auto_create_index_on_save", False):
+            # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             self.ensure_indexes()
-        else:
-            # Call _get_collection so that errors from ensure_indexes are not
-            # wrapped in OperationError, see test_primary_key_unique_not_working.
-            self._get_collection()
 
         try:
             # Save a new document or update an existing one
@@ -887,6 +888,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         By default, this will get called automatically upon first interaction with the
         Document collection (query, save, etc) so unless you disabled `auto_create_index`, you
         shouldn't have to call this manually.
+
+        This also gets called upon every call to Document.save if `auto_create_index_on_save` is set to True
+
+        If called multiple times, MongoDB will not re-recreate indexes if they exist already
 
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
