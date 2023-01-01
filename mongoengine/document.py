@@ -938,7 +938,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         classes = []
 
         def get_classes(cls):
-
             if cls not in classes and isinstance(cls, TopLevelDocumentMetaclass):
                 classes.append(cls)
 
@@ -965,7 +964,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         get_classes(cls)
 
-        # get the indexes spec for all of the gathered classes
+        # get the indexes spec for all the gathered classes
         def get_indexes_spec(cls):
             indexes = []
 
@@ -1000,8 +999,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         required = cls.list_indexes()
 
         existing = []
-        for info in cls._get_collection().index_information().values():
+        collection = cls._get_collection()
+        for info in collection.index_information().values():
             if "_fts" in info["key"][0]:
+                # Useful for text indexes (but not only)
                 index_type = info["key"][0][1]
                 text_index_fields = info.get("weights").keys()
                 existing.append([(key, index_type) for key in text_index_fields])
