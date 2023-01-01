@@ -12,6 +12,7 @@ from operator import itemgetter
 import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
+from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.int64 import Int64
 from pymongo import ReturnDocument
 
@@ -95,6 +96,7 @@ __all__ = (
     "MultiLineStringField",
     "MultiPolygonField",
     "GeoJsonBaseField",
+    "Decimal128Field",
 )
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
@@ -2650,3 +2652,51 @@ class GenericLazyReferenceField(GenericReferenceField):
             )
         else:
             return super().to_mongo(document)
+
+
+class Decimal128Field(BaseField):
+
+    DECIMAL_CONTEXT = create_decimal128_context()
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value = min_value
+        self.max_value = max_value
+        super().__init__(**kwargs)
+
+    """
+        128-bit decimal-based floating-point field capable of emulating decimal
+        rounding with exact precision. Stores the value as a `Decimal128`
+        intended for monetary data, such as financial, tax, and scientific
+        computations.
+    """
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+        if isinstance(value, Decimal128):
+            return value
+        if not isinstance(value, decimal.Decimal):
+            with decimal.localcontext(self.DECIMAL_CONTEXT) as ctx:
+                value = ctx.create_decimal(value)
+        return Decimal128(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+        return self.to_mongo(value).to_decimal()
+
+    def validate(self, value):
+        if not isinstance(value, Decimal128):
+            try:
+                value = Decimal128(value)
+            except (TypeError, ValueError, decimal.InvalidOperation) as exc:
+                self.error("Could not convert value to Decimal128: %s" % exc)
+
+        if self.min_value is not None and value.to_decimal() < self.min_value:
+            self.error("Decimal value is too small")
+
+        if self.max_value is not None and value.to_decimal() > self.max_value:
+            self.error("Decimal value is too large")
+
+    def prepare_query_value(self, op, value):
+        return super().prepare_query_value(op, self.to_mongo(value))
