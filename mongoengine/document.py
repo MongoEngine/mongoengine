@@ -868,18 +868,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return cls._get_collection().create_index(fields, **index_spec)
 
     @classmethod
-    def ensure_index(cls, key_or_list, background=False, **kwargs):
-        """Ensure that the given indexes are in place. Deprecated in favour
-        of create_index.
-
-        :param key_or_list: a single index key or a list of index keys (to
-            construct a multi-field index); keys may be prefixed with a **+**
-            or a **-** to determine the index ordering
-        :param background: Allows index creation in the background
-        """
-        return cls.create_index(key_or_list, background=background, **kwargs)
-
-    @classmethod
     def ensure_indexes(cls):
         """Checks the document meta data and ensures all the indexes exist.
 

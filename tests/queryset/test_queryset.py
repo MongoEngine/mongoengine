@@ -4236,14 +4236,14 @@ class TestQueryset(unittest.TestCase):
         assert [1, 2, 3] == numbers
         Number.drop_collection()
 
-    def test_ensure_index(self):
+    def test_create_index(self):
         """Ensure that manual creation of indexes works."""
 
         class Comment(Document):
             message = StringField()
             meta = {"allow_inheritance": True}
 
-        Comment.ensure_index("message")
+        Comment.create_index("message")
 
         info = Comment.objects._collection.index_information()
         info = [

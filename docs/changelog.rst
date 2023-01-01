@@ -14,6 +14,8 @@ Development
   they will just not be re-created whenever .save() is called.
 - Added meta ``auto_create_index_on_save`` so you can enable index creation
   on :meth:`~mongoengine.Document.save()` (as it was < 0.26.0).
+- BREAKING CHANGE: remove deprecated method ``ensure_index`` (replaced by ``create_index`` long time ago).
+
 
 Changes in 0.25.0
 =================
