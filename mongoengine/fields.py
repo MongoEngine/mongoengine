@@ -1122,7 +1122,7 @@ class MapField(DictField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        # XXX ValidationError raised outside of the "validate" method.
+        # XXX ValidationError raised outside the "validate" method.
         if not isinstance(field, BaseField):
             self.error("Argument to MapField constructor must be a valid field")
         super().__init__(field=field, *args, **kwargs)

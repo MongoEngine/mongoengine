@@ -121,20 +121,24 @@ class TestStringEnumField(MongoDBTestCase):
         assert model.status == Status.NEW
         assert model.statuses == [Status.NEW]
         assert model.color_mapping == {"red": Color.RED}
+
         model.reload()
         assert model.status == Status.NEW
         assert model.statuses == [Status.NEW]
         assert model.color_mapping == {"red": Color.RED}
+
         model.status = "done"
         model.color_mapping = {"blue": 2}
         model.statuses = ["new", "done"]
+        model.save()
         assert model.status == Status.DONE
-        assert model.color_mapping == {"blue": Color.BLUE}, model.color_mapping
-        assert model.statuses == [Status.NEW, Status.DONE], model.statuses
-        model = model.save().reload()
+        assert model.statuses == [Status.NEW, Status.DONE]
+        assert model.color_mapping == {"blue": Color.BLUE}
+
+        model.reload()
         assert model.status == Status.DONE
-        assert model.color_mapping == {"blue": Color.BLUE}, model.color_mapping
-        assert model.statuses == [Status.NEW, Status.DONE], model.statuses
+        assert model.color_mapping == {"blue": Color.BLUE}
+        assert model.statuses == [Status.NEW, Status.DONE]
 
         with pytest.raises(ValidationError, match="must be one of ..Status"):
             model.statuses = [1]

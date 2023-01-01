@@ -18,6 +18,7 @@ Development
 - Addition of Decimal128Field: :class:`~mongoengine.fields.Decimal128Field` for accurate representation of Decimals (much better than the legacy field DecimalField).
   Although it could work to switch an existing DecimalField to Decimal128Field without applying a migration script,
   it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
+- BREAKING CHANGE: When using ListField(EnumField) or DictField(EnumField), the values weren't always cast into the Enum (#2531)
 
 Changes in 0.25.0
 =================
