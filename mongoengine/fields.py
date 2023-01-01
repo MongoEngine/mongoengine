@@ -440,7 +440,10 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
+    """Disclaimer: This field is kept for historical reason but since it converts the values to float, it
+    is not suitable for true decimal storage. Consider using :class:`~mongoengine.fields.Decimal128Field`.
+
+    Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
     """
 
@@ -2655,6 +2658,11 @@ class GenericLazyReferenceField(GenericReferenceField):
 
 
 class Decimal128Field(BaseField):
+    """
+    128-bit decimal-based floating-point field capable of emulating decimal
+    rounding with exact precision. This field will expose decimal.Decimal but stores the value as a
+    `bson.Decimal128` behind the scene, this field is intended for monetary data, scientific computations, etc.
+    """
 
     DECIMAL_CONTEXT = create_decimal128_context()
 
@@ -2662,13 +2670,6 @@ class Decimal128Field(BaseField):
         self.min_value = min_value
         self.max_value = max_value
         super().__init__(**kwargs)
-
-    """
-        128-bit decimal-based floating-point field capable of emulating decimal
-        rounding with exact precision. Stores the value as a `Decimal128`
-        intended for monetary data, such as financial, tax, and scientific
-        computations.
-    """
 
     def to_mongo(self, value):
         if value is None:

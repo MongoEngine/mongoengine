@@ -15,7 +15,9 @@ Development
 - Added meta ``auto_create_index_on_save`` so you can enable index creation
   on :meth:`~mongoengine.Document.save()` (as it was < 0.26.0).
 - BREAKING CHANGE: remove deprecated method ``ensure_index`` (replaced by ``create_index`` long time ago).
-
+- Addition of Decimal128Field: :class:`~mongoengine.fields.Decimal128Field` for accurate representation of Decimals (much better than the legacy field DecimalField).
+  Although it could work to switch an existing DecimalField to Decimal128Field without applying a migration script,
+  it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
 
 Changes in 0.25.0
 =================

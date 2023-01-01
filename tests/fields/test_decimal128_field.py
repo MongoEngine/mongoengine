@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 from bson.decimal128 import Decimal128
 
-from mongoengine import *
+from mongoengine import Decimal128Field, Document, ValidationError
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -24,8 +24,6 @@ def generate_test_cls() -> Document:
 
 class TestDecimal128Field(MongoDBTestCase):
     def test_decimal128_validation_good(self):
-        """Ensure that invalid values cannot be assigned."""
-
         doc = Decimal128Document()
 
         doc.dec128_fld = Decimal(0)
@@ -37,7 +35,7 @@ class TestDecimal128Field(MongoDBTestCase):
         doc.dec128_fld = Decimal(110)
         doc.validate()
 
-        doc.dec128_fld = Decimal(110)
+        doc.dec128_fld = Decimal("110")
         doc.validate()
 
     def test_decimal128_validation_invalid(self):
@@ -76,22 +74,30 @@ class TestDecimal128Field(MongoDBTestCase):
 
     def test_eq_operator(self):
         cls = generate_test_cls()
-        assert 1 == cls.objects(dec128_fld=1.0).count()
-        assert 0 == cls.objects(dec128_fld=2.0).count()
+        assert cls.objects(dec128_fld=1.0).count() == 1
+        assert cls.objects(dec128_fld=2.0).count() == 0
 
     def test_ne_operator(self):
         cls = generate_test_cls()
-        assert 1 == cls.objects(dec128_fld__ne=None).count()
-        assert 1 == cls.objects(dec128_fld__ne=1).count()
-        assert 1 == cls.objects(dec128_fld__ne=1.0).count()
+        assert cls.objects(dec128_fld__ne=None).count() == 1
+        assert cls.objects(dec128_fld__ne=1).count() == 1
+        assert cls.objects(dec128_fld__ne=1.0).count() == 1
 
     def test_gt_operator(self):
         cls = generate_test_cls()
-        assert 1 == cls.objects(dec128_fld__gt=0.5).count()
+        assert cls.objects(dec128_fld__gt=0.5).count() == 1
 
     def test_lt_operator(self):
         cls = generate_test_cls()
-        assert 1 == cls.objects(dec128_fld__lt=1.5).count()
+        assert cls.objects(dec128_fld__lt=1.5).count() == 1
+
+    def test_field_exposed_as_python_Decimal(self):
+        # from int
+        model = Decimal128Document(dec128_fld=100).save()
+        assert isinstance(model.dec128_fld, Decimal)
+        model = Decimal128Document.objects.get(id=model.id)
+        assert isinstance(model.dec128_fld, Decimal)
+        assert model.dec128_fld == Decimal("100")
 
     def test_storage(self):
         # from int
@@ -99,6 +105,13 @@ class TestDecimal128Field(MongoDBTestCase):
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
+        }
+
+        # from str
+        model = Decimal128Document(dec128_fld="100.0").save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100.0"),
         }
 
         # from float
@@ -113,6 +126,11 @@ class TestDecimal128Field(MongoDBTestCase):
         assert get_as_pymongo(model) == {
             "_id": model.id,
             "dec128_fld": Decimal128("100"),
+        }
+        model = Decimal128Document(dec128_fld=Decimal("100.0")).save()
+        assert get_as_pymongo(model) == {
+            "_id": model.id,
+            "dec128_fld": Decimal128("100.0"),
         }
 
         # from Decimal128
