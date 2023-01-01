@@ -134,9 +134,7 @@ class BaseField:
         # If setting to None and there is a default value provided for this
         # field, then set the value to the default value.
         if value is None:
-            if self.null:
-                value = None
-            elif self.default is not None:
+            if not self.null and self.default is not None:
                 value = self.default
                 if callable(value):
                     value = value()
@@ -281,6 +279,19 @@ class ComplexBaseField(BaseField):
             name=name,
         )
         return documents
+
+    def __set__(self, instance, value):
+        unprocessable_fields = (
+            ComplexBaseField,
+            _import_class("EmbeddedDocumentField"),
+            _import_class("FileField"),
+        )
+        if self.field and not isinstance(self.field, unprocessable_fields):
+            if isinstance(value, (list, tuple)):
+                value = [self.field.to_python(sub_val) for sub_val in value]
+            elif isinstance(value, dict):
+                value = {key: self.field.to_python(sub) for key, sub in value.items()}
+        return super().__set__(instance, value)
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
@@ -439,7 +450,7 @@ class ComplexBaseField(BaseField):
                     # us to dereference
                     meta = getattr(v, "_meta", {})
                     allow_inheritance = meta.get("allow_inheritance")
-                    if not allow_inheritance and not self.field:
+                    if not allow_inheritance:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
