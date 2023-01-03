@@ -3,7 +3,13 @@ from enum import Enum
 import pytest
 from bson import InvalidDocument
 
-from mongoengine import Document, EnumField, ValidationError
+from mongoengine import (
+    DictField,
+    Document,
+    EnumField,
+    ListField,
+    ValidationError,
+)
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -19,6 +25,12 @@ class Color(Enum):
 
 class ModelWithEnum(Document):
     status = EnumField(Status)
+
+
+class ModelComplexEnum(Document):
+    status = EnumField(Status)
+    statuses = ListField(EnumField(Status))
+    color_mapping = DictField(EnumField(Color))
 
 
 class TestStringEnumField(MongoDBTestCase):
@@ -101,6 +113,42 @@ class TestStringEnumField(MongoDBTestCase):
         with pytest.raises(ValueError, match="Invalid choices"):
             EnumField(Status, choices=[Status.DONE, Color.RED])
 
+    def test_embedding_in_complex_field(self):
+        ModelComplexEnum.drop_collection()
+        model = ModelComplexEnum(
+            status="new", statuses=["new"], color_mapping={"red": 1}
+        ).save()
+        assert model.status == Status.NEW
+        assert model.statuses == [Status.NEW]
+        assert model.color_mapping == {"red": Color.RED}
+
+        model.reload()
+        assert model.status == Status.NEW
+        assert model.statuses == [Status.NEW]
+        assert model.color_mapping == {"red": Color.RED}
+
+        model.status = "done"
+        model.color_mapping = {"blue": 2}
+        model.statuses = ["new", "done"]
+        model.save()
+        assert model.status == Status.DONE
+        assert model.statuses == [Status.NEW, Status.DONE]
+        assert model.color_mapping == {"blue": Color.BLUE}
+
+        model.reload()
+        assert model.status == Status.DONE
+        assert model.color_mapping == {"blue": Color.BLUE}
+        assert model.statuses == [Status.NEW, Status.DONE]
+
+        with pytest.raises(ValidationError, match="must be one of ..Status"):
+            model.statuses = [1]
+            model.save()
+
+        model.statuses = ["done"]
+        model.color_mapping = {"blue": "done"}
+        with pytest.raises(ValidationError, match="must be one of ..Color"):
+            model.save()
+
 
 class ModelWithColor(Document):
     color = EnumField(Color, default=Color.RED)
@@ -124,10 +172,7 @@ class TestIntEnumField(MongoDBTestCase):
         assert get_as_pymongo(model) == {"_id": model.id, "color": 2}
 
     def test_validate_model(self):
-        with pytest.raises(ValidationError, match="Value must be one of"):
-            ModelWithColor(color=3).validate()
-
-        with pytest.raises(ValidationError, match="Value must be one of"):
+        with pytest.raises(ValidationError, match="must be one of ..Color"):
             ModelWithColor(color="wrong_type").validate()
 
 

@@ -282,6 +282,18 @@ class ComplexBaseField(BaseField):
         )
         return documents
 
+    def __set__(self, instance, value):
+        # Some fields e.g EnumField are converted upon __set__
+        # So it is fair to mimic the same behavior when using e.g ListField(EnumField)
+        EnumField = _import_class("EnumField")
+        if self.field and isinstance(self.field, EnumField):
+            if isinstance(value, (list, tuple)):
+                value = [self.field.to_python(sub_val) for sub_val in value]
+            elif isinstance(value, dict):
+                value = {key: self.field.to_python(sub) for key, sub in value.items()}
+
+        return super().__set__(instance, value)
+
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
         if instance is None:
@@ -434,12 +446,12 @@ class ComplexBaseField(BaseField):
                             " have been saved to the database"
                         )
 
-                    # If its a document that is not inheritable it won't have
+                    # If it's a document that is not inheritable it won't have
                     # any _cls data so make it a generic reference allows
                     # us to dereference
                     meta = getattr(v, "_meta", {})
                     allow_inheritance = meta.get("allow_inheritance")
-                    if not allow_inheritance and not self.field:
+                    if not allow_inheritance:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
