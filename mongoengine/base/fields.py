@@ -523,7 +523,8 @@ class ObjectIdField(BaseField):
     def to_mongo(self, value):
         if not isinstance(value, ObjectId):
             try:
-                return ObjectId(str(value))
+                if value:
+                    return ObjectId(str(value))
             except Exception as e:
                 self.error(str(e))
         return value
