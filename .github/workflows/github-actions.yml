@@ -34,7 +34,7 @@ jobs:
     # which runs pre-configured linter & autoformatter
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
       with:
         python-version: '3.9'
@@ -69,7 +69,7 @@ jobs:
             MONGODB: $MONGODB_5_0
             PYMONGO: $PYMONGO_4_3
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -96,7 +96,7 @@ jobs:
     # to avoid that it breaks when new releases are being created
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
