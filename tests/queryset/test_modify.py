@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from mongoengine import (
     Document,
     IntField,
@@ -29,6 +31,13 @@ class TestFindAndModify(unittest.TestCase):
         old_doc = Doc.objects(id=1).modify(set__value=-1)
         assert old_doc.to_json() == doc.to_json()
         self._assert_db_equal([{"_id": 0, "value": 0}, {"_id": 1, "value": -1}])
+
+    def test_modify_full_response_raise_value_error_for_recent_mongo(self):
+        Doc(id=0, value=0).save()
+        Doc(id=1, value=1).save()
+
+        with pytest.raises(ValueError):
+            Doc.objects(id=1).modify(set__value=-1, full_response=True)
 
     def test_modify_with_new(self):
         Doc(id=0, value=0).save()

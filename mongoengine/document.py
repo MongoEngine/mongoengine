@@ -422,7 +422,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         try:
             # Save a new document or update an existing one
             if created:
-                object_id = self._save_create(doc, force_insert, write_concern)
+                object_id = self._save_create(
+                    doc=doc, force_insert=force_insert, write_concern=write_concern
+                )
             else:
                 object_id, created = self._save_update(
                     doc, save_condition, write_concern

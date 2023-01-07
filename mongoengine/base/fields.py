@@ -52,20 +52,20 @@ class BaseField:
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
-            has been set (or if the value has been unset).  It can be a
+            has been set, if the value is set to None or has been unset. It can be a
             callable.
-        :param unique: Is the field value unique or not.  Defaults to False.
+        :param unique: Is the field value unique or not (Creates an index).  Defaults to False.
         :param unique_with: (optional) The other field this field should be
-            unique with.
-        :param primary_key: Mark this field as the primary key. Defaults to False.
+            unique with (Creates an index).
+        :param primary_key: Mark this field as the primary key ((Creates an index)). Defaults to False.
         :param validation: (optional) A callable to validate the value of the
             field.  The callable takes the value as parameter and should raise
             a ValidationError if validation fails
         :param choices: (optional) The valid choices
-        :param null: (optional) If the field value can be null. If no and there is a default value
-            then the default value is set
+        :param null: (optional) If the field value can be null when a default exist. If not set, the default value
+        will be used in case a field with a default value is set to None. Defaults to False.
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
-            means that uniqueness won't be enforced for `None` values
+            means that uniqueness won't be enforced for `None` values (Creates an index). Defaults to False.
         :param **kwargs: (optional) Arbitrary indirection-free metadata for
             this field can be supplied as additional keyword arguments and
             accessed as attributes of the field. Must not conflict with any
@@ -521,15 +521,17 @@ class ObjectIdField(BaseField):
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, ObjectId):
-            try:
-                if value:
-                    return ObjectId(str(value))
-            except Exception as e:
-                self.error(str(e))
-        return value
+        if isinstance(value, ObjectId):
+            return value
+
+        try:
+            return ObjectId(str(value))
+        except Exception as e:
+            self.error(str(e))
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return self.to_mongo(value)
 
     def validate(self, value):

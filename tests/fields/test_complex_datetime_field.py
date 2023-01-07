@@ -206,3 +206,9 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
 
         with pytest.raises(ValidationError):
             log.save()
+
+    def test_query_none_value_dont_raise(self):
+        class Log(Document):
+            timestamp = ComplexDateTimeField()
+
+        _ = list(Log.objects(timestamp=None))

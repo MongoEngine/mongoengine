@@ -490,9 +490,6 @@ class DecimalField(BaseField):
         super().__init__(**kwargs)
 
     def to_python(self, value):
-        if value is None:
-            return value
-
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal("%s" % value)
@@ -506,8 +503,6 @@ class DecimalField(BaseField):
             return value.quantize(decimal.Decimal(), rounding=self.rounding)
 
     def to_mongo(self, value):
-        if value is None:
-            return value
         if self.force_string:
             return str(self.to_python(value))
         return float(self.to_python(value))
@@ -528,6 +523,8 @@ class DecimalField(BaseField):
             self.error("Decimal value is too large")
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
@@ -731,6 +728,8 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self._convert_from_datetime(value))
 
 

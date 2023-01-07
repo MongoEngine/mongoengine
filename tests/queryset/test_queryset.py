@@ -24,6 +24,7 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
+from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
@@ -149,6 +150,14 @@ class TestQueryset(unittest.TestCase):
 
         persons = list(self.Person.objects().limit(0))
         assert len(persons) == 2 == n_docs
+
+    def test_limit_0(self):
+        """Ensure that QuerySet.limit works as expected."""
+        self.Person.objects.create(name="User A", age=20)
+
+        # Test limit with 0 as parameter
+        qs = self.Person.objects.limit(0)
+        assert qs.count() == 0
 
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
@@ -3507,6 +3516,26 @@ class TestQueryset(unittest.TestCase):
         assert Foo.objects.distinct("bar") == [bar]
         assert Foo.objects.no_dereference().distinct("bar") == [bar.pk]
 
+    def test_base_queryset_iter_raise_not_implemented(self):
+        class Tmp(Document):
+            pass
+
+        qs = BaseQuerySet(document=Tmp, collection=Tmp._get_collection())
+        with pytest.raises(NotImplementedError):
+            _ = list(qs)
+
+    def test_search_text_raise_if_called_2_times(self):
+        class News(Document):
+            title = StringField()
+            content = StringField()
+            is_active = BooleanField(default=True)
+
+        News.drop_collection()
+        with pytest.raises(OperationError):
+            News.objects.search_text("t1", language="portuguese").search_text(
+                "t2", language="french"
+            )
+
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3898,6 +3927,10 @@ class TestQueryset(unittest.TestCase):
         assert objects[post_1.id].title == post_1.title
         assert objects[post_2.id].title == post_2.title
         assert objects[post_5.id].title == post_5.title
+
+        objects = BlogPost.objects.as_pymongo().in_bulk(ids)
+        assert len(objects) == 3
+        assert isinstance(objects[post_1.id], dict)
 
         BlogPost.drop_collection()
 
