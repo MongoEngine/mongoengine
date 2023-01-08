@@ -19,6 +19,7 @@ Development
   Although it could work to switch an existing DecimalField to Decimal128Field without applying a migration script,
   it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
 - BREAKING CHANGE: When using ListField(EnumField) or DictField(EnumField), the values weren't always cast into the Enum (#2531)
+- BREAKING CHANGE (bugfix) Querying ObjectIdField or ComplexDateTimeField with None will no longer raise a ValidationError (#2681)
 
 Changes in 0.25.0
 =================

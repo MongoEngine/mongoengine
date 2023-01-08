@@ -102,7 +102,7 @@ class MongoMockConnectionTest(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        assert Person.objects.count() == 0
+        assert Person.objects.limit(0).count(with_limit_and_skip=True) == 0
 
         bob = Person(name="Bob").save()
         john = Person(name="John").save()

@@ -28,3 +28,10 @@ class TestObjectIdField(MongoDBTestCase):
         doc = MyDoc(oid="not-an-oid!")
         with pytest.raises(ValidationError, match="Invalid ObjectID"):
             doc.save()
+
+    def test_query_none_value_dont_raise(self):
+        # cf issue #2681
+        class MyDoc(Document):
+            oid = ObjectIdField(null=True)
+
+        _ = list(MyDoc.objects(oid=None))
