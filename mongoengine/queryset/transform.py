@@ -264,12 +264,24 @@ def update(_doc_cls=None, **update):
             op = operator_map.get(op, op)
 
         match = None
-        if parts[-1] in COMPARISON_OPERATORS:
-            match = parts.pop()
 
-        # Allow to escape operator-like field name by __
-        if len(parts) > 1 and parts[-1] == "":
-            parts.pop()
+        if len(parts) == 1:
+            # typical update like set__field
+            # but also allows to update a field named like a comparison operator
+            # like set__type = "something" (without clashing with the 'type' operator)
+            pass
+        elif len(parts) > 1:
+            # can be either an embedded field like set__foo__bar
+            # or a comparison operator as in pull__foo__in
+            if parts[-1] in COMPARISON_OPERATORS:
+                match = parts.pop()  # e.g. pop 'in' from pull__foo__in
+
+            # Allow to escape operator-like field name by __
+            # e.g. in the case of an embedded foo.type field
+            # Doc.objects().update(set__foo__type="bar")
+            # see https://github.com/MongoEngine/mongoengine/pull/1351
+            if parts[-1] == "":
+                match = parts.pop()  # e.g. pop last '__' from set__foo__type__
 
         if _doc_cls:
             # Switch field names to proper names [set in Field(name='foo')]

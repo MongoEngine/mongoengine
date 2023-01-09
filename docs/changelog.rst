@@ -20,6 +20,7 @@ Development
   it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
 - BREAKING CHANGE: When using ListField(EnumField) or DictField(EnumField), the values weren't always cast into the Enum (#2531)
 - BREAKING CHANGE (bugfix) Querying ObjectIdField or ComplexDateTimeField with None will no longer raise a ValidationError (#2681)
+- Allow updating a field that has an operator name e.g. "type" with .update(set__type="foo"). It was raising an error previously. #2595
 
 Changes in 0.25.0
 =================
