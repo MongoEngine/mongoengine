@@ -76,6 +76,9 @@ def _get_connection_settings(
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
     :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock: // ` as db host prefix)
+    :param connection_class: using alternative connection client other than
+        pymongo or mongomock, e.g. montydb, that provides pymongo alike
+        interface but not necessarily for connecting to a real mongo instance.
     :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
@@ -221,6 +224,9 @@ def register_connection(
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
     :param is_mock: explicitly use mongomock for this connection
         (can also be done by using `mongomock: // ` as db host prefix)
+    :param connection_class: using alternative connection client other than
+        pymongo or mongomock, e.g. montydb, that provides pymongo alike
+        interface but not necessarily for connecting to a real mongo instance.
     :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
@@ -333,6 +339,10 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         except ImportError:
             raise RuntimeError("You need mongomock installed to mock MongoEngine.")
         connection_class = mongomock.MongoClient
+
+    elif "connection_class" in conn_settings:
+        connection_class = conn_settings.pop("connection_class")
+
     else:
         connection_class = MongoClient
 
