@@ -1,23 +1,28 @@
-==============================
+=========================
 Use mongomock for testing
-==============================
+=========================
 
-`mongomock <https://github.com/vmalloc/mongomock/>`_ is a package to do just
-what the name implies, mocking a mongo database.
+Although we recommend running your tests against a regular MongoDB server, it is sometimes useful to plug
+MongoEngine to alternative implementations (mongomock, montydb, mongita, etc).
+
+`mongomock <https://github.com/vmalloc/mongomock/>`_ is historically the one suggested for MongoEngine and is
+a package to do just what the name implies, mocking a mongo database.
 
 To use with mongoengine, simply specify mongomock when connecting with
 mongoengine:
 
 .. code-block:: python
 
-    connect('mongoenginetest', host='mongomock://localhost')
+    import mongomock
+
+    connect('mongoenginetest', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient)
     conn = get_connection()
 
 or with an alias:
 
 .. code-block:: python
 
-    connect('mongoenginetest', host='mongomock://localhost', alias='testdb')
+    connect('mongoenginetest', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient, alias='testdb')
     conn = get_connection('testdb')
 
 Example of test file:
@@ -34,7 +39,7 @@ Example of test file:
 
         @classmethod
         def setUpClass(cls):
-            connect('mongoenginetest', host='mongomock://localhost')
+            connect('mongoenginetest', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient)
 
         @classmethod
         def tearDownClass(cls):
