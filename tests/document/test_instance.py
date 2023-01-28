@@ -698,6 +698,17 @@ class TestDocumentInstance(MongoDBTestCase):
         assert "age" not in person
         assert "nationality" not in person
 
+    def test_get_method(self):
+        """Ensure that dictionary-style get method works properly."""
+        person = self.Person(name="Test User", age=30, job=self.Job(name="Test Job"))
+
+        assert person.get("name") == "Test User"
+        assert person.get("salary") is None
+        assert person.get("name", "Test Name") == "Test User"
+        assert person.get("salary", 5000) == 5000
+        assert person.job.get("name", "Unknown") == "Test Job"
+        assert person.job.get("years", 0) == 0
+
     def test_embedded_document_to_mongo(self):
         class Person(EmbeddedDocument):
             name = StringField()
