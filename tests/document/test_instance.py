@@ -706,8 +706,11 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.get("salary") is None
         assert person.get("name", "Test Name") == "Test User"
         assert person.get("salary", 5000) == 5000
+
         assert person.job.get("name", "Unknown") == "Test Job"
-        assert person.job.get("years", 0) == 0
+        assert person.job.get("years", 5) == 5
+        person.job.years = 0
+        assert person.job.get("years", 5) == 0
 
     def test_embedded_document_to_mongo(self):
         class Person(EmbeddedDocument):

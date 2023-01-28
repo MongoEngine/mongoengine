@@ -306,17 +306,16 @@ class BaseDocument:
         return not self.__eq__(other)
 
     def get(self, name, default=None):
-        """Dictionary-style get method with default value.
+        """Dictionary-style get method.
 
-        Return default when field is not founded.
+        Return field value if preset otherwise return default value.
 
-        -- note:: Method never raises exception even if key doesn't exists.
-
-        :param name: key name
-        :param default: (optional) default value if key doesn't exists or isn't preset
+        :param name: field name
+        :param default: (optional) default value if field isn't present.
         """
         try:
-            return self.__getitem__(name) or default
+            val = self.__getitem__(name)
+            return default if val is None else val
         except KeyError:
             return default
 
