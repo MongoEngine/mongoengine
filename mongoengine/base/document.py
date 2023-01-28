@@ -305,6 +305,21 @@ class BaseDocument:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def get(self, name, default=None):
+        """Dictionary-style get method with default value.
+
+        Return default when field is not founded.
+
+        -- note:: Method never raises exception even if key doesn't exists.
+
+        :param name: key name
+        :param default: (optional) default value if key doesn't exists or isn't preset
+        """
+        try:
+            return self.__getitem__(name) or default
+        except KeyError:
+            return default
+
     def clean(self):
         """
         Hook for doing document level data cleaning (usually validation or assignment)
