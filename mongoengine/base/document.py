@@ -311,7 +311,7 @@ class BaseDocument:
         Return field value if preset otherwise return default value.
 
         :param name: field name
-        :param default: (optional) default value if field isn't present.
+        :param default: (optional) return if field isn't present.
         """
         try:
             val = self.__getitem__(name)

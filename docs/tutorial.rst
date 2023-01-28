@@ -236,7 +236,9 @@ class. So let's see how we can get our posts' titles::
     for post in Post.objects:
         print(post.title)
 
-:class:`~mongoengine.base.BaseDocument` class provides a dictionary-style method :meth:`~mongoengine.base.BaseDocument.get`, which returns the value of the field if present, otherwise return `default` value::
+:class:`~mongoengine.base.BaseDocument` class provides a dictionary-style
+method :meth:`~mongoengine.base.BaseDocument.get`, which returns a value
+of the field if it's present, otherwise return ``default`` value::
 
     for post in Post.object:
         print(post.get('title', default='No title'))
