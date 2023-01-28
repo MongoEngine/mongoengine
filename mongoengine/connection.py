@@ -74,8 +74,9 @@ def _get_connection_settings(
     :param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    :param is_mock: explicitly use mongomock for this connection
-        (can also be done by using `mongomock: // ` as db host prefix)
+    :param mongo_client_class: using alternative connection client other than
+        pymongo.MongoClient, e.g. mongomock, montydb, that provides pymongo alike
+        interface but not necessarily for connecting to a real mongo instance.
     :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
@@ -102,22 +103,17 @@ def _get_connection_settings(
     resolved_hosts = []
     for entity in conn_host:
 
-        # Handle Mongomock
-        if entity.startswith("mongomock://"):
-            conn_settings["is_mock"] = True
-            # `mongomock://` is not a valid url prefix and must be replaced by `mongodb://`
-            new_entity = entity.replace("mongomock://", "mongodb://", 1)
-            resolved_hosts.append(new_entity)
-
-            uri_dict = uri_parser.parse_uri(new_entity)
-
-            database = uri_dict.get("database")
-            if database:
-                conn_settings["name"] = database
+        # Reject old mongomock integration
+        # To be removed in a few versions after 0.27.0
+        if entity.startswith("mongomock://") or kwargs.get("is_mock"):
+            raise Exception(
+                "Use of mongomock:// URI or 'is_mock' were removed in favor of 'mongo_client_class=mongomock.MongoClient'. "
+                "Check the CHANGELOG for more info"
+            )
 
         # Handle URI style connections, only updating connection params which
         # were explicitly specified in the URI.
-        elif "://" in entity:
+        if "://" in entity:
             uri_dict = uri_parser.parse_uri(entity)
             resolved_hosts.append(entity)
 
@@ -219,8 +215,9 @@ def register_connection(
     :param authentication_mechanism: database authentication mechanisms.
         By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
         MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-    :param is_mock: explicitly use mongomock for this connection
-        (can also be done by using `mongomock: // ` as db host prefix)
+    :param mongo_client_class: using alternative connection client other than
+        pymongo.MongoClient, e.g. mongomock, montydb, that provides pymongo alike
+        interface but not necessarily for connecting to a real mongo instance.
     :param kwargs: ad-hoc parameters to be passed into the pymongo driver,
         for example maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
@@ -326,15 +323,10 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     conn_settings = _clean_settings(raw_conn_settings)
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
-    is_mock = conn_settings.pop("is_mock", False)
-    if is_mock:
-        try:
-            import mongomock
-        except ImportError:
-            raise RuntimeError("You need mongomock installed to mock MongoEngine.")
-        connection_class = mongomock.MongoClient
+    if "mongo_client_class" in conn_settings:
+        mongo_client_class = conn_settings.pop("mongo_client_class")
     else:
-        connection_class = MongoClient
+        mongo_client_class = MongoClient
 
     # Re-use existing connection if one is suitable.
     existing_connection = _find_existing_connection(raw_conn_settings)
@@ -342,19 +334,19 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         connection = existing_connection
     else:
         connection = _create_connection(
-            alias=alias, connection_class=connection_class, **conn_settings
+            alias=alias, mongo_client_class=mongo_client_class, **conn_settings
         )
     _connections[alias] = connection
     return _connections[alias]
 
 
-def _create_connection(alias, connection_class, **connection_settings):
+def _create_connection(alias, mongo_client_class, **connection_settings):
     """
     Create the new connection for this alias. Raise
     ConnectionFailure if it can't be established.
     """
     try:
-        return connection_class(**connection_settings)
+        return mongo_client_class(**connection_settings)
     except Exception as e:
         raise ConnectionFailure(f"Cannot connect to database {alias} :\n{e}")
 

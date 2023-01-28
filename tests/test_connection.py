@@ -53,7 +53,7 @@ class ConnectionTest(unittest.TestCase):
         connect("mongoenginetest")
 
         conn = get_connection()
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
 
         db = get_db()
         assert isinstance(db, pymongo.database.Database)
@@ -61,7 +61,13 @@ class ConnectionTest(unittest.TestCase):
 
         connect("mongoenginetest2", alias="testdb")
         conn = get_connection("testdb")
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
+
+        connect(
+            "mongoenginetest2", alias="testdb3", mongo_client_class=pymongo.MongoClient
+        )
+        conn = get_connection("testdb")
+        assert isinstance(conn, pymongo.MongoClient)
 
     def test_connect_disconnect_works_properly(self):
         class History1(Document):
