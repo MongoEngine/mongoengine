@@ -117,8 +117,7 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
     def test_no_dereference_context_manager_object_id(self):
-        """Ensure that DBRef items in ListFields aren't dereferenced.
-        """
+        """Ensure that DBRef items in ListFields aren't dereferenced."""
         connect("mongoenginetest")
 
         class User(Document):
@@ -155,8 +154,7 @@ class TestContextManagers:
         assert isinstance(group.generic, User)
 
     def test_no_dereference_context_manager_dbref(self):
-        """Ensure that DBRef items in ListFields aren't dereferenced.
-        """
+        """Ensure that DBRef items in ListFields aren't dereferenced."""
         connect("mongoenginetest")
 
         class User(Document):
@@ -182,11 +180,11 @@ class TestContextManagers:
 
         with no_dereference(Group) as Group:
             group = Group.objects.first()
-            assert all([not isinstance(m, User) for m in group.members])
+            assert all(not isinstance(m, User) for m in group.members)
             assert not isinstance(group.ref, User)
             assert not isinstance(group.generic, User)
 
-        assert all([isinstance(m, User) for m in group.members])
+        assert all(isinstance(m, User) for m in group.members)
         assert isinstance(group.ref, User)
         assert isinstance(group.generic, User)
 
@@ -271,17 +269,23 @@ class TestContextManagers:
         connect("mongoenginetest")
         db = get_db()
 
-        initial_profiling_level = db.profiling_level()
+        def _current_profiling_level():
+            return db.command({"profile": -1})["was"]
+
+        def _set_profiling_level(lvl):
+            db.command({"profile": lvl})
+
+        initial_profiling_level = _current_profiling_level()
 
         try:
             new_level = 1
-            db.set_profiling_level(new_level)
-            assert db.profiling_level() == new_level
+            _set_profiling_level(new_level)
+            assert _current_profiling_level() == new_level
             with query_counter():
-                assert db.profiling_level() == 2
-            assert db.profiling_level() == new_level
+                assert _current_profiling_level() == 2
+            assert _current_profiling_level() == new_level
         except Exception:
-            db.set_profiling_level(
+            _set_profiling_level(
                 initial_profiling_level
             )  # Ensures it gets reseted no matter the outcome of the test
             raise

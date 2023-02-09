@@ -1,9 +1,15 @@
 from enum import Enum
 
-from bson import InvalidDocument
 import pytest
+from bson import InvalidDocument
 
-from mongoengine import *
+from mongoengine import (
+    DictField,
+    Document,
+    EnumField,
+    ListField,
+    ValidationError,
+)
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -12,8 +18,19 @@ class Status(Enum):
     DONE = "done"
 
 
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+
 class ModelWithEnum(Document):
     status = EnumField(Status)
+
+
+class ModelComplexEnum(Document):
+    status = EnumField(Status)
+    statuses = ListField(EnumField(Status))
+    color_mapping = DictField(EnumField(Color))
 
 
 class TestStringEnumField(MongoDBTestCase):
@@ -45,6 +62,11 @@ class TestStringEnumField(MongoDBTestCase):
         m.save()
         assert m.status == Status.DONE
 
+        m.status = "wrong"
+        assert m.status == "wrong"
+        with pytest.raises(ValidationError):
+            m.validate()
+
     def test_set_default(self):
         class ModelWithDefault(Document):
             status = EnumField(Status, default=Status.DONE)
@@ -69,14 +91,63 @@ class TestStringEnumField(MongoDBTestCase):
         with pytest.raises(ValidationError):
             m.validate()
 
-    def test_user_is_informed_when_tries_to_set_choices(self):
-        with pytest.raises(ValueError, match="'choices' can't be set on EnumField"):
+    def test_partial_choices(self):
+        partial = [Status.DONE]
+        enum_field = EnumField(Status, choices=partial)
+        assert enum_field.choices == partial
+
+        class FancyDoc(Document):
+            z = enum_field
+
+        FancyDoc(z=Status.DONE).validate()
+        with pytest.raises(
+            ValidationError, match=r"Value must be one of .*Status.DONE"
+        ):
+            FancyDoc(z=Status.NEW).validate()
+
+    def test_wrong_choices(self):
+        with pytest.raises(ValueError, match="Invalid choices"):
             EnumField(Status, choices=["my", "custom", "options"])
+        with pytest.raises(ValueError, match="Invalid choices"):
+            EnumField(Status, choices=[Color.RED])
+        with pytest.raises(ValueError, match="Invalid choices"):
+            EnumField(Status, choices=[Status.DONE, Color.RED])
 
+    def test_embedding_in_complex_field(self):
+        ModelComplexEnum.drop_collection()
+        model = ModelComplexEnum(
+            status="new", statuses=["new"], color_mapping={"red": 1}
+        ).save()
+        assert model.status == Status.NEW
+        assert model.statuses == [Status.NEW]
+        assert model.color_mapping == {"red": Color.RED}
 
-class Color(Enum):
-    RED = 1
-    BLUE = 2
+        model.reload()
+        assert model.status == Status.NEW
+        assert model.statuses == [Status.NEW]
+        assert model.color_mapping == {"red": Color.RED}
+
+        model.status = "done"
+        model.color_mapping = {"blue": 2}
+        model.statuses = ["new", "done"]
+        model.save()
+        assert model.status == Status.DONE
+        assert model.statuses == [Status.NEW, Status.DONE]
+        assert model.color_mapping == {"blue": Color.BLUE}
+
+        model.reload()
+        assert model.status == Status.DONE
+        assert model.color_mapping == {"blue": Color.BLUE}
+        assert model.statuses == [Status.NEW, Status.DONE]
+
+        with pytest.raises(ValidationError, match="must be one of ..Status"):
+            model.statuses = [1]
+            model.save()
+
+        model.statuses = ["done"]
+        model.color_mapping = {"blue": "done"}
+        with pytest.raises(ValidationError, match="must be one of ..Color"):
+            model.save()
 
 
 class ModelWithColor(Document):
@@ -101,10 +172,7 @@ class TestIntEnumField(MongoDBTestCase):
         assert get_as_pymongo(model) == {"_id": model.id, "color": 2}
 
     def test_validate_model(self):
-        with pytest.raises(ValidationError, match="Value must be one of"):
-            ModelWithColor(color=3).validate()
-
-        with pytest.raises(ValidationError, match="Value must be one of"):
+        with pytest.raises(ValidationError, match="must be one of ..Color"):
             ModelWithColor(color="wrong_type").validate()
 
 

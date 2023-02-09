@@ -1,6 +1,7 @@
 import unittest
 
 from bson import SON
+
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
 from tests.utils import MongoDBTestCase
@@ -8,7 +9,7 @@ from tests.utils import MongoDBTestCase
 
 class TestDelta(MongoDBTestCase):
     def setUp(self):
-        super(TestDelta, self).setUp()
+        super().setUp()
 
         class Person(Document):
             name = StringField()
@@ -643,7 +644,10 @@ class TestDelta(MongoDBTestCase):
         doc.save()
         doc = doc.reload(10)
 
-        assert doc._delta() == ({}, {},)
+        assert doc._delta() == (
+            {},
+            {},
+        )
         del doc.embedded_field.list_field[2].list_field
         assert doc._delta() == (
             {},

@@ -1,12 +1,17 @@
 import unittest
 from datetime import datetime
 
+import pytest
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
-import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
+from mongoengine.mongodb_support import (
+    MONGODB_42,
+    get_mongodb_version,
+)
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 class TestIndexes(unittest.TestCase):
@@ -171,8 +176,7 @@ class TestIndexes(unittest.TestCase):
         assert MyDoc._meta["index_specs"] == [{"fields": [("keywords", 1)]}]
 
     def test_embedded_document_index_meta(self):
-        """Ensure that embedded document indexes are created explicitly
-        """
+        """Ensure that embedded document indexes are created explicitly"""
 
         class Rank(EmbeddedDocument):
             title = StringField(required=True)
@@ -194,8 +198,7 @@ class TestIndexes(unittest.TestCase):
         assert [("rank.title", 1)] in info
 
     def test_explicit_geo2d_index(self):
-        """Ensure that geo2d indexes work when created via meta[indexes]
-        """
+        """Ensure that geo2d indexes work when created via meta[indexes]"""
 
         class Place(Document):
             location = DictField()
@@ -209,8 +212,7 @@ class TestIndexes(unittest.TestCase):
         assert [("location.point", "2d")] in info
 
     def test_explicit_geo2d_index_embedded(self):
-        """Ensure that geo2d indexes work when created via meta[indexes]
-        """
+        """Ensure that geo2d indexes work when created via meta[indexes]"""
 
         class EmbeddedLocation(EmbeddedDocument):
             location = DictField()
@@ -229,8 +231,7 @@ class TestIndexes(unittest.TestCase):
         assert [("current.location.point", "2d")] in info
 
     def test_explicit_geosphere_index(self):
-        """Ensure that geosphere indexes work when created via meta[indexes]
-        """
+        """Ensure that geosphere indexes work when created via meta[indexes]"""
 
         class Place(Document):
             location = DictField()
@@ -246,12 +247,10 @@ class TestIndexes(unittest.TestCase):
         assert [("location.point", "2dsphere")] in info
 
     def test_explicit_geohaystack_index(self):
-        """Ensure that geohaystack indexes work when created via meta[indexes]
-        """
-        pytest.skip(
-            "GeoHaystack index creation is not supported for now"
-            "from meta, as it requires a bucketSize parameter."
-        )
+        """Ensure that geohaystack indexes work when created via meta[indexes]"""
+        # This test can be removed when pymongo 3.x is no longer supported
+        if PYMONGO_VERSION >= (4,):
+            pytest.skip("GEOHAYSTACK has been removed in pymongo 4.0")
 
         class Place(Document):
             location = DictField()
@@ -262,23 +261,40 @@ class TestIndexes(unittest.TestCase):
             {"fields": [("location.point", "geoHaystack"), ("name", 1)]}
         ] == Place._meta["index_specs"]
 
-        Place.ensure_indexes()
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack")] in info
+        # GeoHaystack index creation is not supported for now from meta, as it
+        # requires a bucketSize parameter.
+        if False:
+            Place.ensure_indexes()
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack")] in info
 
     def test_create_geohaystack_index(self):
-        """Ensure that geohaystack indexes can be created
-        """
+        """Ensure that geohaystack indexes can be created"""
 
         class Place(Document):
             location = DictField()
             name = StringField()
 
-        Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack"), ("name", 1)] in info
+        if PYMONGO_VERSION >= (4,):
+            expected_error = NotImplementedError
+        elif get_mongodb_version() >= (4, 9):
+            expected_error = OperationFailure
+        else:
+            expected_error = None
+
+        # This test can be removed when pymongo 3.x is no longer supported
+        if expected_error:
+            with pytest.raises(expected_error):
+                Place.create_index(
+                    {"fields": (")location.point", "name")},
+                    bucketSize=10,
+                )
+        else:
+            Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack"), ("name", 1)] in info
 
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
@@ -364,8 +380,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_cls_1_user_guid_1", "_id_"]
 
     def test_embedded_document_index(self):
-        """Tests settings an index on an embedded document
-        """
+        """Tests settings an index on an embedded document"""
 
         class Date(EmbeddedDocument):
             year = IntField(db_field="yr")
@@ -382,8 +397,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_id_", "date.yr_-1"]
 
     def test_list_embedded_document_index(self):
-        """Ensure list embedded documents can be indexed
-        """
+        """Ensure list embedded documents can be indexed"""
 
         class Tag(EmbeddedDocument):
             name = StringField(db_field="tag")
@@ -419,8 +433,7 @@ class TestIndexes(unittest.TestCase):
         assert sorted(info.keys()) == ["_cls_1", "_id_"]
 
     def test_covered_index(self):
-        """Ensure that covered indexes can be used
-        """
+        """Ensure that covered indexes can be used"""
 
         class Test(Document):
             a = IntField()
@@ -461,9 +474,11 @@ class TestIndexes(unittest.TestCase):
             .get("stage")
             == "IXSCAN"
         )
+        mongo_db = get_mongodb_version()
+        PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
         assert (
             query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == "PROJECTION"
+            == PROJECTION_STR
         )
 
         query_plan = Test.objects(a=1).explain()
@@ -552,14 +567,15 @@ class TestIndexes(unittest.TestCase):
         incorrect_collation = {"arndom": "wrdo"}
         with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
-        assert "Missing expected field" in str(exc_info.value)
+        assert "Missing expected field" in str(
+            exc_info.value
+        ) or "unknown field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)
 
     def test_unique(self):
-        """Ensure that uniqueness constraints are applied to fields.
-        """
+        """Ensure that uniqueness constraints are applied to fields."""
 
         class BlogPost(Document):
             title = StringField()
@@ -607,8 +623,7 @@ class TestIndexes(unittest.TestCase):
         )
 
     def test_unique_with(self):
-        """Ensure that unique_with constraints are applied to fields.
-        """
+        """Ensure that unique_with constraints are applied to fields."""
 
         class Date(EmbeddedDocument):
             year = IntField(db_field="yr")
@@ -633,8 +648,7 @@ class TestIndexes(unittest.TestCase):
             post3.save()
 
     def test_unique_embedded_document(self):
-        """Ensure that uniqueness constraints are applied to fields on embedded documents.
-        """
+        """Ensure that uniqueness constraints are applied to fields on embedded documents."""
 
         class SubDocument(EmbeddedDocument):
             year = IntField(db_field="yr")
@@ -969,44 +983,52 @@ class TestIndexes(unittest.TestCase):
 
     def test_indexes_after_database_drop(self):
         """
-        Test to ensure that indexes are re-created on a collection even
-        after the database has been dropped.
+        Test to ensure that indexes are not re-created on a collection
+        after the database has been dropped unless auto_create_index_on_save
+        is enabled.
 
-        Issue #812
+        Issue #812 and #1446.
         """
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
-        connection = connect(
-            db="tempdatabase", alias="test_indexes_after_database_drop"
-        )
+        tmp_alias = "test_indexes_after_database_drop"
+        connection = connect(db="tempdatabase", alias=tmp_alias)
+        self.addCleanup(connection.drop_database, "tempdatabase")
 
         class BlogPost(Document):
-            title = StringField()
             slug = StringField(unique=True)
+            meta = {"db_alias": tmp_alias}
 
-            meta = {"db_alias": "test_indexes_after_database_drop"}
+        BlogPost.drop_collection()
+        BlogPost(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost(slug="test").save()
 
-        try:
-            BlogPost.drop_collection()
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost(slug="test").save()
+        # No error because the index was not recreated after dropping the database.
+        BlogPost(slug="test").save()
 
-            # Create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
+        # Repeat with auto_create_index_on_save: True.
+        class BlogPost2(Document):
+            slug = StringField(unique=True)
+            meta = {
+                "db_alias": tmp_alias,
+                "auto_create_index_on_save": True,
+            }
 
-            # Drop the Database
-            connection.drop_database("tempdatabase")
+        BlogPost2.drop_collection()
+        BlogPost2(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
-            # Re-create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
-
-            # Create Post #2
-            post2 = BlogPost(title="test2", slug="test")
-            with pytest.raises(NotUniqueError):
-                post2.save()
-        finally:
-            # Drop the temporary database at the end
-            connection.drop_database("tempdatabase")
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost2(slug="test").save()
+        # Error because ensure_indexes is run on every save().
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
     def test_index_dont_send_cls_option(self):
         """

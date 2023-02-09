@@ -1,10 +1,9 @@
-from bson import DBRef, ObjectId
 import pytest
+from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.base import LazyReference
 from mongoengine.context_managers import query_counter
-
 from tests.utils import MongoDBTestCase
 
 
@@ -374,6 +373,26 @@ class TestLazyReferenceField(MongoDBTestCase):
                 ref["author"].name
             assert isinstance(ref.author, LazyReference)
             assert isinstance(ref.author.id, ObjectId)
+
+    def test_lazy_reference_in_list_with_changed_element(self):
+        class Animal(Document):
+            name = StringField()
+            tag = StringField()
+
+        class Ocurrence(Document):
+            in_list = ListField(LazyReferenceField(Animal))
+
+        Animal.drop_collection()
+        Ocurrence.drop_collection()
+
+        animal1 = Animal(name="doggo").save()
+
+        animal1.tag = "blue"
+
+        occ = Ocurrence(in_list=[animal1]).save()
+        animal1.save()
+        assert isinstance(occ.in_list[0], LazyReference)
+        assert occ.in_list[0].pk == animal1.pk
 
 
 class TestGenericLazyReferenceField(MongoDBTestCase):

@@ -19,7 +19,7 @@ out of the box. Validation runs when calling `.validate()` or `.save()`
 
 .. code-block:: python
 
-    from mongoengine import Document, EmailField
+    from mongoengine import Document, EmailField, IntField
 
     class User(Document):
         email = EmailField()
@@ -120,4 +120,3 @@ the validation and cleaning of a document when you call :meth:`~mongoengine.docu
     Person(age=1000).save(validate=False)
     person = Person.objects.first()
     assert person.age == 1000
-

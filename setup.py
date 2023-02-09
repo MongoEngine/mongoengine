@@ -7,7 +7,7 @@ from setuptools.command.test import test as TestCommand
 
 # Hack to silence atexit traceback in newer python versions
 try:
-    import multiprocessing
+    import multiprocessing  # noqa: F401
 except ImportError:
     pass
 
@@ -53,8 +53,8 @@ class PyTest(TestCommand):
 
     def run_tests(self):
         # import here, cause outside the eggs aren't loaded
-        from pkg_resources import _namespace_packages
         import pytest
+        from pkg_resources import _namespace_packages
 
         # Purge modules under test from sys.modules. The test loader will
         # re-import them from the build location. Required when 2to3 is used
@@ -87,7 +87,7 @@ class PyTest(TestCommand):
 # import it as it depends on PyMongo and PyMongo isn't installed until this
 # file is read
 init = os.path.join(os.path.dirname(__file__), "mongoengine", "__init__.py")
-version_line = list(filter(lambda l: l.startswith("VERSION"), open(init)))[0]
+version_line = list(filter(lambda line: line.startswith("VERSION"), open(init)))[0]
 
 VERSION = get_version(eval(version_line.split("=")[-1]))
 
@@ -98,10 +98,11 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
@@ -111,9 +112,9 @@ CLASSIFIERS = [
 extra_opts = {
     "packages": find_packages(exclude=["tests", "tests.*"]),
     "tests_require": [
-        "pytest<5.0",
+        "pytest",
         "pytest-cov",
-        "coverage<5.0",  # recent coverage switched to sqlite format for the .coverage file which isn't handled properly by coveralls
+        "coverage",
         "blinker",
         "Pillow>=7.0.0",
     ],
@@ -140,8 +141,8 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    python_requires=">=3.5",
-    install_requires=["pymongo>=3.4, <4.0"],
+    python_requires=">=3.7",
+    install_requires=["pymongo>=3.4,<5.0"],
     cmdclass={"test": PyTest},
     **extra_opts
 )

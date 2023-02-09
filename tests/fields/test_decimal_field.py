@@ -2,60 +2,11 @@ from decimal import Decimal
 
 import pytest
 
-from mongoengine import *
+from mongoengine import DecimalField, Document, ValidationError
 from tests.utils import MongoDBTestCase
 
 
 class TestDecimalField(MongoDBTestCase):
-    def test_validation(self):
-        """Ensure that invalid values cannot be assigned to decimal fields.
-        """
-
-        class Person(Document):
-            height = DecimalField(min_value=Decimal("0.1"), max_value=Decimal("3.5"))
-
-        Person.drop_collection()
-
-        Person(height=Decimal("1.89")).save()
-        person = Person.objects.first()
-        assert person.height == Decimal("1.89")
-
-        person.height = "2.0"
-        person.save()
-        person.height = 0.01
-        with pytest.raises(ValidationError):
-            person.validate()
-        person.height = Decimal("0.01")
-        with pytest.raises(ValidationError):
-            person.validate()
-        person.height = Decimal("4.0")
-        with pytest.raises(ValidationError):
-            person.validate()
-        person.height = "something invalid"
-        with pytest.raises(ValidationError):
-            person.validate()
-
-        person_2 = Person(height="something invalid")
-        with pytest.raises(ValidationError):
-            person_2.validate()
-
-    def test_comparison(self):
-        class Person(Document):
-            money = DecimalField()
-
-        Person.drop_collection()
-
-        Person(money=6).save()
-        Person(money=7).save()
-        Person(money=8).save()
-        Person(money=10).save()
-
-        assert 2 == Person.objects(money__gt=Decimal("7")).count()
-        assert 2 == Person.objects(money__gt=7).count()
-        assert 2 == Person.objects(money__gt="7").count()
-
-        assert 3 == Person.objects(money__gte="7").count()
-
     def test_storage(self):
         class Person(Document):
             float_value = DecimalField(precision=4)
@@ -107,3 +58,85 @@ class TestDecimalField(MongoDBTestCase):
         for field_name in ["float_value", "string_value"]:
             actual = list(Person.objects().scalar(field_name))
             assert expected == actual
+
+    def test_save_none(self):
+        class Person(Document):
+            value = DecimalField()
+
+        Person.drop_collection()
+
+        person = Person(value=None)
+        assert person.value is None
+        person.save()
+        fetched_person = Person.objects.first()
+        fetched_person.value is None
+
+        assert Person.objects(value=None).first() is not None
+
+    def test_validation(self):
+        """Ensure that invalid values cannot be assigned to decimal fields."""
+
+        class Person(Document):
+            height = DecimalField(min_value=Decimal("0.1"), max_value=Decimal("3.5"))
+
+        Person.drop_collection()
+
+        Person(height=Decimal("1.89")).save()
+        person = Person.objects.first()
+        assert person.height == Decimal("1.89")
+
+        person.height = "2.0"
+        person.save()
+        person.height = 0.01
+        with pytest.raises(ValidationError):
+            person.validate()
+        person.height = Decimal("0.01")
+        with pytest.raises(ValidationError):
+            person.validate()
+        person.height = Decimal("4.0")
+        with pytest.raises(ValidationError):
+            person.validate()
+        person.height = "something invalid"
+        with pytest.raises(ValidationError):
+            person.validate()
+
+        person_2 = Person(height="something invalid")
+        with pytest.raises(ValidationError):
+            person_2.validate()
+
+    def test_comparison(self):
+        class Person(Document):
+            money = DecimalField()
+
+        Person.drop_collection()
+
+        Person(money=6).save()
+        Person(money=7).save()
+        Person(money=8).save()
+        Person(money=10).save()
+
+        assert 2 == Person.objects(money__gt=Decimal("7")).count()
+        assert 2 == Person.objects(money__gt=7).count()
+        assert 2 == Person.objects(money__gt="7").count()
+
+        assert 3 == Person.objects(money__gte="7").count()
+
+    def test_precision_0(self):
+        """prevent regression of a bug that was raising an exception when using precision=0"""
+
+        class TestDoc(Document):
+            d = DecimalField(precision=0)
+
+        TestDoc.drop_collection()
+
+        td = TestDoc(d=Decimal("12.00032678131263"))
+        assert td.d == Decimal("12")
+
+    def test_precision_negative_raise(self):
+        """prevent regression of a bug that was raising an exception when using precision=0"""
+        with pytest.raises(
+            ValidationError, match="precision must be a positive integer"
+        ):
+
+            class TestDoc(Document):
+                dneg = DecimalField(precision=-1)

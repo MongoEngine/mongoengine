@@ -2,8 +2,8 @@ import datetime
 import re
 import unittest
 
-from bson import ObjectId
 import pytest
+from bson import ObjectId
 
 from mongoengine import *
 from mongoengine.errors import InvalidQueryError
@@ -23,8 +23,7 @@ class TestQ(unittest.TestCase):
         self.Person = Person
 
     def test_empty_q(self):
-        """Ensure that empty Q objects won't hurt.
-        """
+        """Ensure that empty Q objects won't hurt."""
         q1 = Q()
         q2 = Q(age__gte=18)
         q3 = Q()
@@ -58,8 +57,7 @@ class TestQ(unittest.TestCase):
         assert Post.objects.filter(Q(created_user=user)).count() == 1
 
     def test_and_combination(self):
-        """Ensure that Q-objects correctly AND together.
-        """
+        """Ensure that Q-objects correctly AND together."""
 
         class TestDoc(Document):
             x = IntField()
@@ -89,8 +87,7 @@ class TestQ(unittest.TestCase):
         assert query.to_query(TestDoc) == mongo_query
 
     def test_or_combination(self):
-        """Ensure that Q-objects correctly OR together.
-        """
+        """Ensure that Q-objects correctly OR together."""
 
         class TestDoc(Document):
             x = IntField()
@@ -101,8 +98,7 @@ class TestQ(unittest.TestCase):
         assert query == {"$or": [{"x": {"$lt": 3}}, {"x": {"$gt": 7}}]}
 
     def test_and_or_combination(self):
-        """Ensure that Q-objects handle ANDing ORed components.
-        """
+        """Ensure that Q-objects handle ANDing ORed components."""
 
         class TestDoc(Document):
             x = IntField()
@@ -136,8 +132,7 @@ class TestQ(unittest.TestCase):
         assert 2 == TestDoc.objects(q1 & q2).count()
 
     def test_or_and_or_combination(self):
-        """Ensure that Q-objects handle ORing ANDed ORed components. :)
-        """
+        """Ensure that Q-objects handle ORing ANDed ORed components. :)"""
 
         class TestDoc(Document):
             x = IntField()
@@ -208,8 +203,7 @@ class TestQ(unittest.TestCase):
         assert test.count() == 3
 
     def test_q(self):
-        """Ensure that Q objects may be used to query for documents.
-        """
+        """Ensure that Q objects may be used to query for documents."""
 
         class BlogPost(Document):
             title = StringField()
@@ -286,8 +280,7 @@ class TestQ(unittest.TestCase):
             self.Person.objects.filter("user1")
 
     def test_q_regex(self):
-        """Ensure that Q objects can be queried using regexes.
-        """
+        """Ensure that Q objects can be queried using regexes."""
         person = self.Person(name="Guido van Rossum")
         person.save()
 
@@ -320,8 +313,7 @@ class TestQ(unittest.TestCase):
         )
 
     def test_q_lists(self):
-        """Ensure that Q objects query ListFields correctly.
-        """
+        """Ensure that Q objects query ListFields correctly."""
 
         class BlogPost(Document):
             tags = ListField(StringField())

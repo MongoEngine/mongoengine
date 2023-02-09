@@ -1,7 +1,7 @@
 import unittest
 
-from bson.son import SON
 import pytest
+from bson.son import SON
 
 from mongoengine import *
 from mongoengine.queryset import Q, transform
@@ -12,8 +12,7 @@ class TestTransform(unittest.TestCase):
         connect(db="mongoenginetest")
 
     def test_transform_query(self):
-        """Ensure that the _transform_query function operates correctly.
-        """
+        """Ensure that the _transform_query function operates correctly."""
         assert transform.query(name="test", age=30) == {"name": "test", "age": 30}
         assert transform.query(age__lt=30) == {"age": {"$lt": 30}}
         assert transform.query(age__gt=20, age__lt=50) == {
@@ -88,8 +87,7 @@ class TestTransform(unittest.TestCase):
         assert update == {"$set": {"tags": ["mongo", "db"]}}
 
     def test_query_field_name(self):
-        """Ensure that the correct field name is used when querying.
-        """
+        """Ensure that the correct field name is used when querying."""
 
         class Comment(EmbeddedDocument):
             content = StringField(db_field="commentContent")
@@ -106,18 +104,17 @@ class TestTransform(unittest.TestCase):
         post = BlogPost(**data)
         post.save()
 
-        assert "postTitle" in BlogPost.objects(title=data["title"])._query
-        assert not ("title" in BlogPost.objects(title=data["title"])._query)
-        assert BlogPost.objects(title=data["title"]).count() == 1
+        qs = BlogPost.objects(title=data["title"])
+        assert qs._query == {"postTitle": data["title"]}
+        assert qs.count() == 1
 
-        assert "_id" in BlogPost.objects(pk=post.id)._query
-        assert BlogPost.objects(pk=post.id).count() == 1
+        qs = BlogPost.objects(pk=post.id)
+        assert qs._query == {"_id": post.id}
+        assert qs.count() == 1
 
-        assert (
-            "postComments.commentContent"
-            in BlogPost.objects(comments__content="test")._query
-        )
-        assert BlogPost.objects(comments__content="test").count() == 1
+        qs = BlogPost.objects(comments__content="test")
+        assert qs._query == {"postComments.commentContent": "test"}
+        assert qs.count() == 1
 
         BlogPost.drop_collection()
 
@@ -278,7 +275,7 @@ class TestTransform(unittest.TestCase):
         assert Doc.objects(df__type=2).count() == 1  # str
         assert Doc.objects(df__type=16).count() == 1  # int
 
-    def test_last_field_name_like_operator(self):
+    def test_embedded_field_name_like_operator(self):
         class EmbeddedItem(EmbeddedDocument):
             type = StringField()
             name = StringField()
@@ -297,6 +294,30 @@ class TestTransform(unittest.TestCase):
         Doc.objects(id=doc.id).update(set__item__type__="sword")
         assert 1 == Doc.objects(item__type__="sword").count()
         assert 0 == Doc.objects(item__type__="axe").count()
+
+    def test_regular_field_named_like_operator(self):
+        class SimpleDoc(Document):
+            size = StringField()
+            type = StringField()
+
+        SimpleDoc.drop_collection()
+        SimpleDoc(type="ok", size="ok").save()
+
+        qry = transform.query(SimpleDoc, type="testtype")
+        assert qry == {"type": "testtype"}
+
+        assert SimpleDoc.objects(type="ok").count() == 1
+        assert SimpleDoc.objects(size="ok").count() == 1
+
+        update = transform.update(SimpleDoc, set__type="testtype")
+        assert update == {"$set": {"type": "testtype"}}
+
+        SimpleDoc.objects.update(set__type="testtype")
+        SimpleDoc.objects.update(set__size="testsize")
+
+        s = SimpleDoc.objects.first()
+        assert s.type == "testtype"
+        assert s.size == "testsize"
 
     def test_understandable_error_raised(self):
         class Event(Document):
@@ -330,7 +351,7 @@ class TestTransform(unittest.TestCase):
         word = Word(word="abc", index=1)
         update = transform.update(MainDoc, pull__content__text=word)
         assert update == {
-            "$pull": {"content.text": SON([("word", u"abc"), ("index", 1)])}
+            "$pull": {"content.text": SON([("word", "abc"), ("index", 1)])}
         }
 
         update = transform.update(MainDoc, pull__content__heading="xyz")

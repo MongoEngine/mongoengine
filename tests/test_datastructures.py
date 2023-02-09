@@ -3,10 +3,14 @@ import unittest
 import pytest
 
 from mongoengine import Document
-from mongoengine.base.datastructures import BaseDict, BaseList, StrictDict
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    StrictDict,
+)
 
 
-class DocumentStub(object):
+class DocumentStub:
     def __init__(self):
         self._changed_fields = []
         self._unset_fields = []
@@ -421,7 +425,7 @@ class TestStrictDict(unittest.TestCase):
         d.a = 1
         assert d.a == 1
         with pytest.raises(AttributeError):
-            getattr(d, "b")
+            d.b
 
     def test_setattr_raises_on_nonexisting_attr(self):
         d = self.dtype()

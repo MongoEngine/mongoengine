@@ -249,7 +249,7 @@ class TestSignal(unittest.TestCase):
         assert self.pre_signals == post_signals
 
     def test_model_signals(self):
-        """ Model saves should throw some signals. """
+        """Model saves should throw some signals."""
 
         def create_author():
             self.Author(name="Bill Shakespeare")
@@ -340,7 +340,7 @@ class TestSignal(unittest.TestCase):
         ]
 
     def test_signal_kwargs(self):
-        """ Make sure signal_kwargs is passed to signals calls. """
+        """Make sure signal_kwargs is passed to signals calls."""
 
         def live_and_let_die():
             a = self.Author(name="Bill Shakespeare")
@@ -385,7 +385,7 @@ class TestSignal(unittest.TestCase):
         ]
 
     def test_queryset_delete_signals(self):
-        """ Queryset delete should throw some signals. """
+        """Queryset delete should throw some signals."""
 
         self.Another(name="Bill Shakespeare").save()
         assert self.get_signal_output(self.Another.objects.delete) == [
@@ -396,7 +396,7 @@ class TestSignal(unittest.TestCase):
         ]
 
     def test_signals_with_explicit_doc_ids(self):
-        """ Model saves must have a created flag the first time."""
+        """Model saves must have a created flag the first time."""
         ei = self.ExplicitId(id=123)
         # post save must received the created flag, even if there's already
         # an object id present

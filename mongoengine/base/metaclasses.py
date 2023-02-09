@@ -2,7 +2,11 @@ import itertools
 import warnings
 
 from mongoengine.base.common import _document_registry
-from mongoengine.base.fields import BaseField, ComplexBaseField, ObjectIdField
+from mongoengine.base.fields import (
+    BaseField,
+    ComplexBaseField,
+    ObjectIdField,
+)
 from mongoengine.common import _import_class
 from mongoengine.errors import InvalidDocumentError
 from mongoengine.queryset import (
@@ -11,7 +15,6 @@ from mongoengine.queryset import (
     MultipleObjectsReturned,
     QuerySetManager,
 )
-
 
 __all__ = ("DocumentMetaclass", "TopLevelDocumentMetaclass")
 
@@ -337,7 +340,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # allow_inheritance to False. If the base Document allows inheritance,
         # none of its subclasses can override allow_inheritance to False.
         simple_class = all(
-            [b._meta.get("abstract") for b in flattened_bases if hasattr(b, "_meta")]
+            b._meta.get("abstract") for b in flattened_bases if hasattr(b, "_meta")
         )
         if (
             not simple_class
@@ -439,8 +442,8 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         id_basename, id_db_basename, i = ("auto_id", "_auto_id", 0)
         for i in itertools.count():
-            id_name = "{}_{}".format(id_basename, i)
-            id_db_name = "{}_{}".format(id_db_basename, i)
+            id_name = f"{id_basename}_{i}"
+            id_db_name = f"{id_db_basename}_{i}"
             if id_name not in existing_fields and id_db_name not in existing_db_fields:
                 return id_name, id_db_name
 

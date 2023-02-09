@@ -1,5 +1,4 @@
 import re
-import unittest
 
 import pytest
 
@@ -10,7 +9,7 @@ signal_output = []
 
 class TestLazyRegexCompiler:
     def test_lazy_regex_compiler_verify_laziness_of_descriptor(self):
-        class UserEmail(object):
+        class UserEmail:
             EMAIL_REGEX = LazyRegexCompiler("@", flags=32)
 
         descriptor = UserEmail.__dict__["EMAIL_REGEX"]
@@ -24,7 +23,7 @@ class TestLazyRegexCompiler:
         assert user_email.EMAIL_REGEX is UserEmail.EMAIL_REGEX
 
     def test_lazy_regex_compiler_verify_cannot_set_descriptor_on_instance(self):
-        class UserEmail(object):
+        class UserEmail:
             EMAIL_REGEX = LazyRegexCompiler("@")
 
         user_email = UserEmail()
@@ -32,7 +31,7 @@ class TestLazyRegexCompiler:
             user_email.EMAIL_REGEX = re.compile("@")
 
     def test_lazy_regex_compiler_verify_can_override_class_attr(self):
-        class UserEmail(object):
+        class UserEmail:
             EMAIL_REGEX = LazyRegexCompiler("@")
 
         UserEmail.EMAIL_REGEX = re.compile("cookies")

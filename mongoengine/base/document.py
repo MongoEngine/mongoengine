@@ -1,10 +1,10 @@
 import copy
-
 import numbers
+import warnings
 from functools import partial
 
-from bson import DBRef, ObjectId, SON, json_util
 import pymongo
+from bson import SON, DBRef, ObjectId, json_util
 
 from mongoengine import signals
 from mongoengine.base.common import get_document
@@ -24,10 +24,16 @@ from mongoengine.errors import (
     OperationError,
     ValidationError,
 )
+from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
 NON_FIELD_ERRORS = "__all__"
+
+try:
+    GEOHAYSTACK = pymongo.GEOHAYSTACK
+except AttributeError:
+    GEOHAYSTACK = None
 
 
 class BaseDocument:
@@ -89,9 +95,7 @@ class BaseDocument:
                 list(self._fields.keys()) + ["id", "pk", "_cls", "_text_score"]
             )
             if _undefined_fields:
-                msg = ('The fields "{}" do not exist on the document "{}"').format(
-                    _undefined_fields, self._class_name
-                )
+                msg = f'The fields "{_undefined_fields}" do not exist on the document "{self._class_name}"'
                 raise FieldDoesNotExist(msg)
 
         if self.STRICT and not self._dynamic:
@@ -158,7 +162,7 @@ class BaseDocument:
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
 
-            if not hasattr(self, name) and not name.startswith("_"):
+            if name not in self._fields_ordered and not name.startswith("_"):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name, null=True)
                 field.name = name
@@ -231,10 +235,10 @@ class BaseDocument:
                 setattr(self, k, data[k])
         if "_fields_ordered" in data:
             if self._dynamic:
-                setattr(self, "_fields_ordered", data["_fields_ordered"])
+                self._fields_ordered = data["_fields_ordered"]
             else:
                 _super_fields_ordered = type(self)._fields_ordered
-                setattr(self, "_fields_ordered", _super_fields_ordered)
+                self._fields_ordered = _super_fields_ordered
 
         dynamic_fields = data.get("_dynamic_fields") or SON()
         for k in dynamic_fields.keys():
@@ -244,8 +248,7 @@ class BaseDocument:
         return iter(self._fields_ordered)
 
     def __getitem__(self, name):
-        """Dictionary-style field access, return a field's value if present.
-        """
+        """Dictionary-style field access, return a field's value if present."""
         try:
             if name in self._fields_ordered:
                 return getattr(self, name)
@@ -254,8 +257,7 @@ class BaseDocument:
         raise KeyError(name)
 
     def __setitem__(self, name, value):
-        """Dictionary-style field access, set a field's value.
-        """
+        """Dictionary-style field access, set a field's value."""
         # Ensure that the field exists before settings its value
         if not self._dynamic and name not in self._fields:
             raise KeyError(name)
@@ -277,7 +279,7 @@ class BaseDocument:
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = "[Bad Unicode data]"
         repr_type = str if u is None else type(u)
-        return repr_type("<{}: {}>".format(self.__class__.__name__, u))
+        return repr_type(f"<{self.__class__.__name__}: {u}>")
 
     def __str__(self):
         # TODO this could be simpler?
@@ -370,7 +372,7 @@ class BaseDocument:
                 value = field.generate()
                 self._data[field_name] = value
 
-            if (value is not None) or (field.null):
+            if value is not None or field.null:
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -433,7 +435,7 @@ class BaseDocument:
                 pk = self.pk
             elif self._instance and hasattr(self._instance, "pk"):
                 pk = self._instance.pk
-            message = "ValidationError ({}:{}) ".format(self._class_name, pk)
+            message = f"ValidationError ({self._class_name}:{pk}) "
             raise ValidationError(message, errors=errors)
 
     def to_json(self, *args, **kwargs):
@@ -444,10 +446,19 @@ class BaseDocument:
             Defaults to True.
         """
         use_db_field = kwargs.pop("use_db_field", True)
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
-    def from_json(cls, json_data, created=False):
+    def from_json(cls, json_data, created=False, **kwargs):
         """Converts json data to a Document instance
 
         :param str json_data: The json data to load into the Document
@@ -465,7 +476,16 @@ class BaseDocument:
         # TODO should `created` default to False? If the object already exists
         # in the DB, you would likely retrieve it from MongoDB itself through
         # a query, not load it from JSON data.
-        return cls._from_son(json_util.loads(json_data), created=created)
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
+        return cls._from_son(json_util.loads(json_data, **kwargs), created=created)
 
     def __expand_dynamic_values(self, name, value):
         """Expand any dynamic values to their correct types / values."""
@@ -506,7 +526,7 @@ class BaseDocument:
         if "." in key:
             key, rest = key.split(".", 1)
             key = self._db_field_map.get(key, key)
-            key = "{}.{}".format(key, rest)
+            key = f"{key}.{rest}"
         else:
             key = self._db_field_map.get(key, key)
 
@@ -578,7 +598,7 @@ class BaseDocument:
         else:
             iterator = data.items()
 
-        for index_or_key, value in iterator:
+        for _index_or_key, value in iterator:
             if hasattr(value, "_get_changed_fields") and not isinstance(
                 value, Document
             ):  # don't follow references
@@ -602,7 +622,7 @@ class BaseDocument:
             iterator = data.items()
 
         for index_or_key, value in iterator:
-            item_key = "{}{}.".format(base_key, index_or_key)
+            item_key = f"{base_key}{index_or_key}."
             # don't check anything lower if this key is already marked
             # as changed.
             if item_key[:-1] in changed_fields:
@@ -610,17 +630,18 @@ class BaseDocument:
 
             if hasattr(value, "_get_changed_fields"):
                 changed = value._get_changed_fields()
-                changed_fields += ["{}{}".format(item_key, k) for k in changed if k]
+                changed_fields += [f"{item_key}{k}" for k in changed if k]
             elif isinstance(value, (list, tuple, dict)):
                 BaseDocument._nestable_types_changed_fields(
                     changed_fields, item_key, value
                 )
 
     def _get_changed_fields(self):
-        """Return a list of all fields that have explicitly been changed.
-        """
+        """Return a list of all fields that have explicitly been changed."""
         EmbeddedDocument = _import_class("EmbeddedDocument")
+        LazyReferenceField = _import_class("LazyReferenceField")
         ReferenceField = _import_class("ReferenceField")
+        GenericLazyReferenceField = _import_class("GenericLazyReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
         SortedListField = _import_class("SortedListField")
 
@@ -643,10 +664,16 @@ class BaseDocument:
             if isinstance(data, EmbeddedDocument):
                 # Find all embedded fields that have been changed
                 changed = data._get_changed_fields()
-                changed_fields += ["{}{}".format(key, k) for k in changed if k]
+                changed_fields += [f"{key}{k}" for k in changed if k]
             elif isinstance(data, (list, tuple, dict)):
                 if hasattr(field, "field") and isinstance(
-                    field.field, (ReferenceField, GenericReferenceField)
+                    field.field,
+                    (
+                        LazyReferenceField,
+                        ReferenceField,
+                        GenericLazyReferenceField,
+                        GenericReferenceField,
+                    ),
                 ):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
@@ -750,8 +777,7 @@ class BaseDocument:
 
     @classmethod
     def _from_son(cls, son, _auto_dereference=True, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo SON (dict)
-        """
+        """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
         if son and not isinstance(son, dict):
             raise ValueError(
                 "The source SON object needs to be of type 'dict' but a '%s' was found"
@@ -796,11 +822,10 @@ class BaseDocument:
                     errors_dict[field_name] = e
 
         if errors_dict:
-            errors = "\n".join(
-                ["Field '{}' - {}".format(k, v) for k, v in errors_dict.items()]
-            )
+            errors = "\n".join([f"Field '{k}' - {v}" for k, v in errors_dict.items()])
             msg = "Invalid data to create a `{}` instance.\n{}".format(
-                cls._class_name, errors,
+                cls._class_name,
+                errors,
             )
             raise InvalidDocumentError(msg)
 
@@ -898,7 +923,10 @@ class BaseDocument:
             elif key.startswith("("):
                 direction = pymongo.GEOSPHERE
             elif key.startswith(")"):
-                direction = pymongo.GEOHAYSTACK
+                try:
+                    direction = pymongo.GEOHAYSTACK
+                except AttributeError:
+                    raise NotImplementedError
             elif key.startswith("*"):
                 direction = pymongo.GEO2D
             if key.startswith(("+", "-", "*", "$", "#", "(", ")")):
@@ -923,10 +951,10 @@ class BaseDocument:
             index_list.append((key, direction))
 
         # Don't add cls to a geo index
-        if include_cls and direction not in (
-            pymongo.GEO2D,
-            pymongo.GEOHAYSTACK,
-            pymongo.GEOSPHERE,
+        if (
+            include_cls
+            and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
+            and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
         ):
             index_list.insert(0, ("_cls", 1))
 
@@ -968,10 +996,7 @@ class BaseDocument:
                     unique_fields += unique_with
 
                 # Add the new index to the list
-                fields = [
-                    ("{}{}".format(namespace, f), pymongo.ASCENDING)
-                    for f in unique_fields
-                ]
+                fields = [(f"{namespace}{f}", pymongo.ASCENDING) for f in unique_fields]
                 index = {"fields": fields, "unique": True, "sparse": sparse}
                 unique_indexes.append(index)
 
@@ -1007,9 +1032,7 @@ class BaseDocument:
             "PolygonField",
         )
 
-        geo_field_types = tuple(
-            [_import_class(field) for field in geo_field_type_names]
-        )
+        geo_field_types = tuple(_import_class(field) for field in geo_field_type_names)
 
         for field in cls._fields.values():
             if not isinstance(field, geo_field_types):
@@ -1027,7 +1050,7 @@ class BaseDocument:
             elif field._geo_index:
                 field_name = field.db_field
                 if parent_field:
-                    field_name = "{}.{}".format(parent_field, field_name)
+                    field_name = f"{parent_field}.{field_name}"
                 geo_indices.append({"fields": [(field_name, field._geo_index)]})
 
         return geo_indices
@@ -1165,8 +1188,7 @@ class BaseDocument:
 
     @classmethod
     def _translate_field_name(cls, field, sep="."):
-        """Translate a field attribute name to a database field name.
-        """
+        """Translate a field attribute name to a database field name."""
         parts = field.split(sep)
         parts = [f.db_field for f in cls._lookup_field(parts)]
         return ".".join(parts)

@@ -6,7 +6,6 @@ import re
 import pytest
 
 from mongoengine import *
-
 from tests.utils import MongoDBTestCase
 
 
@@ -60,7 +59,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
             assert log == log1
 
         # Test string padding
-        microsecond = map(int, [math.pow(10, x) for x in range(6)])
+        microsecond = map(int, (math.pow(10, x) for x in range(6)))
         mm = dd = hh = ii = ss = [1, 10]
 
         for values in itertools.product([2014], mm, dd, hh, ii, ss, microsecond):
@@ -207,3 +206,9 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
 
         with pytest.raises(ValidationError):
             log.save()
+
+    def test_query_none_value_dont_raise(self):
+        class Log(Document):
+            timestamp = ComplexDateTimeField()
+
+        _ = list(Log.objects(timestamp=None))

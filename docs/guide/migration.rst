@@ -35,7 +35,7 @@ existing ``User`` model with a `default=True`. Thus you simply update the ``User
 
     class User(Document):
         name = StringField(required=True)
-        enabled = BooleaField(default=True)
+        enabled = BooleanField(default=True)
 
 Without applying any migration, we now reload an object from the database into the ``User`` class
 and checks its `enabled` attribute:
@@ -222,6 +222,47 @@ it is often useful for complex migrations of Document models.
             humans_coll.replace_one({'_id': doc['_id']}, doc)
 
 .. warning:: Be aware of this `flaw <https://groups.google.com/g/mongodb-user/c/AFC1ia7MHzk>`_ if you modify documents while iterating
+
+Example 4: Index removal
+========================
+
+If you remove an index from your Document class, or remove an indexed Field from your Document class,
+you'll need to manually drop the corresponding index. MongoEngine will not do that for you.
+
+The way to deal with this case is to identify the name of the index to drop with `index_information()`, and then drop
+it with `drop_index()`
+
+Let's for instance assume that you start with the following Document class
+
+.. code-block:: python
+
+    class User(Document):
+        name = StringField(index=True)
+
+        meta = {"indexes": ["name"]}
+
+    User(name="John Doe").save()
+
+As soon as you start interacting with the Document collection (when `.save()` is called in this case),
+it would create the following indexes:
+
+.. code-block:: python
+
+    print(User._get_collection().index_information())
+    # {
+    #  '_id_': {'key': [('_id', 1)], 'v': 2},
+    #  'name_1': {'background': False, 'key': [('name', 1)], 'v': 2},
+    # }
+
+Thus: '_id' which is the default index and 'name_1' which is our custom index.
+If you would remove the 'name' field or its index, you would have to call:
+
+.. code-block:: python
+
+    User._get_collection().drop_index('name_1')
+
+.. note:: When adding new fields or new indexes, MongoEngine will take care of creating them
+    (unless `auto_create_index` is disabled) ::
 
 Recommendations
 ===============

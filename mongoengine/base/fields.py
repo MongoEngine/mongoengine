@@ -1,12 +1,15 @@
 import operator
-import warnings
 import weakref
 
-from bson import DBRef, ObjectId, SON
 import pymongo
+from bson import SON, DBRef, ObjectId
 
 from mongoengine.base.common import UPDATE_OPERATORS
-from mongoengine.base.datastructures import BaseDict, BaseList, EmbeddedDocumentList
+from mongoengine.base.datastructures import (
+    BaseDict,
+    BaseList,
+    EmbeddedDocumentList,
+)
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError
 
@@ -16,11 +19,9 @@ __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
-
-    .. versionchanged:: 0.5 - added verbose and help text
     """
 
-    name = None
+    name = None  # set in TopLevelDocumentMetaclass
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
     _auto_dereference = True
@@ -43,7 +44,7 @@ class BaseField:
         choices=None,
         null=False,
         sparse=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param db_field: The database field to store this field in
@@ -51,20 +52,20 @@ class BaseField:
         :param required: If the field is required. Whether it has to have a
             value or not. Defaults to False.
         :param default: (optional) The default value for this field if no value
-            has been set (or if the value has been unset).  It can be a
+            has been set, if the value is set to None or has been unset. It can be a
             callable.
-        :param unique: Is the field value unique or not.  Defaults to False.
+        :param unique: Is the field value unique or not (Creates an index).  Defaults to False.
         :param unique_with: (optional) The other field this field should be
-            unique with.
-        :param primary_key: Mark this field as the primary key. Defaults to False.
+            unique with (Creates an index).
+        :param primary_key: Mark this field as the primary key ((Creates an index)). Defaults to False.
         :param validation: (optional) A callable to validate the value of the
             field.  The callable takes the value as parameter and should raise
             a ValidationError if validation fails
         :param choices: (optional) The valid choices
-        :param null: (optional) If the field value can be null. If no and there is a default value
-            then the default value is set
+        :param null: (optional) If the field value can be null when a default exist. If not set, the default value
+        will be used in case a field with a default value is set to None. Defaults to False.
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
-            means that uniqueness won't be enforced for `None` values
+            means that uniqueness won't be enforced for `None` values (Creates an index). Defaults to False.
         :param **kwargs: (optional) Arbitrary indirection-free metadata for
             this field can be supplied as additional keyword arguments and
             accessed as attributes of the field. Must not conflict with any
@@ -120,8 +121,7 @@ class BaseField:
             BaseField.creation_counter += 1
 
     def __get__(self, instance, owner):
-        """Descriptor for retrieving a value from a field in a document.
-        """
+        """Descriptor for retrieving a value from a field in a document."""
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -265,11 +265,34 @@ class ComplexBaseField(BaseField):
     Allows for nesting of embedded documents inside complex types.
     Handles the lazy dereferencing of a queryset by lazily dereferencing all
     items in a list / dict rather than one at a time.
-
-    .. versionadded:: 0.5
     """
 
-    field = None
+    def __init__(self, field=None, **kwargs):
+        self.field = field
+        super().__init__(**kwargs)
+
+    @staticmethod
+    def _lazy_load_refs(instance, name, ref_values, *, max_depth):
+        _dereference = _import_class("DeReference")()
+        documents = _dereference(
+            ref_values,
+            max_depth=max_depth,
+            instance=instance,
+            name=name,
+        )
+        return documents
+
+    def __set__(self, instance, value):
+        # Some fields e.g EnumField are converted upon __set__
+        # So it is fair to mimic the same behavior when using e.g ListField(EnumField)
+        EnumField = _import_class("EnumField")
+        if self.field and isinstance(self.field, EnumField):
+            if isinstance(value, (list, tuple)):
+                value = [self.field.to_python(sub_val) for sub_val in value]
+            elif isinstance(value, dict):
+                value = {key: self.field.to_python(sub) for key, sub in value.items()}
+
+        return super().__set__(instance, value)
 
     def __get__(self, instance, owner):
         """Descriptor to automatically dereference references."""
@@ -288,19 +311,15 @@ class ComplexBaseField(BaseField):
             or isinstance(self.field, (GenericReferenceField, ReferenceField))
         )
 
-        _dereference = _import_class("DeReference")()
-
         if (
             instance._initialised
             and dereference
             and instance._data.get(self.name)
             and not getattr(instance._data[self.name], "_dereferenced", False)
         ):
-            instance._data[self.name] = _dereference(
-                instance._data.get(self.name),
-                max_depth=1,
-                instance=instance,
-                name=self.name,
+            ref_values = instance._data.get(self.name)
+            instance._data[self.name] = self._lazy_load_refs(
+                ref_values=ref_values, instance=instance, name=self.name, max_depth=1
             )
             if hasattr(instance._data[self.name], "_dereferenced"):
                 instance._data[self.name]._dereferenced = True
@@ -326,7 +345,9 @@ class ComplexBaseField(BaseField):
             and isinstance(value, (BaseList, BaseDict))
             and not value._dereferenced
         ):
-            value = _dereference(value, max_depth=1, instance=instance, name=self.name)
+            value = self._lazy_load_refs(
+                ref_values=value, instance=instance, name=self.name, max_depth=1
+            )
             value._dereferenced = True
             instance._data[self.name] = value
 
@@ -425,12 +446,12 @@ class ComplexBaseField(BaseField):
                             " have been saved to the database"
                         )
 
-                    # If its a document that is not inheritable it won't have
+                    # If it's a document that is not inheritable it won't have
                     # any _cls data so make it a generic reference allows
                     # us to dereference
                     meta = getattr(v, "_meta", {})
                     allow_inheritance = meta.get("allow_inheritance")
-                    if not allow_inheritance and not self.field:
+                    if not allow_inheritance:
                         value_dict[k] = GenericReferenceField().to_mongo(v)
                     else:
                         collection = v._get_collection_name()
@@ -469,9 +490,7 @@ class ComplexBaseField(BaseField):
 
             if errors:
                 field_class = self.field.__class__.__name__
-                self.error(
-                    "Invalid {} item ({})".format(field_class, value), errors=errors
-                )
+                self.error(f"Invalid {field_class} item ({value})", errors=errors)
         # Don't allow empty values if required
         if self.required and not value:
             self.error("Field is required and cannot be empty")
@@ -502,14 +521,17 @@ class ObjectIdField(BaseField):
         return value
 
     def to_mongo(self, value):
-        if not isinstance(value, ObjectId):
-            try:
-                return ObjectId(str(value))
-            except Exception as e:
-                self.error(str(e))
-        return value
+        if isinstance(value, ObjectId):
+            return value
+
+        try:
+            return ObjectId(str(value))
+        except Exception as e:
+            self.error(str(e))
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return self.to_mongo(value)
 
     def validate(self, value):
@@ -520,10 +542,7 @@ class ObjectIdField(BaseField):
 
 
 class GeoJsonBaseField(BaseField):
-    """A geo json field storing a geojson style object.
-
-    .. versionadded:: 0.8
-    """
+    """A geo json field storing a geojson style object."""
 
     _geo_index = pymongo.GEOSPHERE
     _type = "GeoBase"
@@ -543,7 +562,7 @@ class GeoJsonBaseField(BaseField):
         if isinstance(value, dict):
             if set(value.keys()) == {"type", "coordinates"}:
                 if value["type"] != self._type:
-                    self.error('{} type must be "{}"'.format(self._name, self._type))
+                    self.error(f'{self._name} type must be "{self._type}"')
                 return self.validate(value["coordinates"])
             else:
                 self.error(

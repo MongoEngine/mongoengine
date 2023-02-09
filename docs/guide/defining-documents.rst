@@ -27,6 +27,8 @@ objects** as class attributes to the document class::
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
 
+.. _dynamic-document-schemas:
+
 Dynamic document schemas
 ========================
 One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
@@ -110,6 +112,33 @@ arguments can be set on all fields:
 
 :attr:`db_field` (Default: None)
     The MongoDB field name.
+
+    If set, operations in MongoDB will be performed with this value instead of the class attribute.
+
+    This allows you to use a different attribute than the name of the field used in MongoDB. ::
+
+            from mongoengine import *
+
+            class Page(Document):
+                page_number = IntField(db_field="pageNumber")
+
+            # Create a Page and save it
+            Page(page_number=1).save()
+
+            # How 'pageNumber' is stored in MongoDB
+            Page.objects.as_pymongo() # [{'_id': ObjectId('629dfc45ee4cc407b1586b1f'), 'pageNumber': 1}]
+
+            # Retrieve the object
+            page: Page = Page.objects.first()
+
+            print(page.page_number)  # prints 1
+
+            print(page.pageNumber) # raises AttributeError
+
+    .. note:: If set, use the name of the attribute when defining indexes in the :attr:`meta`
+        dictionary rather than the :attr:`db_field` otherwise, :class:`~mongoengine.LookUpError`
+        will be raised.
+
 
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
@@ -231,6 +260,9 @@ document class as the first argument::
     comment2 = Comment(content='Nice article!')
     page = Page(comments=[comment1, comment2])
 
+Embedded documents can also leverage the flexibility of :ref:`dynamic-document-schemas:`
+by inheriting :class:`~mongoengine.DynamicEmbeddedDocument`.
+
 Dictionary Fields
 -----------------
 Often, an embedded document may be used instead of a dictionary – generally
@@ -290,12 +322,12 @@ as the constructor's argument::
         content = StringField()
 
 
-.. _one-to-many-with-listfields:
+.. _many-to-many-with-listfields:
 
-One to Many with ListFields
+Many to Many with ListFields
 '''''''''''''''''''''''''''
 
-If you are implementing a one to many relationship via a list of references,
+If you are implementing a many to many relationship via a list of references,
 then the references are stored as DBRefs and to query you need to pass an
 instance of the object to the query::
 
@@ -336,7 +368,6 @@ supplying the :attr:`reverse_delete_rule` attributes on the
 :class:`ReferenceField` definition, like this::
 
     class ProfilePage(Document):
-        ...
         employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
@@ -432,10 +463,10 @@ Document collections
 ====================
 Document classes that inherit **directly** from :class:`~mongoengine.Document`
 will have their own **collection** in the database. The name of the collection
-is by default the name of the class, converted to lowercase (so in the example
-above, the collection would be called `page`). If you need to change the name
-of the collection (e.g. to use MongoEngine with an existing database), then
-create a class dictionary attribute called :attr:`meta` on your document, and
+is by default the name of the class converted to snake_case (e.g if your Document class
+is named `CompanyUser`, the corresponding collection would be `company_user`). If you need
+to change the name of the collection (e.g. to use MongoEngine with an existing database),
+then create a class dictionary attribute called :attr:`meta` on your document, and
 set :attr:`collection` to the name of the collection that you want your
 document class to use::
 
@@ -473,7 +504,7 @@ dictionary containing a full index definition.
 
 A direction may be specified on fields by prefixing the field name with a
 **+** (for ascending) or a **-** sign (for descending). Note that direction
-only matters on multi-field indexes. Text indexes may be specified by prefixing
+only matters on compound indexes. Text indexes may be specified by prefixing
 the field name with a **$**. Hashed indexes may be specified by prefixing
 the field name with a **#**::
 
@@ -484,14 +515,14 @@ the field name with a **#**::
         created = DateTimeField()
         meta = {
             'indexes': [
-                'title',
+                'title',   # single-field index
                 '$title',  # text index
                 '#title',  # hashed index
-                ('title', '-rating'),
-                ('category', '_cls'),
+                ('title', '-rating'),  # compound index
+                ('category', '_cls'),  # compound index
                 {
                     'fields': ['created'],
-                    'expireAfterSeconds': 3600
+                    'expireAfterSeconds': 3600  # ttl index
                 }
             ]
         }
@@ -543,6 +574,7 @@ There are a few top level defaults for all indexes that can be set::
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
+            'auto_create_index_on_save': False,
         }
 
 
@@ -557,10 +589,15 @@ There are a few top level defaults for all indexes that can be set::
 
 :attr:`auto_create_index` (Optional)
     When this is True (default), MongoEngine will ensure that the correct
-    indexes exist in MongoDB each time a command is run. This can be disabled
+    indexes exist in MongoDB when the Document is first used. This can be disabled
     in systems where indexes are managed separately. Disabling this will improve
     performance.
 
+:attr:`auto_create_index_on_save` (Optional)
+    When this is True, MongoEngine will ensure that the correct
+    indexes exist in MongoDB each time :meth:`~mongoengine.document.Document.save`
+    is run. Enabling this will degrade performance. The default is False. This
+    option was added in version 0.25.
 
 Compound Indexes and Indexing sub documents
 -------------------------------------------
@@ -624,8 +661,8 @@ point. To create a geospatial index you must prefix the field with the
             ],
         }
 
-Time To Live indexes
---------------------
+Time To Live (TTL) indexes
+--------------------------
 
 A special index type that allows you to automatically expire data from a
 collection after a given period. See the official
