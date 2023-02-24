@@ -7,12 +7,45 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
+  Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
+- BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
+  For more info, check https://docs.mongoengine.org/guide/mongomock.html
+
+Changes in 0.26.0
+=================
+- BREAKING CHANGE: Improved the performance of :meth:`~mongoengine.Document.save()`
+  by removing the call to :meth:`~mongoengine.Document.ensure_indexes` unless
+  ``meta['auto_create_index_on_save']`` is set to True. With the default settings, Document indexes
+  will still be created on the fly, during the first usage of the collection (query, insert, etc),
+  they will just not be re-created whenever .save() is called.
+- Added meta ``auto_create_index_on_save`` so you can enable index creation
+  on :meth:`~mongoengine.Document.save()` (as it was < 0.26.0).
+- BREAKING CHANGE: remove deprecated method ``ensure_index`` (replaced by ``create_index`` long time ago).
+- Addition of Decimal128Field: :class:`~mongoengine.fields.Decimal128Field` for accurate representation of Decimals (much better than the legacy field DecimalField).
+  Although it could work to switch an existing DecimalField to Decimal128Field without applying a migration script,
+  it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
+- BREAKING CHANGE: When using ListField(EnumField) or DictField(EnumField), the values weren't always cast into the Enum (#2531)
+- BREAKING CHANGE (bugfix) Querying ObjectIdField or ComplexDateTimeField with None no longer raise a ValidationError (#2681)
+- Allow updating a field that has an operator name e.g. "type" with .update(set__type="foo"). It was raising an error previously. #2595
+
+Changes in 0.25.0
+=================
+- Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
+- Bug Fix - distinct query doesn't obey the ``no_dereference()``. #2663
+- Add tests against Mongo 5.0 in pipeline
+- Drop support for Python 3.6 (EOL)
+- Bug fix support for PyMongo>=4 to fix "pymongo.errors.InvalidOperation: Cannot use MongoClient after close"
+  errors. #2627
+
+Changes in 0.24.2
+=================
+- Bug fix regarding uuidRepresentation that was case sensitive #2650
 
 Changes in 0.24.1
 =================
 - Allow pymongo<5.0 to be pulled
 - Don't use deprecated property for emptiness check in queryset base #2633
-
 
 Changes in 0.24.0
 =================

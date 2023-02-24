@@ -230,8 +230,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 cls._collection = db[collection_name]
 
             # Ensure indexes on the collection unless auto_create_index was
-            # set to False.
-            # Also there is no need to ensure indexes on slave.
+            # set to False. Plus, there is no need to ensure indexes on slave.
             db = cls._get_db()
             if cls._meta.get("auto_create_index", True) and db.client.is_primary:
                 cls.ensure_indexes()
@@ -388,6 +387,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             meta['cascade'] = True.  Also you can pass different kwargs to
             the cascade save using cascade_kwargs which overwrites the
             existing kwargs with custom values.
+        .. versionchanged:: 0.26
+           save() no longer calls :meth:`~mongoengine.Document.ensure_indexes`
+           unless ``meta['auto_create_index_on_save']`` is set to True.
+
         """
         signal_kwargs = signal_kwargs or {}
 
@@ -411,13 +414,21 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
         doc = self.to_mongo()
 
-        if self._meta.get("auto_create_index", True):
+        # Initialize the Document's underlying pymongo.Collection (+create indexes) if not already initialized
+        # Important to do this here to avoid that the index creation gets wrapped in the try/except block below
+        # and turned into mongoengine.OperationError
+        if self._collection is None:
+            _ = self._get_collection()
+        elif self._meta.get("auto_create_index_on_save", False):
+            # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             self.ensure_indexes()
 
         try:
             # Save a new document or update an existing one
             if created:
-                object_id = self._save_create(doc, force_insert, write_concern)
+                object_id = self._save_create(
+                    doc=doc, force_insert=force_insert, write_concern=write_concern
+                )
             else:
                 object_id, created = self._save_update(
                     doc, save_condition, write_concern
@@ -869,18 +880,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         )
 
     @classmethod
-    def ensure_index(cls, key_or_list, background=False, **kwargs):
-        """Ensure that the given indexes are in place. Deprecated in favour
-        of create_index.
-
-        :param key_or_list: a single index key or a list of index keys (to
-            construct a multi-field index); keys may be prefixed with a **+**
-            or a **-** to determine the index ordering
-        :param background: Allows index creation in the background
-        """
-        return cls.create_index(key_or_list, background=background, **kwargs)
-
-    @classmethod
     def ensure_indexes(cls):
         """Checks the document meta data and ensures all the indexes exist.
 
@@ -889,6 +888,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         By default, this will get called automatically upon first interaction with the
         Document collection (query, save, etc) so unless you disabled `auto_create_index`, you
         shouldn't have to call this manually.
+
+        This also gets called upon every call to Document.save if `auto_create_index_on_save` is set to True
+
+        If called multiple times, MongoDB will not re-recreate indexes if they exist already
 
         .. note:: You can disable automatic index creation by setting
                   `auto_create_index` to False in the documents meta data
@@ -951,7 +954,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         classes = []
 
         def get_classes(cls):
-
             if cls not in classes and isinstance(cls, TopLevelDocumentMetaclass):
                 classes.append(cls)
 
@@ -978,7 +980,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         get_classes(cls)
 
-        # get the indexes spec for all of the gathered classes
+        # get the indexes spec for all the gathered classes
         def get_indexes_spec(cls):
             indexes = []
 
@@ -1013,10 +1015,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         required = cls.list_indexes()
 
         existing = []
-        for info in (
-            cls._get_collection().index_information(session=_get_session()).values()
-        ):
+        collection = cls._get_collection()
+        for info in collection.index_information(session=_get_session()).values():
             if "_fts" in info["key"][0]:
+                # Useful for text indexes (but not only)
                 index_type = info["key"][0][1]
                 text_index_fields = info.get("weights").keys()
                 existing.append([(key, index_type) for key in text_index_fields])

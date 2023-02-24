@@ -186,6 +186,10 @@ access to the same User document across databases::
     with switch_db(User, 'archive-user-db') as User:
         User(name='Ross').save()  # Saves the 'archive-user-db'
 
+.. note:: :func:`~mongoengine.context_managers.switch_db` when used on
+    a class that allow inheritance will change the database alias
+    for instances of a given class only - instances of subclasses will still use
+    the default database.
 
 Switch Collection
 -----------------

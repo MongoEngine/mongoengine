@@ -275,7 +275,7 @@ class TestTransform(unittest.TestCase):
         assert Doc.objects(df__type=2).count() == 1  # str
         assert Doc.objects(df__type=16).count() == 1  # int
 
-    def test_last_field_name_like_operator(self):
+    def test_embedded_field_name_like_operator(self):
         class EmbeddedItem(EmbeddedDocument):
             type = StringField()
             name = StringField()
@@ -294,6 +294,30 @@ class TestTransform(unittest.TestCase):
         Doc.objects(id=doc.id).update(set__item__type__="sword")
         assert 1 == Doc.objects(item__type__="sword").count()
         assert 0 == Doc.objects(item__type__="axe").count()
+
+    def test_regular_field_named_like_operator(self):
+        class SimpleDoc(Document):
+            size = StringField()
+            type = StringField()
+
+        SimpleDoc.drop_collection()
+        SimpleDoc(type="ok", size="ok").save()
+
+        qry = transform.query(SimpleDoc, type="testtype")
+        assert qry == {"type": "testtype"}
+
+        assert SimpleDoc.objects(type="ok").count() == 1
+        assert SimpleDoc.objects(size="ok").count() == 1
+
+        update = transform.update(SimpleDoc, set__type="testtype")
+        assert update == {"$set": {"type": "testtype"}}
+
+        SimpleDoc.objects.update(set__type="testtype")
+        SimpleDoc.objects.update(set__size="testsize")
+
+        s = SimpleDoc.objects.first()
+        assert s.type == "testtype"
+        assert s.size == "testsize"
 
     def test_understandable_error_raised(self):
         class Event(Document):

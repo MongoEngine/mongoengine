@@ -113,6 +113,33 @@ arguments can be set on all fields:
 :attr:`db_field` (Default: None)
     The MongoDB field name.
 
+    If set, operations in MongoDB will be performed with this value instead of the class attribute.
+
+    This allows you to use a different attribute than the name of the field used in MongoDB. ::
+
+            from mongoengine import *
+
+            class Page(Document):
+                page_number = IntField(db_field="pageNumber")
+
+            # Create a Page and save it
+            Page(page_number=1).save()
+
+            # How 'pageNumber' is stored in MongoDB
+            Page.objects.as_pymongo() # [{'_id': ObjectId('629dfc45ee4cc407b1586b1f'), 'pageNumber': 1}]
+
+            # Retrieve the object
+            page: Page = Page.objects.first()
+
+            print(page.page_number)  # prints 1
+
+            print(page.pageNumber) # raises AttributeError
+
+    .. note:: If set, use the name of the attribute when defining indexes in the :attr:`meta`
+        dictionary rather than the :attr:`db_field` otherwise, :class:`~mongoengine.LookUpError`
+        will be raised.
+
+
 :attr:`required` (Default: False)
     If set to True and the field is not set on the document instance, a
     :class:`~mongoengine.ValidationError` will be raised when the document is
@@ -547,6 +574,7 @@ There are a few top level defaults for all indexes that can be set::
             'index_background': True,
             'index_cls': False,
             'auto_create_index': True,
+            'auto_create_index_on_save': False,
         }
 
 
@@ -561,10 +589,15 @@ There are a few top level defaults for all indexes that can be set::
 
 :attr:`auto_create_index` (Optional)
     When this is True (default), MongoEngine will ensure that the correct
-    indexes exist in MongoDB each time a command is run. This can be disabled
+    indexes exist in MongoDB when the Document is first used. This can be disabled
     in systems where indexes are managed separately. Disabling this will improve
     performance.
 
+:attr:`auto_create_index_on_save` (Optional)
+    When this is True, MongoEngine will ensure that the correct
+    indexes exist in MongoDB each time :meth:`~mongoengine.document.Document.save`
+    is run. Enabling this will degrade performance. The default is False. This
+    option was added in version 0.25.
 
 Compound Indexes and Indexing sub documents
 -------------------------------------------

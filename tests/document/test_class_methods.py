@@ -90,7 +90,7 @@ class TestClassMethods(unittest.TestCase):
         BlogPost.ensure_indexes()
         assert BlogPost.compare_indexes() == {"missing": [], "extra": []}
 
-        BlogPost.ensure_index(["author", "description"])
+        BlogPost.create_index(["author", "description"])
         assert BlogPost.compare_indexes() == {
             "missing": [],
             "extra": [[("author", 1), ("description", 1)]],
@@ -130,7 +130,7 @@ class TestClassMethods(unittest.TestCase):
         BlogPostWithTags.ensure_indexes()
         assert BlogPost.compare_indexes() == {"missing": [], "extra": []}
 
-        BlogPostWithTags.ensure_index(["author", "tag_list"])
+        BlogPostWithTags.create_index(["author", "tag_list"])
         assert BlogPost.compare_indexes() == {
             "missing": [],
             "extra": [[("_cls", 1), ("author", 1), ("tag_list", 1)]],
