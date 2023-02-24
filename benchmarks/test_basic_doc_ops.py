@@ -12,7 +12,7 @@ from mongoengine import (
     StringField,
 )
 
-mongoengine.connect(db="mongoengine_benchmark_test")
+mongoengine.connect(db="mongoengine_benchmark_test", w=1)
 
 
 def timeit(f, n=10000):

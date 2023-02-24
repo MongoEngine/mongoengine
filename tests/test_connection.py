@@ -5,7 +5,11 @@ import pymongo
 import pytest
 from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
-from pymongo.errors import InvalidName, OperationFailure
+from pymongo.errors import (
+    InvalidName,
+    InvalidOperation,
+    OperationFailure,
+)
 
 import mongoengine.connection
 from mongoengine import (
@@ -50,7 +54,7 @@ class ConnectionTest(unittest.TestCase):
         connect("mongoenginetest")
 
         conn = get_connection()
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
 
         db = get_db()
         assert isinstance(db, pymongo.database.Database)
@@ -58,7 +62,13 @@ class ConnectionTest(unittest.TestCase):
 
         connect("mongoenginetest2", alias="testdb")
         conn = get_connection("testdb")
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
+
+        connect(
+            "mongoenginetest2", alias="testdb3", mongo_client_class=pymongo.MongoClient
+        )
+        conn = get_connection("testdb")
+        assert isinstance(conn, pymongo.MongoClient)
 
     def test_connect_disconnect_works_properly(self):
         class History1(Document):
@@ -295,6 +305,30 @@ class ConnectionTest(unittest.TestCase):
         disconnect()
         assert len(_local_sessions.sessions) == 0
 
+    def test_disconnect_does_not_close_client_used_by_another_alias(self):
+        client1 = connect(alias="disconnect_reused_client_test_1")
+        client2 = connect(alias="disconnect_reused_client_test_2")
+        client3 = connect(alias="disconnect_reused_client_test_3", maxPoolSize=10)
+        assert client1 is client2
+        assert client1 is not client3
+        client1.admin.command("ping")
+        disconnect("disconnect_reused_client_test_1")
+        # The client is not closed because the second alias still exists.
+        client2.admin.command("ping")
+        disconnect("disconnect_reused_client_test_2")
+        # The client is now closed:
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(InvalidOperation):
+                client2.admin.command("ping")
+        # 3rd client connected to the same cluster with different options
+        # is not closed either.
+        client3.admin.command("ping")
+        disconnect("disconnect_reused_client_test_3")
+        # 3rd client is now closed:
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(InvalidOperation):
+                client3.admin.command("ping")
+
     def test_disconnect_all(self):
         connections = mongoengine.connection._connections
         dbs = mongoengine.connection._dbs
@@ -426,7 +460,7 @@ class ConnectionTest(unittest.TestCase):
                 db.list_collection_names()
         else:
             with pytest.raises(OperationFailure):
-                db = get_db()
+                get_db()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`

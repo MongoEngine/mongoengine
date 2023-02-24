@@ -12,6 +12,7 @@ from operator import itemgetter
 import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
+from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.int64 import Int64
 from pymongo import ReturnDocument
 
@@ -99,6 +100,7 @@ __all__ = (
     "MultiLineStringField",
     "MultiPolygonField",
     "GeoJsonBaseField",
+    "Decimal128Field",
 )
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
@@ -442,7 +444,10 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
+    """Disclaimer: This field is kept for historical reason but since it converts the values to float, it
+    is not suitable for true decimal storage. Consider using :class:`~mongoengine.fields.Decimal128Field`.
+
+    Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
     """
 
@@ -489,9 +494,6 @@ class DecimalField(BaseField):
         super().__init__(**kwargs)
 
     def to_python(self, value):
-        if value is None:
-            return value
-
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal("%s" % value)
@@ -505,8 +507,6 @@ class DecimalField(BaseField):
             return value.quantize(decimal.Decimal(), rounding=self.rounding)
 
     def to_mongo(self, value):
-        if value is None:
-            return value
         if self.force_string:
             return str(self.to_python(value))
         return float(self.to_python(value))
@@ -527,6 +527,8 @@ class DecimalField(BaseField):
             self.error("Decimal value is too large")
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
@@ -730,6 +732,8 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self._convert_from_datetime(value))
 
 
@@ -1123,7 +1127,7 @@ class MapField(DictField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        # XXX ValidationError raised outside of the "validate" method.
+        # XXX ValidationError raised outside the "validate" method.
         if not isinstance(field, BaseField):
             self.error("Argument to MapField constructor must be a valid field")
         super().__init__(field=field, *args, **kwargs)
@@ -1666,14 +1670,25 @@ class EnumField(BaseField):
             kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
-    def __set__(self, instance, value):
-        is_legal_value = value is None or isinstance(value, self._enum_cls)
-        if not is_legal_value:
+    def validate(self, value):
+        if isinstance(value, self._enum_cls):
+            return super().validate(value)
+        try:
+            self._enum_cls(value)
+        except ValueError:
+            self.error(f"{value} is not a valid {self._enum_cls}")
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        if not isinstance(value, self._enum_cls):
             try:
-                value = self._enum_cls(value)
-            except Exception:
-                pass
-        return super().__set__(instance, value)
+                return self._enum_cls(value)
+            except ValueError:
+                return value
+        return value
+
+    def __set__(self, instance, value):
+        return super().__set__(instance, self.to_python(value))
 
     def to_mongo(self, value):
         if isinstance(value, self._enum_cls):
@@ -2658,3 +2673,49 @@ class GenericLazyReferenceField(GenericReferenceField):
             )
         else:
             return super().to_mongo(document)
+
+
+class Decimal128Field(BaseField):
+    """
+    128-bit decimal-based floating-point field capable of emulating decimal
+    rounding with exact precision. This field will expose decimal.Decimal but stores the value as a
+    `bson.Decimal128` behind the scene, this field is intended for monetary data, scientific computations, etc.
+    """
+
+    DECIMAL_CONTEXT = create_decimal128_context()
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value = min_value
+        self.max_value = max_value
+        super().__init__(**kwargs)
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+        if isinstance(value, Decimal128):
+            return value
+        if not isinstance(value, decimal.Decimal):
+            with decimal.localcontext(self.DECIMAL_CONTEXT) as ctx:
+                value = ctx.create_decimal(value)
+        return Decimal128(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+        return self.to_mongo(value).to_decimal()
+
+    def validate(self, value):
+        if not isinstance(value, Decimal128):
+            try:
+                value = Decimal128(value)
+            except (TypeError, ValueError, decimal.InvalidOperation) as exc:
+                self.error("Could not convert value to Decimal128: %s" % exc)
+
+        if self.min_value is not None and value.to_decimal() < self.min_value:
+            self.error("Decimal value is too small")
+
+        if self.max_value is not None and value.to_decimal() > self.max_value:
+            self.error("Decimal value is too large")
+
+    def prepare_query_value(self, op, value):
+        return super().prepare_query_value(op, self.to_mongo(value))

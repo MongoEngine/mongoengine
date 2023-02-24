@@ -31,6 +31,14 @@ class TestBinaryField(MongoDBTestCase):
         assert MIME_TYPE == attachment_1.content_type
         assert BLOB == bytes(attachment_1.blob)
 
+    def test_bytearray_conversion_to_bytes(self):
+        class Dummy(Document):
+            blob = BinaryField()
+
+        byte_arr = bytearray(b"\x00\x00\x00\x00\x00")
+        dummy = Dummy(blob=byte_arr)
+        assert isinstance(dummy.blob, bytes)
+
     def test_validation_succeeds(self):
         """Ensure that valid values can be assigned to binary fields."""
 

@@ -983,44 +983,52 @@ class TestIndexes(unittest.TestCase):
 
     def test_indexes_after_database_drop(self):
         """
-        Test to ensure that indexes are re-created on a collection even
-        after the database has been dropped.
+        Test to ensure that indexes are not re-created on a collection
+        after the database has been dropped unless auto_create_index_on_save
+        is enabled.
 
-        Issue #812
+        Issue #812 and #1446.
         """
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
-        connection = connect(
-            db="tempdatabase", alias="test_indexes_after_database_drop"
-        )
+        tmp_alias = "test_indexes_after_database_drop"
+        connection = connect(db="tempdatabase", alias=tmp_alias)
+        self.addCleanup(connection.drop_database, "tempdatabase")
 
         class BlogPost(Document):
-            title = StringField()
             slug = StringField(unique=True)
+            meta = {"db_alias": tmp_alias}
 
-            meta = {"db_alias": "test_indexes_after_database_drop"}
+        BlogPost.drop_collection()
+        BlogPost(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost(slug="test").save()
 
-        try:
-            BlogPost.drop_collection()
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost(slug="test").save()
+        # No error because the index was not recreated after dropping the database.
+        BlogPost(slug="test").save()
 
-            # Create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
+        # Repeat with auto_create_index_on_save: True.
+        class BlogPost2(Document):
+            slug = StringField(unique=True)
+            meta = {
+                "db_alias": tmp_alias,
+                "auto_create_index_on_save": True,
+            }
 
-            # Drop the Database
-            connection.drop_database("tempdatabase")
+        BlogPost2.drop_collection()
+        BlogPost2(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
-            # Re-create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
-
-            # Create Post #2
-            post2 = BlogPost(title="test2", slug="test")
-            with pytest.raises(NotUniqueError):
-                post2.save()
-        finally:
-            # Drop the temporary database at the end
-            connection.drop_database("tempdatabase")
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost2(slug="test").save()
+        # Error because ensure_indexes is run on every save().
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
     def test_index_dont_send_cls_option(self):
         """

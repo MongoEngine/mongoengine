@@ -4,6 +4,7 @@ import unittest
 import uuid
 import weakref
 from datetime import datetime
+from unittest.mock import Mock
 
 import bson
 import pytest
@@ -1034,6 +1035,17 @@ class TestDocumentInstance(MongoDBTestCase):
             "_id": person.id,
         }
 
+    def test_save_write_concern(self):
+        class Recipient(Document):
+            email = EmailField(required=True)
+
+        rec = Recipient(email="garbage@garbage.com")
+
+        fn = Mock()
+        rec._save_create = fn
+        rec.save(write_concern={"w": 0})
+        assert fn.call_args[1]["write_concern"] == {"w": 0}
+
     def test_save_skip_validation(self):
         class Recipient(Document):
             email = EmailField(required=True)
@@ -1735,7 +1747,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         user = User.objects.first()
         # Even if stored as ObjectId's internally mongoengine uses DBRefs
-        # As ObjectId's aren't automatically derefenced
+        # As ObjectId's aren't automatically dereferenced
         assert isinstance(user._data["orgs"][0], DBRef)
         assert isinstance(user.orgs[0], Organization)
         assert isinstance(user._data["orgs"][0], Organization)
@@ -3593,8 +3605,7 @@ class TestDocumentInstance(MongoDBTestCase):
             cdt_fld = ComplexDateTimeField(null=True)
 
         User.objects.delete()
-        u = User(name="user")
-        u.save()
+        u = User(name="user").save()
         u_from_db = User.objects.get(name="user")
         u_from_db.height = None
         u_from_db.save()

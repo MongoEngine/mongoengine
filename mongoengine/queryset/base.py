@@ -959,9 +959,11 @@ class BaseQuerySet:
         except LookUpError:
             pass
 
-        distinct = self._dereference(
-            queryset._cursor.distinct(field), 1, name=field, instance=self._document
-        )
+        raw_values = queryset._cursor.distinct(field)
+        if not self._auto_dereference:
+            return raw_values
+
+        distinct = self._dereference(raw_values, 1, name=field, instance=self._document)
 
         doc_field = self._document._fields.get(field.split(".", 1)[0])
         instance = None
@@ -1751,28 +1753,29 @@ class BaseQuerySet:
 
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.');
+            function() {{
+                var path = '{{{{~{field}}}}}'.split('.');
                 var field = this;
-                for (p in path) {
+
+                for (p in path) {{
                     if (typeof field != 'undefined')
                        field = field[path[p]];
                     else
                        break;
-                }
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
+                }}
+                if (field && field.constructor == Array) {{
+                    field.forEach(function(item) {{
                         emit(item, 1);
-                    });
-                } else if (typeof field != 'undefined') {
+                    }});
+                }} else if (typeof field != 'undefined') {{
                     emit(field, 1);
-                } else {
+                }} else {{
                     emit(null, 1);
-                }
-            }
-        """ % {
-            "field": field
-        }
+                }}
+            }}
+        """.format(
+            field=field
+        )
         reduce_func = """
             function(key, values) {
                 var total = 0;
