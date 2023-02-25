@@ -516,9 +516,6 @@ class BaseDocument:
 
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
-        if not key:
-            return
-
         if not hasattr(self, "_changed_fields"):
             return
 
