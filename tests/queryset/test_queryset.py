@@ -604,7 +604,6 @@ class TestQueryset(unittest.TestCase):
         assert post.comments[1].votes == 8
 
     def test_update_using_positional_operator_matches_first(self):
-
         # Currently the $ operator only applies to the first matched item in
         # the query
 
@@ -5611,7 +5610,6 @@ class TestQueryset(unittest.TestCase):
         # Check that bool(queryset) does not uses the orderby
         qs = Person.objects.order_by("name")
         with query_counter() as q:
-
             if bool(qs):
                 pass
 
@@ -5624,7 +5622,6 @@ class TestQueryset(unittest.TestCase):
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by("name")
         with query_counter() as q:
-
             for x in qs2:
                 pass
 
@@ -5648,7 +5645,6 @@ class TestQueryset(unittest.TestCase):
         Person(name="A").save()
 
         with query_counter() as q:
-
             if Person.objects:
                 pass
 

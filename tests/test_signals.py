@@ -97,7 +97,6 @@ class TestSignal(unittest.TestCase):
         Author.id.set_next_value(0)
 
         class Another(Document):
-
             name = StringField()
 
             def __unicode__(self):

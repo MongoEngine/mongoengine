@@ -981,7 +981,6 @@ class ListField(ComplexBaseField):
             self.error("List is too long")
 
         if self.field:
-
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
             if (
@@ -2216,7 +2215,6 @@ class SequenceField(BaseField):
         return value
 
     def __set__(self, instance, value):
-
         if value is None and instance._initialised:
             value = self.generate()
 

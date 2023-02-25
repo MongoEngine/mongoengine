@@ -102,7 +102,6 @@ def _get_connection_settings(
 
     resolved_hosts = []
     for entity in conn_host:
-
         # Reject old mongomock integration
         # To be removed in a few versions after 0.27.0
         if entity.startswith("mongomock://") or kwargs.get("is_mock"):

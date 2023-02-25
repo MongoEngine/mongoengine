@@ -1120,7 +1120,6 @@ class BaseQuerySet:
         new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
-
             # If a cursor object has already been created, apply the sort to it
             if new_ordering:
                 queryset._cursor_obj.sort(new_ordering)
