@@ -11,6 +11,7 @@ Development
   Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
   For more info, check https://docs.mongoengine.org/guide/mongomock.html
+- Fix DictField that always gets marked as changed #2606
 
 Changes in 0.26.0
 =================
