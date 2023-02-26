@@ -1316,7 +1316,7 @@ class BaseQuerySet:
         initial_pipeline = []
         if self._none or self._empty:
             initial_pipeline.append({"$limit": 1})
-            initial_pipeline.append({"$match": {"fldksjhkjhafds": "lasdjfhlasdhfk"}})
+            initial_pipeline.append({"$match": {"$expr": False}})
 
         if self._query:
             initial_pipeline.append({"$match": self._query})

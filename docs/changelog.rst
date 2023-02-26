@@ -12,6 +12,7 @@ Development
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
   For more info, check https://docs.mongoengine.org/guide/mongomock.html
 - Fix DictField that always gets marked as changed #2606
+- fix for Queryset.none() that has no effect on update/aggregate / first #2669
 
 Changes in 0.26.0
 =================
