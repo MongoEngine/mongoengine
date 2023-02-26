@@ -2580,6 +2580,12 @@ class TestQueryset(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by("-name")]
         assert ages == [30, 40, 20]
 
+        ages = [p.age for p in self.Person.objects.order_by()]
+        assert ages == [40, 20, 30]
+
+        ages = [p.age for p in self.Person.objects.order_by("")]
+        assert ages == [40, 20, 30]
+
     def test_order_by_optional(self):
         class BlogPost(Document):
             title = StringField()
