@@ -289,6 +289,9 @@ class BaseQuerySet:
     def first(self):
         """Retrieve the first object matching the query."""
         queryset = self.clone()
+        if self._none or self._empty:
+            return None
+
         try:
             result = queryset[0]
         except IndexError:
@@ -551,6 +554,8 @@ class BaseQuerySet:
 
         if write_concern is None:
             write_concern = {}
+        if self._none or self._empty:
+            return 0
 
         queryset = self.clone()
         query = queryset._query
@@ -672,6 +677,9 @@ class BaseQuerySet:
 
         if not update and not upsert and not remove:
             raise OperationError("No update parameters, must either update or remove")
+
+        if self._none or self._empty:
+            return None
 
         queryset = self.clone()
         query = queryset._query
@@ -1306,6 +1314,10 @@ class BaseQuerySet:
         user_pipeline += suppl_pipeline
 
         initial_pipeline = []
+        if self._none or self._empty:
+            initial_pipeline.append({"$limit": 1})
+            initial_pipeline.append({"$match": {"fldksjhkjhafds": "lasdjfhlasdhfk"}})
+
         if self._query:
             initial_pipeline.append({"$match": self._query})
 
