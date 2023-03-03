@@ -177,7 +177,7 @@ def _get_connection_settings(
             "For compatibility with other MongoDB drivers this should be "
             "specified as 'standard' or '{java,csharp}Legacy' to work with "
             "older drivers in those languages. This will be changed to "
-            "'standard' in a future release.",
+            "'unspecified' in a future release.",
             DeprecationWarning,
         )
         kwargs["uuidRepresentation"] = "pythonLegacy"

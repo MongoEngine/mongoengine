@@ -1283,7 +1283,8 @@ class BaseQuerySet:
                 "No 'json_options' are specified! Falling back to "
                 "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
                 "For use with other MongoDB drivers specify the UUID "
-                "representation to use.",
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
