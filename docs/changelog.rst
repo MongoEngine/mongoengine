@@ -7,6 +7,10 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.27.0
+=================
+- Update uuidRepresentation warnings with "unspecified" as the future default (instead of 'standard' previously advertised) #2739
 - Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
   Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
