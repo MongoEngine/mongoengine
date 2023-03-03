@@ -637,7 +637,7 @@ class ConnectionTest(unittest.TestCase):
         )
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common.UuidRepresentation.CSHARP_LEGACY
+            == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
         )
         disconnect(rand)
 
@@ -646,7 +646,7 @@ class ConnectionTest(unittest.TestCase):
         tmp_conn = connect(alias=rand, db=rand, uuidRepresentation="javaLegacy")
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common.UuidRepresentation.JAVA_LEGACY
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         disconnect(rand)
 
@@ -659,7 +659,7 @@ class ConnectionTest(unittest.TestCase):
         )
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common.UuidRepresentation.JAVA_LEGACY
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         disconnect(rand)
 
@@ -669,7 +669,7 @@ class ConnectionTest(unittest.TestCase):
         tmp_conn = connect(alias=rand, db=rand)
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common.UuidRepresentation.PYTHON_LEGACY
+            == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]
         )
         disconnect(rand)
 
