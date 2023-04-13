@@ -47,6 +47,8 @@ from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
+
+    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
 except ImportError:
     Image = None
     ImageOps = None
@@ -1946,23 +1948,19 @@ class ImageGridFsProxy(GridFSProxy):
             size = field.size
 
             if size["force"]:
-                img = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                img = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
-                img.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                img.thumbnail((size["width"], size["height"]), LANCZOS)
 
         thumbnail = None
         if field.thumbnail_size:
             size = field.thumbnail_size
 
             if size["force"]:
-                thumbnail = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                thumbnail = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
                 thumbnail = img.copy()
-                thumbnail.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                thumbnail.thumbnail((size["width"], size["height"]), LANCZOS)
 
         if thumbnail:
             thumb_id = self._put_thumbnail(thumbnail, img_format, progressive)
