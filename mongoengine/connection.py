@@ -3,6 +3,13 @@ import warnings
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.database import _check_name
 
+# DriverInfo was added in PyMongo 3.7.
+try:
+    from pymongo.driver_info import DriverInfo
+except ImportError:
+    DriverInfo = None
+
+import mongoengine
 from mongoengine.pymongo_support import PYMONGO_VERSION
 
 __all__ = [
@@ -320,6 +327,10 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     # alias and remove the database name and authentication info (we don't
     # care about them at this point).
     conn_settings = _clean_settings(raw_conn_settings)
+    if DriverInfo is not None:
+        conn_settings.setdefault(
+            "driver", DriverInfo("MongoEngine", mongoengine.__version__)
+        )
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
     if "mongo_client_class" in conn_settings:
