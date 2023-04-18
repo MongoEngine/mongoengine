@@ -1,6 +1,10 @@
 import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
+from pymongo.common import (
+    _UUID_REPRESENTATIONS,
+    _CaseInsensitiveDictionary,
+)
 from pymongo.database import _check_name
 
 # DriverInfo was added in PyMongo 3.7.
@@ -131,7 +135,7 @@ def _get_connection_settings(
                 if uri_dict.get(param):
                     conn_settings[param] = uri_dict[param]
 
-            uri_options = uri_dict["options"]
+            uri_options: _CaseInsensitiveDictionary = uri_dict["options"]
             if "replicaset" in uri_options:
                 conn_settings["replicaSet"] = uri_options["replicaset"]
             if "authsource" in uri_options:
@@ -166,6 +170,13 @@ def _get_connection_settings(
                 conn_settings["authmechanismproperties"] = uri_options[
                     "authmechanismproperties"
                 ]
+            if "uuidrepresentation" in uri_options:
+                REV_UUID_REPRESENTATIONS = {
+                    v: k for k, v in _UUID_REPRESENTATIONS.items()
+                }
+                conn_settings["uuidrepresentation"] = REV_UUID_REPRESENTATIONS[
+                    uri_options["uuidrepresentation"]
+                ]
         else:
             resolved_hosts.append(entity)
     conn_settings["host"] = resolved_hosts
@@ -177,7 +188,7 @@ def _get_connection_settings(
     keys = {
         key.lower() for key in kwargs.keys()
     }  # pymongo options are case insensitive
-    if "uuidrepresentation" not in keys:
+    if "uuidrepresentation" not in keys and "uuidrepresentation" not in conn_settings:
         warnings.warn(
             "No uuidRepresentation is specified! Falling back to "
             "'pythonLegacy' which is the default for pymongo 3.x. "
