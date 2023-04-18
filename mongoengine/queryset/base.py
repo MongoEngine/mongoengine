@@ -237,7 +237,7 @@ class BaseQuerySet:
             for the search and the rules for the stemmer and tokenizer.
             If not specified, the search uses the default language of the index.
             For supported languages, see
-            `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+            `Text Search Languages <https://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -255,7 +255,7 @@ class BaseQuerySet:
         return queryset
 
     def get(self, *q_objs, **query):
-        """Retrieve the the matching object raising
+        """Retrieve the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` exception if multiple results
         and :class:`~mongoengine.queryset.DoesNotExist` or
@@ -1296,10 +1296,10 @@ class BaseQuerySet:
         return [self._document._from_son(data) for data in son_data]
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
-        """Perform a aggregate function based in your queryset params
+        """Perform an aggregate function based on your queryset params
 
-        :param pipeline: list of aggregation commands,\
-            see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
+        :param pipeline: list of aggregation commands,
+            see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
             parameter will be removed shortly
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
