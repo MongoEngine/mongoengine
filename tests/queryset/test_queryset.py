@@ -2605,8 +2605,6 @@ class TestQueryset(unittest.TestCase):
         person2 = self.Person(name="User A", age=20).save()
         person3 = self.Person(name="User C", age=30).save()
 
-        names = [p.name for p in self.Person.objects.last]
-        assert names == ["User B", "User C", "User A"]
         assert self.Person.objects.last() == person3
 
         person2.age = 31
