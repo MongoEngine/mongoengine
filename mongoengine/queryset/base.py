@@ -298,6 +298,18 @@ class BaseQuerySet:
             result = None
         return result
 
+    def last(self, *ordering_keys):
+        """Retrieve the latest object matching the query.
+
+        :param keys: fields to order the query results by; keys may be
+            prefixed with "+" or a "-" to determine the ordering direction.
+
+        """
+        if not ordering_keys:
+            ordering_keys = "-id"
+
+        return self.order_by(ordering_keys).first()
+
     def insert(
         self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
     ):
