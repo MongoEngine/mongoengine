@@ -14,6 +14,7 @@ __all__ = (
     # common
     "UPDATE_OPERATORS",
     "_document_registry",
+    "_undefined_document_delete_rules",
     "get_document",
     # datastructures
     "BaseDict",

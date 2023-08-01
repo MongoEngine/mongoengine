@@ -1,4 +1,3 @@
-import os
 import pickle
 import unittest
 import uuid
@@ -13,7 +12,7 @@ from pymongo.errors import DuplicateKeyError
 
 from mongoengine import *
 from mongoengine import signals
-from mongoengine.base import _document_registry, get_document
+from mongoengine.base import _document_registry, _undefined_document_delete_rules, get_document
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import (
@@ -2515,6 +2514,24 @@ class TestDocumentInstance(MongoDBTestCase):
         assert self.Person.objects.count() == 2
         author.delete()
         assert self.Person.objects.count() == 1
+
+    def test_lazy_delete_rule(self):
+        """Ensure that a document does not need to be defined to reference it
+        in a ReferenceField."""
+
+        assert not _undefined_document_delete_rules.get("BlogPost")
+
+        class Comment(Document):
+            text = StringField()
+            post = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
+
+        assert _undefined_document_delete_rules.get("BlogPost")
+
+        class BlogPost(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
+        assert not _undefined_document_delete_rules.get("BlogPost")
 
     def subclasses_and_unique_keys_works(self):
         class A(Document):

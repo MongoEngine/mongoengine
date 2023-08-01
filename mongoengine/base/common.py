@@ -1,6 +1,12 @@
+from collections import defaultdict
 from mongoengine.errors import NotRegistered
 
-__all__ = ("UPDATE_OPERATORS", "get_document", "_document_registry")
+__all__ = (
+    "UPDATE_OPERATORS",
+    "get_document",
+    "_document_registry",
+    "_undefined_document_delete_rules",
+)
 
 
 UPDATE_OPERATORS = {
@@ -23,6 +29,7 @@ UPDATE_OPERATORS = {
 
 
 _document_registry = {}
+_undefined_document_delete_rules = defaultdict(list)
 
 
 def get_document(name):
