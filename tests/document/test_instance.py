@@ -2525,7 +2525,13 @@ class TestDocumentInstance(MongoDBTestCase):
             text = StringField()
             post = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
 
-        assert _undefined_document_delete_rules.get("BlogPost")
+        assert len(_undefined_document_delete_rules.get("BlogPost")) == 1
+
+        class CommentDos(Document):
+            textdos = StringField()
+            postdos = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
+
+        assert len(_undefined_document_delete_rules.get("BlogPost")) == 2
 
         class BlogPost(Document):
             content = StringField()
