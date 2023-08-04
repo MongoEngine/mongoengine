@@ -2530,6 +2530,10 @@ class TestDocumentInstance(MongoDBTestCase):
             text = StringField()
             post = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
 
+        # TODO: for some reason when you just call pytest, BlogPost already exists
+        # at this point. Need to get rid of it before running this test :/
+        print(get_document("BlogPost"))
+        print(_undefined_document_delete_rules)
         assert len(_undefined_document_delete_rules.get("BlogPost")) == 1
 
         class CommentDos(Document):
