@@ -1,3 +1,4 @@
+import os
 import pickle
 import unittest
 import uuid
@@ -2542,6 +2543,26 @@ class TestDocumentInstance(MongoDBTestCase):
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
 
         assert not _undefined_document_delete_rules.get("BlogPost")
+
+        self.Person.drop_collection()
+        BlogPost.drop_collection()
+        Comment.drop_collection()
+
+        author = self.Person(name="Test User")
+        author.save()
+
+        post = BlogPost(content="Watched some TV")
+        post.author = author
+        post.save()
+
+        comment = Comment(text="Kudos.")
+        comment.post = post
+        comment.save()
+
+        # Delete the Person, which should lead to deletion of the BlogPost,
+        # and, recursively to the Comment, too
+        author.delete()
+        assert Comment.objects.count() == 0
 
     def subclasses_and_unique_keys_works(self):
         class A(Document):

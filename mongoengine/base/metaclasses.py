@@ -214,7 +214,7 @@ class DocumentMetaclass(type):
                         new_class, field.name, delete_rule
                     )
                 except NotRegistered:
-                    _undefined_document_delete_rules[f.owner_document].append(
+                    _undefined_document_delete_rules[f.document_type_obj].append(
                         (new_class, field.name, delete_rule)
                     )
 
