@@ -4,7 +4,6 @@ import warnings
 from mongoengine.base.common import (
     _document_registry,
     _undefined_document_delete_rules,
-    get_document,
 )
 from mongoengine.base.fields import (
     BaseField,

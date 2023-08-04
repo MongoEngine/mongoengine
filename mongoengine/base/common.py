@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 from mongoengine.errors import NotRegistered
 
 __all__ = (
