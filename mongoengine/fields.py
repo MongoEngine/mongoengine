@@ -1122,8 +1122,7 @@ class ReferenceField(BaseField):
       * DENY       (3)  - Prevent the deletion of the reference object.
       * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
 
-    Alternative syntax for registering delete rules (useful when implementing
-    bi-directional delete rules)
+    Alternative syntax for registering delete rules
 
     .. code-block:: python
 
@@ -1479,6 +1478,31 @@ class GenericReferenceField(BaseField):
     it ``pk`` or ``id`` field).
     To solve this you should consider using the
     :class:`~mongoengine.fields.GenericLazyReferenceField`.
+
+    Use the `reverse_delete_rule` to handle what should happen if the document
+    the field is referencing is deleted.  EmbeddedDocuments, DictFields and
+    MapFields does not support reverse_delete_rule and an `InvalidDocumentError`
+    will be raised if trying to set on one of these Document / Field types.
+
+    The options are:
+
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
+
+    Alternative syntax for registering delete rules
+
+    .. code-block:: python
+
+        class Org(Document):
+            owner = ReferenceField('User')
+
+        class User(Document):
+            org = ReferenceField('Org', reverse_delete_rule=CASCADE)
+
+        User.register_delete_rule(Org, 'owner', DENY)
 
     .. note ::
         * Any documents used as a generic reference must be registered in the

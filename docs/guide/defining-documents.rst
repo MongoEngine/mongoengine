@@ -361,14 +361,22 @@ Dealing with deletion of referred documents
 '''''''''''''''''''''''''''''''''''''''''''
 By default, MongoDB doesn't check the integrity of your data, so deleting
 documents that other documents still hold references to will lead to consistency
-issues.  Mongoengine's :class:`ReferenceField` adds some functionality to
-safeguard against these kinds of database integrity problems, providing each
-reference with a delete rule specification.  A delete rule is specified by
-supplying the :attr:`reverse_delete_rule` attributes on the
-:class:`ReferenceField` definition, like this::
+issues.  Mongoengine's :class:`ReferenceField` and :class:`GenericReferenceField`
+add some functionality to safeguard against these kinds of database integrity
+problems, providing each reference with a delete rule specification.  A delete
+rule is specified by supplying the :attr:`reverse_delete_rule` attributes on the
+:class:`ReferenceField` or :class:`GenericReferenceField` definition, like this::
 
     class ProfilePage(Document):
         employee = ReferenceField('Employee', reverse_delete_rule=mongoengine.CASCADE)
+
+Note that in the case of :class:`GenericReferenceField` you'll also need to specify
+an iterable of :attr:`choices` to get :attr:`reverse_delete_rule` working.
+:attr:`choices` should consist of the documents that can be referenced by the
+:class:`GenericReferenceField`.:
+
+    class ProfilePage(Document):
+        employee = GenericReferenceField(choices=['Employee'], reverse_delete_rule=mongoengine.CASCADE)
 
 The declaration in this example means that when an :class:`Employee` object is
 removed, the :class:`ProfilePage` that references that employee is removed as
