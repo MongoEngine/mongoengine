@@ -2520,53 +2520,51 @@ class TestDocumentInstance(MongoDBTestCase):
         author.delete()
         assert self.Person.objects.count() == 1
 
-    def test_lazy_delete_rule(self):
+    def test_lazy_delete_rules(self):
         """Ensure that a document does not need to be defined to reference it
         in a ReferenceField."""
 
-        assert not _undefined_document_delete_rules.get("BlogPost")
+        assert not _undefined_document_delete_rules.get("BlogPostLazy")
 
-        class Comment(Document):
+        # named "lazy" to ensure these Documents don't exist in the
+        # document registry
+        class CommentLazy(Document):
             text = StringField()
-            post = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
+            post = ReferenceField("BlogPostLazy", reverse_delete_rule=CASCADE)
 
-        # TODO: for some reason when you just call pytest, BlogPost already exists
-        # at this point. Need to get rid of it before running this test :/
-        print(get_document("BlogPost"))
-        print(_undefined_document_delete_rules)
-        assert len(_undefined_document_delete_rules.get("BlogPost")) == 1
+        assert len(_undefined_document_delete_rules.get("BlogPostLazy")) == 1
 
-        class CommentDos(Document):
+        class CommentDosLazy(Document):
             textdos = StringField()
-            postdos = ReferenceField("BlogPost", reverse_delete_rule=CASCADE)
+            postdos = ReferenceField("BlogPostLazy", reverse_delete_rule=CASCADE)
 
-        assert len(_undefined_document_delete_rules.get("BlogPost")) == 2
+        assert len(_undefined_document_delete_rules.get("BlogPostLazy")) == 2
 
-        class BlogPost(Document):
+        class BlogPostLazy(Document):
             content = StringField()
             author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
 
-        assert not _undefined_document_delete_rules.get("BlogPost")
+        assert not _undefined_document_delete_rules.get("BlogPostLazy")
 
         self.Person.drop_collection()
-        BlogPost.drop_collection()
-        Comment.drop_collection()
+        BlogPostLazy.drop_collection()
+        CommentLazy.drop_collection()
 
         author = self.Person(name="Test User")
         author.save()
 
-        post = BlogPost(content="Watched some TV")
+        post = BlogPostLazy(content="Watched some TV")
         post.author = author
         post.save()
 
-        comment = Comment(text="Kudos.")
+        comment = CommentLazy(text="Kudos.")
         comment.post = post
         comment.save()
 
         # Delete the Person, which should lead to deletion of the BlogPost,
         # and, recursively to the Comment, too
         author.delete()
-        assert Comment.objects.count() == 0
+        assert CommentLazy.objects.count() == 0
 
     def subclasses_and_unique_keys_works(self):
         class A(Document):
