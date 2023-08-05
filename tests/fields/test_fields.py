@@ -5,6 +5,9 @@ import pytest
 from bson import SON, DBRef, ObjectId
 
 from mongoengine import (
+    CASCADE,
+    DENY,
+    PULL,
     BooleanField,
     ComplexDateTimeField,
     DateField,
@@ -1622,6 +1625,112 @@ class TestField(MongoDBTestCase):
 
         assert bm.bookmark_object == link_1
         assert isinstance(bm.bookmark_object, Link)
+
+    def test_generic_reference_deny(self):
+        """Ensure that a GenericReferenceField properly enforces DENY delete rules"""
+
+        class Link(Document):
+            title = StringField()
+            meta = {"allow_inheritance": False}
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(
+                reverse_delete_rule=DENY, choices=[Link]
+            )
+
+        Link.drop_collection()
+        Bookmark.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        bm = Bookmark(bookmark_object=link_1)
+        bm.save()
+
+        with pytest.raises(OperationError):
+            link_1.delete()
+        # once bm is gone, we should be able to delete link_1 just fine
+        bm.delete()
+        link_1.delete()
+
+    def test_generic_reference_cascade(self):
+        """Ensure that a GenericReferenceField properly enforces CASCADE delete rules"""
+
+        class Link(Document):
+            title = StringField()
+            meta = {"allow_inheritance": False}
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(
+                reverse_delete_rule=CASCADE, choices=[Link]
+            )
+
+        Link.drop_collection()
+        Bookmark.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        bm = Bookmark(bookmark_object=link_1)
+        bm.save()
+
+        assert Bookmark.objects.count() == 1
+        link_1.delete()
+        assert Bookmark.objects.count() == 0
+
+    def test_generic_reference_pull(self):
+        """Ensure that a GenericReferenceField properly enforces PULL delete rules"""
+
+        class Link(Document):
+            title = StringField()
+            meta = {"allow_inheritance": False}
+
+        class Blog(Document):
+            links = ListField(
+                GenericReferenceField(reverse_delete_rule=PULL, choices=[Link])
+            )
+
+        Link.drop_collection()
+        Blog.drop_collection()
+
+        link_1 = Link(title="Pitchfork")
+        link_1.save()
+
+        link_2 = Link(title="Pitchfork 2: Electric Boogaloo")
+        link_2.save()
+        blog = Blog(links=[link_1, link_2])
+        blog.save()
+
+        assert len(blog.links) == 2
+        link_1.delete()
+        blog.reload()
+        assert len(blog.links) == 1
+        link_2.delete()
+        blog.reload()
+        assert len(blog.links) == 0
+
+    def test_generic_reference_deny_errors(self):
+        class Link(Document):
+            title = StringField()
+            meta = {"allow_inheritance": False}
+
+        class Bookmark(Document):
+            bookmark_object = GenericReferenceField(
+                reverse_delete_rule=DENY, choices=[Link]
+            )
+
+        class NotRegisteredInChoices(Document):
+            title = StringField()
+
+        with pytest.raises(ValidationError):
+            nr = NotRegisteredInChoices(title="hello")
+            bm = Bookmark(bookmark_object=nr)
+            bm.validate()
+
+        with pytest.raises(ValidationError):
+
+            class Oops(Document):
+                bad_field = GenericReferenceField(reverse_delete_rule=DENY)
 
     def test_generic_reference_list(self):
         """Ensure that a ListField properly dereferences generic references."""
