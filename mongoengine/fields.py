@@ -1512,6 +1512,9 @@ class GenericReferenceField(BaseField):
 
     @property
     def document_type(self):
+        # This property is exposed purely for enabling reverse_delete_rule
+        # on this class. Do not attempt to use it in any other way, if you
+        # do a NotImplementedError will be raised.
         if not self.choices:
             return None
         return GenericReferenceDeleteHandler(self.choices)
