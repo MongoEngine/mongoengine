@@ -1526,7 +1526,6 @@ class TestDocumentInstance(MongoDBTestCase):
         assert my_doc.int_field == 1
 
     def test_document_update(self):
-
         # try updating a non-saved document
         with pytest.raises(OperationError):
             person = self.Person(name="dcrosta")

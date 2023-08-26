@@ -535,7 +535,6 @@ class TestFileField(MongoDBTestCase):
     @require_pil
     def test_get_image_by_grid_id(self):
         class TestImage(Document):
-
             image1 = ImageField()
             image2 = ImageField()
 

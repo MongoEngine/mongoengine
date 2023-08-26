@@ -196,6 +196,10 @@ you could use the following query::
 
     Page.objects(tags__0='db')
 
+The string queries operators can be used as well for querying a list field, e.g.::
+
+    Page.objects(tags__iexact='db')
+
 If you only want to fetch part of a list eg: you want to paginate a list, then
 the `slice` operator is required::
 

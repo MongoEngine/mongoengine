@@ -369,7 +369,6 @@ class TestGeoField(MongoDBTestCase):
         assert len(Location._geo_indices()) == 1
 
     def test_geo_indexes_auto_index(self):
-
         # Test just listing the fields
         class Log(Document):
             location = PointField(auto_index=False)

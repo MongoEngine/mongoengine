@@ -165,7 +165,6 @@ class DeReference:
         """Fetch all references and convert to their document objects"""
         object_map = {}
         for collection, dbrefs in self.reference_map.items():
-
             # we use getattr instead of hasattr because hasattr swallows any exception under python2
             # so it could hide nasty things without raising exceptions (cfr bug #1688))
             ref_document_cls_exists = getattr(collection, "objects", None) is not None

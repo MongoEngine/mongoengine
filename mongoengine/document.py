@@ -930,7 +930,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # If _cls is being used (for polymorphism), it needs an index,
         # only if another index doesn't begin with _cls
         if index_cls and not cls_indexed and cls._meta.get("allow_inheritance"):
-
             # we shouldn't pass 'cls' to the collection.ensureIndex options
             # because of https://jira.mongodb.org/browse/SERVER-769
             if "cls" in index_opts:

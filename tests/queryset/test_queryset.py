@@ -417,6 +417,19 @@ class TestQueryset(unittest.TestCase):
         A.drop_collection()
         A().save()
 
+        # validate collection not empty
+        assert A.objects.count() == 1
+
+        # update operations
+        assert A.objects.none().update(s="1") == 0
+        assert A.objects.none().update_one(s="1") == 0
+        assert A.objects.none().modify(s="1") is None
+
+        # validate noting change by update operations
+        assert A.objects(s="1").count() == 0
+
+        # fetch queries
+        assert A.objects.none().first() is None
         assert list(A.objects.none()) == []
         assert list(A.objects.none().all()) == []
         assert list(A.objects.none().limit(1)) == []
@@ -604,7 +617,6 @@ class TestQueryset(unittest.TestCase):
         assert post.comments[1].votes == 8
 
     def test_update_using_positional_operator_matches_first(self):
-
         # Currently the $ operator only applies to the first matched item in
         # the query
 
@@ -2580,6 +2592,12 @@ class TestQueryset(unittest.TestCase):
 
         ages = [p.age for p in self.Person.objects.order_by("-name")]
         assert ages == [30, 40, 20]
+
+        ages = [p.age for p in self.Person.objects.order_by()]
+        assert ages == [40, 20, 30]
+
+        ages = [p.age for p in self.Person.objects.order_by("")]
+        assert ages == [40, 20, 30]
 
     def test_order_by_optional(self):
         class BlogPost(Document):
@@ -5611,7 +5629,6 @@ class TestQueryset(unittest.TestCase):
         # Check that bool(queryset) does not uses the orderby
         qs = Person.objects.order_by("name")
         with query_counter() as q:
-
             if bool(qs):
                 pass
 
@@ -5624,7 +5641,6 @@ class TestQueryset(unittest.TestCase):
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by("name")
         with query_counter() as q:
-
             for x in qs2:
                 pass
 
@@ -5648,7 +5664,6 @@ class TestQueryset(unittest.TestCase):
         Person(name="A").save()
 
         with query_counter() as q:
-
             if Person.objects:
                 pass
 
