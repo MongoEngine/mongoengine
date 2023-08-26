@@ -9,7 +9,7 @@ except ImportError:
 
 from mongoengine import *
 from mongoengine import connection
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestDateTimeField(MongoDBTestCase):
@@ -54,6 +54,21 @@ class TestDateTimeField(MongoDBTestCase):
         assert person.created - utcnow < dt.timedelta(seconds=1)
         assert person_created_t0 == person.created  # make sure it does not change
         assert person._data["created"] == person.created
+
+    def test_set_using_callable(self):
+        # Weird feature but it's there for a while so let's make sure we don't break it
+        class Person(Document):
+            created = DateTimeField()
+
+        Person.drop_collection()
+
+        person = Person()
+        frozen_dt = dt.datetime(2020, 7, 25, 9, 56, 1)
+        person.created = lambda: frozen_dt
+        person.save()
+
+        assert callable(person.created)
+        assert get_as_pymongo(person) == {"_id": person.id, "created": frozen_dt}
 
     def test_handling_microseconds(self):
         """Tests showing pymongo datetime fields handling of microseconds.

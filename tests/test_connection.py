@@ -1,5 +1,6 @@
 import datetime
 import unittest
+import uuid
 
 import pymongo
 import pytest
@@ -29,6 +30,10 @@ from mongoengine.connection import (
     get_db,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
+
+
+def random_str():
+    return str(uuid.uuid4())
 
 
 def get_tz_awareness(connection):
@@ -640,6 +645,50 @@ class ConnectionTest(unittest.TestCase):
         c1 = connect(alias="testdb1", db="testdb1", username="u1", password="pass")
         c2 = connect(alias="testdb2", db="testdb2", username="u2", password="pass")
         assert c1 is not c2
+
+    def test_connect_uri_uuidrepresentation_set_in_uri(self):
+        rand = random_str()
+        tmp_conn = connect(
+            alias=rand,
+            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
+        )
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_set_as_arg(self):
+        rand = random_str()
+        tmp_conn = connect(alias=rand, db=rand, uuidRepresentation="javaLegacy")
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_set_both_arg_and_uri_arg_prevail(self):
+        rand = random_str()
+        tmp_conn = connect(
+            alias=rand,
+            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
+            uuidRepresentation="javaLegacy",
+        )
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_default_to_pythonlegacy(self):
+        # To be changed soon to unspecified
+        rand = random_str()
+        tmp_conn = connect(alias=rand, db=rand)
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]
+        )
+        disconnect(rand)
 
 
 if __name__ == "__main__":

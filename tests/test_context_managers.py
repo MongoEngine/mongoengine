@@ -83,7 +83,6 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
         with switch_db(Group, "testdb-1") as Group:
-
             assert 0 == Group.objects.count()
 
             Group(name="hello").save()
@@ -111,7 +110,6 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
         with switch_collection(Group, "group1") as Group:
-
             assert 0 == Group.objects.count()
 
             Group(name="hello - group1").save()

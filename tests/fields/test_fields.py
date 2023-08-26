@@ -239,6 +239,7 @@ class TestField(MongoDBTestCase):
         self,
     ):
         """List field with default can be set to the empty list (strict)"""
+
         # Issue #1733
         class Doc(Document):
             x = ListField(IntField(), default=lambda: [42])
@@ -253,6 +254,7 @@ class TestField(MongoDBTestCase):
         self,
     ):
         """List field with default can be set to the empty list (dynamic)"""
+
         # Issue #1733
         class Doc(DynamicDocument):
             x = ListField(IntField(), default=lambda: [42])

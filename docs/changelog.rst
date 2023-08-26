@@ -7,10 +7,17 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix for uuidRepresentation not read when provided in URI #2741
+
+Changes in 0.27.0
+=================
+- Update uuidRepresentation warnings with "unspecified" as the future default (instead of 'standard' previously advertised) #2739
 - Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
   Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
   For more info, check https://docs.mongoengine.org/guide/mongomock.html
+- Fix DictField that always gets marked as changed #2606
+- fix for Queryset.none() that has no effect on update/aggregate / first #2669
 
 Changes in 0.26.0
 =================
