@@ -75,7 +75,7 @@ def list_collection_names(db, include_system_collections=False):
     if PYMONGO_VERSION >= (3, 7):
         collections = db.list_collection_names(session=connection._get_session())
     else:
-        collections = db.collection_names()
+        collections = db.collection_names(session=connection._get_session())
 
     if not include_system_collections:
         collections = [c for c in collections if not c.startswith("system.")]

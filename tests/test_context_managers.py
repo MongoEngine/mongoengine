@@ -464,7 +464,7 @@ class TestContextManagers:
         assert "b2" == B.objects.get(id=b_doc.id).name
 
     @requires_mongodb_gte_44
-    def test_collection_creation_via_upsersts_across_databases_in_transaction(self):
+    def test_collection_creation_via_upserts_across_databases_in_transaction(self):
         connect("mongoenginetest")
         connect("test2", "test2")
 

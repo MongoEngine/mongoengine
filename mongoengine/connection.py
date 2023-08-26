@@ -284,8 +284,6 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     if alias in _connection_settings:
         del _connection_settings[alias]
 
-    _local_sessions.clear_all()
-
 
 def disconnect_all():
     """Close all registered database."""

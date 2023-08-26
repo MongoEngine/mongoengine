@@ -24,7 +24,6 @@ from mongoengine import (
 from mongoengine.connection import (
     DEFAULT_DATABASE_NAME,
     ConnectionFailure,
-    _local_sessions,
     disconnect,
     get_connection,
     get_db,
@@ -302,13 +301,6 @@ class ConnectionTest(unittest.TestCase):
         connections = mongoengine.connection._connections
         assert len(connections) == 0
         disconnect(alias="not_exist")
-
-    def test_disconnect_clears_out_any_outstanding_sessions(self):
-        _local_sessions.append("session1")
-        _local_sessions.append("session2")
-        assert len(_local_sessions.sessions) == 2
-        disconnect()
-        assert len(_local_sessions.sessions) == 0
 
     def test_disconnect_does_not_close_client_used_by_another_alias(self):
         client1 = connect(alias="disconnect_reused_client_test_1")
