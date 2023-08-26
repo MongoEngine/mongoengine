@@ -304,6 +304,28 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
 def run_in_transaction(
     alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None
 ):
+    """run_in_transaction context manager
+    Execute queries within the context in a database transaction.
+
+    Usage:
+
+    .. code-block:: python
+
+        class A(Document):
+            name = StringField()
+
+        with run_in_transaction():
+            a_doc = A.objects.create(name="a")
+            a_doc.update(name="b")
+
+    Be aware that:
+    - Mongo transactions run inside a session which is bound to a connection. If you attempt to
+      execute a transaction across a different connection alias, pymongo will raise an exception. In
+      other words: you cannot create a transaction that crosses different database connections. That
+      said, multiple transaction can be nested within the same session for particular connection.
+
+    For more information regarding pymongo transactions: https://pymongo.readthedocs.io/en/stable/api/pymongo/client_session.html#transactions
+    """
     conn = get_connection(alias)
     session_kwargs = session_kwargs or {}
     with conn.start_session(**session_kwargs) as session:
