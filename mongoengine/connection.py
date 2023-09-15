@@ -391,7 +391,11 @@ def _find_existing_connection(connection_settings):
         # Only remove the name but it's important to
         # keep the username/password/authentication_source/authentication_mechanism
         # to identify if the connection could be shared (cfr https://github.com/MongoEngine/mongoengine/issues/2047)
-        return {k: v for k, v in settings_dict.items() if k != "name"}
+        _clean = {k: v for k, v in settings_dict.items() if k != "name"}
+
+        # In case of multiple db on the same cluster
+        _clean['host'] = [i.replace(f'/{settings_dict["name"]}', '') for i in _clean['host']]
+        return _clean
 
     cleaned_conn_settings = _clean_settings(connection_settings)
     for db_alias, connection_settings in connection_settings_bis:

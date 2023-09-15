@@ -8,6 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
+- Fix connection for multiple db in same cluster created duplicate MongoClient
 
 Changes in 0.27.0
 =================
