@@ -130,8 +130,8 @@ class ConnectionTest(unittest.TestCase):
         connect("db1", alias="db1")
         connect("db2", alias="db2")
 
-        conn1 = get_connection('db2')
-        conn2 = get_connection('db2')
+        conn1 = get_connection("db2")
+        conn2 = get_connection("db2")
         assert conn1 == conn2
 
         History.drop_collection()
@@ -681,13 +681,13 @@ class ConnectionTest(unittest.TestCase):
         connect(host="mongodb://localhost:27017/mongoenginetest_1", alias="test_1")
         connect(host="mongodb://localhost:27017/mongoenginetest_2", alias="test_2")
 
-        conn1 = get_connection('test_1')
-        conn2 = get_connection('test_2')
+        conn1 = get_connection("test_1")
+        conn2 = get_connection("test_2")
         assert conn1 == conn2
         assert isinstance(conn1, pymongo.mongo_client.MongoClient)
 
-        db1 = get_db('test_1')
-        db2 = get_db('test_2')
+        db1 = get_db("test_1")
+        db2 = get_db("test_2")
         assert isinstance(db2, pymongo.database.Database)
         assert db1.name == "mongoenginetest_1"
         assert db2.name == "mongoenginetest_2"

@@ -394,7 +394,9 @@ def _find_existing_connection(connection_settings):
         _clean = {k: v for k, v in settings_dict.items() if k != "name"}
 
         # In case of multiple db on the same cluster
-        _clean['host'] = [i.replace(f'/{settings_dict["name"]}', '') for i in _clean['host']]
+        _clean["host"] = [
+            i.replace(f'/{settings_dict["name"]}', "") for i in _clean["host"]
+        ]
         return _clean
 
     cleaned_conn_settings = _clean_settings(connection_settings)
