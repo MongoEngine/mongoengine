@@ -252,6 +252,24 @@ and provide the pipeline as a list
 
 .. versionadded:: 0.23.2
 
+Update with Array Operator
+--------------------------------
+It is possible to update specific value in array by use array_filters (arrayFilters) operator.
+This is done by using ``__raw__`` keyword argument to the update method and provide the arrayFilters as a list.
+
+`Update with Array Operator <https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered->`_
+::
+
+    # 'tags' field == ['test1', 'test2', 'test3']
+    Page.objects().update(__raw__=
+                                  {'$set': {"tags.$[element]": 'test11111'}},
+                                  array_filters=[{"element": {'$eq': 'test2'}}],
+
+    # 'tags' field == ['test1', 'test11111', 'test3']
+
+    )
+
+
 Sorting/Ordering results
 ========================
 It is possible to order the results by 1 or more keys using :meth:`~mongoengine.queryset.QuerySet.order_by`.

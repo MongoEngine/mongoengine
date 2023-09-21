@@ -8,6 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
+- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/
 
 Changes in 0.27.0
 =================
