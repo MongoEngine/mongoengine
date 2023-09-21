@@ -530,6 +530,7 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
+        array_filters=None,
         **update,
     ):
         """Perform an atomic update on the fields matched by the query.
@@ -545,6 +546,7 @@ class BaseQuerySet:
         :param read_concern: Override the read concern for the operation
         :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
             updated items
+        :param array_filters: A list of filters specifying which array elements an update should apply.
         :param update: Django-style update keyword arguments
 
         :returns the number of updated documents (unless ``full_result`` is True)
@@ -565,6 +567,8 @@ class BaseQuerySet:
                 for u in update["__raw__"]
             ]
         else:
+            if 'array_filters' in update:
+                array_filters = update.pop('array_filters')
             update = transform.update(queryset._document, **update)
         # If doing an atomic upsert on an inheritable class
         # then ensure we add _cls to the update operation
@@ -580,7 +584,7 @@ class BaseQuerySet:
                 update_func = collection.update_one
                 if multi:
                     update_func = collection.update_many
-                result = update_func(query, update, upsert=upsert)
+                result = update_func(query, update, upsert=upsert, array_filters=array_filters)
             if full_result:
                 return result
             elif result.raw_result:

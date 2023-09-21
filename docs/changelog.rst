@@ -11,6 +11,7 @@ Development
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 - Add support for readPreferenceTags in connection parameters #2644
+- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/
 
 Changes in 0.27.0
 =================
