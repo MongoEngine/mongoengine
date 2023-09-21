@@ -592,8 +592,7 @@ class TestQueryset(unittest.TestCase):
         Blog.drop_collection()
 
     def test_update_array_filters(self):
-        """Ensure that updating by array_filters works.
-        """
+        """Ensure that updating by array_filters works."""
 
         class Comment(EmbeddedDocument):
             comment_tags = ListField(StringField())
@@ -605,12 +604,12 @@ class TestQueryset(unittest.TestCase):
         Blog.drop_collection()
 
         # update one
-        Blog.objects.create(tags=['test1', 'test2', 'test3'])
+        Blog.objects.create(tags=["test1", "test2", "test3"])
 
-        Blog.objects().update_one(__raw__=
-                                  {'$set': {"tags.$[element]": 'test11111'}},
-                                  array_filters=[{"element": {'$eq': 'test2'}}],
-                                  )
+        Blog.objects().update_one(
+            __raw__={"$set": {"tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
         testc_blogs = Blog.objects(tags="test11111")
 
         assert testc_blogs.count() == 1
@@ -618,13 +617,13 @@ class TestQueryset(unittest.TestCase):
         Blog.drop_collection()
 
         # update one inner list
-        comments = Comment(comment_tags=['test1', 'test2', 'test3'])
+        comments = Comment(comment_tags=["test1", "test2", "test3"])
         Blog.objects.create(comments=comments)
 
-        Blog.objects().update_one(__raw__=
-                                  {'$set': {"comments.comment_tags.$[element]": 'test11111'}},
-                                  array_filters=[{"element": {'$eq': 'test2'}}],
-                                  )
+        Blog.objects().update_one(
+            __raw__={"$set": {"comments.comment_tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
         testc_blogs = Blog.objects(comments__comment_tags="test11111")
 
         assert testc_blogs.count() == 1
@@ -632,21 +631,21 @@ class TestQueryset(unittest.TestCase):
         # update many
         Blog.drop_collection()
 
-        Blog.objects.create(tags=['test1', 'test2', 'test3', 'test_all'])
-        Blog.objects.create(tags=['test4', 'test5', 'test6', 'test_all'])
+        Blog.objects.create(tags=["test1", "test2", "test3", "test_all"])
+        Blog.objects.create(tags=["test4", "test5", "test6", "test_all"])
 
-        Blog.objects().update(__raw__=
-                              {'$set': {"tags.$[element]": 'test11111'}},
-                              array_filters=[{"element": {'$eq': 'test2'}}],
-                              )
+        Blog.objects().update(
+            __raw__={"$set": {"tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
         testc_blogs = Blog.objects(tags="test11111")
 
         assert testc_blogs.count() == 1
 
-        Blog.objects().update(__raw__=
-                              {'$set': {"tags.$[element]": 'test_all1234577'}},
-                              array_filters=[{"element": {'$eq': 'test_all'}}],
-                              )
+        Blog.objects().update(
+            __raw__={"$set": {"tags.$[element]": "test_all1234577"}},
+            array_filters=[{"element": {"$eq": "test_all"}}],
+        )
         testc_blogs = Blog.objects(tags="test_all1234577")
 
         assert testc_blogs.count() == 2

@@ -567,8 +567,8 @@ class BaseQuerySet:
                 for u in update["__raw__"]
             ]
         else:
-            if 'array_filters' in update:
-                array_filters = update.pop('array_filters')
+            if "array_filters" in update:
+                array_filters = update.pop("array_filters")
             update = transform.update(queryset._document, **update)
         # If doing an atomic upsert on an inheritable class
         # then ensure we add _cls to the update operation
@@ -584,7 +584,9 @@ class BaseQuerySet:
                 update_func = collection.update_one
                 if multi:
                     update_func = collection.update_many
-                result = update_func(query, update, upsert=upsert, array_filters=array_filters)
+                result = update_func(
+                    query, update, upsert=upsert, array_filters=array_filters
+                )
             if full_result:
                 return result
             elif result.raw_result:
