@@ -237,7 +237,7 @@ class BaseQuerySet:
             for the search and the rules for the stemmer and tokenizer.
             If not specified, the search uses the default language of the index.
             For supported languages, see
-            `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+            `Text Search Languages <https://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -255,7 +255,7 @@ class BaseQuerySet:
         return queryset
 
     def get(self, *q_objs, **query):
-        """Retrieve the the matching object raising
+        """Retrieve the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` exception if multiple results
         and :class:`~mongoengine.queryset.DoesNotExist` or
@@ -289,6 +289,9 @@ class BaseQuerySet:
     def first(self):
         """Retrieve the first object matching the query."""
         queryset = self.clone()
+        if self._none or self._empty:
+            return None
+
         try:
             result = queryset[0]
         except IndexError:
@@ -551,6 +554,8 @@ class BaseQuerySet:
 
         if write_concern is None:
             write_concern = {}
+        if self._none or self._empty:
+            return 0
 
         queryset = self.clone()
         query = queryset._query
@@ -672,6 +677,9 @@ class BaseQuerySet:
 
         if not update and not upsert and not remove:
             raise OperationError("No update parameters, must either update or remove")
+
+        if self._none or self._empty:
+            return None
 
         queryset = self.clone()
         query = queryset._query
@@ -1120,7 +1128,6 @@ class BaseQuerySet:
         new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
-
             # If a cursor object has already been created, apply the sort to it
             if new_ordering:
                 queryset._cursor_obj.sort(new_ordering)
@@ -1276,7 +1283,8 @@ class BaseQuerySet:
                 "No 'json_options' are specified! Falling back to "
                 "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
                 "For use with other MongoDB drivers specify the UUID "
-                "representation to use.",
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
@@ -1288,10 +1296,10 @@ class BaseQuerySet:
         return [self._document._from_son(data) for data in son_data]
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
-        """Perform a aggregate function based in your queryset params
+        """Perform an aggregate function based on your queryset params
 
-        :param pipeline: list of aggregation commands,\
-            see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
+        :param pipeline: list of aggregation commands,
+            see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
             parameter will be removed shortly
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
@@ -1307,6 +1315,10 @@ class BaseQuerySet:
         user_pipeline += suppl_pipeline
 
         initial_pipeline = []
+        if self._none or self._empty:
+            initial_pipeline.append({"$limit": 1})
+            initial_pipeline.append({"$match": {"$expr": False}})
+
         if self._query:
             initial_pipeline.append({"$match": self._query})
 

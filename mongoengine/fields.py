@@ -47,6 +47,8 @@ from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
+
+    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
 except ImportError:
     Image = None
     ImageOps = None
@@ -356,45 +358,11 @@ class IntField(BaseField):
         return super().prepare_query_value(op, int(value))
 
 
-class LongField(BaseField):
+class LongField(IntField):
     """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
-
-    def __init__(self, min_value=None, max_value=None, **kwargs):
-        """
-        :param min_value: (optional) A min value that will be applied during validation
-        :param max_value: (optional) A max value that will be applied during validation
-        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
-        """
-        self.min_value, self.max_value = min_value, max_value
-        super().__init__(**kwargs)
-
-    def to_python(self, value):
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            pass
-        return value
 
     def to_mongo(self, value):
         return Int64(value)
-
-    def validate(self, value):
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            self.error("%s could not be converted to long" % value)
-
-        if self.min_value is not None and value < self.min_value:
-            self.error("Long value is too small")
-
-        if self.max_value is not None and value > self.max_value:
-            self.error("Long value is too large")
-
-    def prepare_query_value(self, op, value):
-        if value is None:
-            return value
-
-        return super().prepare_query_value(op, int(value))
 
 
 class FloatField(BaseField):
@@ -490,9 +458,6 @@ class DecimalField(BaseField):
         super().__init__(**kwargs)
 
     def to_python(self, value):
-        if value is None:
-            return value
-
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal("%s" % value)
@@ -506,8 +471,6 @@ class DecimalField(BaseField):
             return value.quantize(decimal.Decimal(), rounding=self.rounding)
 
     def to_mongo(self, value):
-        if value is None:
-            return value
         if self.force_string:
             return str(self.to_python(value))
         return float(self.to_python(value))
@@ -528,6 +491,8 @@ class DecimalField(BaseField):
             self.error("Decimal value is too large")
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
@@ -731,6 +696,8 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self._convert_from_datetime(value))
 
 
@@ -982,7 +949,6 @@ class ListField(ComplexBaseField):
             self.error("List is too long")
 
         if self.field:
-
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
             if (
@@ -1982,23 +1948,19 @@ class ImageGridFsProxy(GridFSProxy):
             size = field.size
 
             if size["force"]:
-                img = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                img = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
-                img.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                img.thumbnail((size["width"], size["height"]), LANCZOS)
 
         thumbnail = None
         if field.thumbnail_size:
             size = field.thumbnail_size
 
             if size["force"]:
-                thumbnail = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                thumbnail = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
                 thumbnail = img.copy()
-                thumbnail.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                thumbnail.thumbnail((size["width"], size["height"]), LANCZOS)
 
         if thumbnail:
             thumb_id = self._put_thumbnail(thumbnail, img_format, progressive)
@@ -2217,7 +2179,6 @@ class SequenceField(BaseField):
         return value
 
     def __set__(self, instance, value):
-
         if value is None and instance._initialised:
             value = self.generate()
 

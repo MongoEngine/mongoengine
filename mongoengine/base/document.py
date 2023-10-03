@@ -161,7 +161,6 @@ class BaseDocument:
     def __setattr__(self, name, value):
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
-
             if name not in self._fields_ordered and not name.startswith("_"):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name, null=True)
@@ -372,7 +371,7 @@ class BaseDocument:
                 value = field.generate()
                 self._data[field_name] = value
 
-            if (value is not None) or (field.null):
+            if value is not None or field.null:
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -451,7 +450,8 @@ class BaseDocument:
                 "No 'json_options' are specified! Falling back to "
                 "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
                 "For use with other MongoDB drivers specify the UUID "
-                "representation to use.",
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
@@ -481,7 +481,8 @@ class BaseDocument:
                 "No 'json_options' are specified! Falling back to "
                 "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
                 "For use with other MongoDB drivers specify the UUID "
-                "representation to use.",
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
@@ -517,9 +518,6 @@ class BaseDocument:
 
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
-        if not key:
-            return
-
         if not hasattr(self, "_changed_fields"):
             return
 

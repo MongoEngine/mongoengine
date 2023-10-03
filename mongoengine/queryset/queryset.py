@@ -87,7 +87,6 @@ class QuerySet(BaseQuerySet):
 
         pos = 0
         while True:
-
             # For all positions lower than the length of the current result
             # cache, serve the docs straight from the cache w/o hitting the
             # database.

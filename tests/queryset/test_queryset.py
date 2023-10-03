@@ -24,6 +24,7 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
+from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
@@ -149,6 +150,14 @@ class TestQueryset(unittest.TestCase):
 
         persons = list(self.Person.objects().limit(0))
         assert len(persons) == 2 == n_docs
+
+    def test_limit_0(self):
+        """Ensure that QuerySet.limit works as expected."""
+        self.Person.objects.create(name="User A", age=20)
+
+        # Test limit with 0 as parameter
+        qs = self.Person.objects.limit(0)
+        assert qs.count() == 0
 
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
@@ -408,6 +417,19 @@ class TestQueryset(unittest.TestCase):
         A.drop_collection()
         A().save()
 
+        # validate collection not empty
+        assert A.objects.count() == 1
+
+        # update operations
+        assert A.objects.none().update(s="1") == 0
+        assert A.objects.none().update_one(s="1") == 0
+        assert A.objects.none().modify(s="1") is None
+
+        # validate noting change by update operations
+        assert A.objects(s="1").count() == 0
+
+        # fetch queries
+        assert A.objects.none().first() is None
         assert list(A.objects.none()) == []
         assert list(A.objects.none().all()) == []
         assert list(A.objects.none().limit(1)) == []
@@ -595,7 +617,6 @@ class TestQueryset(unittest.TestCase):
         assert post.comments[1].votes == 8
 
     def test_update_using_positional_operator_matches_first(self):
-
         # Currently the $ operator only applies to the first matched item in
         # the query
 
@@ -2572,6 +2593,12 @@ class TestQueryset(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by("-name")]
         assert ages == [30, 40, 20]
 
+        ages = [p.age for p in self.Person.objects.order_by()]
+        assert ages == [40, 20, 30]
+
+        ages = [p.age for p in self.Person.objects.order_by("")]
+        assert ages == [40, 20, 30]
+
     def test_order_by_optional(self):
         class BlogPost(Document):
             title = StringField()
@@ -3507,6 +3534,26 @@ class TestQueryset(unittest.TestCase):
         assert Foo.objects.distinct("bar") == [bar]
         assert Foo.objects.no_dereference().distinct("bar") == [bar.pk]
 
+    def test_base_queryset_iter_raise_not_implemented(self):
+        class Tmp(Document):
+            pass
+
+        qs = BaseQuerySet(document=Tmp, collection=Tmp._get_collection())
+        with pytest.raises(NotImplementedError):
+            _ = list(qs)
+
+    def test_search_text_raise_if_called_2_times(self):
+        class News(Document):
+            title = StringField()
+            content = StringField()
+            is_active = BooleanField(default=True)
+
+        News.drop_collection()
+        with pytest.raises(OperationError):
+            News.objects.search_text("t1", language="portuguese").search_text(
+                "t2", language="french"
+            )
+
     def test_text_indexes(self):
         class News(Document):
             title = StringField()
@@ -3898,6 +3945,10 @@ class TestQueryset(unittest.TestCase):
         assert objects[post_1.id].title == post_1.title
         assert objects[post_2.id].title == post_2.title
         assert objects[post_5.id].title == post_5.title
+
+        objects = BlogPost.objects.as_pymongo().in_bulk(ids)
+        assert len(objects) == 3
+        assert isinstance(objects[post_1.id], dict)
 
         BlogPost.drop_collection()
 
@@ -5578,7 +5629,6 @@ class TestQueryset(unittest.TestCase):
         # Check that bool(queryset) does not uses the orderby
         qs = Person.objects.order_by("name")
         with query_counter() as q:
-
             if bool(qs):
                 pass
 
@@ -5591,7 +5641,6 @@ class TestQueryset(unittest.TestCase):
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by("name")
         with query_counter() as q:
-
             for x in qs2:
                 pass
 
@@ -5615,7 +5664,6 @@ class TestQueryset(unittest.TestCase):
         Person(name="A").save()
 
         with query_counter() as q:
-
             if Person.objects:
                 pass
 

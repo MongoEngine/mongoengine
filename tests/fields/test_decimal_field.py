@@ -71,6 +71,8 @@ class TestDecimalField(MongoDBTestCase):
         fetched_person = Person.objects.first()
         fetched_person.value is None
 
+        assert Person.objects(value=None).first() is not None
+
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields."""
 
