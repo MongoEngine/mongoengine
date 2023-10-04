@@ -1116,8 +1116,8 @@ class FieldTest(unittest.TestCase):
         foo.save()
         foo.reload()
 
-        assert type(foo.bar) == Bar
-        assert type(foo.baz) == Baz
+        assert isinstance(foo.bar, Bar)
+        assert isinstance(foo.baz, Baz)
 
     def test_document_reload_reference_integrity(self):
         """
