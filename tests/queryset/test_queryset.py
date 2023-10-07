@@ -2269,6 +2269,46 @@ class TestQueryset(unittest.TestCase):
         post.reload()
         assert post.slug == "When test test it"
 
+    def test_combination_of_mongoengine_and__raw__(self):
+        """Ensure that the '__raw__' update/query works in combination with mongoengine syntax correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            foo = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test", foo="bar")
+        post.save()
+
+        BlogPost.objects(slug="test").update(
+            foo="baz",
+            __raw__={"$set": {"slug": "test test"}},
+        )
+        post.reload()
+        assert post.slug == "test test"
+        assert post.foo == "baz"
+
+        assert BlogPost.objects(foo="baz", __raw__={"slug": "test test"}).count() == 1
+        assert (
+            BlogPost.objects(foo__ne="bar", __raw__={"slug": {"$ne": "test"}}).count()
+            == 1
+        )
+        assert (
+            BlogPost.objects(foo="baz", __raw__={"slug": {"$ne": "test test"}}).count()
+            == 0
+        )
+        assert (
+            BlogPost.objects(foo__ne="baz", __raw__={"slug": "test test"}).count() == 0
+        )
+        assert (
+            BlogPost.objects(
+                foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
+            ).count()
+            == 0
+        )
+
     def test_add_to_set_each(self):
         class Item(Document):
             name = StringField(required=True)
