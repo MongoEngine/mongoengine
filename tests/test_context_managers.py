@@ -3,7 +3,6 @@ import threading
 import time
 import unittest
 
-import pymongo
 import pytest
 
 from mongoengine import *
@@ -18,7 +17,10 @@ from mongoengine.context_managers import (
     switch_collection,
     switch_db,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.pymongo_support import (
+    PYMONGO_VERSION,
+    count_documents,
+)
 
 from .utils import requires_mongodb_gte_40, requires_mongodb_gte_44
 
@@ -423,8 +425,20 @@ class TestContextManagers:
             )  # queries on db.system.indexes are ignored as well
             assert q == 1
 
+    def test_transaction_usage_raises_exception_when_using_pymong_lt_39(self):
+        if PYMONGO_VERSION < (3, 9):
+            with pytest.raises(errors.OperationError):
+
+                def cb(session):
+                    pass
+
+                run_in_transaction(cb)
+
     @requires_mongodb_gte_40
     def test_updating_a_document_within_a_transaction(self):
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
 
         class A(Document):
@@ -434,12 +448,36 @@ class TestContextManagers:
 
         a_doc = A.objects.create(name="a")
 
-        with run_in_transaction():
+        def cb(session):
             a_doc.update(name="b")
-            assert "b" == A.objects.get(id=a_doc.id).name
+
+        run_in_transaction(cb)
+        assert "b" == A.objects.get(id=a_doc.id).name
+
+    def test_update_a_document_within_a_transaction_with_custom_args(self):
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
+        connect("mongoenginetest")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        def cb(session, custom_arg, custom_kwarg=""):
+            a_doc.update(name=f"{custom_arg}-{custom_kwarg}")
+
+        run_in_transaction(lambda s: cb(s, "a", custom_kwarg="b"))
+        assert "a-b" == A.objects.get(id=a_doc.id).name
 
     @requires_mongodb_gte_40
     def test_transaction_updates_across_databases(self):
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
         connect("test2", "test2")
 
@@ -456,15 +494,20 @@ class TestContextManagers:
         B.objects.all().delete()
         b_doc = B.objects.create(name="b")
 
-        with run_in_transaction():
+        def cb(session):
             a_doc.update(name="a2")
             b_doc.update(name="b2")
+
+        run_in_transaction(cb)
 
         assert "a2" == A.objects.get(id=a_doc.id).name
         assert "b2" == B.objects.get(id=b_doc.id).name
 
     @requires_mongodb_gte_44
     def test_collection_creation_via_upserts_across_databases_in_transaction(self):
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
         connect("test2", "test2")
 
@@ -483,12 +526,14 @@ class TestContextManagers:
 
         b_doc = B.objects.create(name="b")
 
-        with run_in_transaction():
+        def cb(session):
             a_doc.update(name="a3")
             with switch_db(A, "test2"):
                 a_doc.update(name="a4", upsert=True)
                 b_doc.update(name="b3")
             b_doc.update(name="b4")
+
+        run_in_transaction(cb)
 
         assert "a3" == A.objects.get(id=a_doc.id).name
         assert "b4" == B.objects.get(id=b_doc.id).name
@@ -499,6 +544,9 @@ class TestContextManagers:
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
         self,
     ):
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
         connect("test2", "test2")
 
@@ -519,14 +567,16 @@ class TestContextManagers:
 
         b_doc = B.objects.create(name="b")
 
+        def cb(session):
+            a_doc.update(name="a3")
+            with switch_db(A, "test2"):
+                a_doc.update(name="a4", upsert=True)
+                b_doc.update(name="b3")
+                b_doc.update(name="b4")
+            raise Exception
+
         try:
-            with run_in_transaction():
-                a_doc.update(name="a3")
-                with switch_db(A, "test2"):
-                    a_doc.update(name="a4", upsert=True)
-                    b_doc.update(name="b3")
-                    b_doc.update(name="b4")
-                raise Exception
+            run_in_transaction(cb)
         except Exception:
             pass
 
@@ -537,6 +587,11 @@ class TestContextManagers:
 
     @requires_mongodb_gte_40
     def test_exception_in_child_of_a_nested_transaction_rolls_parent_back(self):
+        # NOTE: callbacks initiating new transactions goes against pymongo recommended usage!
+        # This is simply a sanity check and should not be considered suggested usage.
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
 
         class A(Document):
@@ -551,12 +606,17 @@ class TestContextManagers:
         B.drop_collection()
         b_doc = B.objects.create(name="b")
 
+        def cb1(s1):
+            a_doc.update(name="trx-parent")
+
+            def cb2(s2):
+                b_doc.update(name="trx-child")
+                raise Exception
+
+            run_in_transaction(cb2)
+
         try:
-            with run_in_transaction():
-                a_doc.update(name="trx-parent")
-                with run_in_transaction():
-                    b_doc.update(name="trx-child")
-                    raise Exception
+            run_in_transaction(cb1)
         except Exception:
             pass
 
@@ -567,6 +627,11 @@ class TestContextManagers:
     def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
         self,
     ):
+        # NOTE: callbacks initiating new transactions goes against pymongo recommended usage!
+        # This is simply a sanity check and should not be considered suggested usage.
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
 
         class A(Document):
@@ -584,40 +649,41 @@ class TestContextManagers:
         class TestExc(Exception):
             pass
 
-        def run_tx():
-            try:
-                with run_in_transaction():
-                    a_doc.update(name="trx-parent")
-                    with run_in_transaction():
-                        b_doc.update(name="trx-child")
-                    raise TestExc
-            except TestExc:
-                pass
-            except OperationError as op_failure:
-                """
-                See thread safety test below for more details about TransientTransctionError handling
-                """
-                if "TransientTransactionError" in str(op_failure):
-                    run_tx()
-                else:
-                    raise op_failure
+        def cb1(s1):
+            a_doc.update(name="trx-parent")
 
-        run_tx()
+            def cb2(s2):
+                b_doc.update(name="trx-child")
+
+            run_in_transaction(cb2)
+            raise TestExc
+
+        try:
+            run_in_transaction(cb1)
+        except TestExc:
+            pass
+
         assert "a" == A.objects.get(id=a_doc.id).name
         assert "trx-child" == B.objects.get(id=b_doc.id).name
 
     @requires_mongodb_gte_40
     def test_nested_transactions_create_and_release_sessions_accordingly(self):
+        # NOTE: callbacks initiating new transactions goes against pymongo recommended usage!
+        # This is simply a sanity check and should not be considered suggested usage.
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
-        with run_in_transaction():
-            s1 = _get_session()
-            with run_in_transaction():
-                s2 = _get_session()
+
+        def cb1(s1):
+            def cb2(s2):
                 assert s1 != s2
-                with run_in_transaction():
-                    pass
                 assert s2 == _get_session()
+
+            run_in_transaction(cb2)
             assert s1 == _get_session()
+
+        run_in_transaction(cb1)
         assert _get_session() is None
 
     @requires_mongodb_gte_40
@@ -643,6 +709,9 @@ class TestContextManagers:
 
         0 + 10 + 2 + 30 + 4 + 50 + 6 + 70 + 8 + 90 = 270
         """
+        if PYMONGO_VERSION < (3, 9):
+            pytest.skip("pymongo>=3.9 is required to use transactions")
+
         connect("mongoenginetest")
 
         class A(Document):
@@ -658,7 +727,8 @@ class TestContextManagers:
             # Open the transaction at some unknown interval
             time.sleep(random.uniform(0.01, 0.1))
             try:
-                with run_in_transaction():
+
+                def cb(session):
                     a = A.objects.get(i=idx)
                     a.i = idx * 10
                     # Save at some unknown interval
@@ -668,23 +738,10 @@ class TestContextManagers:
                     # Force roll backs for the even runs...
                     if idx % 2 == 0:
                         raise TestExc
+
+                run_in_transaction(cb)
             except TestExc:
                 pass
-            except pymongo.errors.OperationFailure as op_failure:
-                """
-                If there's a TransientTransactionError, retry - the lock could not be acquired.
-
-                Per MongoDB docs: The core transaction API does not incorporate retry logic for
-                "TransientTransactionError". To handle "TransientTransactionError", applications
-                should explicitly incorporate retry logic for the error.
-
-                See: https://www.mongodb.com/docs/manual/core/transactions-in-applications/#-transienttransactionerror-
-                """
-                error_labels = op_failure.details.get("errorLabels", [])
-                if "TransientTransactionError" in error_labels:
-                    thread_fn(idx)
-                else:
-                    raise op_failure
 
         for r in range(10):
             """

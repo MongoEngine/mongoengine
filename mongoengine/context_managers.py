@@ -12,7 +12,11 @@ from mongoengine.connection import (
     get_connection,
     get_db,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.errors import OperationError
+from mongoengine.pymongo_support import (
+    PYMONGO_VERSION,
+    count_documents,
+)
 
 __all__ = (
     "switch_db",
@@ -302,15 +306,51 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
 
 @contextmanager
 def run_in_transaction(
-    alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None
+    callback,
+    alias=DEFAULT_CONNECTION_NAME,
+    session_kwargs=None,
+    transaction_kwargs=None,
 ):
+    """run_in_transaction context manager
+    Execute queries within a MongoDB transaction.
+
+    Usage:
+
+    .. code-block:: python
+
+        class A(Document):
+            name = StringField()
+
+        def callback(session):
+            a_doc = A.objects.create(name="a")
+            a_doc.update(name="b")
+        run_in_transaction(callback)
+
+        # With custom args/kwargs
+        def callback(session, custom_arg, customer_kwarg=None):
+            a_doc.update(name=f'{custom_arg}-{custom_kwarg}')
+        run_in_transaction(
+            lambda s: callback(s, 'arg', custom_kwarg='kwarg')
+        )
+
+    Be aware that:
+    - Mongo transactions run inside a session which is bound to a connection. If you attempt to
+      execute a transaction across a different connection alias, pymongo will raise an exception. In
+      other words: you cannot create a transaction that crosses different database connections.
+
+    For more information regarding pymongo transactions: https://pymongo.readthedocs.io/en/stable/api/pymongo/client_session.html#transactions
+    """
+
+    if PYMONGO_VERSION < (3, 9):
+        raise OperationError("pymongo>=3.9 is required to use transactions")
+
     conn = get_connection(alias)
     session_kwargs = session_kwargs or {}
     with conn.start_session(**session_kwargs) as session:
         transaction_kwargs = transaction_kwargs or {}
-        with session.start_transaction(**transaction_kwargs):
-            try:
-                _set_session(session)
-                yield
-            finally:
-                _clear_session()
+        transaction_kwargs["callback"] = callback
+        _set_session(session)
+        try:
+            session.with_transaction(**transaction_kwargs)
+        finally:
+            _clear_session()
