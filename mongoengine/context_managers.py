@@ -304,7 +304,6 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
     )
 
 
-@contextmanager
 def run_in_transaction(
     callback,
     alias=DEFAULT_CONNECTION_NAME,
