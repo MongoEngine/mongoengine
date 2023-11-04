@@ -454,6 +454,7 @@ class TestContextManagers:
         run_in_transaction(cb)
         assert "b" == A.objects.get(id=a_doc.id).name
 
+    @requires_mongodb_gte_40
     def test_update_a_document_within_a_transaction_with_custom_args(self):
         if PYMONGO_VERSION < (3, 9):
             pytest.skip("pymongo>=3.9 is required to use transactions")
