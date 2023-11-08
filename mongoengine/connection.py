@@ -509,8 +509,7 @@ def run_in_transaction(
     session_kwargs=None,
     transaction_kwargs=None,
 ):
-    """run_in_transaction context manager
-    Execute queries within a MongoDB transaction.
+    """Execute queries within a MongoDB transaction.
 
     Usage:
 
