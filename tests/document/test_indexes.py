@@ -507,7 +507,6 @@ class TestIndexes(unittest.TestCase):
             assert (
                 query_plan.get("queryPlanner")
                 .get("winningPlan")
-                .get("queryPlan")
                 .get("inputStage")
                 .get("stage")
                 == "IXSCAN"
@@ -516,6 +515,7 @@ class TestIndexes(unittest.TestCase):
             assert (
                 query_plan.get("queryPlanner")
                 .get("winningPlan")
+                .get("queryPlan")
                 .get("inputStage")
                 .get("stage")
                 == "IXSCAN"
