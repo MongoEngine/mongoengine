@@ -495,7 +495,10 @@ class TestIndexes(unittest.TestCase):
             )
         else:
             assert (
-                query_plan.get("queryPlanner").get("winningPlan").get("queryPlan").get("stage")
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
                 == PROJECTION_STR
             )
 
@@ -519,9 +522,18 @@ class TestIndexes(unittest.TestCase):
             )
 
         if mongo_db < MONGODB_70:
-            assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
         else:
-            assert query_plan.get("queryPlanner").get("winningPlan").get("queryPlan").get("stage") == "FETCH"
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
+                == "FETCH"
+            )
 
     def test_index_on_id(self):
         class BlogPost(Document):
