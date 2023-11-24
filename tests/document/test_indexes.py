@@ -477,7 +477,7 @@ class TestIndexes(unittest.TestCase):
                 .get("stage")
                 == "IXSCAN"
             )
-        elif:
+        else:
             assert (
                 query_plan.get("queryPlanner")
                 .get("winningPlan")
