@@ -500,14 +500,28 @@ class TestIndexes(unittest.TestCase):
             )
 
         query_plan = Test.objects(a=1).explain()
-        assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
-        )
-        assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+
+        if mongo_db < MONGODB_70:
+            assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+        else:
+            assert query_plan.get("queryPlanner").get("winningPlan").get("queryPlan").get("stage") == "FETCH"
 
     def test_index_on_id(self):
         class BlogPost(Document):
