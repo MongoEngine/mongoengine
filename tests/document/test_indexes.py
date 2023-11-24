@@ -488,10 +488,16 @@ class TestIndexes(unittest.TestCase):
             )
 
         PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
-        assert (
-            query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == PROJECTION_STR
-        )
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == PROJECTION_STR
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("queryPlan").get("stage")
+                == PROJECTION_STR
+            )
 
         query_plan = Test.objects(a=1).explain()
         assert (
