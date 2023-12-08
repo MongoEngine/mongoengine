@@ -17,6 +17,8 @@ env:
   MONGODB_4_0: 4.0.28
   MONGODB_4_4: 4.4
   MONGODB_5_0: "5.0"
+  MONGODB_6_0: "6.0"
+  MONGODB_7_0: "7.0"
 
   PYMONGO_3_4: 3.4
   PYMONGO_3_6: 3.6
@@ -25,6 +27,8 @@ env:
   PYMONGO_3_12: 3.12
   PYMONGO_4_0: 4.0
   PYMONGO_4_3: 4.3.2
+  PYMONGO_4_4: 4.4.1
+  PYMONGO_4_6: 4.6.0
 
   MAIN_PYTHON_VERSION: 3.7
 
@@ -68,6 +72,12 @@ jobs:
           - python-version: "3.11"
             MONGODB: $MONGODB_5_0
             PYMONGO: $PYMONGO_4_3
+          - python-version: "3.11"
+            MONGODB: $MONGODB_6_0
+            PYMONGO: $PYMONGO_4_4
+          - python-version: "3.11"
+            MONGODB: $MONGODB_7_0
+            PYMONGO: $PYMONGO_4_6
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
