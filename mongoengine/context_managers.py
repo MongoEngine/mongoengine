@@ -4,7 +4,11 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import (
+    DEFAULT_CONNECTION_NAME,
+    _get_session,
+    get_db,
+)
 from mongoengine.pymongo_support import count_documents
 
 __all__ = (
@@ -210,11 +214,11 @@ class query_counter:
         }
 
     def _turn_on_profiling(self):
-        profile_update_res = self.db.command({"profile": 0})
+        profile_update_res = self.db.command({"profile": 0}, session=_get_session())
         self.initial_profiling_level = profile_update_res["was"]
 
         self.db.system.profile.drop()
-        self.db.command({"profile": 2})
+        self.db.command({"profile": 2}, session=_get_session())
 
     def _resets_profiling(self):
         self.db.command({"profile": self.initial_profiling_level})

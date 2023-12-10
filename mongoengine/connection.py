@@ -1,3 +1,5 @@
+import collections
+import threading
 import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
@@ -26,6 +28,7 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
+    "run_in_transaction",
 ]
 
 
@@ -37,6 +40,7 @@ DEFAULT_PORT = 27017
 _connection_settings = {}
 _connections = {}
 _dbs = {}
+
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -463,3 +467,89 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 # Support old naming convention
 _get_connection = get_connection
 _get_db = get_db
+
+
+class _LocalSessions(threading.local):
+    def __init__(self):
+        self.sessions = collections.deque()
+
+    def append(self, session):
+        self.sessions.append(session)
+
+    def get_current(self):
+        if len(self.sessions):
+            return self.sessions[len(self.sessions) - 1]
+
+    def clear_current(self):
+        if len(self.sessions):
+            self.sessions.pop()
+
+    def clear_all(self):
+        self.sessions.clear()
+
+
+_local_sessions = _LocalSessions()
+
+
+def _set_session(session):
+    _local_sessions.append(session)
+
+
+def _get_session():
+    return _local_sessions.get_current()
+
+
+def _clear_session():
+    return _local_sessions.clear_current()
+
+
+def run_in_transaction(
+    callback,
+    alias=DEFAULT_CONNECTION_NAME,
+    session_kwargs=None,
+    transaction_kwargs=None,
+):
+    """Execute queries within a MongoDB transaction.
+
+    Usage:
+
+    .. code-block:: python
+
+        class A(Document):
+            name = StringField()
+
+        def callback(session):
+            a_doc = A.objects.create(name="a")
+            a_doc.update(name="b")
+        run_in_transaction(callback)
+
+        # With custom args/kwargs
+        def callback(session, custom_arg, customer_kwarg=None):
+            a_doc.update(name=f'{custom_arg}-{custom_kwarg}')
+        run_in_transaction(
+            lambda s: callback(s, 'arg', custom_kwarg='kwarg')
+        )
+
+    Be aware that:
+    - Mongo transactions run inside a session which is bound to a connection. If you attempt to
+      execute a transaction across a different connection alias, pymongo will raise an exception. In
+      other words: you cannot create a transaction that crosses different database connections.
+
+    For more information regarding pymongo transactions: https://pymongo.readthedocs.io/en/stable/api/pymongo/client_session.html#transactions
+    """
+
+    if PYMONGO_VERSION < (3, 9):
+        raise mongoengine.errors.OperationError(
+            "pymongo>=3.9 is required to use transactions"
+        )
+
+    conn = get_connection(alias)
+    session_kwargs = session_kwargs or {}
+    with conn.start_session(**session_kwargs) as session:
+        transaction_kwargs = transaction_kwargs or {}
+        transaction_kwargs["callback"] = callback
+        _set_session(session)
+        try:
+            session.with_transaction(**transaction_kwargs)
+        finally:
+            _clear_session()
