@@ -10,6 +10,7 @@ Development
 - Fix for uuidRepresentation not read when provided in URI #2741
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
+- Add support for readPreferenceTags in connection parameters #2644
 
 Changes in 0.27.0
 =================
