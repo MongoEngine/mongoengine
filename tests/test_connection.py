@@ -185,6 +185,18 @@ class ConnectionTest(unittest.TestCase):
     def test___get_connection_settings(self):
         funky_host = "mongodb://root:12345678@1.1.1.1:27017,2.2.2.2:27017,3.3.3.3:27017/db_api?replicaSet=s0&readPreference=secondary&uuidRepresentation=javaLegacy&readPreferenceTags=region:us-west-2,usage:api"
         settings = _get_connection_settings(host=funky_host)
+
+        if PYMONGO_VERSION < (4,):
+            read_pref = Secondary(
+                tag_sets=[{"region": "us-west-2", "usage": "api"}],
+                max_staleness=-1,
+            )
+        else:
+            read_pref = Secondary(
+                tag_sets=[{"region": "us-west-2", "usage": "api"}],
+                max_staleness=-1,
+                hedge=None,
+            )
         assert settings == {
             "authentication_mechanism": None,
             "authentication_source": None,
@@ -193,11 +205,7 @@ class ConnectionTest(unittest.TestCase):
             "name": "db_api",
             "password": "12345678",
             "port": 27017,
-            "read_preference": Secondary(
-                tag_sets=[{"region": "us-west-2", "usage": "api"}],
-                max_staleness=-1,
-                hedge=None,
-            ),
+            "read_preference": read_pref,
             "replicaSet": "s0",
             "username": "root",
             "uuidrepresentation": "javaLegacy",
