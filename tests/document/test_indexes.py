@@ -9,6 +9,7 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import (
     MONGODB_42,
+    MONGODB_70,
     get_mongodb_version,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
@@ -466,30 +467,73 @@ class TestIndexes(unittest.TestCase):
             == "IDHACK"
         )
 
-        query_plan = Test.objects(a=1).only("a").exclude("id").explain()
-        assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
-        )
         mongo_db = get_mongodb_version()
+        query_plan = Test.objects(a=1).only("a").exclude("id").explain()
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+
         PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
-        assert (
-            query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == PROJECTION_STR
-        )
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == PROJECTION_STR
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
+                == PROJECTION_STR
+            )
 
         query_plan = Test.objects(a=1).explain()
-        assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
-        )
-        assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
+                == "FETCH"
+            )
 
     def test_index_on_id(self):
         class BlogPost(Document):
@@ -536,8 +580,12 @@ class TestIndexes(unittest.TestCase):
             BlogPost.objects.hint("Bad Name").count()
 
         # Invalid shape argument (missing list brackets) should fail.
-        with pytest.raises(ValueError):
-            BlogPost.objects.hint(("tags", 1)).count()
+        if PYMONGO_VERSION <= (4, 3):
+            with pytest.raises(ValueError):
+                BlogPost.objects.hint(("tags", 1)).count()
+        else:
+            with pytest.raises(TypeError):
+                BlogPost.objects.hint(("tags", 1)).count()
 
     def test_collation(self):
         base = {"locale": "en", "strength": 2}
