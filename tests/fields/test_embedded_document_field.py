@@ -7,6 +7,7 @@ from mongoengine import (
     Document,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    EmbeddedDocumentListField,
     GenericEmbeddedDocumentField,
     IntField,
     InvalidQueryError,
@@ -60,6 +61,48 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
+
+    def test_embedded_document_field_validate_subclass(self):
+        class BaseItem(EmbeddedDocument):
+            f = IntField()
+
+            meta = {"allow_inheritance": True}
+
+            def validate(self, clean=True):
+                if self.f == 0:
+                    raise Exception("can not be 0")
+                return super().validate(clean)
+
+        class RealItem(BaseItem):
+            a = IntField()
+
+            def validate(self, clean=True):
+                if self.f == 1:
+                    raise Exception("can not be 1")
+                return super().validate(clean)
+
+        class TopLevel(Document):
+            item = EmbeddedDocumentField(document_type=BaseItem)
+            items = EmbeddedDocumentListField(document_type=BaseItem)
+
+        passing_item = RealItem(f=2, a=0)
+        item = TopLevel(item=passing_item, items=[passing_item])
+        item.validate()
+
+        failing_item = RealItem(f=1, a=0)
+        item = TopLevel(item=failing_item)
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        item = TopLevel(items=[failing_item])
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        # verify that super calls the parent
+        failing_item_in_base = RealItem(f=0, a=0)
+        item = TopLevel(item=failing_item_in_base)
+        with pytest.raises(Exception, match="can not be 0"):
+            item.validate()
 
     def test_query_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):

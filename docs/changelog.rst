@@ -9,6 +9,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
+- Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 
 Changes in 0.27.0
 =================
