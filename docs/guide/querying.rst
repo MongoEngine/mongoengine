@@ -265,7 +265,7 @@ This is done by using ``__raw__`` keyword argument to the update method and prov
                                   {'$set': {"tags.$[element]": 'test11111'}},
                                   'array_filters': [{"element": {'$eq': 'test2'}}],
 
-    # 'tags' field == ['test1', 'test11111', 'test3']
+    # updated 'tags' field == ['test1', 'test11111', 'test3']
 
     )
 
