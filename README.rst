@@ -15,6 +15,12 @@ MongoEngine
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
   :target: https://github.com/ambv/black
 
+.. image:: https://pepy.tech/badge/mongoengine/month
+  :target: https://pepy.tech/project/mongoengine
+
+.. image:: https://img.shields.io/pypi/v/mongoengine.svg
+  :target: https://pypi.python.org/pypi/mongoengine
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
@@ -25,10 +31,10 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v3.4, v3.6 and v4.0. Future versions
+MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4, v5.0, v6.0 and v7.0. Future versions
 should be supported as well, but aren't actively tested at the moment. Make
 sure to open an issue or submit a pull request if you experience any problems
-with MongoDB version > 4.0.
+with a more recent MongoDB versions.
 
 Installation
 ============

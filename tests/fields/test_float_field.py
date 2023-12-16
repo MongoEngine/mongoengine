@@ -51,9 +51,15 @@ class TestFloatField(MongoDBTestCase):
         big_person.height = int(0)
         big_person.validate()
 
-        big_person.height = 2 ** 500
+        big_person.height = 2**500
         big_person.validate()
 
-        big_person.height = 2 ** 100000  # Too big for a float value
+        big_person.height = 2**100000  # Too big for a float value
         with pytest.raises(ValidationError):
             big_person.validate()
+
+    def test_query_none_value_dont_raise(self):
+        class BigPerson(Document):
+            height = FloatField()
+
+        _ = list(BigPerson.objects(height=None))

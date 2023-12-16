@@ -7,10 +7,105 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- EnumField improvements: now `choices` limits the values of an enum to allow
+- Fix for uuidRepresentation not read when provided in URI #2741
+- Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
+- Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
+- Add support for readPreferenceTags in connection parameters #2644
+
+Changes in 0.27.0
+=================
+- Update uuidRepresentation warnings with "unspecified" as the future default (instead of 'standard' previously advertised) #2739
+- Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
+  Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
+- BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
+  For more info, check https://docs.mongoengine.org/guide/mongomock.html
+- Fix DictField that always gets marked as changed #2606
+- fix for Queryset.none() that has no effect on update/aggregate / first #2669
+
+Changes in 0.26.0
+=================
+- BREAKING CHANGE: Improved the performance of :meth:`~mongoengine.Document.save()`
+  by removing the call to :meth:`~mongoengine.Document.ensure_indexes` unless
+  ``meta['auto_create_index_on_save']`` is set to True. With the default settings, Document indexes
+  will still be created on the fly, during the first usage of the collection (query, insert, etc),
+  they will just not be re-created whenever .save() is called.
+- Added meta ``auto_create_index_on_save`` so you can enable index creation
+  on :meth:`~mongoengine.Document.save()` (as it was < 0.26.0).
+- BREAKING CHANGE: remove deprecated method ``ensure_index`` (replaced by ``create_index`` long time ago).
+- Addition of Decimal128Field: :class:`~mongoengine.fields.Decimal128Field` for accurate representation of Decimals (much better than the legacy field DecimalField).
+  Although it could work to switch an existing DecimalField to Decimal128Field without applying a migration script,
+  it is not recommended to do so (DecimalField uses float/str to store the value, Decimal128Field uses Decimal128).
+- BREAKING CHANGE: When using ListField(EnumField) or DictField(EnumField), the values weren't always cast into the Enum (#2531)
+- BREAKING CHANGE (bugfix) Querying ObjectIdField or ComplexDateTimeField with None no longer raise a ValidationError (#2681)
+- Allow updating a field that has an operator name e.g. "type" with .update(set__type="foo"). It was raising an error previously. #2595
+
+Changes in 0.25.0
+=================
+- Support MONGODB-AWS authentication mechanism (with `authmechanismproperties`) #2507
+- Bug Fix - distinct query doesn't obey the ``no_dereference()``. #2663
+- Add tests against Mongo 5.0 in pipeline
+- Drop support for Python 3.6 (EOL)
+- Bug fix support for PyMongo>=4 to fix "pymongo.errors.InvalidOperation: Cannot use MongoClient after close"
+  errors. #2627
+
+Changes in 0.24.2
+=================
+- Bug fix regarding uuidRepresentation that was case sensitive #2650
+
+Changes in 0.24.1
+=================
+- Allow pymongo<5.0 to be pulled
+- Don't use deprecated property for emptiness check in queryset base #2633
+
+Changes in 0.24.0
+=================
+- EnumField improvements: now ``choices`` limits the values of an enum to allow
+- Fix bug that prevented instance queryset from using custom queryset_class #2589
+- Fix deepcopy of EmbeddedDocument #2202
+- Introduce a base exception class for MongoEngine exceptions (MongoEngineException).
+  Note that this doesn't concern the pymongo errors #2515
+- Fix error when using precision=0 with DecimalField #2535
+- Add support for regex and whole word text search query #2568
+- Add support for update aggregation pipeline #2578
+- BREAKING CHANGE: Updates to support pymongo 4.0. Where possible deprecated
+  functionality has been migrated, but additional care should be taken when
+  migrating to pymongo 4.0 as existing code may have been using deprecated
+  features which have now been removed #2614.
+
+  For the pymongo migration guide see:
+  https://pymongo.readthedocs.io/en/stable/migrate-to-pymongo4.html.
+
+  In addition to the changes in the migration guide, the following is a high
+  level overview of the changes made to MongoEngine when using pymongo 4.0:
+
+  - limited support of geohaystack indexes has been removed
+  - ``QuerySet.map_reduce`` has been migrated from ``Collection.map_reduce``
+    and ``Collection.inline_map_reduce`` to use
+    ``db.command({mapReduce: ..., ...})`` and support between the two may need
+    additional verification.
+  - UUIDs are encoded with the ``pythonLegacy`` encoding by default instead of
+    the newer and cross platform ``standard`` encoding. Existing UUIDs will
+    need to be migrated before changing the encoding, and this should be done
+    explicitly by the user rather than switching to a new default by
+    MongoEngine. This default will change at a later date, but to allow
+    specifying and then migrating to the new format a default ``json_options``
+    has been provided.
+  - ``Queryset.count`` has been using ``Collection.count_documents`` and
+    transparently falling back to ``Collection.count`` when using features that
+    are not supported by ``Collection.count_documents``. ``Collection.count``
+    has been removed and no automatic fallback is possible. The migration guide
+    documents the extended functionality which is no longer supported. Rewrite
+    the unsupported queries or fetch the whole result set and perform the count
+    locally.
+  - Pymongo 4 removed db.authenticate(), on which we were relying for authenticating
+    with username/password. The migration involved switching to providing credentials to
+    MongoClient BUT in case the authSource isn't provided, db.authenticate used to default to
+    authSource=current-database and MongoClient defaults to authSource="admin". Long story short,
+    if you observe authentication issue after migrating, make sure you provide the authSource
+    explicitly. (see #2626)
 
 Changes in 0.23.1
-===========
+=================
 - Bug fix: ignore LazyReferenceFields when clearing _changed_fields #2484
 - Improve connection doc #2481
 

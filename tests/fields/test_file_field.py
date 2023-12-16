@@ -328,7 +328,7 @@ class TestFileField(MongoDBTestCase):
         assert len(list(files)) == 1
         assert len(list(chunks)) == 1
 
-        # Deleting the docoument should delete the files
+        # Deleting the document should delete the files
         testfile.delete()
 
         files = db.fs.files.find()
@@ -535,7 +535,6 @@ class TestFileField(MongoDBTestCase):
     @require_pil
     def test_get_image_by_grid_id(self):
         class TestImage(Document):
-
             image1 = ImageField()
             image2 = ImageField()
 

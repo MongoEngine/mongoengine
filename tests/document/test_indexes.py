@@ -9,8 +9,10 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import (
     MONGODB_42,
+    MONGODB_70,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 class TestIndexes(unittest.TestCase):
@@ -247,10 +249,9 @@ class TestIndexes(unittest.TestCase):
 
     def test_explicit_geohaystack_index(self):
         """Ensure that geohaystack indexes work when created via meta[indexes]"""
-        pytest.skip(
-            "GeoHaystack index creation is not supported for now"
-            "from meta, as it requires a bucketSize parameter."
-        )
+        # This test can be removed when pymongo 3.x is no longer supported
+        if PYMONGO_VERSION >= (4,):
+            pytest.skip("GEOHAYSTACK has been removed in pymongo 4.0")
 
         class Place(Document):
             location = DictField()
@@ -261,10 +262,13 @@ class TestIndexes(unittest.TestCase):
             {"fields": [("location.point", "geoHaystack"), ("name", 1)]}
         ] == Place._meta["index_specs"]
 
-        Place.ensure_indexes()
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack")] in info
+        # GeoHaystack index creation is not supported for now from meta, as it
+        # requires a bucketSize parameter.
+        if False:
+            Place.ensure_indexes()
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack")] in info
 
     def test_create_geohaystack_index(self):
         """Ensure that geohaystack indexes can be created"""
@@ -273,10 +277,25 @@ class TestIndexes(unittest.TestCase):
             location = DictField()
             name = StringField()
 
-        Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
-        info = Place._get_collection().index_information()
-        info = [value["key"] for key, value in info.items()]
-        assert [("location.point", "geoHaystack"), ("name", 1)] in info
+        if PYMONGO_VERSION >= (4,):
+            expected_error = NotImplementedError
+        elif get_mongodb_version() >= (4, 9):
+            expected_error = OperationFailure
+        else:
+            expected_error = None
+
+        # This test can be removed when pymongo 3.x is no longer supported
+        if expected_error:
+            with pytest.raises(expected_error):
+                Place.create_index(
+                    {"fields": (")location.point", "name")},
+                    bucketSize=10,
+                )
+        else:
+            Place.create_index({"fields": (")location.point", "name")}, bucketSize=10)
+            info = Place._get_collection().index_information()
+            info = [value["key"] for key, value in info.items()]
+            assert [("location.point", "geoHaystack"), ("name", 1)] in info
 
     def test_dictionary_indexes(self):
         """Ensure that indexes are used when meta[indexes] contains
@@ -448,30 +467,73 @@ class TestIndexes(unittest.TestCase):
             == "IDHACK"
         )
 
-        query_plan = Test.objects(a=1).only("a").exclude("id").explain()
-        assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
-        )
         mongo_db = get_mongodb_version()
+        query_plan = Test.objects(a=1).only("a").exclude("id").explain()
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+
         PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
-        assert (
-            query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == PROJECTION_STR
-        )
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == PROJECTION_STR
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
+                == PROJECTION_STR
+            )
 
         query_plan = Test.objects(a=1).explain()
-        assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
-        )
-        assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("inputStage")
+                .get("stage")
+                == "IXSCAN"
+            )
+
+        if mongo_db < MONGODB_70:
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
+        else:
+            assert (
+                query_plan.get("queryPlanner")
+                .get("winningPlan")
+                .get("queryPlan")
+                .get("stage")
+                == "FETCH"
+            )
 
     def test_index_on_id(self):
         class BlogPost(Document):
@@ -518,8 +580,12 @@ class TestIndexes(unittest.TestCase):
             BlogPost.objects.hint("Bad Name").count()
 
         # Invalid shape argument (missing list brackets) should fail.
-        with pytest.raises(ValueError):
-            BlogPost.objects.hint(("tags", 1)).count()
+        if PYMONGO_VERSION <= (4, 3):
+            with pytest.raises(ValueError):
+                BlogPost.objects.hint(("tags", 1)).count()
+        else:
+            with pytest.raises(TypeError):
+                BlogPost.objects.hint(("tags", 1)).count()
 
     def test_collation(self):
         base = {"locale": "en", "strength": 2}
@@ -549,7 +615,9 @@ class TestIndexes(unittest.TestCase):
         incorrect_collation = {"arndom": "wrdo"}
         with pytest.raises(OperationFailure) as exc_info:
             BlogPost.objects.collation(incorrect_collation).count()
-        assert "Missing expected field" in str(exc_info.value)
+        assert "Missing expected field" in str(
+            exc_info.value
+        ) or "unknown field" in str(exc_info.value)
 
         query_result = BlogPost.objects.collation({}).order_by("name")
         assert [x.name for x in query_result] == sorted(names)
@@ -963,44 +1031,52 @@ class TestIndexes(unittest.TestCase):
 
     def test_indexes_after_database_drop(self):
         """
-        Test to ensure that indexes are re-created on a collection even
-        after the database has been dropped.
+        Test to ensure that indexes are not re-created on a collection
+        after the database has been dropped unless auto_create_index_on_save
+        is enabled.
 
-        Issue #812
+        Issue #812 and #1446.
         """
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
-        connection = connect(
-            db="tempdatabase", alias="test_indexes_after_database_drop"
-        )
+        tmp_alias = "test_indexes_after_database_drop"
+        connection = connect(db="tempdatabase", alias=tmp_alias)
+        self.addCleanup(connection.drop_database, "tempdatabase")
 
         class BlogPost(Document):
-            title = StringField()
             slug = StringField(unique=True)
+            meta = {"db_alias": tmp_alias}
 
-            meta = {"db_alias": "test_indexes_after_database_drop"}
+        BlogPost.drop_collection()
+        BlogPost(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost(slug="test").save()
 
-        try:
-            BlogPost.drop_collection()
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost(slug="test").save()
+        # No error because the index was not recreated after dropping the database.
+        BlogPost(slug="test").save()
 
-            # Create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
+        # Repeat with auto_create_index_on_save: True.
+        class BlogPost2(Document):
+            slug = StringField(unique=True)
+            meta = {
+                "db_alias": tmp_alias,
+                "auto_create_index_on_save": True,
+            }
 
-            # Drop the Database
-            connection.drop_database("tempdatabase")
+        BlogPost2.drop_collection()
+        BlogPost2(slug="test").save()
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
-            # Re-create Post #1
-            post1 = BlogPost(title="test1", slug="test")
-            post1.save()
-
-            # Create Post #2
-            post2 = BlogPost(title="test2", slug="test")
-            with pytest.raises(NotUniqueError):
-                post2.save()
-        finally:
-            # Drop the temporary database at the end
-            connection.drop_database("tempdatabase")
+        # Drop the Database
+        connection.drop_database("tempdatabase")
+        BlogPost2(slug="test").save()
+        # Error because ensure_indexes is run on every save().
+        with pytest.raises(NotUniqueError):
+            BlogPost2(slug="test").save()
 
     def test_index_dont_send_cls_option(self):
         """

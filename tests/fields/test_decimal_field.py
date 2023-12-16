@@ -71,6 +71,8 @@ class TestDecimalField(MongoDBTestCase):
         fetched_person = Person.objects.first()
         fetched_person.value is None
 
+        assert Person.objects(value=None).first() is not None
+
     def test_validation(self):
         """Ensure that invalid values cannot be assigned to decimal fields."""
 
@@ -118,3 +120,23 @@ class TestDecimalField(MongoDBTestCase):
         assert 2 == Person.objects(money__gt="7").count()
 
         assert 3 == Person.objects(money__gte="7").count()
+
+    def test_precision_0(self):
+        """prevent regression of a bug that was raising an exception when using precision=0"""
+
+        class TestDoc(Document):
+            d = DecimalField(precision=0)
+
+        TestDoc.drop_collection()
+
+        td = TestDoc(d=Decimal("12.00032678131263"))
+        assert td.d == Decimal("12")
+
+    def test_precision_negative_raise(self):
+        """prevent regression of a bug that was raising an exception when using precision=0"""
+        with pytest.raises(
+            ValidationError, match="precision must be a positive integer"
+        ):
+
+            class TestDoc(Document):
+                dneg = DecimalField(precision=-1)

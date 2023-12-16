@@ -28,7 +28,10 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
-from mongoengine.pymongo_support import count_documents
+from mongoengine.pymongo_support import (
+    LEGACY_JSON_OPTIONS,
+    count_documents,
+)
 from mongoengine.queryset import transform
 from mongoengine.queryset.field_list import QueryFieldList
 from mongoengine.queryset.visitor import Q, QNode
@@ -234,7 +237,7 @@ class BaseQuerySet:
             for the search and the rules for the stemmer and tokenizer.
             If not specified, the search uses the default language of the index.
             For supported languages, see
-            `Text Search Languages <http://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+            `Text Search Languages <https://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -252,7 +255,7 @@ class BaseQuerySet:
         return queryset
 
     def get(self, *q_objs, **query):
-        """Retrieve the the matching object raising
+        """Retrieve the matching object raising
         :class:`~mongoengine.queryset.MultipleObjectsReturned` or
         `DocumentName.MultipleObjectsReturned` exception if multiple results
         and :class:`~mongoengine.queryset.DoesNotExist` or
@@ -286,6 +289,9 @@ class BaseQuerySet:
     def first(self):
         """Retrieve the first object matching the query."""
         queryset = self.clone()
+        if self._none or self._empty:
+            return None
+
         try:
             result = queryset[0]
         except IndexError:
@@ -548,11 +554,18 @@ class BaseQuerySet:
 
         if write_concern is None:
             write_concern = {}
+        if self._none or self._empty:
+            return 0
 
         queryset = self.clone()
         query = queryset._query
-        update = transform.update(queryset._document, **update)
-
+        if "__raw__" in update and isinstance(update["__raw__"], list):
+            update = [
+                transform.update(queryset._document, **{"__raw__": u})
+                for u in update["__raw__"]
+            ]
+        else:
+            update = transform.update(queryset._document, **update)
         # If doing an atomic upsert on an inheritable class
         # then ensure we add _cls to the update operation
         if upsert and "_cls" in query:
@@ -665,6 +678,9 @@ class BaseQuerySet:
         if not update and not upsert and not remove:
             raise OperationError("No update parameters, must either update or remove")
 
+        if self._none or self._empty:
+            return None
+
         queryset = self.clone()
         query = queryset._query
         if not remove:
@@ -714,13 +730,13 @@ class BaseQuerySet:
         :param object_id: the value for the id of the document to look up
         """
         queryset = self.clone()
-        if not queryset._query_obj.empty:
+        if queryset._query_obj:
             msg = "Cannot use a filter whilst using `with_id`"
             raise InvalidQueryError(msg)
         return queryset.filter(pk=object_id).first()
 
     def in_bulk(self, object_ids):
-        """ "Retrieve a set of documents by their ids.
+        """Retrieve a set of documents by their ids.
 
         :param object_ids: a list or tuple of ObjectId's
         :rtype: dict of ObjectId's as keys and collection-specific
@@ -946,9 +962,11 @@ class BaseQuerySet:
         except LookUpError:
             pass
 
-        distinct = self._dereference(
-            queryset._cursor.distinct(field), 1, name=field, instance=self._document
-        )
+        raw_values = queryset._cursor.distinct(field)
+        if not self._auto_dereference:
+            return raw_values
+
+        distinct = self._dereference(raw_values, 1, name=field, instance=self._document)
 
         doc_field = self._document._fields.get(field.split(".", 1)[0])
         instance = None
@@ -1110,7 +1128,6 @@ class BaseQuerySet:
         new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
-
             # If a cursor object has already been created, apply the sort to it
             if new_ordering:
                 queryset._cursor_obj.sort(new_ordering)
@@ -1261,6 +1278,16 @@ class BaseQuerySet:
 
     def to_json(self, *args, **kwargs):
         """Converts a queryset to JSON"""
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
     def from_json(self, json_data):
@@ -1269,10 +1296,10 @@ class BaseQuerySet:
         return [self._document._from_son(data) for data in son_data]
 
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
-        """Perform a aggregate function based in your queryset params
+        """Perform an aggregate function based on your queryset params
 
-        :param pipeline: list of aggregation commands,\
-            see: http://docs.mongodb.org/manual/core/aggregation-pipeline/
+        :param pipeline: list of aggregation commands,
+            see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
             parameter will be removed shortly
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
@@ -1288,6 +1315,10 @@ class BaseQuerySet:
         user_pipeline += suppl_pipeline
 
         initial_pipeline = []
+        if self._none or self._empty:
+            initial_pipeline.append({"$limit": 1})
+            initial_pipeline.append({"$match": {"$expr": False}})
+
         if self._query:
             initial_pipeline.append({"$match": self._query})
 
@@ -1330,9 +1361,8 @@ class BaseQuerySet:
         :param map_f: map function, as :class:`~bson.code.Code` or string
         :param reduce_f: reduce function, as
                          :class:`~bson.code.Code` or string
-        :param output: output collection name, if set to 'inline' will try to
-           use :class:`~pymongo.collection.Collection.inline_map_reduce`
-           This can also be a dictionary containing output options
+        :param output: output collection name, if set to 'inline' will return
+           the results inline. This can also be a dictionary containing output options
            see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
@@ -1342,12 +1372,6 @@ class BaseQuerySet:
 
         Returns an iterator yielding
         :class:`~mongoengine.document.MapReduceDocument`.
-
-        .. note::
-
-            Map/Reduce changed in server version **>= 1.7.4**. The PyMongo
-            :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-            PyMongo version **>= 1.11**.
         """
         queryset = self.clone()
 
@@ -1384,10 +1408,10 @@ class BaseQuerySet:
             mr_args["limit"] = limit
 
         if output == "inline" and not queryset._ordering:
-            map_reduce_function = "inline_map_reduce"
+            inline = True
+            mr_args["out"] = {"inline": 1}
         else:
-            map_reduce_function = "map_reduce"
-
+            inline = False
             if isinstance(output, str):
                 mr_args["out"] = output
 
@@ -1417,17 +1441,29 @@ class BaseQuerySet:
 
                 mr_args["out"] = SON(ordered_output)
 
-        results = getattr(queryset._collection, map_reduce_function)(
-            map_f, reduce_f, **mr_args
+        db = queryset._document._get_db()
+        result = db.command(
+            {
+                "mapReduce": queryset._document._get_collection_name(),
+                "map": map_f,
+                "reduce": reduce_f,
+                **mr_args,
+            }
         )
 
-        if map_reduce_function == "map_reduce":
-            results = results.find()
+        if inline:
+            docs = result["results"]
+        else:
+            if isinstance(result["result"], str):
+                docs = db[result["result"]].find()
+            else:
+                info = result["result"]
+                docs = db.client[info["db"]][info["collection"]].find()
 
         if queryset._ordering:
-            results = results.sort(queryset._ordering)
+            docs = docs.sort(queryset._ordering)
 
-        for doc in results:
+        for doc in docs:
             yield MapReduceDocument(
                 queryset._document, queryset._collection, doc["_id"], doc["value"]
             )
@@ -1471,7 +1507,7 @@ class BaseQuerySet:
         code = Code(code, scope=scope)
 
         db = queryset._document._get_db()
-        return db.eval(code, *fields)
+        return db.command("eval", code, args=fields).get("retval")
 
     def where(self, where_clause):
         """Filter ``QuerySet`` results with a ``$where`` clause (a Javascript
@@ -1715,29 +1751,29 @@ class BaseQuerySet:
 
     def _item_frequencies_map_reduce(self, field, normalize=False):
         map_func = """
-            function() {
-                var path = '{{~%(field)s}}'.split('.');
+            function() {{
+                var path = '{{{{~{field}}}}}'.split('.');
                 var field = this;
 
-                for (p in path) {
+                for (p in path) {{
                     if (typeof field != 'undefined')
                        field = field[path[p]];
                     else
                        break;
-                }
-                if (field && field.constructor == Array) {
-                    field.forEach(function(item) {
+                }}
+                if (field && field.constructor == Array) {{
+                    field.forEach(function(item) {{
                         emit(item, 1);
-                    });
-                } else if (typeof field != 'undefined') {
+                    }});
+                }} else if (typeof field != 'undefined') {{
                     emit(field, 1);
-                } else {
+                }} else {{
                     emit(null, 1);
-                }
-            }
-        """ % {
-            "field": field
-        }
+                }}
+            }}
+        """.format(
+            field=field
+        )
         reduce_func = """
             function(key, values) {
                 var total = 0;

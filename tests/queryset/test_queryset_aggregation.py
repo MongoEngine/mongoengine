@@ -276,6 +276,23 @@ class TestQuerysetAggregate(MongoDBTestCase):
             {"_id": agg2.id, "c": 0.0, "name": "Y"},
         ]
 
+    def test_queryset_aggregation_none(self):
+        class Person(Document):
+            name = StringField()
+            age = IntField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Isabella Luanna", age=16)
+        p2 = Person(name="Wilson Junior", age=21)
+        p3 = Person(name="Sandra Mara", age=37)
+        Person.objects.insert([p1, p2, p3])
+
+        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        data = Person.objects().none().order_by("name").aggregate(pipeline)
+
+        assert list(data) == []
+
 
 if __name__ == "__main__":
     unittest.main()

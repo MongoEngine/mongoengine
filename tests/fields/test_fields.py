@@ -44,6 +44,46 @@ from tests.utils import MongoDBTestCase
 
 
 class TestField(MongoDBTestCase):
+    def test_constructor_set_historical_behavior_is_kept(self):
+        class MyDoc(Document):
+            oid = ObjectIdField()
+
+        doc = MyDoc()
+        doc.oid = str(ObjectId())
+        assert isinstance(doc.oid, str)
+
+        # not modified on save (historical behavior)
+        doc.save()
+        assert isinstance(doc.oid, str)
+
+        # reloading goes through constructor so it is expected to go through to_python
+        doc.reload()
+        assert isinstance(doc.oid, ObjectId)
+
+    def test_constructor_set_list_field_historical_behavior_is_kept(self):
+        # Although the behavior is not consistent between regular field and a ListField
+        # This is the historical behavior so we must make sure we don't modify it (unless consciously done of course)
+
+        class MyOIDSDoc(Document):
+            oids = ListField(ObjectIdField())
+
+        # constructor goes through to_python so casting occurs
+        doc = MyOIDSDoc(oids=[str(ObjectId())])
+        assert isinstance(doc.oids[0], ObjectId)
+
+        # constructor goes through to_python so casting occurs
+        doc = MyOIDSDoc()
+        doc.oids = [str(ObjectId())]
+        assert isinstance(doc.oids[0], str)
+
+        doc.save()
+        assert isinstance(doc.oids[0], str)
+
+        # reloading goes through constructor so it is expected to go through to_python
+        # and cast
+        doc.reload()
+        assert isinstance(doc.oids[0], ObjectId)
+
     def test_default_values_nothing_set(self):
         """Ensure that default field values are used when creating
         a document.
@@ -126,7 +166,7 @@ class TestField(MongoDBTestCase):
 
     def test_default_values_set_to_None(self):
         """Ensure that default field values are used even when
-        we explcitly initialize the doc with None values.
+        we explicitly initialize the doc with None values.
         """
 
         class Person(Document):
@@ -199,6 +239,7 @@ class TestField(MongoDBTestCase):
         self,
     ):
         """List field with default can be set to the empty list (strict)"""
+
         # Issue #1733
         class Doc(Document):
             x = ListField(IntField(), default=lambda: [42])
@@ -213,6 +254,7 @@ class TestField(MongoDBTestCase):
         self,
     ):
         """List field with default can be set to the empty list (dynamic)"""
+
         # Issue #1733
         class Doc(DynamicDocument):
             x = ListField(IntField(), default=lambda: [42])
@@ -2077,7 +2119,7 @@ class TestField(MongoDBTestCase):
         a ComplexBaseField.
         """
 
-        class EnumField(BaseField):
+        class SomeField(BaseField):
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
 
@@ -2088,7 +2130,7 @@ class TestField(MongoDBTestCase):
                 return tuple(value)
 
         class TestDoc(Document):
-            items = ListField(EnumField())
+            items = ListField(SomeField())
 
         TestDoc.drop_collection()
 

@@ -86,6 +86,10 @@ expressions:
 * ``istartswith`` -- string field starts with value (case insensitive)
 * ``endswith`` -- string field ends with value
 * ``iendswith`` -- string field ends with value (case insensitive)
+* ``wholeword`` -- string field contains whole word
+* ``iwholeword`` -- string field contains whole word (case insensitive)
+* ``regex`` -- string field match by regex
+* ``iregex`` -- string field match by regex (case insensitive)
 * ``match``  -- performs an $elemMatch so you can match an entire document within an array
 
 
@@ -192,6 +196,10 @@ you could use the following query::
 
     Page.objects(tags__0='db')
 
+The string queries operators can be used as well for querying a list field, e.g.::
+
+    Page.objects(tags__iexact='db')
+
 If you only want to fetch part of a list eg: you want to paginate a list, then
 the `slice` operator is required::
 
@@ -215,12 +223,34 @@ However, this doesn't map well to the syntax so you can also use a capital S ins
 Raw queries
 -----------
 It is possible to provide a raw :mod:`PyMongo` query as a query parameter, which will
-be integrated directly into the query. This is done using the ``__raw__``
-keyword argument::
+be integrated directly into the query. This is done using the ``__raw__`` keyword argument::
 
     Page.objects(__raw__={'tags': 'coding'})
 
-.. versionadded:: 0.4
+Similarly, a raw update can be provided to the :meth:`~mongoengine.queryset.QuerySet.update` method::
+
+    Page.objects(tags='coding').update(__raw__={'$set': {'tags': 'coding'}})
+
+And the two can also be combined::
+
+    Page.objects(__raw__={'tags': 'coding'}).update(__raw__={'$set': {'tags': 'coding'}})
+
+
+Update with Aggregation Pipeline
+--------------------------------
+It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
+be integrated directly into the update. This is done by using ``__raw__`` keyword argument to the update method
+and provide the pipeline as a list
+`Update with Aggregation Pipeline <https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
+::
+
+    # 'tags' field is set to 'coding is fun'
+    Page.objects(tags='coding').update(__raw__=[
+        {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
+        ],
+    )
+
+.. versionadded:: 0.23.2
 
 Sorting/Ordering results
 ========================
@@ -239,7 +269,7 @@ Limiting and skipping results
 Just as with traditional ORMs, you may limit the number of results returned or
 skip a number or results in you query.
 :meth:`~mongoengine.queryset.QuerySet.limit` and
-:meth:`~mongoengine.queryset.QuerySet.skip` and methods are available on
+:meth:`~mongoengine.queryset.QuerySet.skip` methods are available on
 :class:`~mongoengine.queryset.QuerySet` objects, but the `array-slicing` syntax
 is preferred for achieving this::
 
@@ -543,7 +573,10 @@ Documents may be updated atomically by using the
 There are several different "modifiers" that you may use with these methods:
 
 * ``set`` -- set a particular value
+* ``set_on_insert`` -- set only if this is new document  `need to add upsert=True`_
 * ``unset`` -- delete a particular value (since MongoDB v1.3)
+* ``max`` -- update only if value is bigger
+* ``min`` -- update only if value is smaller
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
 * ``push`` -- append a value to a list
@@ -552,6 +585,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``pull`` -- remove a value from a list
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
+* ``rename`` -- rename the key name
 
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 

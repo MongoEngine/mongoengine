@@ -24,7 +24,9 @@ from mongoengine.queryset import (
     QuerySetManager,
     queryset_manager,
 )
+from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
+    requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
 )
@@ -148,6 +150,14 @@ class TestQueryset(unittest.TestCase):
 
         persons = list(self.Person.objects().limit(0))
         assert len(persons) == 2 == n_docs
+
+    def test_limit_0(self):
+        """Ensure that QuerySet.limit works as expected."""
+        self.Person.objects.create(name="User A", age=20)
+
+        # Test limit with 0 as parameter
+        qs = self.Person.objects.limit(0)
+        assert qs.count() == 0
 
     def test_limit(self):
         """Ensure that QuerySet.limit works as expected."""
@@ -407,6 +417,19 @@ class TestQueryset(unittest.TestCase):
         A.drop_collection()
         A().save()
 
+        # validate collection not empty
+        assert A.objects.count() == 1
+
+        # update operations
+        assert A.objects.none().update(s="1") == 0
+        assert A.objects.none().update_one(s="1") == 0
+        assert A.objects.none().modify(s="1") is None
+
+        # validate noting change by update operations
+        assert A.objects(s="1").count() == 0
+
+        # fetch queries
+        assert A.objects.none().first() is None
         assert list(A.objects.none()) == []
         assert list(A.objects.none().all()) == []
         assert list(A.objects.none().limit(1)) == []
@@ -594,7 +617,6 @@ class TestQueryset(unittest.TestCase):
         assert post.comments[1].votes == 8
 
     def test_update_using_positional_operator_matches_first(self):
-
         # Currently the $ operator only applies to the first matched item in
         # the query
 
@@ -866,6 +888,21 @@ class TestQueryset(unittest.TestCase):
         bob = self.Person.objects.first()
         assert "Bob" == bob.name
         assert 30 == bob.age
+
+    def test_rename(self):
+        self.Person.drop_collection()
+        self.Person.objects.create(name="Foo", age=11)
+
+        bob = self.Person.objects.as_pymongo().first()
+        assert "age" in bob
+        assert bob["age"] == 11
+
+        self.Person.objects(name="Foo").update(rename__age="person_age")
+
+        bob = self.Person.objects.as_pymongo().first()
+        assert "age" not in bob
+        assert "person_age" in bob
+        assert bob["person_age"] == 11
 
     def test_save_and_only_on_fields_with_default(self):
         class Embed(EmbeddedDocument):
@@ -1240,6 +1277,34 @@ class TestQueryset(unittest.TestCase):
         obj = self.Person.objects(name__iexact="gUIDO VAN rOSSU").first()
         assert obj is None
 
+        # Test wholeword
+        obj = self.Person.objects(name__wholeword="Guido").first()
+        assert obj == person
+        obj = self.Person.objects(name__wholeword="rossum").first()
+        assert obj is None
+        obj = self.Person.objects(name__wholeword="Rossu").first()
+        assert obj is None
+
+        # Test iwholeword
+        obj = self.Person.objects(name__iwholeword="rOSSUM").first()
+        assert obj == person
+        obj = self.Person.objects(name__iwholeword="rOSSU").first()
+        assert obj is None
+
+        # Test regex
+        obj = self.Person.objects(name__regex="^[Guido].*[Rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__regex="^[guido].*[rossum]$").first()
+        assert obj is None
+        obj = self.Person.objects(name__regex="^[uido].*[Rossum]$").first()
+        assert obj is None
+
+        # Test iregex
+        obj = self.Person.objects(name__iregex="^[guido].*[rossum]$").first()
+        assert obj == person
+        obj = self.Person.objects(name__iregex="^[Uido].*[Rossum]$").first()
+        assert obj is None
+
         # Test unsafe expressions
         person = self.Person(name="Guido van Rossum [.'Geek']")
         person.save()
@@ -1324,7 +1389,14 @@ class TestQueryset(unittest.TestCase):
         person.save()
 
         people = self.Person.objects
-        people = people.filter(name__startswith="Gui").filter(name__not__endswith="tum")
+        people = (
+            people.filter(name__startswith="Gui")
+            .filter(name__not__endswith="tum")
+            .filter(name__icontains="VAN")
+            .filter(name__regex="^Guido")
+            .filter(name__wholeword="Guido")
+            .filter(name__wholeword="van")
+        )
         assert people.count() == 1
 
     def assertSequence(self, qs, expected):
@@ -2167,6 +2239,36 @@ class TestQueryset(unittest.TestCase):
         post.reload()
         assert post.tags == ["code", "mongodb"]
 
+    @requires_mongodb_gte_42
+    def test_aggregation_update(self):
+        """Ensure that the 'aggregation_update' update works correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
+        post.save()
+
+        BlogPost.objects(slug="test").update(
+            __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
+        )
+        post.reload()
+        assert post.slug == "test test"
+
+        BlogPost.objects(slug="test test").update(
+            __raw__=[
+                {"$set": {"slug": {"$concat": ["$slug", " ", "it"]}}},  # test test it
+                {
+                    "$set": {"slug": {"$concat": ["When", " ", "$slug"]}}
+                },  # When test test it
+            ],
+        )
+        post.reload()
+        assert post.slug == "When test test it"
+
     def test_add_to_set_each(self):
         class Item(Document):
             name = StringField(required=True)
@@ -2490,6 +2592,12 @@ class TestQueryset(unittest.TestCase):
 
         ages = [p.age for p in self.Person.objects.order_by("-name")]
         assert ages == [30, 40, 20]
+
+        ages = [p.age for p in self.Person.objects.order_by()]
+        assert ages == [40, 20, 30]
+
+        ages = [p.age for p in self.Person.objects.order_by("")]
+        assert ages == [40, 20, 30]
 
     def test_order_by_optional(self):
         class BlogPost(Document):
@@ -3424,6 +3532,27 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar") == [bar]
+        assert Foo.objects.no_dereference().distinct("bar") == [bar.pk]
+
+    def test_base_queryset_iter_raise_not_implemented(self):
+        class Tmp(Document):
+            pass
+
+        qs = BaseQuerySet(document=Tmp, collection=Tmp._get_collection())
+        with pytest.raises(NotImplementedError):
+            _ = list(qs)
+
+    def test_search_text_raise_if_called_2_times(self):
+        class News(Document):
+            title = StringField()
+            content = StringField()
+            is_active = BooleanField(default=True)
+
+        News.drop_collection()
+        with pytest.raises(OperationError):
+            News.objects.search_text("t1", language="portuguese").search_text(
+                "t2", language="french"
+            )
 
     def test_text_indexes(self):
         class News(Document):
@@ -3630,6 +3759,7 @@ class TestQueryset(unittest.TestCase):
         foo.save()
 
         assert Foo.objects.distinct("bar_lst") == [bar_1, bar_2]
+        assert Foo.objects.no_dereference().distinct("bar_lst") == [bar_1.pk, bar_2.pk]
 
     def test_custom_manager(self):
         """Ensure that custom QuerySetManager instances work as expected."""
@@ -3816,6 +3946,10 @@ class TestQueryset(unittest.TestCase):
         assert objects[post_2.id].title == post_2.title
         assert objects[post_5.id].title == post_5.title
 
+        objects = BlogPost.objects.as_pymongo().in_bulk(ids)
+        assert len(objects) == 3
+        assert isinstance(objects[post_1.id], dict)
+
         BlogPost.drop_collection()
 
     def tearDown(self):
@@ -3861,6 +3995,33 @@ class TestQueryset(unittest.TestCase):
 
         Post().save()
         assert Post.objects.not_empty()
+
+        Post.drop_collection()
+
+    def test_custom_querysets_set_manager_methods(self):
+        """Ensure that custom QuerySet classes methods may be used."""
+
+        class CustomQuerySet(QuerySet):
+            def delete(self, *args, **kwargs):
+                """Example of method when one want to change default behaviour of it"""
+                return 0
+
+        class CustomQuerySetManager(QuerySetManager):
+            queryset_class = CustomQuerySet
+
+        class Post(Document):
+            objects = CustomQuerySetManager()
+
+        Post.drop_collection()
+
+        assert isinstance(Post.objects, CustomQuerySet)
+        assert Post.objects.delete() == 0
+
+        post = Post()
+        post.save()
+        assert Post.objects.count() == 1
+        post.delete()
+        assert Post.objects.count() == 1
 
         Post.drop_collection()
 
@@ -4126,14 +4287,14 @@ class TestQueryset(unittest.TestCase):
         assert [1, 2, 3] == numbers
         Number.drop_collection()
 
-    def test_ensure_index(self):
+    def test_create_index(self):
         """Ensure that manual creation of indexes works."""
 
         class Comment(Document):
             message = StringField()
             meta = {"allow_inheritance": True}
 
-        Comment.ensure_index("message")
+        Comment.create_index("message")
 
         info = Comment.objects._collection.index_information()
         info = [
@@ -5468,7 +5629,6 @@ class TestQueryset(unittest.TestCase):
         # Check that bool(queryset) does not uses the orderby
         qs = Person.objects.order_by("name")
         with query_counter() as q:
-
             if bool(qs):
                 pass
 
@@ -5481,7 +5641,6 @@ class TestQueryset(unittest.TestCase):
         # Check that normal query uses orderby
         qs2 = Person.objects.order_by("name")
         with query_counter() as q:
-
             for x in qs2:
                 pass
 
@@ -5505,7 +5664,6 @@ class TestQueryset(unittest.TestCase):
         Person(name="A").save()
 
         with query_counter() as q:
-
             if Person.objects:
                 pass
 

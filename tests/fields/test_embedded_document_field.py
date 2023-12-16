@@ -1,14 +1,19 @@
+from copy import deepcopy
+
 import pytest
+from bson import ObjectId
 
 from mongoengine import (
     Document,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    EmbeddedDocumentListField,
     GenericEmbeddedDocumentField,
     IntField,
     InvalidQueryError,
     ListField,
     LookUpError,
+    MapField,
     StringField,
     ValidationError,
 )
@@ -56,6 +61,48 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
+
+    def test_embedded_document_field_validate_subclass(self):
+        class BaseItem(EmbeddedDocument):
+            f = IntField()
+
+            meta = {"allow_inheritance": True}
+
+            def validate(self, clean=True):
+                if self.f == 0:
+                    raise Exception("can not be 0")
+                return super().validate(clean)
+
+        class RealItem(BaseItem):
+            a = IntField()
+
+            def validate(self, clean=True):
+                if self.f == 1:
+                    raise Exception("can not be 1")
+                return super().validate(clean)
+
+        class TopLevel(Document):
+            item = EmbeddedDocumentField(document_type=BaseItem)
+            items = EmbeddedDocumentListField(document_type=BaseItem)
+
+        passing_item = RealItem(f=2, a=0)
+        item = TopLevel(item=passing_item, items=[passing_item])
+        item.validate()
+
+        failing_item = RealItem(f=1, a=0)
+        item = TopLevel(item=failing_item)
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        item = TopLevel(items=[failing_item])
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        # verify that super calls the parent
+        failing_item_in_base = RealItem(f=0, a=0)
+        item = TopLevel(item=failing_item_in_base)
+        with pytest.raises(Exception, match="can not be 0"):
+            item.validate()
 
     def test_query_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):
@@ -350,3 +397,30 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         # Test existing attribute
         assert Person.objects(settings__base_foo="basefoo").first().id == p.id
         assert Person.objects(settings__sub_foo="subfoo").first().id == p.id
+
+    def test_deepcopy_set__instance(self):
+        """Ensure that the _instance attribute on EmbeddedDocument exists after a deepcopy"""
+
+        class Wallet(EmbeddedDocument):
+            money = IntField()
+
+        class Person(Document):
+            wallet = EmbeddedDocumentField(Wallet)
+            wallet_map = MapField(EmbeddedDocumentField(Wallet))
+
+        # Test on fresh EmbeddedDoc
+        emb_doc = Wallet(money=1)
+        assert emb_doc._instance is None
+        copied_emb_doc = deepcopy(emb_doc)
+        assert copied_emb_doc._instance is None
+
+        # Test on attached EmbeddedDoc
+        doc = Person(
+            id=ObjectId(), wallet=Wallet(money=2), wallet_map={"test": Wallet(money=2)}
+        )
+        assert doc.wallet._instance == doc
+        copied_emb_doc = deepcopy(doc.wallet)
+        assert copied_emb_doc._instance is None
+
+        copied_map_emb_doc = deepcopy(doc.wallet_map)
+        assert copied_map_emb_doc["test"]._instance is None

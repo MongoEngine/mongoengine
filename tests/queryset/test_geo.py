@@ -2,6 +2,7 @@ import datetime
 import unittest
 
 from mongoengine import *
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from tests.utils import MongoDBTestCase
 
 
@@ -47,13 +48,15 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
-        assert events.count() == 3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
         events = events.order_by("-date")
-        assert events.count() == 3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 3
         assert list(events) == [event3, event1, event2]
 
     def test_near_and_max_distance(self):
@@ -65,8 +68,9 @@ class TestGeoQueries(MongoDBTestCase):
         # find events within 10 degrees of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__max_distance=10)
-        assert events.count() == 1
-        assert events[0] == event2
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 1
+        assert list(events) == [event2]
 
     def test_near_and_min_distance(self):
         """Ensure the "min_distance" operator works alongside the "near"
@@ -77,7 +81,9 @@ class TestGeoQueries(MongoDBTestCase):
         # find events at least 10 degrees away of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__min_distance=10)
-        assert events.count() == 2
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 2
+        assert list(events) == [event3, event1]
 
     def test_within_distance(self):
         """Make sure the "within_distance" operator works."""
@@ -153,13 +159,15 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
-        assert events.count() == 3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
         events = events.order_by("-date")
-        assert events.count() == 3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 3
         assert list(events) == [event3, event1, event2]
 
     def test_2dsphere_near_and_max_distance(self):
@@ -171,21 +179,25 @@ class TestGeoQueries(MongoDBTestCase):
         # find events within 10km of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__max_distance=10000)
-        assert events.count() == 1
-        assert events[0] == event2
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 1
+        assert list(events) == [event2]
 
         # find events within 1km of greenpoint, broolyn, nyc, ny
         events = self.Event.objects(
             location__near=[-73.9509714, 40.7237134], location__max_distance=1000
         )
-        assert events.count() == 0
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 0
+        assert list(events) == []
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(
             location__near=[-87.67892, 41.9120459], location__max_distance=10000
         ).order_by("-date")
-        assert events.count() == 2
-        assert events[0] == event3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 2
+        assert list(events) == [event3, event1]
 
     def test_2dsphere_geo_within_box(self):
         """Ensure the "geo_within_box" operator works with a 2dsphere
@@ -225,7 +237,7 @@ class TestGeoQueries(MongoDBTestCase):
         assert events.count() == 0
 
     def test_2dsphere_near_and_min_max_distance(self):
-        """Ensure "min_distace" and "max_distance" operators work well
+        """Ensure "min_distance" and "max_distance" operators work well
         together with the "near" operator in a 2dsphere index.
         """
         event1, event2, event3 = self._create_event_data(point_field_class=PointField)
@@ -236,15 +248,17 @@ class TestGeoQueries(MongoDBTestCase):
             location__min_distance=1000,
             location__max_distance=10000,
         ).order_by("-date")
-        assert events.count() == 1
-        assert events[0] == event3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 1
+        assert list(events) == [event3]
 
         # ensure ordering is respected by "near" with "min_distance"
         events = self.Event.objects(
             location__near=[-87.67892, 41.9120459], location__min_distance=10000
         ).order_by("-date")
-        assert events.count() == 1
-        assert events[0] == event2
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 1
+        assert list(events) == [event2]
 
     def test_2dsphere_geo_within_center(self):
         """Make sure the "geo_within_center" operator works with a
@@ -289,7 +303,8 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = Event.objects(venue__location__near=[-87.67892, 41.9120459])
-        assert events.count() == 3
+        if PYMONGO_VERSION < (4,):
+            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
     def test_geo_spatial_embedded(self):
@@ -318,7 +333,9 @@ class TestGeoQueries(MongoDBTestCase):
         # Finds both points because they are within 60 km of the reference
         # point equidistant between them.
         points = Point.objects(location__near_sphere=[-122, 37.5])
-        assert points.count() == 2
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 2
+        assert list(points) == [north_point, south_point]
 
         # Same behavior for _within_spherical_distance
         points = Point.objects(
@@ -329,36 +346,42 @@ class TestGeoQueries(MongoDBTestCase):
         points = Point.objects(
             location__near_sphere=[-122, 37.5], location__max_distance=60 / earth_radius
         )
-        assert points.count() == 2
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 2
+        assert list(points) == [north_point, south_point]
 
         # Test query works with max_distance, being farer from one point
         points = Point.objects(
             location__near_sphere=[-122, 37.8], location__max_distance=60 / earth_radius
         )
         close_point = points.first()
-        assert points.count() == 1
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 1
+        assert list(points) == [north_point]
 
         # Test query works with min_distance, being farer from one point
         points = Point.objects(
             location__near_sphere=[-122, 37.8], location__min_distance=60 / earth_radius
         )
-        assert points.count() == 1
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 1
         far_point = points.first()
+        assert list(points) == [south_point]
         assert close_point != far_point
 
         # Finds both points, but orders the north point first because it's
         # closer to the reference point to the north.
         points = Point.objects(location__near_sphere=[-122, 38.5])
-        assert points.count() == 2
-        assert points[0].id == north_point.id
-        assert points[1].id == south_point.id
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 2
+        assert list(points) == [north_point, south_point]
 
         # Finds both points, but orders the south point first because it's
         # closer to the reference point to the south.
         points = Point.objects(location__near_sphere=[-122, 36.5])
-        assert points.count() == 2
-        assert points[0].id == south_point.id
-        assert points[1].id == north_point.id
+        if PYMONGO_VERSION < (4,):
+            assert points.count() == 2
+        assert list(points) == [south_point, north_point]
 
         # Finds only one point because only the first point is within 60km of
         # the reference point to the south.
@@ -375,56 +398,72 @@ class TestGeoQueries(MongoDBTestCase):
 
         Road.drop_collection()
 
-        Road(name="66", line=[[40, 5], [41, 6]]).save()
+        road = Road(name="66", line=[[40, 5], [41, 6]])
+        road.save()
 
         # near
         point = {"type": "Point", "coordinates": [40, 5]}
-        roads = Road.objects.filter(line__near=point["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__near=point["coordinates"])
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__near=point).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__near=point)
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__near={"$geometry": point}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__near={"$geometry": point})
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
         # Within
         polygon = {
             "type": "Polygon",
             "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
         }
-        roads = Road.objects.filter(line__geo_within=polygon["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_within=polygon["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_within=polygon).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_within=polygon)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_within={"$geometry": polygon}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_within={"$geometry": polygon})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
         # Intersects
         line = {"type": "LineString", "coordinates": [[40, 5], [40, 6]]}
-        roads = Road.objects.filter(line__geo_intersects=line["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects=line["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_intersects=line).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects=line)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_intersects={"$geometry": line}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects={"$geometry": line})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
         polygon = {
             "type": "Polygon",
             "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
         }
-        roads = Road.objects.filter(line__geo_intersects=polygon["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects=polygon["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_intersects=polygon).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects=polygon)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(line__geo_intersects={"$geometry": polygon}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(line__geo_intersects={"$geometry": polygon})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
     def test_polygon(self):
         class Road(Document):
@@ -433,56 +472,72 @@ class TestGeoQueries(MongoDBTestCase):
 
         Road.drop_collection()
 
-        Road(name="66", poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]]).save()
+        road = Road(name="66", poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]])
+        road.save()
 
         # near
         point = {"type": "Point", "coordinates": [40, 5]}
-        roads = Road.objects.filter(poly__near=point["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__near=point["coordinates"])
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__near=point).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__near=point)
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__near={"$geometry": point}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__near={"$geometry": point})
+        if PYMONGO_VERSION < (4,):
+            assert roads.count() == 1
+        assert list(roads) == [road]
 
         # Within
         polygon = {
             "type": "Polygon",
             "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
         }
-        roads = Road.objects.filter(poly__geo_within=polygon["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_within=polygon["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_within=polygon).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_within=polygon)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_within={"$geometry": polygon}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_within={"$geometry": polygon})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
         # Intersects
         line = {"type": "LineString", "coordinates": [[40, 5], [41, 6]]}
-        roads = Road.objects.filter(poly__geo_intersects=line["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects=line["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_intersects=line).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects=line)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_intersects={"$geometry": line}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects={"$geometry": line})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
         polygon = {
             "type": "Polygon",
             "coordinates": [[[40, 5], [40, 6], [41, 6], [41, 5], [40, 5]]],
         }
-        roads = Road.objects.filter(poly__geo_intersects=polygon["coordinates"]).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects=polygon["coordinates"])
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_intersects=polygon).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects=polygon)
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
-        roads = Road.objects.filter(poly__geo_intersects={"$geometry": polygon}).count()
-        assert 1 == roads
+        roads = Road.objects.filter(poly__geo_intersects={"$geometry": polygon})
+        assert roads.count() == 1
+        assert list(roads) == [road]
 
     def test_aspymongo_with_only(self):
         """Ensure as_pymongo works with only"""

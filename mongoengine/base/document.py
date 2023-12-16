@@ -1,5 +1,6 @@
 import copy
 import numbers
+import warnings
 from functools import partial
 
 import pymongo
@@ -23,10 +24,16 @@ from mongoengine.errors import (
     OperationError,
     ValidationError,
 )
+from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
 NON_FIELD_ERRORS = "__all__"
+
+try:
+    GEOHAYSTACK = pymongo.GEOHAYSTACK
+except AttributeError:
+    GEOHAYSTACK = None
 
 
 class BaseDocument:
@@ -154,7 +161,6 @@ class BaseDocument:
     def __setattr__(self, name, value):
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
-
             if name not in self._fields_ordered and not name.startswith("_"):
                 DynamicField = _import_class("DynamicField")
                 field = DynamicField(db_field=name, null=True)
@@ -365,7 +371,7 @@ class BaseDocument:
                 value = field.generate()
                 self._data[field_name] = value
 
-            if (value is not None) or (field.null):
+            if value is not None or field.null:
                 if use_db_field:
                     data[field.db_field] = value
                 else:
@@ -439,10 +445,20 @@ class BaseDocument:
             Defaults to True.
         """
         use_db_field = kwargs.pop("use_db_field", True)
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
-    def from_json(cls, json_data, created=False):
+    def from_json(cls, json_data, created=False, **kwargs):
         """Converts json data to a Document instance
 
         :param str json_data: The json data to load into the Document
@@ -460,7 +476,17 @@ class BaseDocument:
         # TODO should `created` default to False? If the object already exists
         # in the DB, you would likely retrieve it from MongoDB itself through
         # a query, not load it from JSON data.
-        return cls._from_son(json_util.loads(json_data), created=created)
+        if "json_options" not in kwargs:
+            warnings.warn(
+                "No 'json_options' are specified! Falling back to "
+                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
+                "For use with other MongoDB drivers specify the UUID "
+                "representation to use. This will be changed to "
+                "uuid_representation=UNSPECIFIED in a future release.",
+                DeprecationWarning,
+            )
+            kwargs["json_options"] = LEGACY_JSON_OPTIONS
+        return cls._from_son(json_util.loads(json_data, **kwargs), created=created)
 
     def __expand_dynamic_values(self, name, value):
         """Expand any dynamic values to their correct types / values."""
@@ -492,9 +518,6 @@ class BaseDocument:
 
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
-        if not key:
-            return
-
         if not hasattr(self, "_changed_fields"):
             return
 
@@ -898,7 +921,10 @@ class BaseDocument:
             elif key.startswith("("):
                 direction = pymongo.GEOSPHERE
             elif key.startswith(")"):
-                direction = pymongo.GEOHAYSTACK
+                try:
+                    direction = pymongo.GEOHAYSTACK
+                except AttributeError:
+                    raise NotImplementedError
             elif key.startswith("*"):
                 direction = pymongo.GEO2D
             if key.startswith(("+", "-", "*", "$", "#", "(", ")")):
@@ -923,10 +949,10 @@ class BaseDocument:
             index_list.append((key, direction))
 
         # Don't add cls to a geo index
-        if include_cls and direction not in (
-            pymongo.GEO2D,
-            pymongo.GEOHAYSTACK,
-            pymongo.GEOSPHERE,
+        if (
+            include_cls
+            and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
+            and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
         ):
             index_list.insert(0, ("_cls", 1))
 

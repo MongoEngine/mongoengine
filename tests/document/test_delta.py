@@ -4,7 +4,7 @@ from bson import SON
 
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestDelta(MongoDBTestCase):
@@ -951,6 +951,49 @@ class TestDelta(MongoDBTestCase):
         assert "superadmin" == delta[0]["users.007.roles.666"]["type"]
         assert "oops" == delta[0]["users.007.rolist"][0]["type"]
         assert uinfo.id == delta[0]["users.007.info"]
+
+    def test_delta_on_dict(self):
+        class MyDoc(Document):
+            dico = DictField()
+
+        MyDoc.drop_collection()
+
+        MyDoc(dico={"a": {"b": 0}}).save()
+
+        mydoc = MyDoc.objects.first()
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"]["b"] = 0
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"] = {"b": 0}
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico = {"a": {"b": 0}}
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico["a"]["c"] = 1
+        assert mydoc._get_changed_fields() == ["dico.a.c"]
+        mydoc.dico["a"]["b"] = 2
+        mydoc.dico["d"] = 3
+        assert mydoc._get_changed_fields() == ["dico.a.c", "dico.a.b", "dico.d"]
+
+        mydoc._clear_changed_fields()
+        assert mydoc._get_changed_fields() == []
+
+    def test_delta_on_dict_empty_key_triggers_full_change(self):
+        """more of a bug (harmless) but empty key changes aren't managed perfectly"""
+
+        class MyDoc(Document):
+            dico = DictField()
+
+        MyDoc.drop_collection()
+
+        MyDoc(dico={"a": {"b": 0}}).save()
+
+        mydoc = MyDoc.objects.first()
+        assert mydoc._get_changed_fields() == []
+        mydoc.dico[""] = 3
+        assert mydoc._get_changed_fields() == ["dico"]
+        mydoc.save()
+        raw_doc = get_as_pymongo(mydoc)
+        assert raw_doc == {"_id": mydoc.id, "dico": {"": 3, "a": {"b": 0}}}
 
 
 if __name__ == "__main__":

@@ -1,11 +1,17 @@
 import datetime
 import unittest
+import uuid
 
 import pymongo
 import pytest
 from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
-from pymongo.errors import InvalidName, OperationFailure
+from pymongo.errors import (
+    InvalidName,
+    InvalidOperation,
+    OperationFailure,
+)
+from pymongo.read_preferences import Secondary
 
 import mongoengine.connection
 from mongoengine import (
@@ -19,10 +25,16 @@ from mongoengine import (
 from mongoengine.connection import (
     DEFAULT_DATABASE_NAME,
     ConnectionFailure,
+    _get_connection_settings,
     disconnect,
     get_connection,
     get_db,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
+
+
+def random_str():
+    return str(uuid.uuid4())
 
 
 def get_tz_awareness(connection):
@@ -48,7 +60,7 @@ class ConnectionTest(unittest.TestCase):
         connect("mongoenginetest")
 
         conn = get_connection()
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
 
         db = get_db()
         assert isinstance(db, pymongo.database.Database)
@@ -56,7 +68,13 @@ class ConnectionTest(unittest.TestCase):
 
         connect("mongoenginetest2", alias="testdb")
         conn = get_connection("testdb")
-        assert isinstance(conn, pymongo.mongo_client.MongoClient)
+        assert isinstance(conn, pymongo.MongoClient)
+
+        connect(
+            "mongoenginetest2", alias="testdb3", mongo_client_class=pymongo.MongoClient
+        )
+        conn = get_connection("testdb")
+        assert isinstance(conn, pymongo.MongoClient)
 
     def test_connect_disconnect_works_properly(self):
         class History1(Document):
@@ -163,6 +181,35 @@ class ConnectionTest(unittest.TestCase):
 
         with pytest.raises(ConnectionFailure):
             connect(host="mongodb://localhost:27017/%s" % db_name, alias=db_alias)
+
+    def test___get_connection_settings(self):
+        funky_host = "mongodb://root:12345678@1.1.1.1:27017,2.2.2.2:27017,3.3.3.3:27017/db_api?replicaSet=s0&readPreference=secondary&uuidRepresentation=javaLegacy&readPreferenceTags=region:us-west-2,usage:api"
+        settings = _get_connection_settings(host=funky_host)
+
+        if PYMONGO_VERSION < (4,):
+            read_pref = Secondary(
+                tag_sets=[{"region": "us-west-2", "usage": "api"}],
+                max_staleness=-1,
+            )
+        else:
+            read_pref = Secondary(
+                tag_sets=[{"region": "us-west-2", "usage": "api"}],
+                max_staleness=-1,
+                hedge=None,
+            )
+        assert settings == {
+            "authentication_mechanism": None,
+            "authentication_source": None,
+            "authmechanismproperties": None,
+            "host": [funky_host],
+            "name": "db_api",
+            "password": "12345678",
+            "port": 27017,
+            "read_preference": read_pref,
+            "replicaSet": "s0",
+            "username": "root",
+            "uuidrepresentation": "javaLegacy",
+        }
 
     def test_connect_passes_silently_connect_multiple_times_with_same_config(self):
         # test default connection to `test`
@@ -286,6 +333,30 @@ class ConnectionTest(unittest.TestCase):
         assert len(connections) == 0
         disconnect(alias="not_exist")
 
+    def test_disconnect_does_not_close_client_used_by_another_alias(self):
+        client1 = connect(alias="disconnect_reused_client_test_1")
+        client2 = connect(alias="disconnect_reused_client_test_2")
+        client3 = connect(alias="disconnect_reused_client_test_3", maxPoolSize=10)
+        assert client1 is client2
+        assert client1 is not client3
+        client1.admin.command("ping")
+        disconnect("disconnect_reused_client_test_1")
+        # The client is not closed because the second alias still exists.
+        client2.admin.command("ping")
+        disconnect("disconnect_reused_client_test_2")
+        # The client is now closed:
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(InvalidOperation):
+                client2.admin.command("ping")
+        # 3rd client connected to the same cluster with different options
+        # is not closed either.
+        client3.admin.command("ping")
+        disconnect("disconnect_reused_client_test_3")
+        # 3rd client is now closed:
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(InvalidOperation):
+                client3.admin.command("ping")
+
     def test_disconnect_all(self):
         connections = mongoengine.connection._connections
         dbs = mongoengine.connection._dbs
@@ -350,8 +421,14 @@ class ConnectionTest(unittest.TestCase):
         c.mongoenginetest.system.users.delete_many({})
 
         c.admin.command("createUser", "admin", pwd="password", roles=["root"])
-        c.admin.authenticate("admin", "password")
-        c.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
+
+        adminadmin_settings = mongoengine.connection._connection_settings[
+            "adminadmin"
+        ] = mongoengine.connection._connection_settings["admin"].copy()
+        adminadmin_settings["username"] = "admin"
+        adminadmin_settings["password"] = "password"
+        ca = connect(db="mongoenginetest", alias="adminadmin")
+        ca.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
 
         connect(
             "testdb_uri", host="mongodb://username:password@localhost/mongoenginetest"
@@ -404,8 +481,14 @@ class ConnectionTest(unittest.TestCase):
         # OperationFailure means that mongoengine attempted authentication
         # w/ the provided username/password and failed - that's the desired
         # behavior. If the MongoDB URI would override the credentials
-        with pytest.raises(OperationFailure):
-            get_db()
+        if PYMONGO_VERSION >= (4,):
+            with pytest.raises(OperationFailure):
+                db = get_db()
+                # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
+                db.list_collection_names()
+        else:
+            with pytest.raises(OperationFailure):
+                get_db()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
@@ -482,7 +565,10 @@ class ConnectionTest(unittest.TestCase):
         conn = connect(
             "mongoenginetest", alias="max_pool_size_via_kwarg", **pool_size_kwargs
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_connection_pool_via_uri(self):
         """Ensure we can specify a max connection pool size using
@@ -492,7 +578,10 @@ class ConnectionTest(unittest.TestCase):
             host="mongodb://localhost/test?maxpoolsize=100",
             alias="max_pool_size_via_uri",
         )
-        assert conn.max_pool_size == 100
+        if PYMONGO_VERSION >= (4,):
+            assert conn.options.pool_options.max_pool_size == 100
+        else:
+            assert conn.max_pool_size == 100
 
     def test_write_concern(self):
         """Ensure write concern can be specified in connect() via
@@ -567,9 +656,53 @@ class ConnectionTest(unittest.TestCase):
         assert c1 is c2
 
     def test_connect_2_databases_uses_different_client_if_different_parameters(self):
-        c1 = connect(alias="testdb1", db="testdb1", username="u1")
-        c2 = connect(alias="testdb2", db="testdb2", username="u2")
+        c1 = connect(alias="testdb1", db="testdb1", username="u1", password="pass")
+        c2 = connect(alias="testdb2", db="testdb2", username="u2", password="pass")
         assert c1 is not c2
+
+    def test_connect_uri_uuidrepresentation_set_in_uri(self):
+        rand = random_str()
+        tmp_conn = connect(
+            alias=rand,
+            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
+        )
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_set_as_arg(self):
+        rand = random_str()
+        tmp_conn = connect(alias=rand, db=rand, uuidRepresentation="javaLegacy")
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_set_both_arg_and_uri_arg_prevail(self):
+        rand = random_str()
+        tmp_conn = connect(
+            alias=rand,
+            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
+            uuidRepresentation="javaLegacy",
+        )
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+        )
+        disconnect(rand)
+
+    def test_connect_uri_uuidrepresentation_default_to_pythonlegacy(self):
+        # To be changed soon to unspecified
+        rand = random_str()
+        tmp_conn = connect(alias=rand, db=rand)
+        assert (
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]
+        )
+        disconnect(rand)
 
 
 if __name__ == "__main__":

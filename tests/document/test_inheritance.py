@@ -246,11 +246,15 @@ class TestInheritance(MongoDBTestCase):
         assert ["_cls", "age", "id", "name", "salary"] == sorted(
             Employee._fields.keys()
         )
-        assert Person(name="Bob", age=35).to_mongo().keys() == ["_cls", "name", "age"]
-        assert Employee(name="Bob", age=35, salary=0).to_mongo().keys() == [
+        assert sorted(Person(name="Bob", age=35).to_mongo().keys()) == [
             "_cls",
-            "name",
             "age",
+            "name",
+        ]
+        assert sorted(Employee(name="Bob", age=35, salary=0).to_mongo().keys()) == [
+            "_cls",
+            "age",
+            "name",
             "salary",
         ]
         assert Employee._get_collection_name() == Person._get_collection_name()
@@ -334,7 +338,7 @@ class TestInheritance(MongoDBTestCase):
 
         # Check that _cls etc aren't present on simple documents
         dog = Animal(name="dog").save()
-        assert dog.to_mongo().keys() == ["_id", "name"]
+        assert sorted(dog.to_mongo().keys()) == ["_id", "name"]
 
         collection = self.db[Animal._get_collection_name()]
         obj = collection.find_one()

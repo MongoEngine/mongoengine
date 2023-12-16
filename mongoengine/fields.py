@@ -12,6 +12,7 @@ from operator import itemgetter
 import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
+from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.int64 import Int64
 from pymongo import ReturnDocument
 
@@ -46,6 +47,8 @@ from mongoengine.queryset.transform import STRING_OPERATORS
 
 try:
     from PIL import Image, ImageOps
+
+    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
 except ImportError:
     Image = None
     ImageOps = None
@@ -95,6 +98,7 @@ __all__ = (
     "MultiLineStringField",
     "MultiPolygonField",
     "GeoJsonBaseField",
+    "Decimal128Field",
 )
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
@@ -157,10 +161,17 @@ class StringField(BaseField):
                 regex = r"%s$"
             elif op == "exact":
                 regex = r"^%s$"
+            elif op == "wholeword":
+                regex = r"\b%s\b"
+            elif op == "regex":
+                regex = value
 
-            # escape unsafe characters which could lead to a re.error
-            value = re.escape(value)
-            value = re.compile(regex % value, flags)
+            if op == "regex":
+                value = re.compile(regex, flags)
+            else:
+                # escape unsafe characters which could lead to a re.error
+                value = re.escape(value)
+                value = re.compile(regex % value, flags)
         return super().prepare_query_value(op, value)
 
 
@@ -347,45 +358,11 @@ class IntField(BaseField):
         return super().prepare_query_value(op, int(value))
 
 
-class LongField(BaseField):
+class LongField(IntField):
     """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
-
-    def __init__(self, min_value=None, max_value=None, **kwargs):
-        """
-        :param min_value: (optional) A min value that will be applied during validation
-        :param max_value: (optional) A max value that will be applied during validation
-        :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.BaseField`
-        """
-        self.min_value, self.max_value = min_value, max_value
-        super().__init__(**kwargs)
-
-    def to_python(self, value):
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            pass
-        return value
 
     def to_mongo(self, value):
         return Int64(value)
-
-    def validate(self, value):
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            self.error("%s could not be converted to long" % value)
-
-        if self.min_value is not None and value < self.min_value:
-            self.error("Long value is too small")
-
-        if self.max_value is not None and value > self.max_value:
-            self.error("Long value is too large")
-
-    def prepare_query_value(self, op, value):
-        if value is None:
-            return value
-
-        return super().prepare_query_value(op, int(value))
 
 
 class FloatField(BaseField):
@@ -431,7 +408,10 @@ class FloatField(BaseField):
 
 
 class DecimalField(BaseField):
-    """Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
+    """Disclaimer: This field is kept for historical reason but since it converts the values to float, it
+    is not suitable for true decimal storage. Consider using :class:`~mongoengine.fields.Decimal128Field`.
+
+    Fixed-point decimal number field. Stores the value as a float by default unless `force_string` is used.
     If using floats, beware of Decimal to float conversion (potential precision loss)
     """
 
@@ -468,27 +448,29 @@ class DecimalField(BaseField):
         self.min_value = min_value
         self.max_value = max_value
         self.force_string = force_string
+
+        if precision < 0 or not isinstance(precision, int):
+            self.error("precision must be a positive integer")
+
         self.precision = precision
         self.rounding = rounding
 
         super().__init__(**kwargs)
 
     def to_python(self, value):
-        if value is None:
-            return value
-
         # Convert to string for python 2.6 before casting to Decimal
         try:
             value = decimal.Decimal("%s" % value)
         except (TypeError, ValueError, decimal.InvalidOperation):
             return value
-        return value.quantize(
-            decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding
-        )
+        if self.precision > 0:
+            return value.quantize(
+                decimal.Decimal(".%s" % ("0" * self.precision)), rounding=self.rounding
+            )
+        else:
+            return value.quantize(decimal.Decimal(), rounding=self.rounding)
 
     def to_mongo(self, value):
-        if value is None:
-            return value
         if self.force_string:
             return str(self.to_python(value))
         return float(self.to_python(value))
@@ -509,6 +491,8 @@ class DecimalField(BaseField):
             self.error("Decimal value is too large")
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self.to_mongo(value))
 
 
@@ -712,6 +696,8 @@ class ComplexDateTimeField(StringField):
         return self._convert_from_datetime(value)
 
     def prepare_query_value(self, op, value):
+        if value is None:
+            return value
         return super().prepare_query_value(op, self._convert_from_datetime(value))
 
 
@@ -775,7 +761,7 @@ class EmbeddedDocumentField(BaseField):
                 "Invalid embedded document instance provided to an "
                 "EmbeddedDocumentField"
             )
-        self.document_type.validate(value, clean)
+        value.validate(clean=clean)
 
     def lookup_member(self, member_name):
         doc_and_subclasses = [self.document_type] + self.document_type.__subclasses__()
@@ -963,7 +949,6 @@ class ListField(ComplexBaseField):
             self.error("List is too long")
 
         if self.field:
-
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
             if (
@@ -1079,16 +1064,7 @@ class DictField(ComplexBaseField):
         return DictField(db_field=member_name)
 
     def prepare_query_value(self, op, value):
-        match_operators = [
-            "contains",
-            "icontains",
-            "startswith",
-            "istartswith",
-            "endswith",
-            "iendswith",
-            "exact",
-            "iexact",
-        ]
+        match_operators = [*STRING_OPERATORS]
 
         if op in match_operators and isinstance(value, str):
             return StringField().prepare_query_value(op, value)
@@ -1112,7 +1088,7 @@ class MapField(DictField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        # XXX ValidationError raised outside of the "validate" method.
+        # XXX ValidationError raised outside the "validate" method.
         if not isinstance(field, BaseField):
             self.error("Argument to MapField constructor must be a valid field")
         super().__init__(field=field, *args, **kwargs)
@@ -1611,11 +1587,14 @@ class EnumField(BaseField):
     """Enumeration Field. Values are stored underneath as is,
     so it will only work with simple types (str, int, etc) that
     are bson encodable
-     Example usage:
+
+    Example usage:
+
     .. code-block:: python
 
         class Status(Enum):
             NEW = 'new'
+            ONGOING = 'ongoing'
             DONE = 'done'
 
         class ModelWithEnum(Document):
@@ -1625,13 +1604,18 @@ class EnumField(BaseField):
         ModelWithEnum(status=Status.DONE)
 
     Enum fields can be searched using enum or its value:
+
     .. code-block:: python
 
         ModelWithEnum.objects(status='new').count()
         ModelWithEnum.objects(status=Status.NEW).count()
 
-    Note that choices cannot be set explicitly, they are derived
-    from the provided enum class.
+    The values can be restricted to a subset of the enum by using the ``choices`` parameter:
+
+    .. code-block:: python
+
+        class ModelWithEnum(Document):
+            status = EnumField(Status, choices=[Status.NEW, Status.DONE])
     """
 
     def __init__(self, enum, **kwargs):
@@ -1647,14 +1631,25 @@ class EnumField(BaseField):
             kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
-    def __set__(self, instance, value):
-        is_legal_value = value is None or isinstance(value, self._enum_cls)
-        if not is_legal_value:
+    def validate(self, value):
+        if isinstance(value, self._enum_cls):
+            return super().validate(value)
+        try:
+            self._enum_cls(value)
+        except ValueError:
+            self.error(f"{value} is not a valid {self._enum_cls}")
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        if not isinstance(value, self._enum_cls):
             try:
-                value = self._enum_cls(value)
-            except Exception:
-                pass
-        return super().__set__(instance, value)
+                return self._enum_cls(value)
+            except ValueError:
+                return value
+        return value
+
+    def __set__(self, instance, value):
+        return super().__set__(instance, self.to_python(value))
 
     def to_mongo(self, value):
         if isinstance(value, self._enum_cls):
@@ -1953,23 +1948,19 @@ class ImageGridFsProxy(GridFSProxy):
             size = field.size
 
             if size["force"]:
-                img = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                img = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
-                img.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                img.thumbnail((size["width"], size["height"]), LANCZOS)
 
         thumbnail = None
         if field.thumbnail_size:
             size = field.thumbnail_size
 
             if size["force"]:
-                thumbnail = ImageOps.fit(
-                    img, (size["width"], size["height"]), Image.ANTIALIAS
-                )
+                thumbnail = ImageOps.fit(img, (size["width"], size["height"]), LANCZOS)
             else:
                 thumbnail = img.copy()
-                thumbnail.thumbnail((size["width"], size["height"]), Image.ANTIALIAS)
+                thumbnail.thumbnail((size["width"], size["height"]), LANCZOS)
 
         if thumbnail:
             thumb_id = self._put_thumbnail(thumbnail, img_format, progressive)
@@ -2188,7 +2179,6 @@ class SequenceField(BaseField):
         return value
 
     def __set__(self, instance, value):
-
         if value is None and instance._initialised:
             value = self.generate()
 
@@ -2637,3 +2627,49 @@ class GenericLazyReferenceField(GenericReferenceField):
             )
         else:
             return super().to_mongo(document)
+
+
+class Decimal128Field(BaseField):
+    """
+    128-bit decimal-based floating-point field capable of emulating decimal
+    rounding with exact precision. This field will expose decimal.Decimal but stores the value as a
+    `bson.Decimal128` behind the scene, this field is intended for monetary data, scientific computations, etc.
+    """
+
+    DECIMAL_CONTEXT = create_decimal128_context()
+
+    def __init__(self, min_value=None, max_value=None, **kwargs):
+        self.min_value = min_value
+        self.max_value = max_value
+        super().__init__(**kwargs)
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+        if isinstance(value, Decimal128):
+            return value
+        if not isinstance(value, decimal.Decimal):
+            with decimal.localcontext(self.DECIMAL_CONTEXT) as ctx:
+                value = ctx.create_decimal(value)
+        return Decimal128(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+        return self.to_mongo(value).to_decimal()
+
+    def validate(self, value):
+        if not isinstance(value, Decimal128):
+            try:
+                value = Decimal128(value)
+            except (TypeError, ValueError, decimal.InvalidOperation) as exc:
+                self.error("Could not convert value to Decimal128: %s" % exc)
+
+        if self.min_value is not None and value.to_decimal() < self.min_value:
+            self.error("Decimal value is too small")
+
+        if self.max_value is not None and value.to_decimal() > self.max_value:
+            self.error("Decimal value is too large")
+
+    def prepare_query_value(self, op, value):
+        return super().prepare_query_value(op, self.to_mongo(value))

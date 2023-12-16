@@ -177,14 +177,28 @@ class query_counter:
     This was designed for debugging purpose. In fact it is a global counter so queries issued by other threads/processes
     can interfere with it
 
+    Usage:
+
+    .. code-block:: python
+
+        class User(Document):
+            name = StringField()
+
+        with query_counter() as q:
+            user = User(name='Bob')
+            assert q == 0       # no query fired yet
+            user.save()
+            assert q == 1       # 1 query was fired, an 'insert'
+            user_bis = User.objects().first()
+            assert q == 2       # a 2nd query was fired, a 'find_one'
+
     Be aware that:
-    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of
-        documents (https://docs.mongodb.com/manual/tutorial/iterate-a-cursor/#cursor-batches)
+
+    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of documents (https://docs.mongodb.com/manual/tutorial/iterate-a-cursor/#cursor-batches)
     - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
     """
 
     def __init__(self, alias=DEFAULT_CONNECTION_NAME):
-        """Construct the query_counter"""
         self.db = get_db(alias=alias)
         self.initial_profiling_level = None
         self._ctx_query_counter = 0  # number of queries issued by the context
@@ -196,13 +210,14 @@ class query_counter:
         }
 
     def _turn_on_profiling(self):
-        self.initial_profiling_level = self.db.profiling_level()
-        self.db.set_profiling_level(0)
+        profile_update_res = self.db.command({"profile": 0})
+        self.initial_profiling_level = profile_update_res["was"]
+
         self.db.system.profile.drop()
-        self.db.set_profiling_level(2)
+        self.db.command({"profile": 2})
 
     def _resets_profiling(self):
-        self.db.set_profiling_level(self.initial_profiling_level)
+        self.db.command({"profile": self.initial_profiling_level})
 
     def __enter__(self):
         self._turn_on_profiling()

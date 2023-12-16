@@ -324,6 +324,7 @@ class TestDictField(MongoDBTestCase):
 
     def test_dictfield_with_referencefield_complex_nesting_cases(self):
         """Ensure complex nesting inside DictField handles dereferencing of ReferenceField(dbref=True | False)"""
+
         # Relates to Issue #1453
         class Doc(Document):
             s = StringField()

@@ -178,7 +178,6 @@ class DocumentMetaclass(type):
                 f.owner_document = new_class
             delete_rule = getattr(f, "reverse_delete_rule", DO_NOTHING)
             if isinstance(f, CachedReferenceField):
-
                 if issubclass(new_class, EmbeddedDocument):
                     raise InvalidDocumentError(
                         "CachedReferenceFields is not allowed in EmbeddedDocuments"
