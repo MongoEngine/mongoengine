@@ -14,9 +14,10 @@ from mongoengine.context_managers import (
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
+from tests.utils import MongoDBTestCase
 
 
-class TestContextManagers:
+class TestContextManagers(MongoDBTestCase):
     def test_set_write_concern(self):
         connect("mongoenginetest")
 

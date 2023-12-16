@@ -11,6 +11,7 @@ Development
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 - Add support for readPreferenceTags in connection parameters #2644
+- Use estimated_documents_count OR documents_count when count is called, based on the query #2529
 
 Changes in 0.27.0
 =================
