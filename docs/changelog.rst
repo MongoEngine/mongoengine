@@ -12,9 +12,10 @@ Development
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 - Add support for readPreferenceTags in connection parameters #2644
 - Use estimated_documents_count OR documents_count when count is called, based on the query #2529
-- Fix no_dereferencing context manager which wasn't turning off auto-dereferencing correctly in some cases
-- BREAKING CHANGE: no_dereferencing context manager no longer returns the class in __enter__
-    as it was useless and making it look like it was returning a different class
+- Fix no_dereferencing context manager which wasn't turning off auto-dereferencing correctly in some cases #2788
+- BREAKING CHANGE: no_dereferencing context manager no longer returns the class in __enter__ #2788
+    as it was useless and making it look like it was returning a different class.
+    Thus, must be called like `with no_dereferencing(User):` and no longer `with no_dereferencing(User) as OtherUserClass:`
 
 Changes in 0.27.0
 =================
