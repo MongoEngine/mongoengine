@@ -164,8 +164,16 @@ def _get_connection_settings(
                         preference.name.lower() == read_pf_mode
                         or preference.mode == read_pf_mode
                     ):
-                        conn_settings["read_preference"] = preference
+                        ReadPrefClass = preference.__class__
                         break
+
+                if "readpreferencetags" in uri_options:
+                    conn_settings["read_preference"] = ReadPrefClass(
+                        tag_sets=uri_options["readpreferencetags"]
+                    )
+                else:
+                    conn_settings["read_preference"] = ReadPrefClass()
+
             if "authmechanismproperties" in uri_options:
                 conn_settings["authmechanismproperties"] = uri_options[
                     "authmechanismproperties"

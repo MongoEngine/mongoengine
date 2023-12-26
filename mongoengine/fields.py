@@ -761,7 +761,7 @@ class EmbeddedDocumentField(BaseField):
                 "Invalid embedded document instance provided to an "
                 "EmbeddedDocumentField"
             )
-        self.document_type.validate(value, clean)
+        value.validate(clean=clean)
 
     def lookup_member(self, member_name):
         doc_and_subclasses = [self.document_type] + self.document_type.__subclasses__()
