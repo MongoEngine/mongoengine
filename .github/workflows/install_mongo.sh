@@ -11,6 +11,10 @@ elif [[ "$MONGODB" == *"4.4"* ]]; then
   mongo_build=mongodb-linux-x86_64-ubuntu1804-v${MONGODB}-latest
 elif [[ "$MONGODB" == *"5.0"* ]]; then
   mongo_build=mongodb-linux-x86_64-ubuntu1804-v${MONGODB}-latest
+elif [[ "$MONGODB" == *"6.0"* ]]; then
+  mongo_build=mongodb-linux-x86_64-ubuntu1804-v${MONGODB}-latest
+elif [[ "$MONGODB" == *"7.0"* ]]; then
+  mongo_build=mongodb-linux-x86_64-ubuntu2004-v${MONGODB}-latest
 fi
 
 wget http://fastdl.mongodb.org/linux/$mongo_build.tgz

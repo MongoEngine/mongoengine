@@ -59,11 +59,11 @@ class BaseField:
             unique with (Creates an index).
         :param primary_key: Mark this field as the primary key ((Creates an index)). Defaults to False.
         :param validation: (optional) A callable to validate the value of the
-            field.  The callable takes the value as parameter and should raise
+            field. The callable takes the value as parameter and should raise
             a ValidationError if validation fails
         :param choices: (optional) The valid choices
-        :param null: (optional) If the field value can be null when a default exist. If not set, the default value
-        will be used in case a field with a default value is set to None. Defaults to False.
+        :param null: (optional) If the field value can be null when a default exists. If not set, the default value
+            will be used in case a field with a default value is set to None. Defaults to False.
         :param sparse: (optional) `sparse=True` combined with `unique=True` and `required=False`
             means that uniqueness won't be enforced for `None` values (Creates an index). Defaults to False.
         :param **kwargs: (optional) Arbitrary indirection-free metadata for

@@ -450,45 +450,28 @@ class TestIndexes(unittest.TestCase):
         # the documents returned might have more keys in that here.
         query_plan = Test.objects(id=obj.id).exclude("a").explain()
         assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IDHACK"
+            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
         )
 
         query_plan = Test.objects(id=obj.id).only("id").explain()
         assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IDHACK"
+            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
         )
 
+        mongo_db = get_mongodb_version()
         query_plan = Test.objects(a=1).only("a").exclude("id").explain()
         assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
+            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
         )
-        mongo_db = get_mongodb_version()
+
         PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
-        assert (
-            query_plan.get("queryPlanner").get("winningPlan").get("stage")
-            == PROJECTION_STR
-        )
+        assert query_plan["queryPlanner"]["winningPlan"]["stage"] == PROJECTION_STR
 
         query_plan = Test.objects(a=1).explain()
         assert (
-            query_plan.get("queryPlanner")
-            .get("winningPlan")
-            .get("inputStage")
-            .get("stage")
-            == "IXSCAN"
+            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
         )
+
         assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
 
     def test_index_on_id(self):
@@ -536,8 +519,12 @@ class TestIndexes(unittest.TestCase):
             BlogPost.objects.hint("Bad Name").count()
 
         # Invalid shape argument (missing list brackets) should fail.
-        with pytest.raises(ValueError):
-            BlogPost.objects.hint(("tags", 1)).count()
+        if PYMONGO_VERSION <= (4, 3):
+            with pytest.raises(ValueError):
+                BlogPost.objects.hint(("tags", 1)).count()
+        else:
+            with pytest.raises(TypeError):
+                BlogPost.objects.hint(("tags", 1)).count()
 
     def test_collation(self):
         base = {"locale": "en", "strength": 2}
