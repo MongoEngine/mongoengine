@@ -62,6 +62,15 @@ MATCH_OPERATORS = (
 )
 
 
+def handle_raw_query(value, mongo_query):
+    """Combine a raw query with an existing one"""
+    for op, v in value.items():
+        if op not in mongo_query:
+            mongo_query[op] = v
+        elif op in mongo_query and isinstance(mongo_query[op], dict):
+            mongo_query[op].update(v)
+
+
 # TODO make this less complex
 def query(_doc_cls=None, **kwargs):
     """Transform a query from Django-style format to Mongo format."""
@@ -69,7 +78,7 @@ def query(_doc_cls=None, **kwargs):
     merge_query = defaultdict(list)
     for key, value in sorted(kwargs.items()):
         if key == "__raw__":
-            mongo_query.update(value)
+            handle_raw_query(value, mongo_query)
             continue
 
         parts = key.rsplit("__")
@@ -234,7 +243,7 @@ def update(_doc_cls=None, **update):
 
     for key, value in update.items():
         if key == "__raw__":
-            mongo_update.update(value)
+            handle_raw_query(value, mongo_update)
             continue
 
         parts = key.split("__")
