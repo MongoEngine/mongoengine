@@ -17,6 +17,7 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
@@ -2701,13 +2702,18 @@ class TestQueryset(unittest.TestCase):
         ]
         assert names == [("User A", 20), ("User B", 30), ("User B", 25), ("User C", 40)]
 
-        names = [
-            (p.name, p.age)
-            for p in self.Person.objects.order_by(
+        if PYMONGO_VERSION >= (4, 4):
+            # Pymongo >= 4.4 allow to mix single key with tuples inside the list
+            qs = self.Person.objects.order_by(
                 __raw__=["name", ("age", pymongo.ASCENDING)]
             )
-        ]
-        assert names == [("User A", 20), ("User B", 25), ("User B", 30), ("User C", 40)]
+            names = [(p.name, p.age) for p in qs]
+            assert names == [
+                ("User A", 20),
+                ("User B", 25),
+                ("User B", 30),
+                ("User C", 40),
+            ]
 
     def test_order_by_using_raw_and_keys_raises_exception(self):
         with pytest.raises(OperationError):
