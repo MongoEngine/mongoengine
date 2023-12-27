@@ -16,6 +16,7 @@ __all__ = (
     "query_counter",
     "set_write_concern",
     "set_read_write_concern",
+    "no_dereferencing_active_for_class",
 )
 
 

@@ -1113,7 +1113,7 @@ class BaseQuerySet:
         )
         return queryset
 
-    def order_by(self, *keys):
+    def order_by(self, *keys, __raw__=None):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the given keys.
 
         The order may be specified by prepending each of the keys by a "+" or
@@ -1123,11 +1123,19 @@ class BaseQuerySet:
 
         :param keys: fields to order the query results by; keys may be
             prefixed with "+" or a "-" to determine the ordering direction.
+        :param __raw__: a raw pymongo "sort" argument (provided as a list of (key, direction))
+            see 'key_or_list' in `pymongo.cursor.Cursor.sort doc <https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html#pymongo.cursor.Cursor.sort>`.
+            If both keys and __raw__ are provided, an exception is raised
         """
-        queryset = self.clone()
+        if __raw__ and keys:
+            raise OperationError("Can not use both keys and __raw__ with order_by() ")
 
+        queryset = self.clone()
         old_ordering = queryset._ordering
-        new_ordering = queryset._get_order_by(keys)
+        if __raw__:
+            new_ordering = __raw__
+        else:
+            new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
             # If a cursor object has already been created, apply the sort to it
