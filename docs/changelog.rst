@@ -8,7 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
-- Fix combination of __raw__ and mongoengine syntax.
+- Fix combination of __raw__ and mongoengine syntax #2773
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 - Add support for readPreferenceTags in connection parameters #2644

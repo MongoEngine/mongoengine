@@ -62,7 +62,8 @@ MATCH_OPERATORS = (
 )
 
 
-def handle_raw_query(value: dict, mongo_query: dict):
+def handle_raw_query(value, mongo_query):
+    """Combine a raw query with an existing one"""
     for op, v in value.items():
         if op not in mongo_query:
             mongo_query[op] = v
