@@ -17,6 +17,7 @@ Development
 - BREAKING CHANGE: no_dereference context manager no longer returns the class in __enter__ #2788
     as it was useless and making it look like it was returning a different class although it was the same.
     Thus, it must be called like `with no_dereference(User):` and no longer `with no_dereference(User) as ...:`
+- Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
 
 Changes in 0.27.0
 =================

@@ -17,6 +17,7 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
@@ -2719,6 +2720,44 @@ class TestQueryset(unittest.TestCase):
         qs = qs.order_by("-age")
         ages = [p.age for p in qs]
         assert ages == [40, 30, 20]
+
+    def test_order_by_using_raw(self):
+        person_a = self.Person(name="User A", age=20)
+        person_a.save()
+        person_b = self.Person(name="User B", age=30)
+        person_b.save()
+        person_c = self.Person(name="User B", age=25)
+        person_c.save()
+        person_d = self.Person(name="User C", age=40)
+        person_d.save()
+
+        qs = self.Person.objects.order_by(__raw__=[("name", pymongo.DESCENDING)])
+        assert qs._ordering == [("name", pymongo.DESCENDING)]
+        names = [p.name for p in qs]
+        assert names == ["User C", "User B", "User B", "User A"]
+
+        names = [
+            (p.name, p.age)
+            for p in self.Person.objects.order_by(__raw__=[("name", pymongo.ASCENDING)])
+        ]
+        assert names == [("User A", 20), ("User B", 30), ("User B", 25), ("User C", 40)]
+
+        if PYMONGO_VERSION >= (4, 4):
+            # Pymongo >= 4.4 allow to mix single key with tuples inside the list
+            qs = self.Person.objects.order_by(
+                __raw__=["name", ("age", pymongo.ASCENDING)]
+            )
+            names = [(p.name, p.age) for p in qs]
+            assert names == [
+                ("User A", 20),
+                ("User B", 25),
+                ("User B", 30),
+                ("User C", 40),
+            ]
+
+    def test_order_by_using_raw_and_keys_raises_exception(self):
+        with pytest.raises(OperationError):
+            self.Person.objects.order_by("-name", __raw__=[("age", pymongo.ASCENDING)])
 
     def test_confirm_order_by_reference_wont_work(self):
         """Ordering by reference is not possible.  Use map / reduce.. or
