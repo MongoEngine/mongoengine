@@ -1352,6 +1352,28 @@ class FieldTest(unittest.TestCase):
         page = Page.objects.first()
         assert page.tags[0] == page.posts[0].tags[0]
 
+    def test_dereferencing_dynamic_embedded_field_referencefield(self):
+        class Tag(Document):
+            meta = {"collection": "tags"}
+            name = StringField()
+
+        class Post(DynamicEmbeddedDocument):
+            pass
+
+        class Page(Document):
+            meta = {"collection": "pages"}
+            post = EmbeddedDocumentField(Post)
+
+        Tag.drop_collection()
+        Page.drop_collection()
+
+        tag = Tag(name="test").save()
+        post = Post(book_tag=tag)
+        Page(post=post).save()
+
+        page = Page.objects.first()
+        assert page.post.book_tag == post.book_tag
+
     def test_select_related_follows_embedded_referencefields(self):
         class Song(Document):
             title = StringField()
