@@ -605,6 +605,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``add_to_set`` -- add value to a list only if its not in the list already
 * ``rename`` -- rename the key name
 
+.. _need to add upsert=True: http://docs.mongodb.org/manual/reference/operator/update/setOnInsert
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 
 The syntax for atomic updates is similar to the querying syntax, but the
