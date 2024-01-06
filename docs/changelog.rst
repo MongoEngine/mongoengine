@@ -8,10 +8,17 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
+- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/
+- Fix combination of __raw__ and mongoengine syntax #2773
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
 - Add support for readPreferenceTags in connection parameters #2644
-- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/
+- Use estimated_documents_count OR documents_count when count is called, based on the query #2529
+- Fix no_dereference context manager which wasn't turning off auto-dereferencing correctly in some cases #2788
+- BREAKING CHANGE: no_dereference context manager no longer returns the class in __enter__ #2788
+    as it was useless and making it look like it was returning a different class although it was the same.
+    Thus, it must be called like `with no_dereference(User):` and no longer `with no_dereference(User) as ...:`
+- Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
 
 Changes in 0.27.0
 =================

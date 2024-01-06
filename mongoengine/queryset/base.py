@@ -17,6 +17,7 @@ from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
+    no_dereferencing_active_for_class,
     set_read_write_concern,
     set_write_concern,
     switch_db,
@@ -51,9 +52,6 @@ class BaseQuerySet:
     providing :class:`~mongoengine.Document` objects as the results.
     """
 
-    __dereference = False
-    _auto_dereference = True
-
     def __init__(self, document, collection):
         self._document = document
         self._collection_obj = collection
@@ -73,6 +71,9 @@ class BaseQuerySet:
         self._none = False
         self._as_pymongo = False
         self._search_text = None
+
+        self.__dereference = False
+        self.__auto_dereference = True
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -801,7 +802,7 @@ class BaseQuerySet:
         return self._clone_into(self.__class__(self._document, self._collection_obj))
 
     def _clone_into(self, new_qs):
-        """Copy all of the relevant properties of this queryset to
+        """Copy all the relevant properties of this queryset to
         a new queryset (which has to be an instance of
         :class:`~mongoengine.queryset.base.BaseQuerySet`).
         """
@@ -831,7 +832,6 @@ class BaseQuerySet:
             "_empty",
             "_hint",
             "_collation",
-            "_auto_dereference",
             "_search_text",
             "_max_time_ms",
             "_comment",
@@ -841,6 +841,8 @@ class BaseQuerySet:
         for prop in copy_props:
             val = getattr(self, prop)
             setattr(new_qs, prop, copy.copy(val))
+
+        new_qs.__auto_dereference = self._BaseQuerySet__auto_dereference
 
         if self._cursor_obj:
             new_qs._cursor_obj = self._cursor_obj.clone()
@@ -1117,7 +1119,7 @@ class BaseQuerySet:
         )
         return queryset
 
-    def order_by(self, *keys):
+    def order_by(self, *keys, __raw__=None):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the given keys.
 
         The order may be specified by prepending each of the keys by a "+" or
@@ -1127,11 +1129,19 @@ class BaseQuerySet:
 
         :param keys: fields to order the query results by; keys may be
             prefixed with "+" or a "-" to determine the ordering direction.
+        :param __raw__: a raw pymongo "sort" argument (provided as a list of (key, direction))
+            see 'key_or_list' in `pymongo.cursor.Cursor.sort doc <https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html#pymongo.cursor.Cursor.sort>`.
+            If both keys and __raw__ are provided, an exception is raised
         """
-        queryset = self.clone()
+        if __raw__ and keys:
+            raise OperationError("Can not use both keys and __raw__ with order_by() ")
 
+        queryset = self.clone()
         old_ordering = queryset._ordering
-        new_ordering = queryset._get_order_by(keys)
+        if __raw__:
+            new_ordering = __raw__
+        else:
+            new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
             # If a cursor object has already been created, apply the sort to it
@@ -1747,10 +1757,15 @@ class BaseQuerySet:
             self.__dereference = _import_class("DeReference")()
         return self.__dereference
 
+    @property
+    def _auto_dereference(self):
+        should_deref = not no_dereferencing_active_for_class(self._document)
+        return should_deref and self.__auto_dereference
+
     def no_dereference(self):
         """Turn off any dereferencing for the results of this queryset."""
         queryset = self.clone()
-        queryset._auto_dereference = False
+        queryset.__auto_dereference = False
         return queryset
 
     # Helper Functions

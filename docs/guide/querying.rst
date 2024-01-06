@@ -540,7 +540,7 @@ data. To turn off dereferencing of the results of a query use
 You can also turn off all dereferencing for a fixed period by using the
 :class:`~mongoengine.context_managers.no_dereference` context manager::
 
-    with no_dereference(Post) as Post:
+    with no_dereference(Post):
         post = Post.objects.first()
         assert(isinstance(post.author, DBRef))
 
@@ -605,6 +605,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``add_to_set`` -- add value to a list only if its not in the list already
 * ``rename`` -- rename the key name
 
+.. _need to add upsert=True: http://docs.mongodb.org/manual/reference/operator/update/setOnInsert
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
 
 The syntax for atomic updates is similar to the querying syntax, but the
