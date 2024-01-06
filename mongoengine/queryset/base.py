@@ -562,7 +562,9 @@ class BaseQuerySet:
 
         queryset = self.clone()
         query = queryset._query
-        if "__raw__" in update and isinstance(update["__raw__"], list):     # Case of Update with Aggregation Pipeline
+        if "__raw__" in update and isinstance(
+            update["__raw__"], list
+        ):  # Case of Update with Aggregation Pipeline
             update = [
                 transform.update(queryset._document, **{"__raw__": u})
                 for u in update["__raw__"]
