@@ -261,9 +261,8 @@ This is done by using ``__raw__`` keyword argument to the update method and prov
 ::
 
     # assuming an initial 'tags' field == ['test1', 'test2', 'test3']
-    Page.objects().update(__raw__=
-                                  {'$set': {"tags.$[element]": 'test11111'}},
-                                  'array_filters': [{"element": {'$eq': 'test2'}}],
+    Page.objects().update(__raw__={'$set': {"tags.$[element]": 'test11111'}},
+                                  array_filters=[{"element": {'$eq': 'test2'}}],
 
     # updated 'tags' field == ['test1', 'test11111', 'test3']
 
