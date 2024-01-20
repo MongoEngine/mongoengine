@@ -19,6 +19,8 @@ Development
     as it was useless and making it look like it was returning a different class although it was the same.
     Thus, it must be called like `with no_dereference(User):` and no longer `with no_dereference(User) as ...:`
 - Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
+- Add `text_score` argument on :meth:`~mongoengine.Document.search_text()` to allow text_score computation to be turned off
+    as it interfer with natural returned documents order #2759
 
 Changes in 0.27.0
 =================

@@ -3692,7 +3692,7 @@ class TestQueryset(unittest.TestCase):
                 "t2", language="french"
             )
 
-    def test_text_indexes(self):
+    def test_search_text(self):
         class News(Document):
             title = StringField()
             content = StringField()
@@ -3751,14 +3751,16 @@ class TestQueryset(unittest.TestCase):
         assert "dilma" in new.content
         assert "planejamento" in new.title
 
-        query = News.objects.search_text("candidata")
+        query = News.objects.search_text("candidata", text_score=True)
         assert query._search_text == "candidata"
         new = query.first()
 
         assert isinstance(new.get_text_score(), float)
 
         # count
-        query = News.objects.search_text("brasil").order_by("$text_score")
+        query = News.objects.search_text("brasil", text_score=True).order_by(
+            "$text_score"
+        )
         assert query._search_text == "brasil"
 
         assert query.count() == 3
@@ -3777,6 +3779,13 @@ class TestQueryset(unittest.TestCase):
         # get item
         item = News.objects.search_text("brasil").order_by("$text_score").first()
         assert item.get_text_score() == max_text_score
+
+        # Verify query reproducibility when text_score is disabled
+        # Following wouldn't work for text_score=True  #2759
+        for i in range(10):
+            qs1 = News.objects.search_text("brasil", text_score=False)
+            qs2 = News.objects.search_text("brasil", text_score=False)
+            assert list(qs1) == list(qs2)
 
     def test_distinct_handles_references_to_alias(self):
         register_connection("testdb", "mongoenginetest2")

@@ -71,6 +71,7 @@ class BaseQuerySet:
         self._none = False
         self._as_pymongo = False
         self._search_text = None
+        self._search_text_score = None
 
         self.__dereference = False
         self.__auto_dereference = True
@@ -229,7 +230,7 @@ class BaseQuerySet:
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`"""
         return self.__call__(*q_objs, **query)
 
-    def search_text(self, text, language=None):
+    def search_text(self, text, language=None, text_score=True):
         """
         Start a text search, using text indexes.
         Require: MongoDB server version 2.6+.
@@ -239,6 +240,8 @@ class BaseQuerySet:
             If not specified, the search uses the default language of the index.
             For supported languages, see
             `Text Search Languages <https://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+        :param text_score:  True to have it return the text_score (available through get_text_score()), False to disable that
+            Note that unless you order the results, leaving text_score=True may provide randomness in the returned documents
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -252,6 +255,7 @@ class BaseQuerySet:
         queryset._mongo_query = None
         queryset._cursor_obj = None
         queryset._search_text = text
+        queryset._search_text_score = text_score
 
         return queryset
 
@@ -833,6 +837,7 @@ class BaseQuerySet:
             "_hint",
             "_collation",
             "_search_text",
+            "_search_text_score",
             "_max_time_ms",
             "_comment",
             "_batch_size",
@@ -1673,7 +1678,8 @@ class BaseQuerySet:
             if fields_name not in cursor_args:
                 cursor_args[fields_name] = {}
 
-            cursor_args[fields_name]["_text_score"] = {"$meta": "textScore"}
+            if self._search_text_score:
+                cursor_args[fields_name]["_text_score"] = {"$meta": "textScore"}
 
         return cursor_args
 
