@@ -322,7 +322,7 @@ class BaseDocument:
 
         if "_text_score" not in self._data:
             raise InvalidDocumentError(
-                "This document is not originally built from a text query"
+                "This document is not originally built from a text query (or text_score was not set on search_text() call)"
             )
 
         return self._data["_text_score"]

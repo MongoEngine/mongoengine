@@ -8,7 +8,8 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix for uuidRepresentation not read when provided in URI #2741
-- Fix connection for multiple db in same cluster created duplicate MongoClient
+- Fix connection for multiple db in same cluster created duplicate MongoClient #2768
+- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/ #2769
 - Fix combination of __raw__ and mongoengine syntax #2773
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
 - Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
@@ -19,6 +20,8 @@ Development
     as it was useless and making it look like it was returning a different class although it was the same.
     Thus, it must be called like `with no_dereference(User):` and no longer `with no_dereference(User) as ...:`
 - Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
+- Add `text_score` argument on :meth:`~mongoengine.Document.search_text()` to allow text_score computation to be turned off
+    as it interfer with natural returned documents order #2759
 
 
 Changes in 0.27.0
