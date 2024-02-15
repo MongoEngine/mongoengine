@@ -2,7 +2,7 @@
 Logging/Monitoring
 ==================
 
-It is possible to use `pymongo.monitoring <https://api.mongodb.com/python/current/api/pymongo/monitoring.html>`_ to monitor
+It is possible to use `pymongo.monitoring <https://pymongo.readthedocs.io/en/stable/api/pymongo/monitoring.html>`_ to monitor
 the driver events (e.g: queries, connections, etc). This can be handy if you want to monitor the queries issued by
 MongoEngine to the driver.
 
