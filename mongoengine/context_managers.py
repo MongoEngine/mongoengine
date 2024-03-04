@@ -20,8 +20,12 @@ __all__ = (
 )
 
 
-thread_locals = threading.local()
-thread_locals.no_dereferencing_class = {}
+class MyThreadLocals(threading.local):
+    def __init__(self):
+        self.no_dereferencing_class = {}
+
+
+thread_locals = MyThreadLocals()
 
 
 def no_dereferencing_active_for_class(cls):
