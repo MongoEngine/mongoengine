@@ -1,4 +1,7 @@
+import random
+import time
 import unittest
+from threading import Thread
 
 import pytest
 from bson import DBRef
@@ -16,6 +19,29 @@ from mongoengine.context_managers import (
 )
 from mongoengine.pymongo_support import count_documents
 from tests.utils import MongoDBTestCase
+
+
+class TestableThread(Thread):
+    """
+    Wrapper around `threading.Thread` that propagates exceptions.
+
+    REF: https://gist.github.com/sbrugman/59b3535ebcd5aa0e2598293cfa58b6ab
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exc = None
+
+    def run(self):
+        try:
+            super().run()
+        except BaseException as e:
+            self.exc = e
+
+    def join(self, timeout=None):
+        super().join(timeout)
+        if self.exc:
+            raise self.exc
 
 
 class TestContextManagers(MongoDBTestCase):
@@ -172,12 +198,26 @@ class TestContextManagers(MongoDBTestCase):
                 group = Group.objects.first()
                 assert isinstance(group.ref, DBRef)
 
-            # make sure its still off here
+            # make sure it's still off here
             group = Group.objects.first()
             assert isinstance(group.ref, DBRef)
 
         group = Group.objects.first()
         assert isinstance(group.ref, User)
+
+        def run_in_thread(id):
+            time.sleep(random.uniform(0.1, 0.5))  # Force desync of threads
+            if id % 2 == 0:
+                with no_dereference(Group):
+                    group = Group.objects.first()
+                    assert isinstance(group.ref, DBRef)
+            else:
+                group = Group.objects.first()
+                assert isinstance(group.ref, User)
+
+        threads = [TestableThread(target=run_in_thread, args=(id,)) for id in range(10)]
+        _ = [th.start() for th in threads]
+        _ = [th.join() for th in threads]
 
     def test_no_dereference_context_manager_dbref(self):
         """Ensure that DBRef items in ListFields aren't dereferenced"""

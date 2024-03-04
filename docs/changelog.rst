@@ -8,6 +8,10 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.28.1
+=================
+- Fix bug related with recent updates to no_dereference context manager #2799
+
 Changes in 0.28.0
 =================
 - Fix for uuidRepresentation not read when provided in URI #2741
