@@ -1,10 +1,7 @@
 import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
-from pymongo.common import (
-    _UUID_REPRESENTATIONS,
-    _CaseInsensitiveDictionary,
-)
+from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.database import _check_name
 
 # DriverInfo was added in PyMongo 3.7.
@@ -135,7 +132,9 @@ def _get_connection_settings(
                 if uri_dict.get(param):
                     conn_settings[param] = uri_dict[param]
 
-            uri_options: _CaseInsensitiveDictionary = uri_dict["options"]
+            uri_options = uri_dict[
+                "options"
+            ]  # uri_options is a _CaseInsensitiveDictionary
             if "replicaset" in uri_options:
                 conn_settings["replicaSet"] = uri_options["replicaset"]
             if "authsource" in uri_options:
