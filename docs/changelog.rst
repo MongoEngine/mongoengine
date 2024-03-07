@@ -8,6 +8,10 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.28.2
+=================
+- Fix typing import incompatible with Pymongo 3.7 #2802
+
 Changes in 0.28.1
 =================
 - Fix bug related with recent updates to no_dereference context manager #2799
