@@ -26,11 +26,11 @@ env:
   PYMONGO_3_11: 3.11
   PYMONGO_3_12: 3.12
   PYMONGO_4_0: 4.0
-  PYMONGO_4_3: 4.3.2
+  PYMONGO_4_3: 4.3.3
   PYMONGO_4_4: 4.4.1
-  PYMONGO_4_6: 4.6.0
+  PYMONGO_4_6: 4.6.2
 
-  MAIN_PYTHON_VERSION: 3.7
+  MAIN_PYTHON_VERSION: 3.9
 
 jobs:
   linting:
@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", 3.11, "pypy3.9"]
+        python-version: [3.7, 3.8, 3.9, "3.10", 3.11, pypy3.9, pypy3.10]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
@@ -110,7 +110,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.7
+        python-version: 3.9
         check-latest: true
     - name: install python dep
       run: |
