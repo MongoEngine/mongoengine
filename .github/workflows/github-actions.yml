@@ -91,9 +91,9 @@ jobs:
         bash .github/workflows/install_ci_python_dep.sh
         bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
-      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- "-k=test_ci_placeholder"
     - name: Run test suite
-      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- "--cov=mongoengine"
     - name: Send coverage to Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -110,7 +110,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.7
         check-latest: true
     - name: install python dep
       run: |
