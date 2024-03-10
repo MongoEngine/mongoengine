@@ -9,6 +9,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.connection import get_db
+from mongoengine.fields import FileField, ListField
 
 try:
     from PIL import Image  # noqa: F401
@@ -573,6 +574,73 @@ class TestFileField(MongoDBTestCase):
         assert marmot.photos[0].content_type == "image/jpeg"
         assert marmot.photos[0].foo == "bar"
         assert marmot.photos[0].get().length == 8313
+
+    def test_cascade_del_filefield(self):
+        """Ensure cascade deletion also remove file chunks"""
+
+        class User(Document):
+            username = StringField()
+
+        class Album(Document):
+            user = ReferenceField("User")
+            photo = FileField()
+
+        User.register_delete_rule(Album, "user", CASCADE)
+
+        User.drop_collection()
+        Album.drop_collection()
+        self.db["fs.files"].drop()
+        self.db["fs.chunks"].drop()
+
+        user = User(username="bob").save()
+        assert User.objects.get() == user
+
+        album = Album(user=user)
+        with open(TEST_IMAGE_PATH, "rb") as img:
+            album.photo.put(img)
+        album.save()
+        assert Album.objects.get().user == user
+
+        user.delete()
+        assert User.objects.count() == 0
+        assert Album.objects.count() == 0
+        assert self.db["fs.files"].count() == 0
+        assert self.db["fs.chunks"].count() == 0
+
+    def test_cascade_del_complex_field_filefield(self):
+        """Ensure cascade deletion also remove file chunks"""
+
+        class User(Document):
+            username = StringField()
+
+        class Album(Document):
+            user = ReferenceField("User")
+            photos = ListField(FileField())
+
+        User.register_delete_rule(Album, "user", CASCADE)
+
+        User.drop_collection()
+        Album.drop_collection()
+        self.db["fs.files"].drop()
+        self.db["fs.chunks"].drop()
+
+        user = User(username="bob").save()
+        assert User.objects.get() == user
+
+        album = Album(user=user)
+        with open(TEST_IMAGE_PATH, "rb") as img:
+            photos_field = album._fields["photos"].field
+            new_proxy = photos_field.get_proxy_obj("photos", album)
+            new_proxy.put(img, content_type="image/jpeg", foo="bar")
+        album.photos.append(new_proxy)
+        album.save()
+        assert Album.objects.get().user == user
+
+        user.delete()
+        assert User.objects.count() == 0
+        assert Album.objects.count() == 0
+        assert self.db["fs.files"].count() == 0
+        assert self.db["fs.chunks"].count() == 0
 
 
 if __name__ == "__main__":
