@@ -1,3 +1,4 @@
+import copy
 import os
 import pickle
 import unittest
@@ -3780,6 +3781,24 @@ class TestDocumentInstance(MongoDBTestCase):
         ) == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found" % type(
             value
         )
+
+    def test_from_son_with_auto_dereference_disabled(self):
+        class User(Document):
+            name = StringField(regex=r"(^ABC\d\d\d\d$)")
+
+        data = {"name": "ABC0000"}
+        user_obj = User._from_son(son=data, _auto_dereference=False)
+
+        assert user_obj._fields["name"] is not User.name
+        assert (
+            user_obj._fields["name"].regex is User.name.regex
+        )  # Compiled regex are atomic
+
+        copied_user = copy.deepcopy(user_obj)
+        assert user_obj._fields["name"] is not copied_user._fields["name"]
+        assert (
+            user_obj._fields["name"].regex is copied_user._fields["name"].regex
+        )  # Compiled regex are atomic
 
 
 class ObjectKeyTestCase(MongoDBTestCase):

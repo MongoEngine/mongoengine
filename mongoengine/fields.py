@@ -1,3 +1,4 @@
+import copy
 import datetime
 import decimal
 import inspect
@@ -118,6 +119,23 @@ class StringField(BaseField):
         self.max_length = max_length
         self.min_length = min_length
         super().__init__(**kwargs)
+
+    def __deepcopy__(self, memo):
+        regex_bak = self.regex
+        deepcopy_bak = self.__deepcopy__
+
+        self.regex = None
+        self.__deepcopy__ = (
+            None  # Lib/copy.py will use original deepcopy implementation
+        )
+        copied_obj = copy.deepcopy(self, memo)
+
+        copied_obj.regex = regex_bak
+        copied_obj.__deepcopy__ = deepcopy_bak
+        self.regex = regex_bak
+        self.__deepcopy__ = deepcopy_bak
+
+        return copied_obj
 
     def to_python(self, value):
         if isinstance(value, str):
