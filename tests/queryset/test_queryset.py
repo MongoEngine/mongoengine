@@ -2699,6 +2699,22 @@ class TestQueryset(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by("")]
         assert ages == [40, 20, 30]
 
+    def test_last(self):
+        """Ensure the retieval of the latest object from the QuerySet."""
+        person1 = self.Person(name="User B", age=40).save()
+        person2 = self.Person(name="User A", age=20).save()
+        person3 = self.Person(name="User C", age=30).save()
+
+        assert self.Person.objects.last() == person3
+
+        person2.age = 31
+        person2.save()
+        assert self.Person.objects.last() == person3
+
+        person1.age = 41
+        person1.save()
+        assert self.Person.objects.last() == person3
+
     def test_order_by_optional(self):
         class BlogPost(Document):
             title = StringField()
