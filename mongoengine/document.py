@@ -220,6 +220,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             # Get the collection, either capped or regular.
             if cls._meta.get("max_size") or cls._meta.get("max_documents"):
                 cls._collection = cls._get_capped_collection()
+            elif cls._meta.get("timeseries"):
+                cls._collection = cls._get_timeseries_collection()
             else:
                 db = cls._get_db()
                 collection_name = cls._get_collection_name()
@@ -232,6 +234,28 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 cls.ensure_indexes()
 
         return cls._collection
+
+    @classmethod
+    def _get_timeseries_collection(cls):
+        """Create a new or get an existing timeseries PyMongo collection."""
+        db = cls._get_db()
+        collection_name = cls._get_collection_name()
+        timeseries_opts = cls._meta.get("timeseries")
+
+        if collection_name in list_collection_names(
+            db, include_system_collections=True
+        ):
+            collection = db[collection_name]
+            options = collection.options()
+
+            return collection
+
+        opts = {"expireAfterSeconds": timeseries_opts.pop("expireAfterSeconds", None)}
+        return db.create_collection(
+            name=collection_name,
+            timeseries=timeseries_opts,
+            **opts,
+        )
 
     @classmethod
     def _get_capped_collection(cls):
@@ -256,11 +280,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         ):
             collection = db[collection_name]
             options = collection.options()
-            if options.get("max") != max_documents or options.get("size") != max_size:
-                raise InvalidCollectionError(
-                    'Cannot create collection "{}" as a capped '
-                    "collection as it already exists".format(cls._collection)
-                )
 
             return collection
 
