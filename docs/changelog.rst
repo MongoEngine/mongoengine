@@ -20,6 +20,7 @@ Changes in 0.28.1
 Changes in 0.28.0
 =================
 - Fix for uuidRepresentation not read when provided in URI #2741
+- Fix connection for multiple db in same cluster created duplicate MongoClient #2768
 - Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/ #2769
 - Fix combination of __raw__ and mongoengine syntax #2773
 - Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
@@ -33,6 +34,7 @@ Changes in 0.28.0
 - Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
 - Add `text_score` argument on :meth:`~mongoengine.Document.search_text()` to allow text_score computation to be turned off
     as it interfere with natural returned documents order #2759
+
 
 Changes in 0.27.0
 =================
