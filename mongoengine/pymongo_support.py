@@ -1,6 +1,7 @@
 """
 Helper functions, constants, and types to aid with PyMongo support.
 """
+
 import pymongo
 from bson import binary, json_util
 from pymongo.errors import OperationFailure

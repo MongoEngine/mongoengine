@@ -60,13 +60,9 @@ def test_basic():
     print("Save to database: %.3fus" % (timeit(save_book, 100) * 10**6))
 
     son = b.to_mongo()
-    print(
-        "Load from SON: %.3fus" % (timeit(lambda: Book._from_son(son), 1000) * 10**6)
-    )
+    print("Load from SON: %.3fus" % (timeit(lambda: Book._from_son(son), 1000) * 10**6))
 
-    print(
-        "Load from database: %.3fus" % (timeit(lambda: Book.objects[0], 100) * 10**6)
-    )
+    print("Load from database: %.3fus" % (timeit(lambda: Book.objects[0], 100) * 10**6))
 
     def create_and_delete_book():
         b = init_book()
@@ -116,13 +112,11 @@ def test_big_doc():
 
     son = company.to_mongo()
     print(
-        "Load from SON: %.3fms"
-        % (timeit(lambda: Company._from_son(son), 100) * 10**3)
+        "Load from SON: %.3fms" % (timeit(lambda: Company._from_son(son), 100) * 10**3)
     )
 
     print(
-        "Load from database: %.3fms"
-        % (timeit(lambda: Company.objects[0], 100) * 10**3)
+        "Load from database: %.3fms" % (timeit(lambda: Company.objects[0], 100) * 10**3)
     )
 
     def create_and_delete_company():
