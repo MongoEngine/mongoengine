@@ -1,6 +1,14 @@
+from collections import defaultdict
+
 from mongoengine.errors import NotRegistered
 
-__all__ = ("UPDATE_OPERATORS", "get_document", "_document_registry")
+__all__ = (
+    "UPDATE_OPERATORS",
+    "get_document",
+    "update_document_if_registered",
+    "_document_registry",
+    "_undefined_document_delete_rules",
+)
 
 
 UPDATE_OPERATORS = {
@@ -23,6 +31,7 @@ UPDATE_OPERATORS = {
 
 
 _document_registry = {}
+_undefined_document_delete_rules = defaultdict(list)
 
 
 def get_document(name):
@@ -60,3 +69,13 @@ def _get_documents_by_db(connection_alias, default_connection_alias):
         for doc_cls in _document_registry.values()
         if get_doc_alias(doc_cls) == connection_alias
     ]
+
+
+def update_document_if_registered(document):
+    """Converts a string to a Document if registered in the registry."""
+    if isinstance(document, str):
+        try:
+            return get_document(document)
+        except NotRegistered:
+            pass
+    return document

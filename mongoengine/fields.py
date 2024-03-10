@@ -30,7 +30,9 @@ from mongoengine.base import (
     GeoJsonBaseField,
     LazyReference,
     ObjectIdField,
+    _undefined_document_delete_rules,
     get_document,
+    update_document_if_registered,
 )
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
@@ -1120,8 +1122,7 @@ class ReferenceField(BaseField):
       * DENY       (3)  - Prevent the deletion of the reference object.
       * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
 
-    Alternative syntax for registering delete rules (useful when implementing
-    bi-directional delete rules)
+    Alternative syntax for registering delete rules
 
     .. code-block:: python
 
@@ -1435,6 +1436,39 @@ class CachedReferenceField(BaseField):
             self.owner_document.objects(**filter_kwargs).update(**update_kwargs)
 
 
+class GenericReferenceDeleteHandler:
+    """Used to make delete rules work for GenericReferenceFields.
+
+    Since delete rules are registered on single documents, we'll always need
+    something like this to make a generic reference (AKA, a reference to
+    multiple documents) with delete rules work.
+    """
+
+    def __init__(self, documents):
+        self.documents = documents
+
+    def __getattr__(self, name):
+        raise NotImplementedError(
+            f"{self.__name__} is intended only to be used "
+            "to enable generic reference delete rules. You "
+            "are trying to access undefined attributes."
+        )
+
+    def register_delete_rule(self, document_cls, field_name, rule):
+        for doc in self.documents:
+            doc = update_document_if_registered(doc)
+            if isinstance(doc, str):
+                _undefined_document_delete_rules[doc].append(
+                    (
+                        document_cls,
+                        field_name,
+                        rule,
+                    )
+                )
+            else:
+                doc.register_delete_rule(document_cls, field_name, rule)
+
+
 class GenericReferenceField(BaseField):
     """A reference to *any* :class:`~mongoengine.document.Document` subclass
     that will be automatically dereferenced on access (lazily).
@@ -1445,6 +1479,31 @@ class GenericReferenceField(BaseField):
     To solve this you should consider using the
     :class:`~mongoengine.fields.GenericLazyReferenceField`.
 
+    Use the `reverse_delete_rule` to handle what should happen if the document
+    the field is referencing is deleted.  EmbeddedDocuments, DictFields and
+    MapFields does not support reverse_delete_rule and an `InvalidDocumentError`
+    will be raised if trying to set on one of these Document / Field types.
+
+    The options are:
+
+      * DO_NOTHING (0)  - don't do anything (default).
+      * NULLIFY    (1)  - Updates the reference to null.
+      * CASCADE    (2)  - Deletes the documents associated with the reference.
+      * DENY       (3)  - Prevent the deletion of the reference object.
+      * PULL       (4)  - Pull the reference from a :class:`~mongoengine.fields.ListField` of references
+
+    Alternative syntax for registering delete rules
+
+    .. code-block:: python
+
+        class Org(Document):
+            owner = ReferenceField('User')
+
+        class User(Document):
+            org = ReferenceField('Org', reverse_delete_rule=CASCADE)
+
+        User.register_delete_rule(Org, 'owner', DENY)
+
     .. note ::
         * Any documents used as a generic reference must be registered in the
           document registry.  Importing the model will automatically register
@@ -1453,8 +1512,11 @@ class GenericReferenceField(BaseField):
         * You can use the choices param to limit the acceptable Document types
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, reverse_delete_rule=DO_NOTHING, **kwargs):
         choices = kwargs.pop("choices", None)
+        self.reverse_delete_rule = reverse_delete_rule
+        if self.reverse_delete_rule is not DO_NOTHING and not choices:
+            raise ValidationError("choices must be set to use reverse_delete_rules")
         super().__init__(*args, **kwargs)
         self.choices = []
         # Keep the choices as a list of allowed Document class names
@@ -1471,6 +1533,15 @@ class GenericReferenceField(BaseField):
                         "Invalid choices provided: must be a list of"
                         "Document subclasses and/or str"
                     )
+
+    @property
+    def document_type(self):
+        # This property is exposed purely for enabling reverse_delete_rule
+        # on this class. Do not attempt to use it in any other way, if you
+        # do a NotImplementedError will be raised.
+        if not self.choices:
+            return None
+        return GenericReferenceDeleteHandler(self.choices)
 
     def _validate_choices(self, value):
         if isinstance(value, dict):

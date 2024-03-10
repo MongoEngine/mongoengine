@@ -13,7 +13,11 @@ from pymongo.errors import DuplicateKeyError
 
 from mongoengine import *
 from mongoengine import signals
-from mongoengine.base import _document_registry, get_document
+from mongoengine.base import (
+    _document_registry,
+    _undefined_document_delete_rules,
+    get_document,
+)
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import (
@@ -2515,6 +2519,52 @@ class TestDocumentInstance(MongoDBTestCase):
         assert self.Person.objects.count() == 2
         author.delete()
         assert self.Person.objects.count() == 1
+
+    def test_lazy_delete_rules(self):
+        """Ensure that a document does not need to be defined to reference it
+        in a ReferenceField."""
+
+        assert not _undefined_document_delete_rules.get("BlogPostLazy")
+
+        # named "lazy" to ensure these Documents don't exist in the
+        # document registry
+        class CommentLazy(Document):
+            text = StringField()
+            post = ReferenceField("BlogPostLazy", reverse_delete_rule=CASCADE)
+
+        assert len(_undefined_document_delete_rules.get("BlogPostLazy")) == 1
+
+        class CommentDosLazy(Document):
+            textdos = StringField()
+            postdos = ReferenceField("BlogPostLazy", reverse_delete_rule=CASCADE)
+
+        assert len(_undefined_document_delete_rules.get("BlogPostLazy")) == 2
+
+        class BlogPostLazy(Document):
+            content = StringField()
+            author = ReferenceField(self.Person, reverse_delete_rule=CASCADE)
+
+        assert not _undefined_document_delete_rules.get("BlogPostLazy")
+
+        self.Person.drop_collection()
+        BlogPostLazy.drop_collection()
+        CommentLazy.drop_collection()
+
+        author = self.Person(name="Test User")
+        author.save()
+
+        post = BlogPostLazy(content="Watched some TV")
+        post.author = author
+        post.save()
+
+        comment = CommentLazy(text="Kudos.")
+        comment.post = post
+        comment.save()
+
+        # Delete the Person, which should lead to deletion of the BlogPost,
+        # and, recursively to the Comment, too
+        author.delete()
+        assert CommentLazy.objects.count() == 0
 
     def subclasses_and_unique_keys_works(self):
         class A(Document):

@@ -184,6 +184,7 @@ To delete all the posts if a user is deleted set the rule::
         comments = ListField(EmbeddedDocumentField(Comment))
 
 See :class:`~mongoengine.fields.ReferenceField` for more information.
+:class:`~mongoengine.fields.GenericReferenceField` also supports this feature.
 
 .. note::
     MapFields and DictFields currently don't support automatic handling of

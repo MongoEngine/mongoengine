@@ -1,14 +1,17 @@
 import itertools
 import warnings
 
-from mongoengine.base.common import _document_registry
+from mongoengine.base.common import (
+    _document_registry,
+    _undefined_document_delete_rules,
+)
 from mongoengine.base.fields import (
     BaseField,
     ComplexBaseField,
     ObjectIdField,
 )
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidDocumentError
+from mongoengine.errors import InvalidDocumentError, NotRegistered
 from mongoengine.queryset import (
     DO_NOTHING,
     DoesNotExist,
@@ -206,7 +209,14 @@ class DocumentMetaclass(type):
                         "EmbeddedDocuments (field: %s)" % field.name
                     )
                     raise InvalidDocumentError(msg)
-                f.document_type.register_delete_rule(new_class, field.name, delete_rule)
+                try:
+                    f.document_type.register_delete_rule(
+                        new_class, field.name, delete_rule
+                    )
+                except NotRegistered:
+                    _undefined_document_delete_rules[f.document_type_obj].append(
+                        (new_class, field.name, delete_rule)
+                    )
 
             if (
                 field.name
@@ -362,6 +372,13 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
 
         # Call super and get the new class
         new_class = super_new(mcs, name, bases, attrs)
+        # Find any lazy delete rules and apply to current doc.
+        if new_class._class_name in _undefined_document_delete_rules:
+            rules_tuple_list = _undefined_document_delete_rules.pop(
+                new_class._class_name
+            )
+            for document_cls, field_name, rule in rules_tuple_list:
+                new_class.register_delete_rule(document_cls, field_name, rule)
 
         meta = new_class._meta
 
