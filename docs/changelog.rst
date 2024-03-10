@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Switch tox to use pytest instead of legacy `python setup.py test` #2804
 
 Changes in 0.28.2
 =================

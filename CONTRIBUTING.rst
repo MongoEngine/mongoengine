@@ -82,7 +82,7 @@ General Guidelines
   should adapt to the breaking change in docs/upgrade.rst.
 - Write inline documentation for new classes and methods.
 - Write tests and make sure they pass (make sure you have a mongod
-  running on the default port, then execute ``python setup.py test``
+  running on the default port, then execute ``pytest tests/``
   from the cmd line to run the test suite).
 - Ensure tests pass on all supported Python, PyMongo, and MongoDB versions.
   You can test various Python and PyMongo versions locally by executing
