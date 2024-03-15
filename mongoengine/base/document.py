@@ -935,6 +935,9 @@ class BaseDocument:
             parts = key.split(".")
             if parts in (["pk"], ["id"], ["_id"]):
                 key = "_id"
+            elif "_ref" in parts:
+                # Ignore _ref.$id indices
+                pass
             else:
                 fields = cls._lookup_field(parts)
                 parts = []

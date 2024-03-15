@@ -17,6 +17,7 @@ from mongoengine.fields import (
     ReferenceField,
 )
 from mongoengine.queryset import QuerySet
+from mongoengine.sessions import get_local_session
 
 
 class DeReference:
@@ -187,13 +188,15 @@ class DeReference:
 
                 if doc_type:
                     references = doc_type._get_db()[collection].find(
-                        {"_id": {"$in": refs}}
+                        {"_id": {"$in": refs}}, session=doc_type.get_local_session()
                     )
                     for ref in references:
                         doc = doc_type._from_son(ref)
                         object_map[(collection, doc.id)] = doc
                 else:
-                    references = get_db()[collection].find({"_id": {"$in": refs}})
+                    references = get_db()[collection].find(
+                        {"_id": {"$in": refs}}, session=get_local_session()
+                    )
                     for ref in references:
                         if "_cls" in ref:
                             doc = get_document(ref["_cls"])._from_son(ref)

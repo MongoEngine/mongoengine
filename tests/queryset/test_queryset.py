@@ -11,7 +11,11 @@ from pymongo.results import UpdateResult
 
 from mongoengine import *
 from mongoengine.connection import get_db
-from mongoengine.context_managers import query_counter, switch_db
+from mongoengine.context_managers import (
+    query_counter,
+    run_in_transaction,
+    switch_db,
+)
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import (
     MONGODB_36,
@@ -767,6 +771,21 @@ class TestQueryset(unittest.TestCase):
         Scores.objects(id=scores.id).update(max__high_score=500)
         assert Scores.objects.get(id=scores.id).high_score == 1000
 
+    def test_create_run_in_transaction(self):
+        """Ensure create in a query set uses the transaction."""
+
+        class Product(Document):
+            item = StringField()
+            price = FloatField()
+
+        with pytest.raises(Exception, match="test"):
+            with run_in_transaction():
+                product = Product.objects.create(item="ABC", price=10.99)
+                assert Product.objects.get(id=product.id) == product
+                raise Exception("test")
+
+        assert Product.objects.filter(id=product.id).count() == 0
+
     def test_update_multiple(self):
         class Product(Document):
             item = StringField()
@@ -779,6 +798,25 @@ class TestQueryset(unittest.TestCase):
         unknown_product = Product.objects.create(item="Unknown")
         Product.objects(id=unknown_product.id).update(mul__price=100)
         assert Product.objects.get(id=unknown_product.id).price == 0
+
+    def test_update_multiple_run_in_transaction(self):
+        class Product(Document):
+            item = StringField()
+            price = FloatField()
+
+        unknown_product = Product.objects.create(item="Unknown")
+        product = Product.objects.create(item="JAC", price=10.99)
+        product = Product.objects.create(item="JAC", price=10.99)
+        assert Product.objects(item="JAC").count() == 2
+        with pytest.raises(Exception, match="test"):
+            with run_in_transaction():
+                Product.objects(item="JAC").update(mul__price=1.25)
+                assert Product.objects.get(id=product.id).price == 13.7375
+                Product.objects(id=unknown_product.id).update(mul__price=100)
+                assert Product.objects.get(id=unknown_product.id).price == 0
+                raise Exception("test")
+
+        assert Product.objects.get(id=product.id).price == 10.99
 
     def test_updates_can_have_match_operators(self):
         class Comment(EmbeddedDocument):
@@ -1736,6 +1774,22 @@ class TestQueryset(unittest.TestCase):
 
         self.Person.objects.delete()
         assert self.Person.objects.count() == 0
+
+    def test_delete_run_in_transaction(self):
+        """Ensure that documents are properly deleted from the database."""
+        self.Person(name="User A", age=20).save()
+        self.Person(name="User B", age=30).save()
+        self.Person(name="User C", age=40).save()
+
+        assert self.Person.objects.count() == 3
+
+        with pytest.raises(Exception, match="test"):
+            with run_in_transaction():
+                self.Person.objects(age__lt=30).delete()
+                assert self.Person.objects.count() == 2
+                raise Exception("test")
+
+        assert self.Person.objects.count() == 3
 
     def test_reverse_delete_rule_cascade(self):
         """Ensure cascading deletion of referring documents from the database."""

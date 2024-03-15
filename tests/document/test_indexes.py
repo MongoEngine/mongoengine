@@ -7,6 +7,7 @@ from pymongo.errors import OperationFailure
 
 from mongoengine import *
 from mongoengine.connection import get_db
+from mongoengine.context_managers import run_in_transaction
 from mongoengine.mongodb_support import (
     MONGODB_42,
     get_mongodb_version,
@@ -37,6 +38,13 @@ class TestIndexes(unittest.TestCase):
         Documents
         """
         self._index_test(Document)
+
+    def test_indexes_document_run_in_transaction(self):
+        """Ensure that indexes are used when meta[indexes] is specified for
+        Documents
+        """
+        with run_in_transaction():
+            self._index_test(Document)
 
     def test_indexes_dynamic_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
