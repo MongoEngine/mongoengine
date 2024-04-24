@@ -6006,6 +6006,14 @@ class TestQueryset(unittest.TestCase):
         for index in range(qs_disk.count()):
             assert qs_disk[index] == qs[index]
 
+    def test_filter_on_empty_list_of_floats(self):
+        class Family(Document):
+            ages = ListField(field=FloatField())
+
+        Family(ages = [7.5, 5.5, 29.5, 32.7]).save()
+        Family(ages = []).save()
+        assert Family.objects(ages__gt=[]).count() == 1
+
 
 if __name__ == "__main__":
     unittest.main()
