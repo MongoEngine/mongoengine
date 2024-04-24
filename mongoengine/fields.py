@@ -401,7 +401,7 @@ class FloatField(BaseField):
             self.error("Float value is too large")
 
     def prepare_query_value(self, op, value):
-        if value is None:
+        if value is None or value == []:
             return value
 
         return super().prepare_query_value(op, float(value))
