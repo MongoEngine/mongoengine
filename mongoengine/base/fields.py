@@ -42,7 +42,7 @@ class BaseField(Generic[_ST, _GT]):
     may be added to subclasses of `Document` to define a document's schema.
     """
 
-    name: str = None  # type: ignore set in TopLevelDocumentMetaclass
+    name: str = None  # type: ignore[assignment] # set in TopLevelDocumentMetaclass
     _geo_index: bool | str = False
     _auto_gen = False  # Call `generate` to generate a value
     _auto_dereference = True
@@ -275,12 +275,12 @@ class BaseField(Generic[_ST, _GT]):
 
     @property
     def owner_document(self) -> type[Document]:
-        return self._owner_document
+        return self._owner_document  # type: ignore[return-value]
 
     def _set_owner_document(self, owner_document):
         self._owner_document = owner_document
 
-    @owner_document.setter
+    @owner_document.setter  # type: ignore[attr-defined,no-redef]
     def owner_document(self, owner_document):
         self._set_owner_document(owner_document)
 

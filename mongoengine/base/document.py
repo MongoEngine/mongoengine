@@ -3,7 +3,7 @@ import numbers
 from typing_extensions import Self
 import warnings
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import pymongo
 from bson import SON, DBRef, ObjectId, json_util
@@ -17,7 +17,7 @@ from mongoengine.base.datastructures import (
     LazyReference,
     StrictDict,
 )
-from mongoengine.base.fields import ComplexBaseField
+from mongoengine.base.fields import ComplexBaseField, BaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -28,12 +28,15 @@ from mongoengine.errors import (
 )
 from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
 
+if TYPE_CHECKING:
+    from mongoengine.fields import DynamicField
+
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
 NON_FIELD_ERRORS = "__all__"
 
 try:
-    GEOHAYSTACK = pymongo.GEOHAYSTACK
+    GEOHAYSTACK = pymongo.GEOHAYSTACK  # type: ignore[attr-defined]
 except AttributeError:
     GEOHAYSTACK = None
 
@@ -63,6 +66,10 @@ class BaseDocument:
     _dynamic = False
     _dynamic_lock = True
     STRICT = False
+
+    # Fields, added by metaclass
+    _class_name: str
+    _fields: dict[str, BaseField]
 
     def __init__(self, *args, **values):
         """
@@ -105,7 +112,7 @@ class BaseDocument:
         else:
             self._data = {}
 
-        self._dynamic_fields = SON()
+        self._dynamic_fields: SON[str, DynamicField] = SON()
 
         # Assign default values for fields
         # not set in the constructor
@@ -337,7 +344,7 @@ class BaseDocument:
         """
         fields = fields or []
 
-        data = SON()
+        data: SON[str, Any] = SON()
         data["_id"] = None
         data["_cls"] = self._class_name
 
@@ -356,7 +363,7 @@ class BaseDocument:
 
             if value is not None:
                 f_inputs = field.to_mongo.__code__.co_varnames
-                ex_vars = {}
+                ex_vars: dict[str, Any] = {}
                 if fields and "fields" in f_inputs:
                     key = "%s." % field_name
                     embedded_fields = [
