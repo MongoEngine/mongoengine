@@ -14,7 +14,7 @@ except ImportError:
 import mongoengine
 from mongoengine.pymongo_support import PYMONGO_VERSION
 
-__all__ = [
+__all__ = (
     "DEFAULT_CONNECTION_NAME",
     "DEFAULT_DATABASE_NAME",
     "ConnectionFailure",
@@ -24,7 +24,7 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
-]
+)
 
 
 DEFAULT_CONNECTION_NAME: str = "default"

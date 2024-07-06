@@ -20,12 +20,12 @@ from mongoengine.queryset import *  # noqa: F401
 from mongoengine.signals import *  # noqa: F401
 
 __all__ = (
-    list(document.__all__)
-    + list(fields.__all__)
-    + list(connection.__all__)
-    + list(queryset.__all__)
-    + list(signals.__all__)
-    + list(errors.__all__)
+    document.__all__
+    + fields.__all__
+    + connection.__all__
+    + queryset.__all__
+    + signals.__all__
+    + errors.__all__
 )
 
 
