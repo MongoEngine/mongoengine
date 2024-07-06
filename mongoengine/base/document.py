@@ -361,6 +361,10 @@ class BaseDocument:
             if field is None and self._dynamic:
                 field = self._dynamic_fields.get(field_name)
 
+            # FIXME: I'm adding this to satisfy type-checking, but this is valid edge
+            # case to be concerned about
+            assert field is not None
+
             if value is not None:
                 f_inputs = field.to_mongo.__code__.co_varnames
                 ex_vars: dict[str, Any] = {}
