@@ -31,7 +31,7 @@ class BaseField(Generic[_ST, _GT]):
     def __new__(
         cls,
         *args: Any,
-        required: Literal[False] = ...,
+        required: Literal[False],
         default: None = ...,
         **kwargs: Any,
     ) -> BaseField[Optional[_ST], Optional[_GT]]: ...
@@ -40,7 +40,7 @@ class BaseField(Generic[_ST, _GT]):
     def __new__(
         cls,
         *args: Any,
-        required: Literal[False] = ...,
+        required: Literal[False],
         default: Union[str, Callable[[], str]],
         **kwargs: Any,
     ) -> BaseField[Optional[_ST], _GT]: ...
@@ -49,6 +49,8 @@ class BaseField(Generic[_ST, _GT]):
     def __new__(
         cls,
         *args: Any,
+        required: Literal[True] = ...,
+        default: None = ...,
         **kwargs: Any,
     ) -> BaseField[_ST, _GT]: ...
     # BaseField(required=True)
@@ -92,7 +94,7 @@ class ComplexBaseField(BaseField[_ST, _GT]):
     def to_mongo(
         self, value, use_db_field: bool = True, fields: Sequence[str] | None = None
     ): ...
-    def validate(self, value: Any) -> None: ...
+    def validate(self, value: Any) -> None: ...  # type: ignore[override]
     def prepare_query_value(self, op, value): ...
     def lookup_member(self, member_name): ...
 

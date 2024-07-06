@@ -30,6 +30,8 @@ from typing_extensions import Literal, TypeAlias
 
 _T = TypeVar("_T")
 _Choice: TypeAlias = str | tuple[str, str]
+__all__: tuple[str, ...]
+
 
 class StringField(BaseField[_ST, _GT]):
     def __init__(
@@ -892,7 +894,7 @@ class EmbeddedDocumentField(BaseField[_ST, _GT]):
 
 class DynamicField(BaseField): ...
 
-class ListField(Generic[_T], ComplexBaseField[_T, _T]):
+class ListField(Generic[_T], ComplexBaseField[list[_T], list[_T]]):
     def __init__(
         self,
         field: BaseField | None = None,
@@ -992,7 +994,7 @@ class DictField(Generic[_T], ComplexBaseField[_T, _T]):
     ) -> DictField[_T]: ...
     # TODO(sbdchd): use overloads to ensure we can only use nulls when
     # null=True is passed in
-    @overload
+    @overload  # type: ignore[override]
     def __set__(
         self: DictField[StringField[Any, Any]],
         instance: object,
@@ -1012,7 +1014,7 @@ class DictField(Generic[_T], ComplexBaseField[_T, _T]):
     def __set__(
         self: DictField[Any], instance: object, value: Optional[Dict[str, Any]]
     ) -> None: ...
-    @overload
+    @overload  # type: ignore[override]
     def __get__(
         self: DictField[DynamicField], instance: object, owner: object
     ) -> Dict[str, Any]: ...
@@ -1028,7 +1030,7 @@ class DictField(Generic[_T], ComplexBaseField[_T, _T]):
     ) -> Dict[str, List[str]]: ...
     def __getitem__(self, arg: Any) -> _T: ...
 
-class EmbeddedDocumentListField(Generic[_T], BaseField[_T, _T]):
+class EmbeddedDocumentListField(Generic[_T], BaseField[list[_T], list[_T]]):
     def __new__(
         cls,
         document_type: Type[_T],
