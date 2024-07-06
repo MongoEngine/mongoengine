@@ -1,3 +1,4 @@
+# mypy: disable-error-code="attr-defined,union-attr,assignment"
 import copy
 import numbers
 from typing_extensions import Self
@@ -70,8 +71,9 @@ class BaseDocument:
     # Fields, added by metaclass
     _class_name: str
     _fields: dict[str, BaseField]
+    _meta: dict[str, Any]
 
-    def __init__(self, *args, **values):
+    def __init__(self, *args, **values) -> None:
         """
         Initialise a document or an embedded document.
 
@@ -383,7 +385,7 @@ class BaseDocument:
 
             # Handle self generating fields
             if value is None and field._auto_gen:
-                value = field.generate()
+                value = field.generate()  # type: ignore[attr-defined]
                 self._data[field_name] = value
 
             if value is not None or field.null:

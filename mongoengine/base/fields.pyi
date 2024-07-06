@@ -27,6 +27,8 @@ class BaseField(Generic[_ST, _GT]):
     null: bool
     sparse: bool
 
+    _auto_gen: bool
+
     @overload
     def __new__(
         cls,

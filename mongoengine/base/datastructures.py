@@ -1,4 +1,5 @@
 import weakref
+from typing import Any
 
 from bson import DBRef
 
@@ -355,7 +356,7 @@ class EmbeddedDocumentList(BaseList):
 class StrictDict:
     __slots__ = ()
     _special_fields = {"get", "pop", "iteritems", "items", "keys", "create"}
-    _classes = {}
+    _classes: dict[str, Any] = {}
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():

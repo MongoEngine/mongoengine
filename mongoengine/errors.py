@@ -83,7 +83,7 @@ class ValidationError(AssertionError):
         individual field.
     """
 
-    errors = {}
+    errors: dict[str, str] = {}
     field_name = None
     _message = None
 
@@ -114,7 +114,7 @@ class ValidationError(AssertionError):
     def _set_message(self, message):
         self._message = message
 
-    message: str = property(_get_message, _set_message)
+    message: str = property(_get_message, _set_message)  # type: ignore[assignment]
 
     def to_dict(self):
         """Returns a dictionary of all errors within a document

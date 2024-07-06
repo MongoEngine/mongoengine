@@ -33,7 +33,7 @@ class QuerySetManager(Generic[QS]):
         """
         if instance is not None:
             # Document object being used rather than a document class
-            return self
+            return self  # type: ignore[return-value]
 
         # owner is the document that contains the QuerySetManager
         queryset_class = owner._meta.get("queryset_class", self.default)

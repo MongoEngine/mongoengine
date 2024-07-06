@@ -1,3 +1,4 @@
+# mypy: disable-error-code="attr-defined,union-attr,assignment,return-value,arg-type"
 from __future__ import annotations
 
 import re

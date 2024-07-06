@@ -9,7 +9,7 @@ from typing import Any, Optional
 try:
     from pymongo.driver_info import DriverInfo
 except ImportError:
-    DriverInfo = None
+    DriverInfo = None  # type: ignore
 
 import mongoengine
 from mongoengine.pymongo_support import PYMONGO_VERSION
@@ -33,8 +33,8 @@ DEFAULT_HOST: str = "localhost"
 DEFAULT_PORT: int = 27017
 
 _connection_settings = {}
-_connections = {}
-_dbs = {}
+_connections: dict[str, MongoClient] = {}
+_dbs: dict[str, Any] = {}
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 

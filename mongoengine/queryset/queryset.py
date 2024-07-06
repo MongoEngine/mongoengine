@@ -1,3 +1,4 @@
+# mypy: disable-error-code="call-overload,arg-type,return-value"
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Iterator, TypeVar
