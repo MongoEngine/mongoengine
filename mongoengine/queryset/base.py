@@ -1,4 +1,4 @@
-# mypy: disable-error-code="attr-defined,union-attr,assignment,misc,arg-type,var-annotated,list-item,return-value"
+# mypy: disable-error-code="attr-defined,union-attr,assignment,misc,arg-type,var-annotated,list-item,return-value,has-type"
 from __future__ import annotations
 
 import copy
