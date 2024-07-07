@@ -15,18 +15,15 @@ from operator import itemgetter
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Generic,
     Iterable,
     List,
-    Literal,
     Optional,
     Tuple,
     Type,
     TypeVar,
     Union,
-    overload,
 )
 
 import gridfs
@@ -743,37 +740,10 @@ class ComplexDateTimeField(StringField):
         return super().prepare_query_value(op, self._convert_from_datetime(value))
 
 
-class EmbeddedDocumentField(BaseField[_ST, _GT]):
+class EmbeddedDocumentField(BaseField):
     """An embedded document field - with a declared document_type.
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
-
-    @overload
-    def __new__(
-        cls,
-        document_type: Type[_T] | str,
-        *,
-        required: Literal[False] = ...,
-        default: None = ...,
-        **kwargs: Any,
-    ) -> EmbeddedDocumentField[Optional[_T], Optional[_T]]: ...
-    @overload
-    def __new__(
-        cls,
-        document_type: Type[_T] | str,
-        *,
-        required: Literal[False] = ...,
-        default: Union[_T, Callable[[], _T]],
-        **kwargs: Any,
-    ) -> EmbeddedDocumentField[Optional[_T], _T]: ...
-    @overload
-    def __new__(
-        cls,
-        document_type: Type[_T] | str,
-        *,
-        required: Literal[True],
-        **kwargs: Any,
-    ) -> EmbeddedDocumentField[_T, _T]: ...
 
     def __init__(
         self, document_type: Union[Type[EmbeddedDocument], str], **kwargs: Any
