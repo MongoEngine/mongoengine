@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Mapping, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping
 
 import pymongo
 from bson.dbref import DBRef
@@ -40,10 +40,11 @@ from mongoengine.queryset import (
 )
 
 if TYPE_CHECKING:
-    from mongoengine.fields import ObjectIdField
     from bson import ObjectId
-    from mongoengine.queryset.manager import QuerySetManager
     from pymongo.collection import Collection
+
+    from mongoengine.fields import ObjectIdField
+    from mongoengine.queryset.manager import QuerySetManager
 
 __all__ = (
     "Document",
@@ -190,7 +191,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     objects: QuerySetManager[QuerySet[Self]]
     meta: _MetaDict
     _meta: _UnderMetaDict
-    _fields: Dict[str, Any]
+    _fields: dict[str, Any]
     _collection: Collection[Any] | None
 
     @property
@@ -302,7 +303,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         return data
 
-    def modify(self, query: Optional[object]=None, **update) -> bool:
+    def modify(self, query: object | None = None, **update) -> bool:
         """Perform an atomic update of the document in the database and reload
         the document object using updated version.
 
@@ -657,7 +658,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # Need to add shard key to query, or you get an error
         return self._qs.filter(**self._object_key).update_one(**kwargs)
 
-    def delete(self, signal_kwargs: object=None, **write_concern) -> None:
+    def delete(self, signal_kwargs: object = None, **write_concern) -> None:
         """Delete the :class:`~mongoengine.Document` from the database. This
         will only take effect if the document has been previously saved.
 
@@ -1137,6 +1138,7 @@ class MapReduceDocument:
 
 
 _MetaDict = Mapping[str, Any]
+
 
 class _UnderMetaDict(TypedDict):
     id_field: NotRequired[str]

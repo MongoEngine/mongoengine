@@ -5,8 +5,8 @@ from typing import Type
 
 import pytest
 from bson.decimal128 import Decimal128
-from mongoengine import Decimal128Field, Document, ValidationError
 
+from mongoengine import Decimal128Field, Document, ValidationError
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

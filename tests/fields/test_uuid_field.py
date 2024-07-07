@@ -1,8 +1,8 @@
 import uuid
 
 import pytest
-from mongoengine import Document, UUIDField, ValidationError
 
+from mongoengine import Document, UUIDField, ValidationError
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

@@ -6,6 +6,9 @@ from decimal import Decimal
 import pymongo
 import pytest
 from bson import DBRef, ObjectId
+from pymongo.read_preferences import ReadPreference
+from pymongo.results import UpdateResult
+
 from mongoengine import (
     CASCADE,
     DENY,
@@ -60,9 +63,6 @@ from mongoengine.queryset import (
     queryset_manager,
 )
 from mongoengine.queryset.base import BaseQuerySet
-from pymongo.read_preferences import ReadPreference
-from pymongo.results import UpdateResult
-
 from tests.utils import (
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,

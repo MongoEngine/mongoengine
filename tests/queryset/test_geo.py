@@ -13,7 +13,6 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
-
 from tests.utils import MongoDBTestCase
 
 

@@ -7,8 +7,13 @@ try:
 except ImportError:
     dateutil = None  # type: ignore[assignment]
 
-from mongoengine import DateTimeField, Document, ValidationError, connect, connection
-
+from mongoengine import (
+    DateTimeField,
+    Document,
+    ValidationError,
+    connect,
+    connection,
+)
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

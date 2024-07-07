@@ -1,14 +1,15 @@
 from typing import (
-    Generic,
-    TypeVar,
-    overload,
-    Type,
-    Literal,
     Any,
-    Optional,
-    Union,
     Callable,
+    Generic,
+    Literal,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    overload,
 )
+
 from typing_extensions import reveal_type
 
 _ST = TypeVar("_ST")

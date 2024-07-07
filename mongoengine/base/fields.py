@@ -6,13 +6,10 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Generic,
     Iterable,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
 )
 
 import pymongo
@@ -55,13 +52,13 @@ class BaseField(Generic[_ST, _GT]):
 
     def __init__(
         self,
-        db_field: Optional[str] = None,
+        db_field: str | None = None,
         required: bool = False,
-        default: Union[Any, None, Callable[[], Any]] = None,
+        default: Any | None | Callable[[], Any] = None,
         unique: bool = False,
-        unique_with: Union[str, Iterable[str], None] = None,
+        unique_with: str | Iterable[str] | None = None,
         primary_key: bool = False,
-        validation: Optional[Callable[[Any], None]] = None,
+        validation: Callable[[Any], None] | None = None,
         choices: Any = None,
         null: bool = False,
         sparse: bool = False,
@@ -189,8 +186,8 @@ class BaseField(Generic[_ST, _GT]):
     def error(
         self,
         message: str = "",
-        errors: Union[Dict[str, Any], None] = None,
-        field_name: Union[str, None] = None,
+        errors: dict[str, Any] | None = None,
+        field_name: str | None = None,
     ) -> NoReturn:
         """Raise a ValidationError."""
         field_name = field_name if field_name else self.name

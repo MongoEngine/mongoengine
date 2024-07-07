@@ -8,7 +8,6 @@ except ImportError:
     dateutil = None  # type: ignore[assignment]
 
 from mongoengine import DateField, Document, ValidationError
-
 from tests.utils import MongoDBTestCase
 
 

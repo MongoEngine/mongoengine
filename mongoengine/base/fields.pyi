@@ -1,10 +1,22 @@
 # pyright: reportIncompatibleMethodOverride=warning
-from typing import Literal, Optional, Self, Sequence, TypeVar, Union, overload
-from typing_extensions import TypeAlias
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    Literal,
+    NoReturn,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from bson import ObjectId
+from typing_extensions import TypeAlias
+
 from mongoengine.document import Document
-from typing import Any, Callable, Generic, Iterable, NoReturn
 
 __all__ = ["BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField"]
 _ST = TypeVar("_ST")

@@ -3,9 +3,9 @@ import unittest
 
 import pytest
 from bson.son import SON
-from mongoengine import connect
-from mongoengine import fields
-from mongoengine.document import EmbeddedDocument, Document
+
+from mongoengine import connect, fields
+from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import Q, transform
 

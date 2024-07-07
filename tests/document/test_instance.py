@@ -9,6 +9,8 @@ from unittest.mock import Mock
 import bson
 import pytest
 from bson import DBRef, ObjectId
+from pymongo.errors import DuplicateKeyError
+
 from mongoengine import (
     CASCADE,
     DENY,
@@ -70,8 +72,6 @@ from mongoengine.pymongo_support import (
     list_collection_names,
 )
 from mongoengine.queryset import NULLIFY, Q
-from pymongo.errors import DuplicateKeyError
-
 from tests import fixtures
 from tests.fixtures import (
     PickleDynamicEmbedded,

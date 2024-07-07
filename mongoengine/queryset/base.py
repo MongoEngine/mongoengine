@@ -9,14 +9,11 @@ from collections.abc import Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Generic,
     Iterable,
     Iterator,
     List,
-    Optional,
     Tuple,
-    Type,
     TypeVar,
     Union,
     overload,
@@ -59,6 +56,7 @@ from mongoengine.queryset.visitor import Q, QNode
 
 if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
+
     from mongoengine.document import Document
 
 __all__ = ("BaseQuerySet", "DO_NOTHING", "NULLIFY", "CASCADE", "DENY", "PULL")
@@ -79,7 +77,7 @@ class BaseQuerySet(Generic[_T]):
     providing :class:`~mongoengine.Document` objects as the results.
     """
 
-    def __init__(self, document: Type[_T], collection: Collection[Any]) -> None:
+    def __init__(self, document: type[_T], collection: Collection[Any]) -> None:
         self._document = document
         self._collection_obj = collection
         self._mongo_query = None
@@ -190,12 +188,12 @@ class BaseQuerySet(Generic[_T]):
         # self._cursor
 
     @overload
-    def __getitem__(self, key: int) -> _T: ...
+    def __getitem__(self, key: int) -> _T: ...  # noqa: E704
 
     @overload
-    def __getitem__(self, key: slice) -> Self: ...
+    def __getitem__(self, key: slice) -> Self: ...  # noqa: E704
 
-    def __getitem__(self, key: Union[int, slice]) -> Union[_T, Self]:
+    def __getitem__(self, key: int | slice) -> _T | Self:
         """Return a document instance corresponding to a given index if
         the key is an integer. If the key is a slice, translate its
         bounds into a skip and a limit, and return a cloned queryset
@@ -324,7 +322,7 @@ class BaseQuerySet(Generic[_T]):
         """Create new object. Returns the saved object instance."""
         return self._document(**kwargs).save(force_insert=True)
 
-    def first(self) -> Optional[_T]:
+    def first(self) -> _T | None:
         """Retrieve the first object matching the query."""
         queryset = self.clone()
         if self._none or self._empty:
@@ -340,9 +338,9 @@ class BaseQuerySet(Generic[_T]):
         self,
         doc_or_docs: Iterable[_T] | _T,
         load_bulk: bool = True,
-        write_concern: Optional[_ReadWriteConcern] = None,
-        signal_kwargs: Optional[Any] = None,
-    ) -> List[_T]:
+        write_concern: _ReadWriteConcern | None = None,
+        signal_kwargs: Any | None = None,
+    ) -> list[_T]:
         """bulk insert documents
 
         :param doc_or_docs: a document or list of documents to be inserted
@@ -703,7 +701,7 @@ class BaseQuerySet(Generic[_T]):
         remove: bool = False,
         new: bool = False,
         **update: Any,
-    ) -> Optional[Self]:
+    ) -> Self | None:
         """Update and return the updated document.
 
         Returns either the document before or after modification based on `new`
@@ -923,7 +921,7 @@ class BaseQuerySet(Generic[_T]):
 
         return queryset
 
-    def skip(self, n: Optional[int]) -> Self:
+    def skip(self, n: int | None) -> Self:
         """Skip `n` documents before returning the results. This may also be
         achieved using array-slicing syntax (e.g. ``User.objects[5:]``).
 
@@ -938,7 +936,7 @@ class BaseQuerySet(Generic[_T]):
 
         return queryset
 
-    def hint(self, index: Optional[_Hint] = None) -> Self:
+    def hint(self, index: _Hint | None = None) -> Self:
         """Added 'hint' support, telling Mongo the proper index to use for the
         query.
 
@@ -958,7 +956,7 @@ class BaseQuerySet(Generic[_T]):
 
         return queryset
 
-    def collation(self, collation: Optional[_Collation] = None) -> Self:
+    def collation(self, collation: _Collation | None = None) -> Self:
         """
         Collation allows users to specify language-specific rules for string
         comparison, such as rules for lettercase and accent marks.
@@ -1002,7 +1000,7 @@ class BaseQuerySet(Generic[_T]):
 
         return queryset
 
-    def distinct(self, field: str) -> List[Any]:
+    def distinct(self, field: str) -> list[Any]:
         """Return a list of distinct values for a given field.
 
         :param field: the field to select distinct values from
@@ -1292,7 +1290,7 @@ class BaseQuerySet(Generic[_T]):
         queryset._cursor_obj = None  # we need to re-create the cursor object whenever we apply read_concern
         return queryset
 
-    def scalar(self, *fields) -> List[Any]:
+    def scalar(self, *fields) -> list[Any]:
         """Instead of returning Document instances, return either a specific
         value or a tuple of values in order.
 
@@ -1315,11 +1313,11 @@ class BaseQuerySet(Generic[_T]):
 
         return queryset
 
-    def values_list(self, *fields: str) -> List[Any]:
+    def values_list(self, *fields: str) -> list[Any]:
         """An alias for scalar"""
         return self.scalar(*fields)
 
-    def as_pymongo(self) -> BaseQuerySet[Dict[str, Any]]:  # type: ignore
+    def as_pymongo(self) -> BaseQuerySet[dict[str, Any]]:  # type: ignore
         """Instead of returning Document instances, return raw values from
         pymongo.
 
@@ -1330,7 +1328,7 @@ class BaseQuerySet(Generic[_T]):
         queryset._as_pymongo = True
         return queryset  # type: ignore
 
-    def max_time_ms(self, ms: Optional[int]) -> Self:
+    def max_time_ms(self, ms: int | None) -> Self:
         """Wait `ms` milliseconds before killing the query on the server
 
         :param ms: the number of milliseconds before killing the query on the server
@@ -1353,7 +1351,7 @@ class BaseQuerySet(Generic[_T]):
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
-    def from_json(self, json_data: str) -> List[_T]:
+    def from_json(self, json_data: str) -> list[_T]:
         """Converts json data to unsaved objects"""
         son_data = json_util.loads(json_data)
         return [self._document._from_son(data) for data in son_data]
@@ -2066,8 +2064,8 @@ _Collation = Union[Collation, Mapping[str, Union[bool, int, str, None]]]
 
 
 class _ExecutionStats(TypedDict):
-    allPlansExecution: List[Any]
-    executionStages: Dict[str, Any]
+    allPlansExecution: list[Any]
+    executionStages: dict[str, Any]
     executionSuccess: bool
     executionTimeMillis: int
     nReturned: int
@@ -2078,10 +2076,10 @@ class _ExecutionStats(TypedDict):
 class _QueryPlanner(TypedDict):
     indexFilterSet: bool
     namespace: str
-    parsedQuery: Dict[str, Any]
+    parsedQuery: dict[str, Any]
     plannerVersion: int
-    rejectedPlans: List[Any]
-    winningPlan: Dict[str, Any]
+    rejectedPlans: list[Any]
+    winningPlan: dict[str, Any]
 
 
 class _ServerInfo(TypedDict):

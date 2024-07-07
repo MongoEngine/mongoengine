@@ -2,6 +2,7 @@
 # mypy: disable-error-code="override,misc"
 from __future__ import annotations
 
+import datetime
 import decimal
 import inspect
 import itertools
@@ -9,22 +10,9 @@ import re
 import socket
 import time
 import uuid
-import datetime
 from io import BytesIO
 from operator import itemgetter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar
 
 import gridfs
 import pymongo
@@ -48,7 +36,11 @@ from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.document import Document, EmbeddedDocument
-from mongoengine.errors import DoesNotExist, InvalidQueryError, ValidationError
+from mongoengine.errors import (
+    DoesNotExist,
+    InvalidQueryError,
+    ValidationError,
+)
 from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
@@ -121,6 +113,7 @@ __all__ = (
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
 _T = TypeVar("_T")
+
 
 class StringField(BaseField):
     """A unicode string field."""
@@ -271,7 +264,7 @@ class EmailField(StringField):
 
     def __init__(
         self,
-        domain_whitelist: Optional[List[str]] = None,
+        domain_whitelist: list[str] | None = None,
         allow_utf8_user: bool = False,
         allow_ip_domain: bool = False,
         *args: Any,
@@ -354,8 +347,8 @@ class IntField(BaseField):
 
     def __init__(
         self,
-        min_value: Optional[int] = None,
-        max_value: Optional[int] = None,
+        min_value: int | None = None,
+        max_value: int | None = None,
         **kwargs: Any,
     ):
         """
@@ -404,8 +397,8 @@ class FloatField(BaseField):
 
     def __init__(
         self,
-        min_value: Union[float, int, None] = None,
-        max_value: Union[float, int, None] = None,
+        min_value: float | int | None = None,
+        max_value: float | int | None = None,
         **kwargs,
     ):
         """
@@ -456,8 +449,8 @@ class DecimalField(BaseField):
 
     def __init__(
         self,
-        min_value: Optional[decimal.Decimal | int] = None,
-        max_value: Optional[decimal.Decimal | int] = None,
+        min_value: decimal.Decimal | int | None = None,
+        max_value: decimal.Decimal | int | None = None,
         force_string: bool = False,
         precision: int = 2,
         rounding: str = decimal.ROUND_HALF_UP,
@@ -745,9 +738,7 @@ class EmbeddedDocumentField(BaseField):
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
 
-    def __init__(
-        self, document_type: Union[Type[EmbeddedDocument], str], **kwargs: Any
-    ):
+    def __init__(self, document_type: type[EmbeddedDocument] | str, **kwargs: Any):
         # XXX ValidationError raised outside of the "validate" method.
         if not (
             isinstance(document_type, str)
@@ -762,7 +753,7 @@ class EmbeddedDocumentField(BaseField):
         super().__init__(**kwargs)
 
     @property
-    def document_type(self) -> Type[Any]:
+    def document_type(self) -> type[Any]:
         if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 resolved_document_type = self.owner_document
@@ -956,7 +947,7 @@ class ListField(ComplexBaseField):
         kwargs.setdefault("default", lambda: [])
         super().__init__(field=field, **kwargs)
 
-    def __get__(self, instance: Any, owner: Any) -> List[Dict[str, Any]] | Self:
+    def __get__(self, instance: Any, owner: Any) -> list[dict[str, Any]] | Self:
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -1078,7 +1069,7 @@ class DictField(ComplexBaseField):
         Required means it cannot be empty - as the default for DictFields is {}
     """
 
-    def __init__(self, field: Optional[Any] = None, *args, **kwargs):
+    def __init__(self, field: Any | None = None, *args, **kwargs):
         self._auto_dereference = False
 
         kwargs.setdefault("default", lambda: {})
@@ -1180,7 +1171,7 @@ class ReferenceField(BaseField[_ST, _GT]):
 
     def __init__(
         self,
-        document_type: Type[_T],
+        document_type: type[_T],
         dbref: bool = False,
         reverse_delete_rule=DO_NOTHING,
         **kwargs,
@@ -1323,8 +1314,8 @@ class CachedReferenceField(BaseField):
 
     def __init__(
         self,
-        document_type: Union[str, int],
-        fields: Optional[Iterable[str]] = None,
+        document_type: str | int,
+        fields: Iterable[str] | None = None,
         auto_sync: bool = True,
         **kwargs,
     ):
@@ -1608,7 +1599,7 @@ class GenericReferenceField(BaseField):
 class BinaryField(BaseField):
     """A binary data field."""
 
-    def __init__(self, max_bytes: Optional[int] = None, **kwargs):
+    def __init__(self, max_bytes: int | None = None, **kwargs):
         self.max_bytes = max_bytes
         super().__init__(**kwargs)
 
@@ -1727,9 +1718,9 @@ class GridFSProxy:
 
     def __init__(
         self,
-        grid_id: Optional[ObjectId] = None,
-        key: Optional[str] = None,
-        instance: Optional[Any] = None,
+        grid_id: ObjectId | None = None,
+        key: str | None = None,
+        instance: Any | None = None,
         db_alias: str = DEFAULT_CONNECTION_NAME,
         collection_name: str = "fs",
     ):
@@ -1916,9 +1907,7 @@ class FileField(BaseField):
             grid_file.instance = instance
         return grid_file
 
-    def __set__(
-        self, instance: Any, value: GridFSProxy
-    ):
+    def __set__(self, instance: Any, value: GridFSProxy):
         key = self.name
         if (
             hasattr(value, "read") and not isinstance(value, GridFSProxy)
@@ -2116,8 +2105,8 @@ class ImageField(FileField):
 
     def __init__(
         self,
-        size: Optional[Tuple[int, int, bool]] = None,
-        thumbnail_size: Optional[Tuple[int, int, bool]] = None,
+        size: tuple[int, int, bool] | None = None,
+        thumbnail_size: tuple[int, int, bool] | None = None,
         collection_name: str = "images",
         **kwargs,
     ):
@@ -2475,7 +2464,7 @@ class LazyReferenceField(BaseField[_ST, _GT]):
 
     def __init__(
         self,
-        document_type: Union[Type[EmbeddedDocument], str],
+        document_type: type[EmbeddedDocument] | str,
         passthrough: bool = False,
         dbref: bool = False,
         reverse_delete_rule: int = DO_NOTHING,
@@ -2712,7 +2701,7 @@ class Decimal128Field(BaseField):
     DECIMAL_CONTEXT = create_decimal128_context()
 
     def __init__(
-        self, min_value: Optional[int] = None, max_value: Optional[int] = None, **kwargs
+        self, min_value: int | None = None, max_value: int | None = None, **kwargs
     ):
         self.min_value = min_value
         self.max_value = max_value

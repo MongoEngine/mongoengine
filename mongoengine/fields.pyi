@@ -16,18 +16,19 @@ from typing import (
     Pattern,
     Tuple,
     Type,
-    TypeVar,
     TypedDict,
+    TypeVar,
     Union,
     overload,
 )
 from uuid import UUID
 
 from bson.objectid import ObjectId
-from mongoengine.base import BaseField, ComplexBaseField
-from mongoengine.base.fields import _ST, _GT
-from mongoengine.document import Document
 from typing_extensions import Literal, TypeAlias, Unpack
+
+from mongoengine.base import BaseField, ComplexBaseField
+from mongoengine.base.fields import _GT, _ST
+from mongoengine.document import Document
 
 _T = TypeVar("_T")
 _Choice: TypeAlias = str | tuple[str, str]

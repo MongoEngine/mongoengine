@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import warnings
+from typing import Any
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.database import Database, _check_name
-from typing import Any, Optional
 
 # DriverInfo was added in PyMongo 3.7.
 try:
@@ -214,15 +216,15 @@ def _get_connection_settings(
 
 def register_connection(
     alias: str,
-    db: Optional[str] = None,
-    name: Optional[str] = None,
-    host: Optional[str] = None,
-    port: Optional[int] = None,
+    db: str | None = None,
+    name: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
     read_preference: Any = READ_PREFERENCE,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    authentication_source: Optional[str] = None,
-    authentication_mechanism: Optional[str] = None,
+    username: str | None = None,
+    password: str | None = None,
+    authentication_source: str | None = None,
+    authentication_mechanism: str | None = None,
     authmechanismproperties: Any = None,
     **kwargs: Any,
 ):

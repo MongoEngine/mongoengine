@@ -1,13 +1,15 @@
 # mypy: disable-error-code="attr-defined,union-attr,assignment"
+from __future__ import annotations
+
 import copy
 import numbers
-from typing_extensions import Self
 import warnings
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pymongo
 from bson import SON, DBRef, ObjectId, json_util
+from typing_extensions import Self
 
 from mongoengine import signals
 from mongoengine.base.common import get_document
@@ -18,7 +20,7 @@ from mongoengine.base.datastructures import (
     LazyReference,
     StrictDict,
 )
-from mongoengine.base.fields import ComplexBaseField, BaseField
+from mongoengine.base.fields import BaseField, ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -339,7 +341,7 @@ class BaseDocument:
         return self._data["_text_score"]
 
     def to_mongo(
-        self, use_db_field: bool = True, fields: List[str] | None = None
+        self, use_db_field: bool = True, fields: list[str] | None = None
     ) -> SON[Any, Any]:
         """
         Return as SON data ready for use with MongoDB.
@@ -696,7 +698,7 @@ class BaseDocument:
                 self._nestable_types_changed_fields(changed_fields, key, data)
         return changed_fields
 
-    def _delta(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def _delta(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """Returns the delta (set, unset) of the changes for a document.
         Gets any values that have been explicitly changed.
         """
@@ -780,7 +782,7 @@ class BaseDocument:
         return set_data, unset_data
 
     @classmethod
-    def _get_collection_name(cls) -> Optional[str]:
+    def _get_collection_name(cls) -> str | None:
         """Return the collection name for this class. None for abstract
         class.
         """
@@ -788,7 +790,7 @@ class BaseDocument:
 
     @classmethod
     def _from_son(
-        cls, son: Dict[str, Any], _auto_dereference: bool = True, created: bool = False
+        cls, son: dict[str, Any], _auto_dereference: bool = True, created: bool = False
     ) -> Self:
         """Create an instance of a Document (subclass) from a PyMong o SON (dict)"""
         if son and not isinstance(son, dict):

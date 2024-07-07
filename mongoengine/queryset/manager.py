@@ -1,8 +1,8 @@
 from functools import partial
 from typing import Generic
 
-from mongoengine.queryset.queryset import QuerySet
 from mongoengine._typing import QS
+from mongoengine.queryset.queryset import QuerySet
 
 __all__ = ("queryset_manager", "QuerySetManager")
 
