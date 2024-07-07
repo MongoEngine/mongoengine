@@ -93,25 +93,108 @@ class _FieldOptions(TypedDict, total=False):
     help_text: str
 
 class StringField(BaseField[_ST, _GT]):
-    def __init__(
-        self,
-        regex: str | None = None,
-        max_length: int | None = None,
-        min_length: int | None = None,
-        **kwargs: Unpack[_FieldOptions],
-    ) -> None: ...
     @overload
     def __new__(
         cls,
-        *args: Any,
+        *,
+        regex: Optional[str] = ...,
+        max_length: Optional[int] = ...,
+        min_length: Optional[int] = ...,
+        db_field: str = ...,
+        name: Optional[str] = ...,
         required: Literal[False] = ...,
+        default: None = ...,
+        unique: bool = ...,
+        unique_with: Union[str, Iterable[str]] = ...,
+        primary_key: Literal[False] = ...,
+        choices: Optional[Iterable[str]] = ...,
+        null: bool = ...,
+        verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
         **kwargs: Any,
-    ) -> StringField[str | None, str | None]: ...
+    ) -> StringField[Optional[str], Optional[str]]: ...
+    # StringField(default="foo")
     @overload
     def __new__(
         cls,
-        *args,
+        *,
+        regex: Optional[str] = ...,
+        max_length: Optional[int] = ...,
+        min_length: Optional[int] = ...,
+        db_field: str = ...,
+        name: Optional[str] = ...,
+        required: Literal[False] = ...,
+        default: Union[str, Callable[[], str]],
+        unique: bool = ...,
+        unique_with: Union[str, Iterable[str]] = ...,
+        primary_key: Literal[False] = ...,
+        choices: Optional[Iterable[str]] = ...,
+        null: bool = ...,
+        verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> StringField[Optional[str], str]: ...
+    # StringField(required=True)
+    @overload
+    def __new__(
+        cls,
+        *,
+        regex: Optional[str] = ...,
+        max_length: Optional[int] = ...,
+        min_length: Optional[int] = ...,
+        db_field: str = ...,
+        name: Optional[str] = ...,
         required: Literal[True],
+        default: None = ...,
+        unique: bool = ...,
+        unique_with: Union[str, Iterable[str]] = ...,
+        primary_key: Literal[False] = ...,
+        choices: Optional[Iterable[str]] = ...,
+        null: bool = ...,
+        verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> StringField[str, str]: ...
+    # StringField(required=True, default="foo")
+    @overload
+    def __new__(
+        cls,
+        *,
+        regex: Optional[str] = ...,
+        max_length: Optional[int] = ...,
+        min_length: Optional[int] = ...,
+        db_field: str = ...,
+        name: Optional[str] = ...,
+        required: Literal[True],
+        default: Union[str, Callable[[], str]],
+        unique: bool = ...,
+        unique_with: Union[str, Iterable[str]] = ...,
+        primary_key: Literal[False] = ...,
+        choices: Optional[Iterable[str]] = ...,
+        null: bool = ...,
+        verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> StringField[Optional[str], str]: ...
+    # StringField(primary_key=True)
+    @overload
+    def __new__(
+        cls,
+        *,
+        regex: Optional[str] = ...,
+        max_length: Optional[int] = ...,
+        min_length: Optional[int] = ...,
+        db_field: str = ...,
+        name: Optional[str] = ...,
+        required: bool = ...,
+        default: Union[str, Callable[[], str], None] = ...,
+        unique: bool = ...,
+        unique_with: Union[str, Iterable[str]] = ...,
+        primary_key: Literal[True],
+        choices: Optional[Iterable[str]] = ...,
+        null: bool = ...,
+        verbose_name: Optional[str] = ...,
+        help_text: Optional[str] = ...,
         **kwargs: Any,
     ) -> StringField[str, str]: ...
 

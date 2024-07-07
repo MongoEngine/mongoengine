@@ -6,10 +6,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generic,
     Iterable,
     NoReturn,
-    TypeVar,
 )
 
 import pymongo
@@ -30,11 +28,8 @@ if TYPE_CHECKING:
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
-_ST = TypeVar("_ST")
-_GT = TypeVar("_GT")
 
-
-class BaseField(Generic[_ST, _GT]):
+class BaseField:
     """A base class for fields in a MongoDB document. Instances of this class
     may be added to subclasses of `Document` to define a document's schema.
     """
@@ -282,7 +277,7 @@ class BaseField(Generic[_ST, _GT]):
         self._set_owner_document(owner_document)
 
 
-class ComplexBaseField(BaseField[_ST, _GT]):
+class ComplexBaseField(BaseField):
     """Handles complex fields, such as lists / dictionaries.
 
     Allows for nesting of embedded documents inside complex types.
