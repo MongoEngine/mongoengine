@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 try:
     import dateutil  # type: ignore[import-untyped]
 except ImportError:
-    dateutil = None
+    dateutil = None  # type: ignore[assignment]
 else:
     import dateutil.parser  # type: ignore[import-untyped]
 
@@ -941,7 +941,7 @@ class DynamicField(BaseField):
             value.validate(clean=clean)
 
 
-class ListField(ComplexBaseField[_ST, _GT]):
+class ListField(ComplexBaseField):
     """A list field that wraps a standard field, allowing multiple instances
     of the field to be used as a list in the database.
 
@@ -1070,7 +1070,7 @@ def key_starts_with_dollar(d):
             return True
 
 
-class DictField(ComplexBaseField[_ST, _GT]):
+class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
 

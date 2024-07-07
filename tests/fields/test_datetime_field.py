@@ -5,10 +5,10 @@ import pytest
 try:
     import dateutil
 except ImportError:
-    dateutil = None
+    dateutil = None  # type: ignore[assignment]
 
-from mongoengine import *
-from mongoengine import connection
+from mongoengine import DateTimeField, Document, ValidationError, connect, connection
+
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 

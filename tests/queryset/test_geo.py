@@ -1,8 +1,19 @@
 import datetime
 import unittest
 
-from mongoengine import *
+from mongoengine import (
+    DateTimeField,
+    Document,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    GeoPointField,
+    LineStringField,
+    PointField,
+    PolygonField,
+    StringField,
+)
 from mongoengine.pymongo_support import PYMONGO_VERSION
+
 from tests.utils import MongoDBTestCase
 
 
