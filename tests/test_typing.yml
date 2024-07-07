@@ -17,4 +17,23 @@
     book.authors = ["Sun Tzu"]
     book.authors = [1]
   out: |
-    main:12: error: List item 0 has incompatible type "int"; expected "str"  [list-item]
+    main:12: error: List item 0 has incompatible type "int"; expected "Optional[str]"  [list-item]
+- case: type_check
+  skip: sys.version_info < (3, 9)
+  parametrized:
+    - field: StringField
+      type: str
+    - field: IntField
+      type: int
+  main: |
+    from typing import Optional
+    from typing_extensions import assert_type
+    from mongoengine import Document, {{ field }}
+
+    class Target(Document):
+        field = {{ field }}()
+        field_required = {{ field }}(required=True)
+
+    instance = Target()
+    assert_type(instance.field, Optional[{{ type }}])
+    assert_type(instance.field_required, {{ type }})

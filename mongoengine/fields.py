@@ -31,7 +31,6 @@ from mongoengine.base import (
     ObjectIdField,
     get_document,
 )
-from mongoengine.base.fields import _GT, _ST
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
 from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
@@ -1129,7 +1128,7 @@ class MapField(DictField):
         super().__init__(field=field, *args, **kwargs)
 
 
-class ReferenceField(BaseField[_ST, _GT]):
+class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on
     access (lazily).
 
@@ -1220,7 +1219,7 @@ class ReferenceField(BaseField[_ST, _GT]):
 
         return ref_cls._from_son(dereferenced_son)
 
-    def __get__(self, instance: Any, owner: Any) -> _GT | Self:
+    def __get__(self, instance: Any, owner: Any) -> Any:
         """Descriptor to allow lazy dereferencing."""
         if instance is None:
             # Document class being used rather than a document object
@@ -1693,7 +1692,7 @@ class EnumField(BaseField):
                 return value
         return value
 
-    def __set__(self, instance: Any, value: _ST) -> None:
+    def __set__(self, instance: Any, value: Any) -> None:
         return super().__set__(instance, self.to_python(value))
 
     def to_mongo(self, value):
@@ -2453,7 +2452,7 @@ class MultiPolygonField(GeoJsonBaseField):
     _type = "MultiPolygon"
 
 
-class LazyReferenceField(BaseField[_ST, _GT]):
+class LazyReferenceField(BaseField):
     """A really lazy reference to a document.
     Unlike the :class:`~mongoengine.fields.ReferenceField` it will
     **not** be automatically (lazily) dereferenced on access.

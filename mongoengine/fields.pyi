@@ -25,10 +25,10 @@ from typing import (
 from uuid import UUID
 
 from bson.objectid import ObjectId
-from typing_extensions import Literal, TypeAlias, Unpack
+from typing_extensions import Literal, Self, TypeAlias, Unpack
 
 from mongoengine.base import BaseField, ComplexBaseField
-from mongoengine.base.fields import _GT, _ST, _F
+from mongoengine.base.fields import _F, _GT, _ST
 from mongoengine.document import Document
 
 _T = TypeVar("_T")
@@ -108,7 +108,7 @@ class StringField(BaseField[_ST, _GT]):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[_Choice]] = ...,
         null: bool = ...,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -129,7 +129,7 @@ class StringField(BaseField[_ST, _GT]):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[_Choice]] = ...,
         null: bool = ...,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -150,7 +150,7 @@ class StringField(BaseField[_ST, _GT]):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[_Choice]] = ...,
         null: bool = ...,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -171,7 +171,7 @@ class StringField(BaseField[_ST, _GT]):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[_Choice]] = ...,
         null: bool = ...,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -192,7 +192,7 @@ class StringField(BaseField[_ST, _GT]):
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
         primary_key: Literal[True],
-        choices: Optional[Iterable[str]] = ...,
+        choices: Optional[Iterable[_Choice]] = ...,
         null: bool = ...,
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
@@ -298,7 +298,6 @@ class URLField(StringField[_ST, _GT]):
         **kwargs: Any,
     ) -> URLField[Optional[str], str]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class ObjectIdField(BaseField[_ST, _GT]):
     # ObjectIdField()
@@ -392,7 +391,6 @@ class ObjectIdField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> ObjectIdField[ObjectId, ObjectId]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class EmailField(StringField[_ST, _GT]):
     @overload
@@ -511,7 +509,6 @@ class EmailField(StringField[_ST, _GT]):
         **kwargs: Any,
     ) -> EmailField[str, str]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class IntField(BaseField[_ST, _GT]):
     @overload
@@ -610,7 +607,6 @@ class IntField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> IntField[int, int]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class FloatField(BaseField[_ST, _GT]):
     @overload
@@ -709,7 +705,6 @@ class FloatField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> FloatField[float, float]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class DecimalField(BaseField[_ST, _GT]):
     @overload
@@ -823,7 +818,6 @@ class DecimalField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> DecimalField[Decimal, Decimal]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class BooleanField(BaseField[_ST, _GT]):
     @overload
@@ -912,7 +906,6 @@ class BooleanField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> BooleanField[bool, bool]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class DateTimeField(BaseField[_ST, _GT]):
     @overload
@@ -1001,7 +994,6 @@ class DateTimeField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> DateTimeField[datetime, datetime]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class EmbeddedDocumentField(BaseField[_ST, _GT]):
     def __init__(
@@ -1045,13 +1037,10 @@ class EmbeddedDocumentField(BaseField[_ST, _GT]):
     def __set__(
         self: EmbeddedDocumentField[_ST, Any], instance: Any, value: _ST
     ) -> None: ...
-    def __get__(
-        self: EmbeddedDocumentField[Any, _GT], instance: Any, owner: Any
-    ) -> _GT: ...
 
 class DynamicField(BaseField): ...
 
-class ListField(ComplexBaseField[_F]):
+class ListField(Generic[_F, _ST, _GT], BaseField[_ST, _GT]):
     # see: https://github.com/python/mypy/issues/4236#issuecomment-521628880
     # and probably this:
     #  * https://github.com/python/typing/issues/548
@@ -1065,7 +1054,7 @@ class ListField(ComplexBaseField[_F]):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = ...,
-    ) -> ListField[StringField[_ST, _GT]]: ...
+    ) -> ListField[StringField[_ST, _GT], list[_ST], list[_GT]]: ...
     @overload
     def __new__(
         cls,
@@ -1075,7 +1064,7 @@ class ListField(ComplexBaseField[_F]):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = ...,
-    ) -> ListField[DictField[Any]]: ...
+    ) -> ListField[DictField[Any], dict[str, Any], dict[str, Any]]: ...
     @overload
     def __new__(
         cls,
@@ -1085,33 +1074,9 @@ class ListField(ComplexBaseField[_F]):
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = ...,
-    ) -> ListField[Any]: ...
+    ) -> ListField[Any, Any, Any]: ...
     def __getitem__(self, arg: Any) -> _F: ...
     def __iter__(self) -> Iterator[_T]: ...
-    @overload  # type: ignore[override]
-    def __set__(
-        self: ListField[StringField[_ST, Any]],
-        instance: Any,
-        value: Optional[List[_ST]],
-    ) -> None: ...
-    @overload
-    def __set__(
-        self: ListField[DictField[Any]], instance: Any, value: List[Dict[str, Any]]
-    ) -> None: ...
-    @overload
-    def __set__(self: ListField[Any], instance: Any, value: List[Any]) -> None: ...
-    @overload  # type: ignore[override]
-    def __get__(
-        self: ListField[StringField[_ST, _GT]], instance: Any, owner: Any
-    ) -> List[_GT]: ...
-    @overload
-    def __get__(
-        self: ListField[DictField[Any]], instance: Any, owner: Any
-    ) -> List[Dict[str, Any]]: ...
-    @overload
-    def __get__(
-        self: ListField[Any], instance: Any, owner: Any
-    ) -> List[Any]: ...
 
 class DictField(ComplexBaseField[_F]):
     @overload
@@ -1147,7 +1112,7 @@ class DictField(ComplexBaseField[_F]):
         verbose_name: Optional[str] = ...,
         db_field: str = ...,
         **kwargs: Any,
-    ) -> DictField[ListField[StringField[Any, Any]]]: ...
+    ) -> DictField[ListField[StringField[_ST, _GT], _ST, _GT]]: ...
     @overload
     def __new__(
         cls,
@@ -1174,7 +1139,7 @@ class DictField(ComplexBaseField[_F]):
     ) -> None: ...
     @overload
     def __set__(
-        self: DictField[ListField[StringField[Any, Any]]],
+        self: DictField[ListField[StringField[_ST, _GT], _ST, _GT]],
         instance: object,
         value: Optional[Dict[str, List[str]]],
     ) -> None: ...
@@ -1192,11 +1157,11 @@ class DictField(ComplexBaseField[_F]):
     ) -> Dict[str, Any]: ...
     @overload
     def __get__(
-        self: DictField[StringField[Any, Any]], instance: object, owner: object
+        self: DictField[StringField[_ST, _GT]], instance: object, owner: object
     ) -> Dict[str, str]: ...
     @overload
     def __get__(
-        self: DictField[ListField[StringField[Any, Any]]],
+        self: DictField[ListField[StringField[_ST, _GT], _ST, _GT]],
         instance: object,
         owner: object,
     ) -> Dict[str, List[str]]: ...
@@ -1214,7 +1179,6 @@ class EmbeddedDocumentListField(Generic[_T], BaseField[list[_T], list[_T]]):
     def __getitem__(self, arg: Any) -> _T: ...
     def __iter__(self) -> Iterator[_T]: ...
     def __set__(self, instance: Any, value: List[_T]) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> List[_T]: ...
 
 class LazyReference(Generic[_T], BaseField[_T, _T]):
     def __getitem__(self, arg: Any) -> LazyReference[_T]: ...
@@ -1322,7 +1286,6 @@ class UUIDField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> UUIDField[UUID | None, UUID | None]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 _Tuple2Like = Union[Tuple[Union[float, int], Union[float, int]], List[float], List[int]]
 
@@ -1396,7 +1359,6 @@ class GeoPointField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> GeoPointField[_Tuple2Like | None, list[float]]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class MapField(DictField[_F]):
     pass
@@ -1431,7 +1393,6 @@ class ReferenceField(BaseField[_ST, _GT]):
     ) -> ReferenceField[_T | None, _T | None]: ...
     def __getitem__(self, arg: Any) -> Any: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 _T_ENUM = TypeVar("_T_ENUM", bound=Enum)
 
@@ -1514,7 +1475,6 @@ class EnumField(BaseField[_ST, _GT]):
         **kwargs: Any,
     ) -> EnumField[Optional[_T_ENUM], _T_ENUM]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
-    def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
 class LongField(BaseField[_ST, _GT]): ...
 class DateField(BaseField[_ST, _GT]): ...

@@ -7,10 +7,11 @@ from typing import (
     NoReturn,
     Sequence,
     TypeVar,
+    overload,
 )
 
 from bson import ObjectId
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 from mongoengine.document import Document
 
@@ -39,6 +40,9 @@ class BaseField(Generic[_ST, _GT]):
 
     # BaseField(required=True)
     def __set__(self, instance: Any, value: _ST) -> None: ...
+    @overload
+    def __get__(self, instance: None, owner: Any) -> Self: ...
+    @overload
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
     def __init__(
         self,

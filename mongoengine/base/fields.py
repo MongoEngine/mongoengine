@@ -2,13 +2,7 @@ from __future__ import annotations
 
 import operator
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterable,
-    NoReturn,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable, NoReturn
 
 import pymongo
 from bson import SON, DBRef, ObjectId
