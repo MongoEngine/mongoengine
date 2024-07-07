@@ -1059,13 +1059,13 @@ class ListField(ComplexBaseField[_F]):
     @overload
     def __new__(
         cls,
-        field: StringField[Any, Any] = ...,
+        field: StringField[_ST, _GT],
         required: bool = ...,
         default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
         verbose_name: str = ...,
         help_text: str = ...,
         null: bool = ...,
-    ) -> ListField[StringField[Any, Any]]: ...
+    ) -> ListField[StringField[_ST, _GT]]: ...
     @overload
     def __new__(
         cls,
@@ -1079,7 +1079,7 @@ class ListField(ComplexBaseField[_F]):
     @overload
     def __new__(
         cls,
-        field: Any,
+        field: Any | None,
         required: bool = ...,
         default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
         verbose_name: str = ...,
@@ -1090,28 +1090,28 @@ class ListField(ComplexBaseField[_F]):
     def __iter__(self) -> Iterator[_T]: ...
     @overload  # type: ignore[override]
     def __set__(
-        self: ListField[StringField[Any, Any]],
+        self: ListField[StringField[_ST, Any]],
         instance: Any,
-        value: Optional[List[str]],
+        value: Optional[List[_ST]],
     ) -> None: ...
     @overload
     def __set__(
         self: ListField[DictField[Any]], instance: Any, value: List[Dict[str, Any]]
     ) -> None: ...
     @overload
-    def __set__(self: ListField[_F], instance: Any, value: List[_F]) -> None: ...
+    def __set__(self: ListField[Any], instance: Any, value: List[Any]) -> None: ...
     @overload  # type: ignore[override]
     def __get__(
-        self: ListField[DynamicField], instance: Any, owner: Any
-    ) -> List[Any]: ...
-    @overload
-    def __get__(
-        self: ListField[StringField[Any, Any]], instance: Any, owner: Any
-    ) -> List[str]: ...
+        self: ListField[StringField[_ST, _GT]], instance: Any, owner: Any
+    ) -> List[_GT]: ...
     @overload
     def __get__(
         self: ListField[DictField[Any]], instance: Any, owner: Any
     ) -> List[Dict[str, Any]]: ...
+    @overload
+    def __get__(
+        self: ListField[Any], instance: Any, owner: Any
+    ) -> List[Any]: ...
 
 class DictField(ComplexBaseField[_F]):
     @overload

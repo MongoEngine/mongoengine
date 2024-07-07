@@ -1,7 +1,5 @@
 # mypy: enable-error-code="var-annotated"
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Optional, List
 
 from typing_extensions import assert_type
 
@@ -23,7 +21,7 @@ def test_it_uses_correct_types() -> None:
 
     book = Book()
 
-    assert_type(book.number, int | None)
-    assert_type(book.name, str | None)
-    assert_type(book.authors, list[str | None])
+    assert_type(book.number, Optional[int])
+    assert_type(book.name, Optional[str])
+    assert_type(book.authors, List[Optional[str]])
     assert_type(book.cover, Any)

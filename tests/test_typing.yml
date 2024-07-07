@@ -4,35 +4,17 @@
     enable_error_code = var-annotated
   skip: sys.version_info < (3, 9)
   main: |
-    from __future__ import annotations
-
-    from typing import Any
-
-    from typing_extensions import assert_type
-
     from mongoengine import (
         Document,
-        FileField,
-        IntField,
         ListField,
         StringField,
     )
 
-    def test_it_uses_correct_types() -> None:
-        class Book(Document):
-            number = IntField()
-            name = StringField()
-            authors = ListField(StringField())
-            cover = FileField()
+    class Book(Document):
+        authors = ListField(StringField())
 
-        book = Book()
-
-        assert_type(book.number, int | None)
-        assert_type(book.name, str | None)
-        assert_type(book.authors, list[str | None])
-        assert_type(book.cover, Any)
-
-        book.authors = ["Sun Tzu"]
-        book.authors = [1]
+    book = Book()
+    book.authors = ["Sun Tzu"]
+    book.authors = [1]
   out: |
-    main:30: error: List item 0 has incompatible type "int"; expected "str"  [list-item]
+    main:12: error: List item 0 has incompatible type "int"; expected "str"  [list-item]
