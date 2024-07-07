@@ -4,13 +4,9 @@ from typing import (
     Callable,
     Generic,
     Iterable,
-    Literal,
     NoReturn,
-    Optional,
     Sequence,
     TypeVar,
-    Union,
-    overload,
 )
 
 from bson import ObjectId
@@ -41,32 +37,6 @@ class BaseField(Generic[_ST, _GT]):
 
     _auto_gen: bool
 
-    @overload
-    def __new__(
-        cls,
-        *args: Any,
-        required: Literal[False],
-        default: None = ...,
-        **kwargs: Any,
-    ) -> BaseField[Optional[_ST], Optional[_GT]]: ...
-    # BaseField()
-    @overload
-    def __new__(
-        cls,
-        *args: Any,
-        required: Literal[False],
-        default: Union[str, Callable[[], str]],
-        **kwargs: Any,
-    ) -> BaseField[Optional[_ST], _GT]: ...
-    # BaseField(required=False, default="foo")
-    @overload
-    def __new__(
-        cls,
-        *args: Any,
-        required: Literal[True] = ...,
-        default: None = ...,
-        **kwargs: Any,
-    ) -> BaseField[_ST, _GT]: ...
     # BaseField(required=True)
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...

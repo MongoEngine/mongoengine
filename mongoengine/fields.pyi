@@ -104,14 +104,14 @@ class StringField(BaseField[_ST, _GT]):
     def __new__(
         cls,
         *args: Any,
-        required: Literal[False],
+        required: Literal[False] = ...,
         **kwargs: Any,
     ) -> StringField[str | None, str | None]: ...
     @overload
     def __new__(
         cls,
         *args,
-        required: Literal[True] = ...,
+        required: Literal[True],
         **kwargs: Any,
     ) -> StringField[str, str]: ...
 
@@ -968,13 +968,6 @@ class EmbeddedDocumentField(BaseField[_ST, _GT]):
 class DynamicField(BaseField): ...
 
 class ListField(ComplexBaseField[list[_ST], list[_GT]]):
-    def __init__(
-        self,
-        field: BaseField | None = None,
-        max_length: int | None = None,
-        db_field: str | None = None,
-        **kwargs: Any,
-    ) -> None: ...
     # see: https://github.com/python/mypy/issues/4236#issuecomment-521628880
     @overload
     def __new__(
@@ -1163,7 +1156,7 @@ class UUIDField(BaseField[_ST, _GT]):
         binary: bool = ...,
         db_field: str = ...,
         name: Optional[str] = ...,
-        required: Literal[True] = ...,
+        required: Literal[False] = ...,
         default: Union[UUID, None, Callable[[], UUID]] = ...,
         unique: bool = ...,
         unique_with: Union[str, Iterable[str]] = ...,
@@ -1173,7 +1166,7 @@ class UUIDField(BaseField[_ST, _GT]):
         verbose_name: Optional[str] = ...,
         help_text: Optional[str] = ...,
         **kwargs: Any,
-    ) -> UUIDField[UUID, UUID]: ...
+    ) -> UUIDField[UUID | None, UUID | None]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
 
@@ -1266,7 +1259,7 @@ class ReferenceField(BaseField[_ST, _GT]):
     def __new__(
         cls,
         model: Union[str, Type[_T]],
-        required: Literal[True] = ...,
+        required: Literal[True],
         name: Optional[str] = ...,
         help_text: Optional[str] = ...,
         blank: bool = ...,
