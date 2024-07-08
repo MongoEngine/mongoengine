@@ -729,7 +729,47 @@ class EnumField(BaseField[_ST, _GT]):
     ) -> EnumField[Optional[_T_ENUM], _T_ENUM]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
-class LongField(BaseField[_ST, _GT]): ...
+class LongField(IntField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        max_value: int = ...,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> LongField[Optional[int], Optional[int]]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        max_value: int = ...,
+        required: Literal[False] = ...,
+        default: Union[int, Callable[[], int]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> LongField[Optional[int], int]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        max_value: int = ...,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> LongField[int, int]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        min_value: int = ...,
+        max_value: int = ...,
+        required: Literal[True],
+        default: Union[int, Callable[[], int]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> LongField[Optional[int], int]: ...
 class DateField(BaseField[_ST, _GT]): ...
 class ComplexDateTimeField(StringField[_ST, _GT]): ...
 class GenericEmbeddedDocumentField(BaseField[_ST, _GT]): ...
