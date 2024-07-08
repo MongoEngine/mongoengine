@@ -80,11 +80,9 @@ __all__ = (
     "Decimal128Field",
 )
 
-class _FieldOptions(TypedDict, total=False):
+class _BaseFieldOptions(TypedDict, total=False):
     db_field: str
     name: str
-    required: bool
-    default: Union[Any, Callable[[], Any]]
     unique: bool
     unique_with: Union[str, Iterable[str]]
     primary_key: bool
@@ -92,6 +90,11 @@ class _FieldOptions(TypedDict, total=False):
     null: bool
     verbose_name: str
     help_text: str
+
+class _FieldOptions(Generic[_T], _BaseFieldOptions):
+    required: bool
+    default: Union[_T, Callable[[], _T]]
+
 
 class StringField(BaseField[_ST, _GT]):
     @overload
@@ -101,18 +104,9 @@ class StringField(BaseField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[False] = ...,
         default: None = ...,
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> StringField[Optional[str], Optional[str]]: ...
     # StringField(default="foo")
     @overload
@@ -122,18 +116,9 @@ class StringField(BaseField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[False] = ...,
         default: Union[str, Callable[[], str]],
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> StringField[Optional[str], str]: ...
     # StringField(required=True)
     @overload
@@ -143,18 +128,9 @@ class StringField(BaseField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[True],
         default: None = ...,
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> StringField[str, str]: ...
     # StringField(required=True, default="foo")
     @overload
@@ -164,48 +140,13 @@ class StringField(BaseField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[True],
         default: Union[str, Callable[[], str]],
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> StringField[Optional[str], str]: ...
-    # StringField(primary_key=True)
-    @overload
-    def __new__(
-        cls,
-        *,
-        regex: Optional[str] = ...,
-        max_length: Optional[int] = ...,
-        min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
-        required: bool = ...,
-        default: Union[str, Callable[[], str], None] = ...,
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[True],
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
-    ) -> StringField[str, str]: ...
+
 
 class URLField(StringField[_ST, _GT]):
-    def __init__(
-        self,
-        url_regex: str | None = None,
-        schemes: Iterable[str] | None = None,
-        **kwargs: Any,
-    ) -> None: ...
     @overload
     def __new__(
         cls,
@@ -215,18 +156,9 @@ class URLField(StringField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[False] = ...,
         default: None = ...,
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> URLField[Optional[str], Optional[str]]: ...
     # URLField(default="foo")
     @overload
@@ -238,18 +170,9 @@ class URLField(StringField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[False] = ...,
         default: Union[str, Callable[[], str]],
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> URLField[Optional[str], str]: ...
     # URLField(required=True)
     @overload
@@ -261,18 +184,9 @@ class URLField(StringField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[True],
         default: None = ...,
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> URLField[str, str]: ...
     # URLField(required=True, default="foo")
     @overload
@@ -284,18 +198,9 @@ class URLField(StringField[_ST, _GT]):
         regex: Optional[str] = ...,
         max_length: Optional[int] = ...,
         min_length: Optional[int] = ...,
-        db_field: str = ...,
-        name: Optional[str] = ...,
         required: Literal[True],
         default: Union[str, Callable[[], str]],
-        unique: bool = ...,
-        unique_with: Union[str, Iterable[str]] = ...,
-        primary_key: Literal[False] = ...,
-        choices: Optional[Iterable[_Choice]] = ...,
-        null: bool = ...,
-        verbose_name: Optional[str] = ...,
-        help_text: Optional[str] = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
     ) -> URLField[Optional[str], str]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
@@ -995,21 +900,22 @@ class DateTimeField(BaseField[_ST, _GT]):
     ) -> DateTimeField[datetime, datetime]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
-class EmbeddedDocumentField(Generic[_T], BaseField[_T, _T]):
+class EmbeddedDocumentField(BaseField[_ST, _GT]):
     @overload
     def __new__(
         cls,
         document_type: Type[_T],
         required: Literal[False] = ...,
-    ) -> EmbeddedDocumentField[Optional[_T]]: ...
+        **kwargs: Any,
+    ) -> EmbeddedDocumentField[Optional[_T], Optional[_T]]: ...
     @overload
     def __new__(
         cls,
         document_type: Type[_T],
         *,
         required: Literal[True],
-    ) -> EmbeddedDocumentField[_T]: ...
-    def __init__(self, document_type: Type[_T] | str, **kwargs: Any) -> None: ...
+        **kwargs: Any,
+    ) -> EmbeddedDocumentField[_T, _T]: ...
 
 class DynamicField(BaseField): ...
 

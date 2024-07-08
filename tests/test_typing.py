@@ -12,6 +12,7 @@ from mongoengine import (
     ListField,
     StringField,
     DictField,
+    URLField,
 )
 from mongoengine.fields import EmbeddedDocumentField
 
@@ -21,8 +22,9 @@ def test_it_uses_correct_types() -> None:
         pass
 
     class Book(Document):
-        number = IntField()
         name = StringField()
+        url = URLField()
+        number = IntField()
         authors = ListField(StringField())
         cover = FileField()
         dict = DictField(StringField())
@@ -31,8 +33,8 @@ def test_it_uses_correct_types() -> None:
 
     book = Book()
 
-    assert_type(book.number, Optional[int])
     assert_type(book.name, Optional[str])
+    assert_type(book.number, Optional[int])
     assert_type(book.authors, List[Optional[str]])
     assert_type(book.cover, Any)
     assert_type(book.images, List[Image])

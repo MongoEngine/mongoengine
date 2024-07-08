@@ -38,7 +38,6 @@ class BaseField(Generic[_ST, _GT]):
 
     _auto_gen: bool
 
-    # BaseField(required=True)
     def __set__(self, instance: Any, value: _ST) -> None: ...
     @overload
     def __get__(self, instance: None, owner: Any) -> Self: ...
