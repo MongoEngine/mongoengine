@@ -567,7 +567,7 @@ class EmbeddedDocumentListField(ListField[_F, _ST, _GT]):
         required: bool = ...,
         default: Optional[Any] = ...,
         **kwargs: Unpack[_BaseFieldOptions],
-    ) -> EmbeddedDocumentListField[EmbeddedDocumentField[_ST, _GT], _ST, _GT]: ...
+    ) -> EmbeddedDocumentListField[EmbeddedDocumentField[_T, _T], list[_T], list[_T]]: ...
 
 
 class LazyReference(Generic[_T], BaseField[_T, _T]):
