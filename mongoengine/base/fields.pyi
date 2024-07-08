@@ -43,7 +43,7 @@ class BaseField(Generic[_ST, _GT]):
     def __get__(self, instance: None, owner: Any) -> Self: ...
     @overload
     def __get__(self, instance: Any, owner: Any) -> _GT: ...
-    def __init__(
+    def __init___(
         self,
         db_field: str | None = None,
         required: bool = False,
@@ -74,7 +74,6 @@ class BaseField(Generic[_ST, _GT]):
 
 class ComplexBaseField(Generic[_F, _ST, _GT], BaseField[_ST, _GT]):
     field: _F
-    def __init__(self, field: _F | None = None, **kwargs) -> None: ...
     def to_python(self, value): ...
     def to_mongo(
         self, value, use_db_field: bool = True, fields: Sequence[str] | None = None
