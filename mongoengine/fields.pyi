@@ -91,7 +91,6 @@ class _BaseFieldOptions(TypedDict, total=False):
     verbose_name: str
     help_text: str
 
-
 class StringField(BaseField[_ST, _GT]):
     @overload
     def __new__(
@@ -567,8 +566,9 @@ class EmbeddedDocumentListField(ListField[_F, _ST, _GT]):
         required: bool = ...,
         default: Optional[Any] = ...,
         **kwargs: Unpack[_BaseFieldOptions],
-    ) -> EmbeddedDocumentListField[EmbeddedDocumentField[_T, _T], list[_T], list[_T]]: ...
-
+    ) -> EmbeddedDocumentListField[
+        EmbeddedDocumentField[_T, _T], list[_T], list[_T]
+    ]: ...
 
 class LazyReference(Generic[_T], BaseField[_T, _T]):
     def __getitem__(self, arg: Any) -> LazyReference[_T]: ...
@@ -770,6 +770,7 @@ class LongField(IntField[_ST, _GT]):
         default: Union[int, Callable[[], int]],
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> LongField[Optional[int], int]: ...
+
 class DateField(BaseField[_ST, _GT]):
     @overload
     def __new__(
@@ -804,7 +805,44 @@ class DateField(BaseField[_ST, _GT]):
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> DateField[Optional[date], date]: ...
 
-class ComplexDateTimeField(StringField[_ST, _GT]): ...
+class ComplexDateTimeField(StringField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        separator: str = ...,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ComplexDateTimeField[Optional[datetime], Optional[datetime]]: ...
+    @overload
+    def __new__(
+        cls,
+        separator: str = ...,
+        *,
+        required: Literal[False] = ...,
+        default: Union[datetime, Callable[[], datetime]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ComplexDateTimeField[Optional[datetime], datetime]: ...
+    @overload
+    def __new__(
+        cls,
+        separator: str = ...,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ComplexDateTimeField[datetime, datetime]: ...
+    @overload
+    def __new__(
+        cls,
+        separator: str = ...,
+        *,
+        required: Literal[True],
+        default: Union[datetime, Callable[[], datetime]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ComplexDateTimeField[Optional[datetime], datetime]: ...
+
 class GenericEmbeddedDocumentField(BaseField[_ST, _GT]): ...
 class SortedListField(BaseField[_ST, _GT]): ...
 class CachedReferenceField(BaseField[_ST, _GT]): ...

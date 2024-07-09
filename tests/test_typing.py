@@ -71,7 +71,7 @@ def test_it_uses_correct_types() -> None:
     assert_type(doc.booleanfield, Optional[bool])
     assert_type(doc.datetimefield, Optional[datetime])
     assert_type(doc.datefield, Optional[date])
-    assert_type(doc.complexdatetimefield, Optional[str])
+    assert_type(doc.complexdatetimefield, Optional[datetime])
     assert_type(doc.embeddeddocumentfield, Optional[str])
     assert_type(doc.objectidfield, Optional[str])
     assert_type(doc.genericembeddeddocumentfield, Optional[str])
