@@ -1,55 +1,12 @@
 # mypy: enable-error-code="var-annotated"
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from typing_extensions import assert_type
 
 from mongoengine import Document, EmbeddedDocument
-from mongoengine.fields import (
-    BinaryField,
-    BooleanField,
-    CachedReferenceField,
-    ComplexDateTimeField,
-    DateField,
-    DateTimeField,
-    Decimal128Field,
-    DecimalField,
-    DictField,
-    DynamicField,
-    EmailField,
-    EmbeddedDocumentField,
-    EmbeddedDocumentListField,
-    EnumField,
-    FileField,
-    FloatField,
-    GenericEmbeddedDocumentField,
-    GenericLazyReferenceField,
-    GenericReferenceField,
-    GeoJsonBaseField,
-    GeoPointField,
-    GridFSError,
-    GridFSProxy,
-    ImageField,
-    ImageGridFsProxy,
-    ImproperlyConfigured,
-    IntField,
-    LazyReferenceField,
-    LineStringField,
-    ListField,
-    LongField,
-    MapField,
-    MultiLineStringField,
-    MultiPointField,
-    MultiPolygonField,
-    ObjectIdField,
-    PointField,
-    PolygonField,
-    ReferenceField,
-    SequenceField,
-    SortedListField,
-    StringField,
-    URLField,
-    UUIDField,
-)
+from mongoengine import fields
 
 
 def test_it_uses_correct_types() -> None:
@@ -57,63 +14,63 @@ def test_it_uses_correct_types() -> None:
         pass
 
     class Doc(Document):
-        stringfield = StringField()
-        urlfield = URLField()
-        emailfield = EmailField()
-        intfield = IntField()
-        longfield = LongField()
-        floatfield = FloatField()
-        decimalfield = DecimalField()
-        booleanfield = BooleanField()
-        datetimefield = DateTimeField()
-        datefield = DateField()
-        complexdatetimefield = ComplexDateTimeField()
-        embeddeddocumentfield = EmbeddedDocumentField()
-        objectidfield = ObjectIdField()
-        genericembeddeddocumentfield = GenericEmbeddedDocumentField()
-        dynamicfield = DynamicField()
-        listfield = ListField()
-        sortedlistfield = SortedListField()
-        embeddeddocumentlistfield = EmbeddedDocumentListField()
-        dictfield = DictField()
-        mapfield = MapField()
-        referencefield = ReferenceField()
-        cachedreferencefield = CachedReferenceField()
-        lazyreferencefield = LazyReferenceField()
-        genericlazyreferencefield = GenericLazyReferenceField()
-        genericreferencefield = GenericReferenceField()
-        binaryfield = BinaryField()
-        gridfserror = GridFSError()
-        gridfsproxy = GridFSProxy()
-        filefield = FileField()
-        imagegridfsproxy = ImageGridFsProxy()
-        improperlyconfigured = ImproperlyConfigured()
-        imagefield = ImageField()
-        geopointfield = GeoPointField()
-        pointfield = PointField()
-        linestringfield = LineStringField()
-        polygonfield = PolygonField()
-        sequencefield = SequenceField()
-        uuidfield = UUIDField()
-        enumfield = EnumField()
-        multipointfield = MultiPointField()
-        multilinestringfield = MultiLineStringField()
-        multipolygonfield = MultiPolygonField()
-        geojsonbasefield = GeoJsonBaseField()
-        decimal128field = Decimal128Field()
+        stringfield = fields.StringField()
+        urlfield = fields.URLField()
+        emailfield = fields.EmailField()
+        intfield = fields.IntField()
+        longfield = fields.LongField()
+        floatfield = fields.FloatField()
+        decimalfield = fields.DecimalField()
+        booleanfield = fields.BooleanField()
+        datetimefield = fields.DateTimeField()
+        datefield = fields.DateField()
+        complexdatetimefield = fields.ComplexDateTimeField()
+        embeddeddocumentfield = fields.EmbeddedDocumentField()
+        objectidfield = fields.ObjectIdField()
+        genericembeddeddocumentfield = fields.GenericEmbeddedDocumentField()
+        dynamicfield = fields.DynamicField()
+        listfield = fields.ListField()
+        sortedlistfield = fields.SortedListField()
+        embeddeddocumentlistfield = fields.EmbeddedDocumentListField()
+        dictfield = fields.DictField()
+        mapfield = fields.MapField()
+        referencefield = fields.ReferenceField()
+        cachedreferencefield = fields.CachedReferenceField()
+        lazyreferencefield = fields.LazyReferenceField()
+        genericlazyreferencefield = fields.GenericLazyReferenceField()
+        genericreferencefield = fields.GenericReferenceField()
+        binaryfield = fields.BinaryField()
+        gridfserror = fields.GridFSError()
+        gridfsproxy = fields.GridFSProxy()
+        filefield = fields.FileField()
+        imagegridfsproxy = fields.ImageGridFsProxy()
+        improperlyconfigured = fields.ImproperlyConfigured()
+        imagefield = fields.ImageField()
+        geopointfield = fields.GeoPointField()
+        pointfield = fields.PointField()
+        linestringfield = fields.LineStringField()
+        polygonfield = fields.PolygonField()
+        sequencefield = fields.SequenceField()
+        uuidfield = fields.UUIDField()
+        enumfield = fields.EnumField()
+        multipointfield = fields.MultiPointField()
+        multilinestringfield = fields.MultiLineStringField()
+        multipolygonfield = fields.MultiPolygonField()
+        geojsonbasefield = fields.GeoJsonBaseField()
+        decimal128field = fields.Decimal128Field()
 
     doc = Doc()
 
     assert_type(doc.stringfield, Optional[str])
     assert_type(doc.urlfield, Optional[str])
     assert_type(doc.emailfield, Optional[str])
-    assert_type(doc.intfield, Optional[str])
-    assert_type(doc.longfield, Optional[str])
-    assert_type(doc.floatfield, Optional[str])
-    assert_type(doc.decimalfield, Optional[str])
-    assert_type(doc.booleanfield, Optional[str])
-    assert_type(doc.datetimefield, Optional[str])
-    assert_type(doc.datefield, Optional[str])
+    assert_type(doc.intfield, Optional[int])
+    assert_type(doc.longfield, Optional[int])
+    assert_type(doc.floatfield, Optional[float])
+    assert_type(doc.decimalfield, Optional[Decimal])
+    assert_type(doc.booleanfield, Optional[bool])
+    assert_type(doc.datetimefield, Optional[datetime])
+    assert_type(doc.datefield, Optional[date])
     assert_type(doc.complexdatetimefield, Optional[str])
     assert_type(doc.embeddeddocumentfield, Optional[str])
     assert_type(doc.objectidfield, Optional[str])

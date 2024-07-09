@@ -1,7 +1,7 @@
 # pyright: reportIncompatibleMethodOverride=false
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum
 from typing import (
@@ -770,7 +770,40 @@ class LongField(IntField[_ST, _GT]):
         default: Union[int, Callable[[], int]],
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> LongField[Optional[int], int]: ...
-class DateField(BaseField[_ST, _GT]): ...
+class DateField(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DateField[Optional[date], Optional[date]]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: Union[date, Callable[[], date]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DateField[Optional[date], date]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DateField[date, date]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: Union[date, Callable[[], date]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DateField[Optional[date], date]: ...
+
 class ComplexDateTimeField(StringField[_ST, _GT]): ...
 class GenericEmbeddedDocumentField(BaseField[_ST, _GT]): ...
 class SortedListField(BaseField[_ST, _GT]): ...
