@@ -1,7 +1,7 @@
 # mypy: enable-error-code="var-annotated"
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Optional, reveal_type
 
 from bson import ObjectId
 from typing_extensions import assert_type
@@ -11,7 +11,10 @@ from mongoengine import fields
 
 
 def test_it_uses_correct_types() -> None:
-    class Image(EmbeddedDocument):
+    class ImageEmbedded(EmbeddedDocument):
+        pass
+
+    class ImageDocument(EmbeddedDocument):
         pass
 
     class Doc(Document):
@@ -26,18 +29,18 @@ def test_it_uses_correct_types() -> None:
         datetimefield = fields.DateTimeField()
         datefield = fields.DateField()
         complexdatetimefield = fields.ComplexDateTimeField()
-        embeddeddocumentfield = fields.EmbeddedDocumentField(Image)
+        embeddeddocumentfield = fields.EmbeddedDocumentField(ImageEmbedded)
         objectidfield = fields.ObjectIdField()
         genericembeddeddocumentfield = fields.GenericEmbeddedDocumentField()
         dynamicfield = fields.DynamicField()
         listfield = fields.ListField(fields.StringField())
-        sortedlistfield = fields.SortedListField()
-        embeddeddocumentlistfield = fields.EmbeddedDocumentListField()
-        dictfield = fields.DictField()
-        mapfield = fields.MapField()
-        referencefield = fields.ReferenceField()
-        cachedreferencefield = fields.CachedReferenceField()
-        lazyreferencefield = fields.LazyReferenceField()
+        sortedlistfield = fields.SortedListField(fields.StringField())
+        embeddeddocumentlistfield = fields.EmbeddedDocumentListField(ImageEmbedded)
+        dictfield = fields.DictField(fields.StringField(required=True))
+        mapfield = fields.MapField(fields.StringField())
+        referencefield = fields.ReferenceField(ImageDocument)
+        cachedreferencefield = fields.CachedReferenceField(ImageDocument)
+        lazyreferencefield = fields.LazyReferenceField(ImageDocument)
         genericlazyreferencefield = fields.GenericLazyReferenceField()
         genericreferencefield = fields.GenericReferenceField()
         binaryfield = fields.BinaryField()
@@ -73,18 +76,18 @@ def test_it_uses_correct_types() -> None:
     assert_type(doc.datetimefield, Optional[datetime])
     assert_type(doc.datefield, Optional[date])
     assert_type(doc.complexdatetimefield, Optional[datetime])
-    assert_type(doc.embeddeddocumentfield, Optional[Image])
+    assert_type(doc.embeddeddocumentfield, Optional[ImageEmbedded])
     assert_type(doc.objectidfield, Optional[ObjectId])
     assert_type(doc.genericembeddeddocumentfield, Optional[Any])
     assert_type(doc.dynamicfield, Optional[Any])
     assert_type(doc.listfield, list[Optional[str]])
-    assert_type(doc.sortedlistfield, Optional[str])
-    assert_type(doc.embeddeddocumentlistfield, Optional[str])
-    assert_type(doc.dictfield, Optional[str])
-    assert_type(doc.mapfield, Optional[str])
-    assert_type(doc.referencefield, Optional[str])
-    assert_type(doc.cachedreferencefield, Optional[str])
-    assert_type(doc.lazyreferencefield, Optional[str])
+    assert_type(doc.sortedlistfield, list[Optional[str]])
+    assert_type(doc.embeddeddocumentlistfield, list[ImageEmbedded])
+    assert_type(doc.dictfield, dict[str, str])
+    assert_type(doc.mapfield, dict[str, Optional[str]])
+    assert_type(doc.referencefield, Optional[ImageDocument])
+    assert_type(doc.cachedreferencefield, Optional[ImageDocument])
+    assert_type(doc.lazyreferencefield, ImageDocument)
     assert_type(doc.genericlazyreferencefield, Optional[str])
     assert_type(doc.genericreferencefield, Optional[str])
     assert_type(doc.binaryfield, Optional[str])

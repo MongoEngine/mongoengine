@@ -1170,7 +1170,7 @@ class ReferenceField(BaseField):
 
     def __init__(
         self,
-        document_type: type[_T],
+        document_type: type[_T] | str,
         dbref: bool = False,
         reverse_delete_rule=DO_NOTHING,
         **kwargs,
@@ -1313,7 +1313,7 @@ class CachedReferenceField(BaseField):
 
     def __init__(
         self,
-        document_type: str | int,
+        document_type: str | type[Document],
         fields: Iterable[str] | None = None,
         auto_sync: bool = True,
         **kwargs,

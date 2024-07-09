@@ -25,10 +25,12 @@ from uuid import UUID
 from typing_extensions import Literal, TypeAlias, Unpack
 
 from mongoengine.base import BaseField, ComplexBaseField
+from mongoengine.base.datastructures import LazyReference
 from mongoengine.base.fields import _F, _GT, _ST, _BaseFieldOptions, ObjectIdField
 from mongoengine.document import Document
 
 _T = TypeVar("_T")
+_DT = TypeVar("_DT", bound=Document)
 _Choice: TypeAlias = str | tuple[str, str]
 __all__ = (
     "StringField",
@@ -507,17 +509,10 @@ class ListField(ComplexBaseField[_F, _ST, _GT]):
     @overload
     def __new__(
         cls,
-        field: StringField[_ST, _GT],
+        field: BaseField[_ST, _GT],
         required: bool = ...,
         default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
-    ) -> ListField[StringField[_ST, _GT], list[_ST], list[_GT]]: ...
-    @overload
-    def __new__(
-        cls,
-        field: DictField[Any, Any, Any],
-        required: bool = ...,
-        default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
-    ) -> ListField[DictField[Any, Any, Any], dict[str, Any], dict[str, Any]]: ...
+    ) -> ListField[BaseField[_ST, _GT], list[_ST], list[_GT]]: ...
     @overload
     def __new__(
         cls,
@@ -525,7 +520,7 @@ class ListField(ComplexBaseField[_F, _ST, _GT]):
         required: bool = ...,
         default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
     ) -> ListField[Any, Any, Any]: ...
-    def __getitem__(self, arg: Any) -> _F: ...
+    def __getitem__(self, arg: Any) -> _GT: ...
     def __iter__(self) -> Iterator[_GT]: ...
 
 class DictField(ComplexBaseField[_F, _ST, _GT]):
@@ -549,17 +544,16 @@ class EmbeddedDocumentListField(ListField[_F, _ST, _GT]):
         EmbeddedDocumentField[_T, _T], list[_T], list[_T]
     ]: ...
 
-class LazyReference(Generic[_T], BaseField[_T, _T]):
-    def __getitem__(self, arg: Any) -> LazyReference[_T]: ...
-
-class LazyReferenceField(BaseField):
+class LazyReferenceField(BaseField[_ST, _GT]):
     def __new__(
         cls,
-        document_type: Union[str, Type[Document]],
+        document_type: type[_T] | str,
+        passthrough: bool = ...,
+        dbref: bool = ...,
+        reverse_delete_rule: int = ...,
         required: bool = ...,
         **kwargs: Unpack[_BaseFieldOptions],
-    ) -> LazyReferenceField: ...
-    def __getitem__(self, arg: Any) -> LazyReference[Any]: ...
+    ) -> LazyReferenceField[_T, _T]: ...
 
 class UUIDField(BaseField[_ST, _GT]):
     @overload
@@ -636,8 +630,15 @@ class GeoPointField(BaseField[_ST, _GT]):
     ) -> GeoPointField[_Tuple2Like | None, list[float]]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
-class MapField(DictField):
-    pass
+class MapField(DictField[_F, _ST, _GT]):
+    def __new__(
+        cls,
+        field: BaseField[_ST, _GT] = ...,
+        required: bool = ...,
+        default: Union[Dict[str, Any], None, Callable[[], Dict[str, Any]]] = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> MapField[BaseField[_ST, _GT], dict[str, _ST], dict[str, _GT]]: ...
+    def __getitem__(self, arg: Any) -> _GT: ...
 
 class ReferenceField(BaseField[_ST, _GT]):
     @overload
@@ -646,20 +647,18 @@ class ReferenceField(BaseField[_ST, _GT]):
         document_type: Type[_T] | str,
         dbref: bool = ...,
         reverse_delete_rule: int = ...,
-        required: Literal[True] = ...,
-        blank: bool = ...,
+        required: Literal[False] = ...,
         **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ReferenceField[_T, _T]: ...
+    ) -> ReferenceField[_T | None, _T | None]: ...
     @overload
     def __new__(
         cls,
         document_type: Type[_T] | str,
         dbref: bool = ...,
         reverse_delete_rule: int = ...,
-        required: Literal[False] = ...,
-        blank: bool = ...,
+        required: Literal[True] = ...,
         **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ReferenceField[_T | None, _T | None]: ...
+    ) -> ReferenceField[_T, _T]: ...
     def __getitem__(self, arg: Any) -> Any: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
@@ -856,8 +855,38 @@ class GenericEmbeddedDocumentField(BaseField[_ST, _GT]):
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> GenericEmbeddedDocumentField[Optional[Any], Any]: ...
 
-class SortedListField(BaseField[_ST, _GT]): ...
-class CachedReferenceField(BaseField[_ST, _GT]): ...
+class SortedListField(ListField[_F, _ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        field: BaseField[_ST, _GT],
+        required: bool = ...,
+        default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
+    ) -> SortedListField[BaseField[_ST, _GT], list[_ST], list[_GT]]: ...
+    @overload
+    def __new__(
+        cls,
+        field: Any | None,
+        required: bool = ...,
+        default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
+    ) -> SortedListField[Any, Any, Any]: ...
+
+class CachedReferenceField(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T] | str,
+        required: Literal[False] = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> CachedReferenceField[_T | None, _T | None]: ...
+    @overload
+    def __new__(
+        cls,
+        document_type: Type[_T] | str,
+        required: Literal[True] = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> CachedReferenceField[_T, _T]: ...
+
 class GenericLazyReferenceField(BaseField[_ST, _GT]): ...
 class BinaryField(BaseField[_ST, _GT]): ...
 class GridFSError(Exception): ...
