@@ -8,6 +8,7 @@ from typing_extensions import assert_type
 
 from mongoengine import Document, EmbeddedDocument
 from mongoengine import fields
+from mongoengine.base.datastructures import LazyReference
 
 
 def test_it_uses_correct_types() -> None:
@@ -88,8 +89,8 @@ def test_it_uses_correct_types() -> None:
     assert_type(doc.referencefield, Optional[ImageDocument])
     assert_type(doc.cachedreferencefield, Optional[ImageDocument])
     assert_type(doc.lazyreferencefield, ImageDocument)
-    assert_type(doc.genericlazyreferencefield, Optional[str])
-    assert_type(doc.genericreferencefield, Optional[str])
+    assert_type(doc.genericlazyreferencefield, LazyReference[Any])
+    assert_type(doc.genericreferencefield, Any)
     assert_type(doc.binaryfield, Optional[str])
     assert_type(doc.gridfserror, Optional[str])
     assert_type(doc.gridfsproxy, Optional[str])
