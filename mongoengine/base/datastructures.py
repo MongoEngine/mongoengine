@@ -10,7 +10,8 @@ from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
 
 if TYPE_CHECKING:
     from mongoengine import Document
-    _T = TypeVar("_T", bound=Document)
+
+_T = TypeVar("_T", bound="Document")
 
 __all__ = (
     "BaseDict",
