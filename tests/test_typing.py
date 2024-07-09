@@ -8,8 +8,7 @@ from uuid import UUID
 from bson import ObjectId
 from typing_extensions import assert_type
 
-from mongoengine import Document, EmbeddedDocument
-from mongoengine import fields
+from mongoengine import Document, EmbeddedDocument, fields
 from mongoengine.base.datastructures import LazyReference
 
 

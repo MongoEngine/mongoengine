@@ -456,7 +456,9 @@ class LazyReference(Generic[_T], DBRef):
     def pk(self):
         return self.id
 
-    def __init__(self, document_type: type[_T], pk: ObjectId, cached_doc=None, passthrough=False):
+    def __init__(
+        self, document_type: type[_T], pk: ObjectId, cached_doc=None, passthrough=False
+    ):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough

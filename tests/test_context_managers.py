@@ -6,10 +6,8 @@ from threading import Thread
 
 import pytest
 from bson import DBRef
-from mongoengine import (
-    Document,
-    register_connection,
-)
+
+from mongoengine import Document, register_connection
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
     no_dereference,
@@ -28,7 +26,6 @@ from mongoengine.fields import (
     StringField,
 )
 from mongoengine.pymongo_support import count_documents
-
 from tests.utils import MongoDBTestCase
 
 

@@ -8,8 +8,8 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    TypeVar,
     TypedDict,
+    TypeVar,
     Union,
     overload,
 )
