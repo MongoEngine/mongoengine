@@ -1,7 +1,9 @@
 # mypy: enable-error-code="var-annotated"
 from datetime import date, datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Optional, reveal_type
+from uuid import UUID
 
 from bson import ObjectId
 from typing_extensions import assert_type
@@ -17,6 +19,9 @@ def test_it_uses_correct_types() -> None:
 
     class ImageDocument(EmbeddedDocument):
         pass
+
+    class Color(Enum):
+        RED = "red"
 
     class Doc(Document):
         stringfield = fields.StringField()
@@ -53,7 +58,7 @@ def test_it_uses_correct_types() -> None:
         polygonfield = fields.PolygonField()
         sequencefield = fields.SequenceField()
         uuidfield = fields.UUIDField()
-        enumfield = fields.EnumField()
+        enumfield = fields.EnumField(Color)
         multipointfield = fields.MultiPointField()
         multilinestringfield = fields.MultiLineStringField()
         multipolygonfield = fields.MultiPolygonField()
@@ -93,10 +98,10 @@ def test_it_uses_correct_types() -> None:
     assert_type(doc.pointfield, dict[str, Any])
     assert_type(doc.linestringfield, dict[str, Any])
     assert_type(doc.polygonfield, dict[str, Any])
-    assert_type(doc.sequencefield, Optional[str])
-    assert_type(doc.uuidfield, Optional[str])
-    assert_type(doc.enumfield, Optional[str])
+    assert_type(doc.sequencefield, Any)
+    assert_type(doc.uuidfield, Optional[UUID])
+    assert_type(doc.enumfield, Optional[Color])
     assert_type(doc.multipointfield, dict[str, Any])
     assert_type(doc.multilinestringfield, dict[str, Any])
     assert_type(doc.multipolygonfield, dict[str, Any])
-    assert_type(doc.decimal128field, Optional[str])
+    assert_type(doc.decimal128field, Optional[Decimal])

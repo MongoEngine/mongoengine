@@ -964,11 +964,64 @@ class ImproperlyConfigured(Exception): ...
 class PointField(GeoJsonBaseField): ...
 class LineStringField(GeoJsonBaseField): ...
 class PolygonField(GeoJsonBaseField): ...
-class SequenceField(BaseField[_ST, _GT]): ...
+
+class SequenceField(BaseField[Any, Any]):
+    def __init__(
+        self,
+        collection_name: str | None = ...,
+        db_alias: str | None = ...,
+        sequence_name: str | None = ...,
+        value_decorator: Any | None = ...,
+        *args: Any,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ): ...
+
 class MultiPointField(GeoJsonBaseField): ...
 class MultiLineStringField(GeoJsonBaseField): ...
 class MultiPolygonField(GeoJsonBaseField): ...
-class Decimal128Field(BaseField[_ST, _GT]): ...
+
+class Decimal128Field(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        min_value: int | None = ...,
+        max_value: int | None = ...,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> Decimal128Field[Optional[Decimal], Optional[Decimal]]: ...
+    @overload
+    def __new__(
+        cls,
+        min_value: int | None = ...,
+        max_value: int | None = ...,
+        *,
+        required: Literal[False] = ...,
+        default: Union[Decimal, Callable[[], Decimal]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> Decimal128Field[Optional[Decimal], Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        min_value: int | None = ...,
+        max_value: int | None = ...,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> Decimal128Field[Decimal, Decimal]: ...
+    @overload
+    def __new__(
+        cls,
+        min_value: int | None = ...,
+        max_value: int | None = ...,
+        *,
+        required: Literal[True],
+        default: Union[Decimal, Callable[[], Decimal]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> Decimal128Field[Optional[Decimal], Decimal]: ...
+
 class ImageField(FileField[_ST, _GT]):
     def __new__(
         cls,
