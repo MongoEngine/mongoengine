@@ -1,8 +1,9 @@
 # mypy: enable-error-code="var-annotated"
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
+from bson import ObjectId
 from typing_extensions import assert_type
 
 from mongoengine import Document, EmbeddedDocument
@@ -29,7 +30,7 @@ def test_it_uses_correct_types() -> None:
         objectidfield = fields.ObjectIdField()
         genericembeddeddocumentfield = fields.GenericEmbeddedDocumentField()
         dynamicfield = fields.DynamicField()
-        listfield = fields.ListField()
+        listfield = fields.ListField(fields.StringField())
         sortedlistfield = fields.SortedListField()
         embeddeddocumentlistfield = fields.EmbeddedDocumentListField()
         dictfield = fields.DictField()
@@ -73,10 +74,10 @@ def test_it_uses_correct_types() -> None:
     assert_type(doc.datefield, Optional[date])
     assert_type(doc.complexdatetimefield, Optional[datetime])
     assert_type(doc.embeddeddocumentfield, Optional[Image])
-    assert_type(doc.objectidfield, Optional[str])
-    assert_type(doc.genericembeddeddocumentfield, Optional[str])
-    assert_type(doc.dynamicfield, Optional[str])
-    assert_type(doc.listfield, Optional[str])
+    assert_type(doc.objectidfield, Optional[ObjectId])
+    assert_type(doc.genericembeddeddocumentfield, Optional[Any])
+    assert_type(doc.dynamicfield, Optional[Any])
+    assert_type(doc.listfield, list[Optional[str]])
     assert_type(doc.sortedlistfield, Optional[str])
     assert_type(doc.embeddeddocumentlistfield, Optional[str])
     assert_type(doc.dictfield, Optional[str])

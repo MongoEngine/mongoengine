@@ -465,7 +465,39 @@ class EmbeddedDocumentField(BaseField[_ST, _GT]):
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> EmbeddedDocumentField[_T, _T]: ...
 
-class DynamicField(BaseField): ...
+class DynamicField(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DynamicField[Optional[Any], Optional[Any]]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: Union[Any, Callable[[], Any]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DynamicField[Optional[Any], Any]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DynamicField[Any, Any]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: Union[Any, Callable[[], Any]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> DynamicField[Optional[Any], Any]: ...
 
 class ListField(ComplexBaseField[_F, _ST, _GT]):
     # see: https://github.com/python/mypy/issues/4236#issuecomment-521628880
@@ -790,7 +822,40 @@ class ComplexDateTimeField(StringField[_ST, _GT]):
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> ComplexDateTimeField[Optional[datetime], datetime]: ...
 
-class GenericEmbeddedDocumentField(BaseField[_ST, _GT]): ...
+class GenericEmbeddedDocumentField(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> GenericEmbeddedDocumentField[Optional[Any], Optional[Any]]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: Union[Any, Callable[[], Any]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> GenericEmbeddedDocumentField[Optional[Any], Any]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> GenericEmbeddedDocumentField[Any, Any]: ...
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: Union[Any, Callable[[], Any]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> GenericEmbeddedDocumentField[Optional[Any], Any]: ...
+
 class SortedListField(BaseField[_ST, _GT]): ...
 class CachedReferenceField(BaseField[_ST, _GT]): ...
 class GenericLazyReferenceField(BaseField[_ST, _GT]): ...
