@@ -10,25 +10,22 @@ from typing import (
     Container,
     Dict,
     Generic,
-    Iterable,
     Iterator,
     List,
     Optional,
     Pattern,
     Tuple,
     Type,
-    TypedDict,
     TypeVar,
     Union,
     overload,
 )
 from uuid import UUID
 
-from bson.objectid import ObjectId
 from typing_extensions import Literal, TypeAlias, Unpack
 
 from mongoengine.base import BaseField, ComplexBaseField
-from mongoengine.base.fields import _F, _GT, _ST
+from mongoengine.base.fields import _F, _GT, _ST, _BaseFieldOptions, ObjectIdField
 from mongoengine.document import Document
 
 _T = TypeVar("_T")
@@ -79,17 +76,6 @@ __all__ = (
     "GeoJsonBaseField",
     "Decimal128Field",
 )
-
-class _BaseFieldOptions(TypedDict, total=False):
-    db_field: str
-    name: str
-    unique: bool
-    unique_with: Union[str, Iterable[str]]
-    primary_key: bool
-    choices: Iterable[_Choice]
-    null: bool
-    verbose_name: str
-    help_text: str
 
 class StringField(BaseField[_ST, _GT]):
     @overload
@@ -196,45 +182,6 @@ class URLField(StringField[_ST, _GT]):
         default: Union[str, Callable[[], str]],
         **kwargs: Unpack[_BaseFieldOptions],
     ) -> URLField[Optional[str], str]: ...
-    def __set__(self, instance: Any, value: _ST) -> None: ...
-
-class ObjectIdField(BaseField[_ST, _GT]):
-    # ObjectIdField()
-    @overload
-    def __new__(
-        cls,
-        *,
-        required: Literal[False] = ...,
-        default: None = ...,
-        **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ObjectIdField[Optional[ObjectId], Optional[ObjectId]]: ...
-    # ObjectIdField(default=ObjectId)
-    @overload
-    def __new__(
-        cls,
-        *,
-        required: Literal[False] = ...,
-        default: Union[ObjectId, Callable[[], ObjectId]],
-        **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ObjectIdField[Optional[ObjectId], ObjectId]: ...
-    # ObjectIdField(required=True)
-    @overload
-    def __new__(
-        cls,
-        *,
-        required: Literal[True],
-        default: None = ...,
-        **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ObjectIdField[ObjectId, ObjectId]: ...
-    # ObjectIdField(required=True, default=ObjectId)
-    @overload
-    def __new__(
-        cls,
-        *,
-        required: Literal[True],
-        default: Union[ObjectId, Callable[[], ObjectId]],
-        **kwargs: Unpack[_BaseFieldOptions],
-    ) -> ObjectIdField[Optional[ObjectId], ObjectId]: ...
     def __set__(self, instance: Any, value: _ST) -> None: ...
 
 class EmailField(StringField[_ST, _GT]):
@@ -547,7 +494,7 @@ class ListField(ComplexBaseField[_F, _ST, _GT]):
         default: Optional[Union[List[Any], Callable[[], List[Any]]]] = ...,
     ) -> ListField[Any, Any, Any]: ...
     def __getitem__(self, arg: Any) -> _F: ...
-    def __iter__(self) -> Iterator[_T]: ...
+    def __iter__(self) -> Iterator[_GT]: ...
 
 class DictField(ComplexBaseField[_F, _ST, _GT]):
     def __new__(

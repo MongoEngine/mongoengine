@@ -4,14 +4,18 @@ from typing import (
     Callable,
     Generic,
     Iterable,
+    Literal,
     NoReturn,
+    Optional,
     Sequence,
     TypeVar,
+    TypedDict,
+    Union,
     overload,
 )
 
 from bson import ObjectId
-from typing_extensions import Self, TypeAlias
+from typing_extensions import Self, TypeAlias, Unpack
 
 from mongoengine.document import Document
 
@@ -20,6 +24,17 @@ _ST = TypeVar("_ST")
 _GT = TypeVar("_GT")
 _F = TypeVar("_F", bound=BaseField)
 _Choice: TypeAlias = str | tuple[str, str]
+
+class _BaseFieldOptions(TypedDict, total=False):
+    db_field: str
+    name: str
+    unique: bool
+    unique_with: str | Iterable[str]
+    primary_key: bool
+    choices: Iterable[_Choice]
+    null: bool
+    verbose_name: str
+    help_text: str
 
 class BaseField(Generic[_ST, _GT]):
     name: str
@@ -82,7 +97,44 @@ class ComplexBaseField(Generic[_F, _ST, _GT], BaseField[_ST, _GT]):
     def prepare_query_value(self, op, value): ...
     def lookup_member(self, member_name): ...
 
-class ObjectIdField(BaseField[ObjectId | str, ObjectId]): ...
+class ObjectIdField(BaseField[_ST, _GT]):
+    # ObjectIdField()
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ObjectIdField[Optional[ObjectId], Optional[ObjectId]]: ...
+    # ObjectIdField(default=ObjectId)
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[False] = ...,
+        default: Union[ObjectId, Callable[[], ObjectId]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ObjectIdField[Optional[ObjectId], ObjectId]: ...
+    # ObjectIdField(required=True)
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ObjectIdField[ObjectId, ObjectId]: ...
+    # ObjectIdField(required=True, default=ObjectId)
+    @overload
+    def __new__(
+        cls,
+        *,
+        required: Literal[True],
+        default: Union[ObjectId, Callable[[], ObjectId]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ObjectIdField[Optional[ObjectId], ObjectId]: ...
+    def __set__(self, instance: Any, value: _ST) -> None: ...
 
 class GeoJsonBaseField(BaseField[_ST, _GT]):
     def __init__(self, auto_index: bool = True, *args: Any, **kwargs: Any) -> None: ...
