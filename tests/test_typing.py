@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional, reveal_type
+from typing import Any, Optional
 from uuid import UUID
 
 from bson import ObjectId
@@ -14,10 +14,11 @@ from mongoengine.base.datastructures import LazyReference
 
 
 def test_it_uses_correct_types() -> None:
+
     class ImageEmbedded(EmbeddedDocument):
         pass
 
-    class ImageDocument(EmbeddedDocument):
+    class ImageDocument(Document):
         pass
 
     class Color(Enum):
@@ -64,7 +65,8 @@ def test_it_uses_correct_types() -> None:
         multipolygonfield = fields.MultiPolygonField()
         decimal128field = fields.Decimal128Field()
 
-    doc = Doc()
+    # Setting sequencefield prevents database access in tests.
+    doc = Doc(sequencefield=1)
 
     assert_type(doc.stringfield, Optional[str])
     assert_type(doc.urlfield, Optional[str])
