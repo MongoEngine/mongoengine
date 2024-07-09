@@ -1,7 +1,7 @@
 # pyright: reportIncompatibleMethodOverride=false
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from typing import (
@@ -26,7 +26,14 @@ from typing_extensions import Literal, TypeAlias, Unpack
 
 from mongoengine.base import BaseField, ComplexBaseField
 from mongoengine.base.datastructures import LazyReference
-from mongoengine.base.fields import _F, _GT, _ST, _BaseFieldOptions, ObjectIdField
+from mongoengine.base.fields import (
+    _F,
+    _GT,
+    _ST,
+    GeoJsonBaseField,
+    ObjectIdField,
+    _BaseFieldOptions,
+)
 from mongoengine.document import Document
 
 _T = TypeVar("_T")
@@ -892,12 +899,54 @@ class GenericLazyReferenceField(BaseField[LazyReference[Any], LazyReference[Any]
         self, *args: Any, passthrough: bool = False, **kwargs: Unpack[_BaseFieldOptions]
     ): ...
 
-class BinaryField(BaseField[_ST, _GT]): ...
+class BinaryField(BaseField[_ST, _GT]):
+    @overload
+    def __new__(
+        cls,
+        max_bytes: int | None = ...,
+        *,
+        required: Literal[False] = ...,
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> BinaryField[Optional[bytes], Optional[bytes]]: ...
+    @overload
+    def __new__(
+        cls,
+        max_bytes: int | None = ...,
+        *,
+        required: Literal[False] = ...,
+        default: Union[bytes, Callable[[], bytes]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> BinaryField[Optional[bytes], bytes]: ...
+    @overload
+    def __new__(
+        cls,
+        max_bytes: int | None = ...,
+        *,
+        required: Literal[True],
+        default: None = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> BinaryField[bytes, bytes]: ...
+    @overload
+    def __new__(
+        cls,
+        max_bytes: int | None = ...,
+        *,
+        required: Literal[True],
+        default: Union[bytes, Callable[[], bytes]],
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> BinaryField[Optional[bytes], bytes]: ...
+
 class GridFSError(Exception): ...
 class GridFSProxy: ...
 
 class FileField(BaseField[_ST, _GT]):
-    def __new__(cls, *args, **kwargs) -> FileField[Any, Any]: ...
+    def __new__(
+        cls,
+        db_alias: str = ...,
+        collection_name: str = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> FileField[Any, Any]: ...
 
 class ImageGridFsProxy(GridFSProxy):
     def put(self, file_obj, **kwargs): ...
@@ -912,16 +961,23 @@ class ImageGridFsProxy(GridFSProxy):
     def writelines(self, *args, **kwargs) -> None: ...
 
 class ImproperlyConfigured(Exception): ...
-class PointField(GeoJsonBaseField[_ST, _GT]): ...
-class LineStringField(GeoJsonBaseField[_ST, _GT]): ...
-class PolygonField(GeoJsonBaseField[_ST, _GT]): ...
+class PointField(GeoJsonBaseField): ...
+class LineStringField(GeoJsonBaseField): ...
+class PolygonField(GeoJsonBaseField): ...
 class SequenceField(BaseField[_ST, _GT]): ...
-class MultiPointField(GeoJsonBaseField[_ST, _GT]): ...
-class MultiLineStringField(GeoJsonBaseField[_ST, _GT]): ...
-class MultiPolygonField(GeoJsonBaseField[_ST, _GT]): ...
-class GeoJsonBaseField(BaseField[_ST, _GT]): ...
+class MultiPointField(GeoJsonBaseField): ...
+class MultiLineStringField(GeoJsonBaseField): ...
+class MultiPolygonField(GeoJsonBaseField): ...
 class Decimal128Field(BaseField[_ST, _GT]): ...
-class ImageField(FileField[_ST, _GT]): ...
+class ImageField(FileField[_ST, _GT]):
+    def __new__(
+        cls,
+        size: tuple[int, int, bool] | None = ...,
+        thumbnail_size: tuple[int, int, bool] | None = ...,
+        collection_name: str = ...,
+        db_alias: str = ...,
+        **kwargs: Unpack[_BaseFieldOptions],
+    ) -> ImageField[Any, Any]: ...
 
 class GenericReferenceField(BaseField[Any, Any]):
     def __init__(self, *args: Any, **kwargs: Unpack[_BaseFieldOptions]): ...
