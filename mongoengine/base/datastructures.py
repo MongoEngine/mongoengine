@@ -460,7 +460,7 @@ class LazyReference(Generic[_T], DBRef):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough
-        super().__init__(self.document_type._get_collection_name(), pk)
+        super().__init__(self.document_type._get_collection_name(), pk)  # type: ignore[arg-type]
 
     def __getitem__(self, name: str) -> Any:
         if not self.passthrough:

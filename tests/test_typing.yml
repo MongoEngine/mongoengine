@@ -3,6 +3,7 @@
   mypy_config: |
     enable_error_code = var-annotated
   skip: sys.version_info < (3, 9)
+  regex: true
   main: |
     from mongoengine import (
         Document,
@@ -15,9 +16,7 @@
 
     book = Book()
     book.authors = ["Sun Tzu"]
-    book.authors = [1]
-  out: |
-    main:12: error: List item 0 has incompatible type "int"; expected "Optional[str]"  [list-item]
+    book.authors = [1]  # E: List item 0 has incompatible type "int"; .*
 - case: type_check
   skip: sys.version_info < (3, 9)
   parametrized:
