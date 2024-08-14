@@ -34,6 +34,8 @@ env:
 
   MAIN_PYTHON_VERSION: 3.9
 
+  MONGOSH: 2.2.15 # Needed for MongoDB 6.0+
+
 jobs:
   linting:
     # Run pre-commit (https://pre-commit.com/)
@@ -96,6 +98,7 @@ jobs:
     - name: install mongo and ci dependencies
       run: |
         bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
+        bash .github/workflows/install_mongosh.sh ${{ matrix.MONGODB }} ${{ env.MONGOSH }}
         bash .github/workflows/install_ci_python_dep.sh
         bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
