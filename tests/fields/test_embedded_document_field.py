@@ -1,3 +1,4 @@
+import weakref
 from copy import deepcopy
 
 import pytest
@@ -61,6 +62,36 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
+
+    def test_embedded_document_list_field__has__instance_weakref(self):
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class Post(Document):
+            title = StringField()
+            comment = EmbeddedDocumentField(Comment)
+            comments = EmbeddedDocumentListField(Comment)
+            comments2 = ListField(EmbeddedDocumentField(Comment))
+
+        Post.drop_collection()
+
+        for i in range(5):
+            Post(
+                title=f"{i}",
+                comment=Comment(content=f"{i}"),
+                comments=[Comment(content=f"{i}")],
+                comments2=[Comment(content=f"{i}")],
+            ).save()
+
+        posts = list(Post.objects)
+        for post in posts:
+            assert isinstance(post.comments._instance, weakref.ProxyTypes)
+            assert isinstance(post.comments2._instance, weakref.ProxyTypes)
+            assert isinstance(post.comment._instance, weakref.ProxyTypes)
+            for comment in post.comments:
+                assert isinstance(comment._instance, weakref.ProxyTypes)
+            for comment2 in post.comments2:
+                assert isinstance(comment2._instance, weakref.ProxyTypes)
 
     def test_embedded_document_field_validate_subclass(self):
         class BaseItem(EmbeddedDocument):
