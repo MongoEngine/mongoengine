@@ -1,3 +1,4 @@
+import weakref
 from copy import deepcopy
 
 import pytest
@@ -61,6 +62,21 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
+
+    def test_embedded_document_field_has_a_weakref__instance_reference(self):
+        class Wallet(EmbeddedDocument):
+            money = IntField()
+
+        class WalletOwner(Document):
+            name = StringField()
+            wallet = EmbeddedDocumentField(Wallet)
+
+        WalletOwner.drop_collection()
+
+        wallet = Wallet(money=100)
+        owner = WalletOwner(name="John", wallet=wallet)
+        assert wallet._instance is owner
+        assert isinstance(wallet._instance, weakref.ProxyTypes)
 
     def test_embedded_document_field_validate_subclass(self):
         class BaseItem(EmbeddedDocument):

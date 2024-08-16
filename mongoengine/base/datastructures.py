@@ -117,6 +117,7 @@ class BaseList(list):
                 self._instance = instance
             else:
                 self._instance = weakref.proxy(instance)
+
         self._name = name
         super().__init__(list_items)
 
@@ -189,13 +190,6 @@ class BaseList(list):
 
 
 class EmbeddedDocumentList(BaseList):
-    def __init__(self, list_items, instance, name):
-        super().__init__(list_items, instance, name)
-        if isinstance(instance, weakref.ProxyTypes):
-            self._instance = instance
-        else:
-            self._instance = weakref.proxy(instance)
-
     @classmethod
     def __match_all(cls, embedded_doc, kwargs):
         """Return True if a given embedded doc matches all the filter
