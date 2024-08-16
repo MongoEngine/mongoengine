@@ -80,6 +80,7 @@ Fields
 .. autoclass:: mongoengine.fields.LongField
 .. autoclass:: mongoengine.fields.FloatField
 .. autoclass:: mongoengine.fields.DecimalField
+.. autoclass:: mongoengine.fields.Decimal128Field
 .. autoclass:: mongoengine.fields.BooleanField
 .. autoclass:: mongoengine.fields.DateTimeField
 .. autoclass:: mongoengine.fields.ComplexDateTimeField
