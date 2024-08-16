@@ -63,20 +63,35 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
 
-    def test_embedded_document_field_has_a_weakref__instance_reference(self):
-        class Wallet(EmbeddedDocument):
-            money = IntField()
+    def test_embedded_document_list_field__has__instance_weakref(self):
+        class Comment(EmbeddedDocument):
+            content = StringField()
 
-        class WalletOwner(Document):
-            name = StringField()
-            wallet = EmbeddedDocumentField(Wallet)
+        class Post(Document):
+            title = StringField()
+            comment = EmbeddedDocumentField(Comment)
+            comments = EmbeddedDocumentListField(Comment)
+            comments2 = ListField(EmbeddedDocumentField(Comment))
 
-        WalletOwner.drop_collection()
+        Post.drop_collection()
 
-        wallet = Wallet(money=100)
-        owner = WalletOwner(name="John", wallet=wallet)
-        assert wallet._instance is owner
-        assert isinstance(wallet._instance, weakref.ProxyTypes)
+        for i in range(5):
+            Post(
+                title=f"{i}",
+                comment=Comment(content=f"{i}"),
+                comments=[Comment(content=f"{i}")],
+                comments2=[Comment(content=f"{i}")],
+            ).save()
+
+        posts = list(Post.objects)
+        for post in posts:
+            assert isinstance(post.comments._instance, weakref.ProxyTypes)
+            assert isinstance(post.comments2._instance, weakref.ProxyTypes)
+            assert isinstance(post.comment._instance, weakref.ProxyTypes)
+            for comment in post.comments:
+                assert isinstance(comment._instance, weakref.ProxyTypes)
+            for comment2 in post.comments2:
+                assert isinstance(comment2._instance, weakref.ProxyTypes)
 
     def test_embedded_document_field_validate_subclass(self):
         class BaseItem(EmbeddedDocument):
