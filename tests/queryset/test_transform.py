@@ -1,9 +1,12 @@
+# pyright: reportOptionalMemberAccess=false
 import unittest
 
 import pytest
 from bson.son import SON
 
-from mongoengine import *
+from mongoengine import connect, fields
+from mongoengine.document import Document, EmbeddedDocument
+from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import Q, transform
 
 
@@ -32,10 +35,10 @@ class TestTransform(unittest.TestCase):
 
     def test_transform_update(self):
         class LisDoc(Document):
-            foo = ListField(StringField())
+            foo = fields.ListField(fields.StringField())
 
         class DicDoc(Document):
-            dictField = DictField()
+            dictField = fields.DictField()
 
         class Doc(Document):
             pass
@@ -69,7 +72,7 @@ class TestTransform(unittest.TestCase):
         """Ensure the differences in behvaior between 'push' and 'push_all'"""
 
         class BlogPost(Document):
-            tags = ListField(StringField())
+            tags = fields.ListField(fields.StringField())
 
         update = transform.update(BlogPost, push__tags=["mongo", "db"])
         assert update == {"$push": {"tags": ["mongo", "db"]}}
@@ -81,7 +84,7 @@ class TestTransform(unittest.TestCase):
         """Ensure the differences in behvaior between 'push' and 'push_all'"""
 
         class BlogPost(Document):
-            tags = ListField(StringField())
+            tags = fields.ListField(fields.StringField())
 
         update = transform.update(BlogPost, tags=["mongo", "db"])
         assert update == {"$set": {"tags": ["mongo", "db"]}}
@@ -90,12 +93,12 @@ class TestTransform(unittest.TestCase):
         """Ensure that the correct field name is used when querying."""
 
         class Comment(EmbeddedDocument):
-            content = StringField(db_field="commentContent")
+            content = fields.StringField(db_field="commentContent")
 
         class BlogPost(Document):
-            title = StringField(db_field="postTitle")
-            comments = ListField(
-                EmbeddedDocumentField(Comment), db_field="postComments"
+            title = fields.StringField(db_field="postTitle")
+            comments = fields.ListField(
+                fields.EmbeddedDocumentField(Comment), db_field="postComments"
             )
 
         BlogPost.drop_collection()
@@ -124,7 +127,7 @@ class TestTransform(unittest.TestCase):
         """
 
         class BlogPost(Document):
-            title = StringField(primary_key=True, db_field="postTitle")
+            title = fields.StringField(primary_key=True, db_field="postTitle")
 
         BlogPost.drop_collection()
 
@@ -143,7 +146,7 @@ class TestTransform(unittest.TestCase):
             pass
 
         class B(Document):
-            a = ReferenceField(A)
+            a = fields.ReferenceField(A)
 
         A.drop_collection()
         B.drop_collection()
@@ -168,10 +171,10 @@ class TestTransform(unittest.TestCase):
         """
 
         class Foo(Document):
-            name = StringField()
-            a = StringField()
-            b = StringField()
-            c = StringField()
+            name = fields.StringField()
+            a = fields.StringField()
+            b = fields.StringField()
+            c = fields.StringField()
 
             meta = {"allow_inheritance": False}
 
@@ -205,7 +208,7 @@ class TestTransform(unittest.TestCase):
 
     def test_geojson_PointField(self):
         class Location(Document):
-            loc = PointField()
+            loc = fields.PointField()
 
         update = transform.update(Location, set__loc=[1, 2])
         assert update == {"$set": {"loc": {"type": "Point", "coordinates": [1, 2]}}}
@@ -217,7 +220,7 @@ class TestTransform(unittest.TestCase):
 
     def test_geojson_LineStringField(self):
         class Location(Document):
-            line = LineStringField()
+            line = fields.LineStringField()
 
         update = transform.update(Location, set__line=[[1, 2], [2, 2]])
         assert update == {
@@ -233,7 +236,7 @@ class TestTransform(unittest.TestCase):
 
     def test_geojson_PolygonField(self):
         class Location(Document):
-            poly = PolygonField()
+            poly = fields.PolygonField()
 
         update = transform.update(
             Location, set__poly=[[[40, 5], [40, 6], [41, 6], [40, 5]]]
@@ -265,7 +268,7 @@ class TestTransform(unittest.TestCase):
 
     def test_type(self):
         class Doc(Document):
-            df = DynamicField()
+            df = fields.DynamicField()
 
         Doc(df=True).save()
         Doc(df=7).save()
@@ -277,11 +280,11 @@ class TestTransform(unittest.TestCase):
 
     def test_embedded_field_name_like_operator(self):
         class EmbeddedItem(EmbeddedDocument):
-            type = StringField()
-            name = StringField()
+            type = fields.StringField()
+            name = fields.StringField()
 
         class Doc(Document):
-            item = EmbeddedDocumentField(EmbeddedItem)
+            item = fields.EmbeddedDocumentField(EmbeddedItem)
 
         Doc.drop_collection()
 
@@ -297,8 +300,8 @@ class TestTransform(unittest.TestCase):
 
     def test_regular_field_named_like_operator(self):
         class SimpleDoc(Document):
-            size = StringField()
-            type = StringField()
+            size = fields.StringField()
+            type = fields.StringField()
 
         SimpleDoc.drop_collection()
         SimpleDoc(type="ok", size="ok").save()
@@ -321,8 +324,8 @@ class TestTransform(unittest.TestCase):
 
     def test_understandable_error_raised(self):
         class Event(Document):
-            title = StringField()
-            location = GeoPointField()
+            title = fields.StringField()
+            location = fields.GeoPointField()
 
         box = [(35.0, -125.0), (40.0, -100.0)]
         # I *meant* to execute location__within_box=box
@@ -337,16 +340,16 @@ class TestTransform(unittest.TestCase):
         """
 
         class Word(EmbeddedDocument):
-            word = StringField()
-            index = IntField()
+            word = fields.StringField()
+            index = fields.IntField()
 
         class SubDoc(EmbeddedDocument):
-            heading = ListField(StringField())
-            text = EmbeddedDocumentListField(Word)
+            heading = fields.ListField(fields.StringField())
+            text = fields.EmbeddedDocumentListField(Word)
 
         class MainDoc(Document):
-            title = StringField()
-            content = EmbeddedDocumentField(SubDoc)
+            title = fields.StringField()
+            content = fields.EmbeddedDocumentField(SubDoc)
 
         word = Word(word="abc", index=1)
         update = transform.update(MainDoc, pull__content__text=word)
@@ -372,11 +375,11 @@ class TestTransform(unittest.TestCase):
         """
 
         class Drink(EmbeddedDocument):
-            id = StringField()
+            id = fields.StringField()
             meta = {"strict": False}
 
         class Shop(Document):
-            drinks = EmbeddedDocumentListField(Drink)
+            drinks = fields.EmbeddedDocumentListField(Drink)
 
         Shop.drop_collection()
         drinks = [Drink(id="drink_1"), Drink(id="drink_2")]

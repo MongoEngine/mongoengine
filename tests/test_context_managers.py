@@ -1,3 +1,4 @@
+# pyright: reportOptionalMemberAccess=information, reportAttributeAccessIssue=warning
 import random
 import time
 import unittest
@@ -6,7 +7,7 @@ from threading import Thread
 import pytest
 from bson import DBRef
 
-from mongoengine import *
+from mongoengine import Document, register_connection
 from mongoengine.connection import get_db
 from mongoengine.context_managers import (
     no_dereference,
@@ -16,6 +17,13 @@ from mongoengine.context_managers import (
     set_write_concern,
     switch_collection,
     switch_db,
+)
+from mongoengine.fields import (
+    GenericReferenceField,
+    IntField,
+    ListField,
+    ReferenceField,
+    StringField,
 )
 from mongoengine.pymongo_support import count_documents
 from tests.utils import MongoDBTestCase

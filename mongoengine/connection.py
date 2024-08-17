@@ -1,19 +1,22 @@
+from __future__ import annotations
+
 import warnings
+from typing import Any
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.common import _UUID_REPRESENTATIONS
-from pymongo.database import _check_name
+from pymongo.database import Database, _check_name
 
 # DriverInfo was added in PyMongo 3.7.
 try:
     from pymongo.driver_info import DriverInfo
 except ImportError:
-    DriverInfo = None
+    DriverInfo = None  # type: ignore
 
 import mongoengine
 from mongoengine.pymongo_support import PYMONGO_VERSION
 
-__all__ = [
+__all__ = (
     "DEFAULT_CONNECTION_NAME",
     "DEFAULT_DATABASE_NAME",
     "ConnectionFailure",
@@ -23,17 +26,17 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
-]
+)
 
 
-DEFAULT_CONNECTION_NAME = "default"
-DEFAULT_DATABASE_NAME = "test"
-DEFAULT_HOST = "localhost"
-DEFAULT_PORT = 27017
+DEFAULT_CONNECTION_NAME: str = "default"
+DEFAULT_DATABASE_NAME: str = "test"
+DEFAULT_HOST: str = "localhost"
+DEFAULT_PORT: int = 27017
 
 _connection_settings = {}
-_connections = {}
-_dbs = {}
+_connections: dict[str, MongoClient] = {}
+_dbs: dict[str, Any] = {}
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -212,18 +215,18 @@ def _get_connection_settings(
 
 
 def register_connection(
-    alias,
-    db=None,
-    name=None,
-    host=None,
-    port=None,
-    read_preference=READ_PREFERENCE,
-    username=None,
-    password=None,
-    authentication_source=None,
-    authentication_mechanism=None,
-    authmechanismproperties=None,
-    **kwargs,
+    alias: str,
+    db: str | None = None,
+    name: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    read_preference: Any = READ_PREFERENCE,
+    username: str | None = None,
+    password: str | None = None,
+    authentication_source: str | None = None,
+    authentication_mechanism: str | None = None,
+    authmechanismproperties: Any = None,
+    **kwargs: Any,
 ):
     """Register the connection settings.
 
@@ -262,7 +265,7 @@ def register_connection(
     _connection_settings[alias] = conn_settings
 
 
-def disconnect(alias=DEFAULT_CONNECTION_NAME):
+def disconnect(alias: str = DEFAULT_CONNECTION_NAME) -> None:
     """Close the connection with a given alias."""
     from mongoengine import Document
     from mongoengine.base.common import _get_documents_by_db
@@ -289,13 +292,15 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
         del _connection_settings[alias]
 
 
-def disconnect_all():
+def disconnect_all() -> None:
     """Close all registered database."""
     for alias in list(_connections.keys()):
         disconnect(alias)
 
 
-def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+def get_connection(
+    alias: str = DEFAULT_CONNECTION_NAME, reconnect: bool = False
+) -> MongoClient[Any]:
     """Return a connection with a given alias."""
 
     # Connect to the database if not already connected
@@ -407,7 +412,9 @@ def _find_existing_connection(connection_settings):
             return _connections[db_alias]
 
 
-def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+def get_db(
+    alias: str = DEFAULT_CONNECTION_NAME, reconnect: bool = False
+) -> Database[Any]:
     if reconnect:
         disconnect(alias)
 
@@ -435,7 +442,9 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     return _dbs[alias]
 
 
-def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
+def connect(
+    db: str | None = None, alias: str = DEFAULT_CONNECTION_NAME, **kwargs
+) -> MongoClient[Any]:
     """Connect to the database specified by the 'db' argument.
 
     Connection settings may be provided here as well if the database is not

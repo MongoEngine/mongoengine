@@ -1,11 +1,13 @@
 from functools import partial
+from typing import Generic
 
+from mongoengine._typing import QS
 from mongoengine.queryset.queryset import QuerySet
 
 __all__ = ("queryset_manager", "QuerySetManager")
 
 
-class QuerySetManager:
+class QuerySetManager(Generic[QS]):
     """
     The default QuerySet Manager.
 
@@ -25,13 +27,13 @@ class QuerySetManager:
         if queryset_func:
             self.get_queryset = queryset_func
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, owner) -> QS:
         """Descriptor for instantiating a new QuerySet object when
         Document.objects is accessed.
         """
         if instance is not None:
             # Document object being used rather than a document class
-            return self
+            return self  # type: ignore[return-value]
 
         # owner is the document that contains the QuerySetManager
         queryset_class = owner._meta.get("queryset_class", self.default)

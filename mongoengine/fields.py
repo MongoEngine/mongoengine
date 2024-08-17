@@ -1,3 +1,7 @@
+# pyright: reportIncompatibleMethodOverride=warning,reportNoOverloadImplementation=false
+# mypy: disable-error-code="override,misc"
+from __future__ import annotations
+
 import datetime
 import decimal
 import inspect
@@ -8,6 +12,7 @@ import time
 import uuid
 from io import BytesIO
 from operator import itemgetter
+from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar
 
 import gridfs
 import pymongo
@@ -15,13 +20,7 @@ from bson import SON, Binary, DBRef, ObjectId
 from bson.decimal128 import Decimal128, create_decimal128_context
 from bson.int64 import Int64
 from pymongo import ReturnDocument
-
-try:
-    import dateutil
-except ImportError:
-    dateutil = None
-else:
-    import dateutil.parser
+from typing_extensions import Self
 
 from mongoengine.base import (
     BaseDocument,
@@ -45,13 +44,23 @@ from mongoengine.queryset import DO_NOTHING
 from mongoengine.queryset.base import BaseQuerySet
 from mongoengine.queryset.transform import STRING_OPERATORS
 
+if TYPE_CHECKING:
+    from enum import Enum
+
+try:
+    import dateutil  # type: ignore[import-untyped]
+except ImportError:
+    dateutil = None  # type: ignore[assignment]
+else:
+    import dateutil.parser  # type: ignore[import-untyped]
+
 try:
     from PIL import Image, ImageOps
 
-    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
+    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS  # type: ignore
 except ImportError:
-    Image = None
-    ImageOps = None
+    Image = None  # type: ignore[assignment]
+    ImageOps = None  # type: ignore[assignment]
 
 
 __all__ = (
@@ -102,12 +111,19 @@ __all__ = (
 )
 
 RECURSIVE_REFERENCE_CONSTANT = "self"
+_T = TypeVar("_T")
 
 
 class StringField(BaseField):
     """A unicode string field."""
 
-    def __init__(self, regex=None, max_length=None, min_length=None, **kwargs):
+    def __init__(
+        self,
+        regex: str | None = None,
+        max_length: int | None = None,
+        min_length: int | None = None,
+        **kwargs,
+    ) -> None:
         """
         :param regex: (optional) A string pattern that will be applied during validation
         :param max_length: (optional) A max length that will be applied during validation
@@ -190,7 +206,12 @@ class URLField(StringField):
     )
     _URL_SCHEMES = ["http", "https", "ftp", "ftps"]
 
-    def __init__(self, url_regex=None, schemes=None, **kwargs):
+    def __init__(
+        self,
+        url_regex: str | None = None,
+        schemes: Iterable[str] | None = None,
+        **kwargs,
+    ) -> None:
         """
         :param url_regex: (optional) Overwrite the default regex used for validation
         :param schemes: (optional) Overwrite the default URL schemes that are allowed
@@ -242,11 +263,11 @@ class EmailField(StringField):
 
     def __init__(
         self,
-        domain_whitelist=None,
-        allow_utf8_user=False,
-        allow_ip_domain=False,
-        *args,
-        **kwargs,
+        domain_whitelist: list[str] | None = None,
+        allow_utf8_user: bool = False,
+        allow_ip_domain: bool = False,
+        *args: Any,
+        **kwargs: Any,
     ):
         """
         :param domain_whitelist: (optional) list of valid domain names applied during validation
@@ -323,7 +344,12 @@ class EmailField(StringField):
 class IntField(BaseField):
     """32-bit integer field."""
 
-    def __init__(self, min_value=None, max_value=None, **kwargs):
+    def __init__(
+        self,
+        min_value: int | None = None,
+        max_value: int | None = None,
+        **kwargs: Any,
+    ):
         """
         :param min_value: (optional) A min value that will be applied during validation
         :param max_value: (optional) A max value that will be applied during validation
@@ -368,7 +394,12 @@ class LongField(IntField):
 class FloatField(BaseField):
     """Floating point number field."""
 
-    def __init__(self, min_value=None, max_value=None, **kwargs):
+    def __init__(
+        self,
+        min_value: float | int | None = None,
+        max_value: float | int | None = None,
+        **kwargs,
+    ):
         """
         :param min_value: (optional) A min value that will be applied during validation
         :param max_value: (optional) A max value that will be applied during validation
@@ -417,11 +448,11 @@ class DecimalField(BaseField):
 
     def __init__(
         self,
-        min_value=None,
-        max_value=None,
-        force_string=False,
-        precision=2,
-        rounding=decimal.ROUND_HALF_UP,
+        min_value: decimal.Decimal | int | None = None,
+        max_value: decimal.Decimal | int | None = None,
+        force_string: bool = False,
+        precision: int = 2,
+        rounding: str = decimal.ROUND_HALF_UP,
         **kwargs,
     ):
         """
@@ -626,7 +657,7 @@ class ComplexDateTimeField(StringField):
     Note: To default the field to the current datetime, use: DateTimeField(default=datetime.utcnow)
     """
 
-    def __init__(self, separator=",", **kwargs):
+    def __init__(self, separator: str = ",", **kwargs):
         """
         :param separator: Allows to customize the separator used for storage (default ``,``)
         :param kwargs: Keyword arguments passed into the parent :class:`~mongoengine.StringField`
@@ -706,7 +737,7 @@ class EmbeddedDocumentField(BaseField):
     Only valid values are subclasses of :class:`~mongoengine.EmbeddedDocument`.
     """
 
-    def __init__(self, document_type, **kwargs):
+    def __init__(self, document_type: type[EmbeddedDocument] | str, **kwargs: Any):
         # XXX ValidationError raised outside of the "validate" method.
         if not (
             isinstance(document_type, str)
@@ -721,7 +752,7 @@ class EmbeddedDocumentField(BaseField):
         super().__init__(**kwargs)
 
     @property
-    def document_type(self):
+    def document_type(self) -> type[Any]:
         if isinstance(self.document_type_obj, str):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 resolved_document_type = self.owner_document
@@ -915,7 +946,7 @@ class ListField(ComplexBaseField):
         kwargs.setdefault("default", lambda: [])
         super().__init__(field=field, **kwargs)
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: Any, owner: Any) -> list[dict[str, Any]] | Self:
         if instance is None:
             # Document class being used rather than a document object
             return self
@@ -964,7 +995,10 @@ class ListField(ComplexBaseField):
         return super().prepare_query_value(op, value)
 
 
-class EmbeddedDocumentListField(ListField):
+class EmbeddedDocumentListField(
+    ListField,
+    Generic[_T],
+):
     """A :class:`~mongoengine.ListField` designed specially to hold a list of
     embedded documents to provide additional query helpers.
 
@@ -1034,13 +1068,13 @@ class DictField(ComplexBaseField):
         Required means it cannot be empty - as the default for DictFields is {}
     """
 
-    def __init__(self, field=None, *args, **kwargs):
+    def __init__(self, field: Any | None = None, *args, **kwargs):
         self._auto_dereference = False
 
         kwargs.setdefault("default", lambda: {})
         super().__init__(*args, field=field, **kwargs)
 
-    def validate(self, value):
+    def validate(self, value: Any):
         """Make sure that a list of valid fields is being used."""
         if not isinstance(value, dict):
             self.error("Only dictionaries may be used in a DictField")
@@ -1135,8 +1169,12 @@ class ReferenceField(BaseField):
     """
 
     def __init__(
-        self, document_type, dbref=False, reverse_delete_rule=DO_NOTHING, **kwargs
-    ):
+        self,
+        document_type: type[_T] | str,
+        dbref: bool = False,
+        reverse_delete_rule=DO_NOTHING,
+        **kwargs,
+    ) -> None:
         """Initialises the Reference Field.
 
         :param document_type: The type of Document that will be referenced
@@ -1181,7 +1219,7 @@ class ReferenceField(BaseField):
 
         return ref_cls._from_son(dereferenced_son)
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: Any, owner: Any) -> Any:
         """Descriptor to allow lazy dereferencing."""
         if instance is None:
             # Document class being used rather than a document object
@@ -1273,7 +1311,13 @@ class ReferenceField(BaseField):
 class CachedReferenceField(BaseField):
     """A referencefield with cache fields to purpose pseudo-joins"""
 
-    def __init__(self, document_type, fields=None, auto_sync=True, **kwargs):
+    def __init__(
+        self,
+        document_type: str | type[Document],
+        fields: Iterable[str] | None = None,
+        auto_sync: bool = True,
+        **kwargs,
+    ):
         """Initialises the Cached Reference Field.
 
         :param document_type: The type of Document that will be referenced
@@ -1554,7 +1598,7 @@ class GenericReferenceField(BaseField):
 class BinaryField(BaseField):
     """A binary data field."""
 
-    def __init__(self, max_bytes=None, **kwargs):
+    def __init__(self, max_bytes: int | None = None, **kwargs):
         self.max_bytes = max_bytes
         super().__init__(**kwargs)
 
@@ -1618,7 +1662,7 @@ class EnumField(BaseField):
             status = EnumField(Status, choices=[Status.NEW, Status.DONE])
     """
 
-    def __init__(self, enum, **kwargs):
+    def __init__(self, enum: type[Enum], **kwargs):
         self._enum_cls = enum
         if kwargs.get("choices"):
             invalid_choices = []
@@ -1648,7 +1692,7 @@ class EnumField(BaseField):
                 return value
         return value
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Any, value: Any) -> None:
         return super().__set__(instance, self.to_python(value))
 
     def to_mongo(self, value):
@@ -1673,11 +1717,11 @@ class GridFSProxy:
 
     def __init__(
         self,
-        grid_id=None,
-        key=None,
-        instance=None,
-        db_alias=DEFAULT_CONNECTION_NAME,
-        collection_name="fs",
+        grid_id: ObjectId | None = None,
+        key: str | None = None,
+        instance: Any | None = None,
+        db_alias: str = DEFAULT_CONNECTION_NAME,
+        collection_name: str = "fs",
     ):
         self.grid_id = grid_id  # Store GridFS id for file
         self.key = key
@@ -1834,13 +1878,20 @@ class FileField(BaseField):
     proxy_class = GridFSProxy
 
     def __init__(
-        self, db_alias=DEFAULT_CONNECTION_NAME, collection_name="fs", **kwargs
+        self,
+        db_alias: str = DEFAULT_CONNECTION_NAME,
+        collection_name: str = "fs",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.collection_name = collection_name
         self.db_alias = db_alias
 
-    def __get__(self, instance, owner):
+    def __get__(
+        self,
+        instance: Any,
+        owner: Any,
+    ) -> GridFSProxy | Self:
         if instance is None:
             return self
 
@@ -1855,7 +1906,7 @@ class FileField(BaseField):
             grid_file.instance = instance
         return grid_file
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Any, value: GridFSProxy):
         key = self.name
         if (
             hasattr(value, "read") and not isinstance(value, GridFSProxy)
@@ -1877,7 +1928,13 @@ class FileField(BaseField):
 
         instance._mark_as_changed(key)
 
-    def get_proxy_obj(self, key, instance, db_alias=None, collection_name=None):
+    def get_proxy_obj(
+        self,
+        key: str,
+        instance: Any,
+        db_alias: str | None = None,
+        collection_name: str | None = None,
+    ) -> GridFSProxy:
         if db_alias is None:
             db_alias = self.db_alias
         if collection_name is None:
@@ -2046,7 +2103,11 @@ class ImageField(FileField):
     proxy_class = ImageGridFsProxy
 
     def __init__(
-        self, size=None, thumbnail_size=None, collection_name="images", **kwargs
+        self,
+        size: tuple[int, int, bool] | None = None,
+        thumbnail_size: tuple[int, int, bool] | None = None,
+        collection_name: str = "images",
+        **kwargs,
     ):
         if not Image:
             raise ImproperlyConfigured("PIL library was not found")
@@ -2256,7 +2317,7 @@ class GeoPointField(BaseField):
 
     _geo_index = pymongo.GEO2D
 
-    def validate(self, value):
+    def validate(self, value: Any):
         """Make sure that a geo-value is of type (x, y)"""
         if not isinstance(value, (list, tuple)):
             self.error("GeoPointField can only accept tuples or lists of (x, y)")
@@ -2402,10 +2463,10 @@ class LazyReferenceField(BaseField):
 
     def __init__(
         self,
-        document_type,
-        passthrough=False,
-        dbref=False,
-        reverse_delete_rule=DO_NOTHING,
+        document_type: type[EmbeddedDocument] | str,
+        passthrough: bool = False,
+        dbref: bool = False,
+        reverse_delete_rule: int = DO_NOTHING,
         **kwargs,
     ):
         """Initialises the Reference Field.
@@ -2638,7 +2699,9 @@ class Decimal128Field(BaseField):
 
     DECIMAL_CONTEXT = create_decimal128_context()
 
-    def __init__(self, min_value=None, max_value=None, **kwargs):
+    def __init__(
+        self, min_value: int | None = None, max_value: int | None = None, **kwargs
+    ):
         self.min_value = min_value
         self.max_value = max_value
         super().__init__(**kwargs)

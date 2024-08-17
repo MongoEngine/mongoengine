@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/typeddjango/pytest-mypy-plugins/master/pytest_mypy_plugins/schema.json
+- case: list_set_type
+  mypy_config: |
+    enable_error_code = var-annotated
+  skip: sys.version_info < (3, 9)
+  regex: true
+  main: |
+    from mongoengine import (
+        Document,
+        ListField,
+        StringField,
+    )
+
+    class Book(Document):
+        authors = ListField(StringField())
+
+    book = Book()
+    book.authors = ["Sun Tzu"]
+    book.authors = [1]  # E: List item 0 has incompatible type "int"; .*
+- case: type_check
+  skip: sys.version_info < (3, 9)
+  parametrized:
+    - field: StringField
+      type: str
+    - field: IntField
+      type: int
+  main: |
+    from typing import Optional
+    from typing_extensions import assert_type
+    from mongoengine import Document, {{ field }}
+
+    class Target(Document):
+        field = {{ field }}()
+        field_required = {{ field }}(required=True)
+
+    instance = Target()
+    assert_type(instance.field, Optional[{{ type }}])
+    assert_type(instance.field_required, {{ type }})

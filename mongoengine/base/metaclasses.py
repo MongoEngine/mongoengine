@@ -249,6 +249,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
     collection in the database.
     """
 
+    DoesNotExist: type[DoesNotExist]
+    MultipleObjectsReturned: type[MultipleObjectsReturned]
+
     def __new__(mcs, name, bases, attrs):
         flattened_bases = mcs._get_bases(bases)
         super_new = super().__new__

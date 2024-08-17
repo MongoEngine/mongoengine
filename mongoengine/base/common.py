@@ -1,4 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from mongoengine.errors import NotRegistered
+
+if TYPE_CHECKING:
+    from mongoengine.document import Document
 
 __all__ = ("UPDATE_OPERATORS", "get_document", "_document_registry")
 
@@ -22,10 +29,10 @@ UPDATE_OPERATORS = {
 }
 
 
-_document_registry = {}
+_document_registry: dict[str, type[Document]] = {}
 
 
-def get_document(name):
+def get_document(name: str) -> type[Document]:
     """Get a registered Document class by name."""
     doc = _document_registry.get(name, None)
     if not doc:

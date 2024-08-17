@@ -168,7 +168,7 @@ class Q(QNode):
     query structures.
     """
 
-    def __init__(self, **query):
+    def __init__(self, **query) -> None:
         self.query = query
 
     def __repr__(self):
