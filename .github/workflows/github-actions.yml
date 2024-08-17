@@ -115,6 +115,8 @@ jobs:
   build_doc_dryrun:
     # ensures that readthedocs can be built continuously
     # to avoid that it breaks when new releases are being created
+    # The way RTD works is that it builds the doc on its side
+    # builds are visible at https://readthedocs.org/projects/mongoengine-odm/builds/
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
