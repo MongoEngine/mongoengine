@@ -459,6 +459,45 @@ class TestOnlyExcludeAll(unittest.TestCase):
         with pytest.raises(LookUpError):
             Base.objects.exclude("made_up")
 
+    def test_gt_gte_lt_lte_ne_operator_with_list(self):
+        class Family(Document):
+            ages = ListField(field=FloatField())
+
+        Family.drop_collection()
+
+        Family(ages=[1.0, 2.0]).save()
+        Family(ages=[]).save()
+
+        qs = list(Family.objects(ages__gt=[1.0]))
+        assert len(qs) == 1
+        assert qs[0].ages == [1.0, 2.0]
+
+        qs = list(Family.objects(ages__gt=[1.0, 1.99]))
+        assert len(qs) == 1
+        assert qs[0].ages == [1.0, 2.0]
+
+        qs = list(Family.objects(ages__gt=[]))
+        assert len(qs) == 1
+        assert qs[0].ages == [1.0, 2.0]
+
+        qs = list(Family.objects(ages__gte=[1.0, 2.0]))
+        assert len(qs) == 1
+        assert qs[0].ages == [1.0, 2.0]
+
+        qs = list(Family.objects(ages__lt=[1.0]))
+        assert len(qs) == 1
+        assert qs[0].ages == []
+
+        qs = list(Family.objects(ages__lte=[5.0]))
+        assert len(qs) == 2
+
+        qs = list(Family.objects(ages__ne=[5.0]))
+        assert len(qs) == 2
+
+        qs = list(Family.objects(ages__ne=[]))
+        assert len(qs) == 1
+        assert qs[0].ages == [1.0, 2.0]
+
 
 if __name__ == "__main__":
     unittest.main()
