@@ -4,7 +4,7 @@ MongoEngine
 :Info: MongoEngine is an ORM-like layer on top of PyMongo.
 :Repository: https://github.com/MongoEngine/mongoengine
 :Author: Harry Marr (http://github.com/hmarr)
-:Maintainer: Stefan Wójcik (http://github.com/wojcikstefan)
+:Maintainer: Bastien Gerard (http://github.com/bagerard)
 
 .. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
   :target: https://travis-ci.org/MongoEngine/mongoengine
@@ -20,6 +20,10 @@ MongoEngine
 
 .. image:: https://img.shields.io/pypi/v/mongoengine.svg
   :target: https://pypi.python.org/pypi/mongoengine
+
+
+.. image:: https://readthedocs.org/projects/mongoengine-odm/badge/?version=latest
+  :target: https://readthedocs.org/projects/mongoengine-odm/builds/
 
 About
 =====
