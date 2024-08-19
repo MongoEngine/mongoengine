@@ -36,7 +36,6 @@ def count_documents(
         kwargs["hint"] = hint
     if collation is not None:
         kwargs["collation"] = collation
-    kwargs["session"] = connection._get_session()
 
     # count_documents appeared in pymongo 3.7
     if PYMONGO_VERSION >= (3, 7):
@@ -44,9 +43,13 @@ def count_documents(
             if not filter and set(kwargs) <= {"max_time_ms"}:
                 # when no filter is provided, estimated_document_count
                 # is a lot faster as it uses the collection metadata
-                return collection.estimated_document_count(**kwargs)
+                return collection.estimated_document_count(
+                    session=connection._get_session(), **kwargs
+                )
             else:
-                return collection.count_documents(filter=filter, **kwargs)
+                return collection.count_documents(
+                    filter=filter, session=connection._get_session(), **kwargs
+                )
         except OperationFailure as err:
             if PYMONGO_VERSION >= (4,):
                 raise
