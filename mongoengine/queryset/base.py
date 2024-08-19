@@ -17,6 +17,7 @@ from mongoengine.base import get_document
 from mongoengine.common import _import_class
 from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
+    no_dereferencing_active_for_class,
     set_read_write_concern,
     set_write_concern,
     switch_db,
@@ -51,9 +52,6 @@ class BaseQuerySet:
     providing :class:`~mongoengine.Document` objects as the results.
     """
 
-    __dereference = False
-    _auto_dereference = True
-
     def __init__(self, document, collection):
         self._document = document
         self._collection_obj = collection
@@ -73,6 +71,10 @@ class BaseQuerySet:
         self._none = False
         self._as_pymongo = False
         self._search_text = None
+        self._search_text_score = None
+
+        self.__dereference = False
+        self.__auto_dereference = True
 
         # If inheritance is allowed, only return instances and instances of
         # subclasses of the class being used
@@ -228,7 +230,7 @@ class BaseQuerySet:
         """An alias of :meth:`~mongoengine.queryset.QuerySet.__call__`"""
         return self.__call__(*q_objs, **query)
 
-    def search_text(self, text, language=None):
+    def search_text(self, text, language=None, text_score=True):
         """
         Start a text search, using text indexes.
         Require: MongoDB server version 2.6+.
@@ -238,6 +240,8 @@ class BaseQuerySet:
             If not specified, the search uses the default language of the index.
             For supported languages, see
             `Text Search Languages <https://docs.mongodb.org/manual/reference/text-search-languages/#text-search-languages>`.
+        :param text_score:  True to have it return the text_score (available through get_text_score()), False to disable that
+            Note that unless you order the results, leaving text_score=True may provide randomness in the returned documents
         """
         queryset = self.clone()
         if queryset._search_text:
@@ -251,6 +255,7 @@ class BaseQuerySet:
         queryset._mongo_query = None
         queryset._cursor_obj = None
         queryset._search_text = text
+        queryset._search_text_score = text_score
 
         return queryset
 
@@ -530,6 +535,7 @@ class BaseQuerySet:
         write_concern=None,
         read_concern=None,
         full_result=False,
+        array_filters=None,
         **update,
     ):
         """Perform an atomic update on the fields matched by the query.
@@ -545,6 +551,7 @@ class BaseQuerySet:
         :param read_concern: Override the read concern for the operation
         :param full_result: Return the associated ``pymongo.UpdateResult`` rather than just the number
             updated items
+        :param array_filters: A list of filters specifying which array elements an update should apply.
         :param update: Django-style update keyword arguments
 
         :returns the number of updated documents (unless ``full_result`` is True)
@@ -559,7 +566,9 @@ class BaseQuerySet:
 
         queryset = self.clone()
         query = queryset._query
-        if "__raw__" in update and isinstance(update["__raw__"], list):
+        if "__raw__" in update and isinstance(
+            update["__raw__"], list
+        ):  # Case of Update with Aggregation Pipeline
             update = [
                 transform.update(queryset._document, **{"__raw__": u})
                 for u in update["__raw__"]
@@ -581,7 +590,7 @@ class BaseQuerySet:
                 if multi:
                     update_func = collection.update_many
                 result = update_func(
-                    query, update, upsert=upsert, session=_get_session()
+                    query, update, upsert=upsert, array_filters=array_filters, session=_get_session()
                 )
             if full_result:
                 return result
@@ -800,7 +809,7 @@ class BaseQuerySet:
         return self._clone_into(self.__class__(self._document, self._collection_obj))
 
     def _clone_into(self, new_qs):
-        """Copy all of the relevant properties of this queryset to
+        """Copy all the relevant properties of this queryset to
         a new queryset (which has to be an instance of
         :class:`~mongoengine.queryset.base.BaseQuerySet`).
         """
@@ -830,8 +839,8 @@ class BaseQuerySet:
             "_empty",
             "_hint",
             "_collation",
-            "_auto_dereference",
             "_search_text",
+            "_search_text_score",
             "_max_time_ms",
             "_comment",
             "_batch_size",
@@ -840,6 +849,8 @@ class BaseQuerySet:
         for prop in copy_props:
             val = getattr(self, prop)
             setattr(new_qs, prop, copy.copy(val))
+
+        new_qs.__auto_dereference = self._BaseQuerySet__auto_dereference
 
         if self._cursor_obj:
             new_qs._cursor_obj = self._cursor_obj.clone()
@@ -1116,7 +1127,7 @@ class BaseQuerySet:
         )
         return queryset
 
-    def order_by(self, *keys):
+    def order_by(self, *keys, __raw__=None):
         """Order the :class:`~mongoengine.queryset.QuerySet` by the given keys.
 
         The order may be specified by prepending each of the keys by a "+" or
@@ -1126,11 +1137,19 @@ class BaseQuerySet:
 
         :param keys: fields to order the query results by; keys may be
             prefixed with "+" or a "-" to determine the ordering direction.
+        :param __raw__: a raw pymongo "sort" argument (provided as a list of (key, direction))
+            see 'key_or_list' in `pymongo.cursor.Cursor.sort doc <https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html#pymongo.cursor.Cursor.sort>`.
+            If both keys and __raw__ are provided, an exception is raised
         """
-        queryset = self.clone()
+        if __raw__ and keys:
+            raise OperationError("Can not use both keys and __raw__ with order_by() ")
 
+        queryset = self.clone()
         old_ordering = queryset._ordering
-        new_ordering = queryset._get_order_by(keys)
+        if __raw__:
+            new_ordering = __raw__
+        else:
+            new_ordering = queryset._get_order_by(keys)
 
         if queryset._cursor_obj:
             # If a cursor object has already been created, apply the sort to it
@@ -1669,7 +1688,8 @@ class BaseQuerySet:
             if fields_name not in cursor_args:
                 cursor_args[fields_name] = {}
 
-            cursor_args[fields_name]["_text_score"] = {"$meta": "textScore"}
+            if self._search_text_score:
+                cursor_args[fields_name]["_text_score"] = {"$meta": "textScore"}
 
         return cursor_args
 
@@ -1755,10 +1775,15 @@ class BaseQuerySet:
             self.__dereference = _import_class("DeReference")()
         return self.__dereference
 
+    @property
+    def _auto_dereference(self):
+        should_deref = not no_dereferencing_active_for_class(self._document)
+        return should_deref and self.__auto_dereference
+
     def no_dereference(self):
         """Turn off any dereferencing for the results of this queryset."""
         queryset = self.clone()
-        queryset._auto_dereference = False
+        queryset.__auto_dereference = False
         return queryset
 
     # Helper Functions

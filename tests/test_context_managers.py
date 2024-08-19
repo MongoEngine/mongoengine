@@ -1,6 +1,10 @@
+import random
+import time
 import unittest
+from threading import Thread
 
 import pytest
+from bson import DBRef
 
 from mongoengine import *
 from mongoengine.connection import get_db
@@ -14,12 +18,34 @@ from mongoengine.context_managers import (
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
+from tests.utils import MongoDBTestCase
 
 
-class TestContextManagers:
+class TestableThread(Thread):
+    """
+    Wrapper around `threading.Thread` that propagates exceptions.
+
+    REF: https://gist.github.com/sbrugman/59b3535ebcd5aa0e2598293cfa58b6ab
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exc = None
+
+    def run(self):
+        try:
+            super().run()
+        except BaseException as e:
+            self.exc = e
+
+    def join(self, timeout=None):
+        super().join(timeout)
+        if self.exc:
+            raise self.exc
+
+
+class TestContextManagers(MongoDBTestCase):
     def test_set_write_concern(self):
-        connect("mongoenginetest")
-
         class User(Document):
             name = StringField()
 
@@ -38,8 +64,6 @@ class TestContextManagers:
         assert original_write_concern.document == collection.write_concern.document
 
     def test_set_read_write_concern(self):
-        connect("mongoenginetest")
-
         class User(Document):
             name = StringField()
 
@@ -64,7 +88,6 @@ class TestContextManagers:
         assert original_write_concern.document == collection.write_concern.document
 
     def test_switch_db_context_manager(self):
-        connect("mongoenginetest")
         register_connection("testdb-1", "mongoenginetest2")
 
         class Group(Document):
@@ -88,7 +111,6 @@ class TestContextManagers:
         assert 1 == Group.objects.count()
 
     def test_switch_collection_context_manager(self):
-        connect("mongoenginetest")
         register_connection(alias="testdb-1", db="mongoenginetest2")
 
         class Group(Document):
@@ -116,7 +138,6 @@ class TestContextManagers:
 
     def test_no_dereference_context_manager_object_id(self):
         """Ensure that DBRef items in ListFields aren't dereferenced."""
-        connect("mongoenginetest")
 
         class User(Document):
             name = StringField()
@@ -135,25 +156,71 @@ class TestContextManagers:
         user = User.objects.first()
         Group(ref=user, members=User.objects, generic=user).save()
 
-        with no_dereference(Group) as NoDeRefGroup:
-            assert Group._fields["members"]._auto_dereference
-            assert not NoDeRefGroup._fields["members"]._auto_dereference
+        with no_dereference(Group):
+            assert not Group._fields["members"]._auto_dereference
 
-        with no_dereference(Group) as Group:
+        with no_dereference(Group):
             group = Group.objects.first()
             for m in group.members:
-                assert not isinstance(m, User)
-            assert not isinstance(group.ref, User)
-            assert not isinstance(group.generic, User)
+                assert isinstance(m, DBRef)
+            assert isinstance(group.ref, DBRef)
+            assert isinstance(group.generic, dict)
 
+        group = Group.objects.first()
         for m in group.members:
             assert isinstance(m, User)
         assert isinstance(group.ref, User)
         assert isinstance(group.generic, User)
 
-    def test_no_dereference_context_manager_dbref(self):
+    def test_no_dereference_context_manager_nested(self):
         """Ensure that DBRef items in ListFields aren't dereferenced."""
-        connect("mongoenginetest")
+
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            ref = ReferenceField(User, dbref=False)
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        for i in range(1, 51):
+            User(name="user %s" % i).save()
+
+        user = User.objects.first()
+        Group(ref=user).save()
+
+        with no_dereference(Group):
+            group = Group.objects.first()
+            assert isinstance(group.ref, DBRef)
+
+            with no_dereference(Group):
+                group = Group.objects.first()
+                assert isinstance(group.ref, DBRef)
+
+            # make sure it's still off here
+            group = Group.objects.first()
+            assert isinstance(group.ref, DBRef)
+
+        group = Group.objects.first()
+        assert isinstance(group.ref, User)
+
+        def run_in_thread(id):
+            time.sleep(random.uniform(0.1, 0.5))  # Force desync of threads
+            if id % 2 == 0:
+                with no_dereference(Group):
+                    group = Group.objects.first()
+                    assert isinstance(group.ref, DBRef)
+            else:
+                group = Group.objects.first()
+                assert isinstance(group.ref, User)
+
+        threads = [TestableThread(target=run_in_thread, args=(id,)) for id in range(10)]
+        _ = [th.start() for th in threads]
+        _ = [th.join() for th in threads]
+
+    def test_no_dereference_context_manager_dbref(self):
+        """Ensure that DBRef items in ListFields aren't dereferenced"""
 
         class User(Document):
             name = StringField()
@@ -172,16 +239,19 @@ class TestContextManagers:
         user = User.objects.first()
         Group(ref=user, members=User.objects, generic=user).save()
 
-        with no_dereference(Group) as NoDeRefGroup:
-            assert Group._fields["members"]._auto_dereference
-            assert not NoDeRefGroup._fields["members"]._auto_dereference
+        with no_dereference(Group):
+            assert not Group._fields["members"]._auto_dereference
 
-        with no_dereference(Group) as Group:
-            group = Group.objects.first()
+        with no_dereference(Group):
+            qs = Group.objects
+            assert qs._auto_dereference is False
+            group = qs.first()
+            assert not group._fields["members"]._auto_dereference
             assert all(not isinstance(m, User) for m in group.members)
             assert not isinstance(group.ref, User)
             assert not isinstance(group.generic, User)
 
+        group = Group.objects.first()
         assert all(isinstance(m, User) for m in group.members)
         assert isinstance(group.ref, User)
         assert isinstance(group.generic, User)
@@ -264,7 +334,6 @@ class TestContextManagers:
                 raise TypeError()
 
     def test_query_counter_temporarily_modifies_profiling_level(self):
-        connect("mongoenginetest")
         db = get_db()
 
         def _current_profiling_level():
@@ -289,7 +358,6 @@ class TestContextManagers:
             raise
 
     def test_query_counter(self):
-        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter
@@ -379,7 +447,6 @@ class TestContextManagers:
             assert q == 3
 
     def test_query_counter_counts_getmore_queries(self):
-        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter
@@ -396,7 +463,6 @@ class TestContextManagers:
             assert q == 2  # 1st select + 1 getmore
 
     def test_query_counter_ignores_particular_queries(self):
-        connect("mongoenginetest")
         db = get_db()
 
         collection = db.query_counter

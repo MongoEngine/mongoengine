@@ -202,6 +202,8 @@ class BaseDocument:
             and self__created
             and name == self._meta.get("id_field")
         ):
+            # When setting the ID field of an instance already instantiated and that was user-created (i.e not saved in db yet)
+            # Typically this is when calling .save()
             super().__setattr__("_created", False)
 
         super().__setattr__(name, value)
@@ -322,7 +324,7 @@ class BaseDocument:
 
         if "_text_score" not in self._data:
             raise InvalidDocumentError(
-                "This document is not originally built from a text query"
+                "This document is not originally built from a text query (or text_score was not set on search_text() call)"
             )
 
         return self._data["_text_score"]

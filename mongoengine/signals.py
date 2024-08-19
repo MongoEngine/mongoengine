@@ -38,9 +38,9 @@ except ImportError:
             )
 
         send = lambda *a, **kw: None  # noqa
-        connect = (
-            disconnect
-        ) = has_receivers_for = receivers_for = temporarily_connected_to = _fail
+        connect = disconnect = has_receivers_for = receivers_for = (
+            temporarily_connected_to
+        ) = _fail
         del _fail
 
 

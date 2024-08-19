@@ -1,3 +1,4 @@
+import weakref
 from copy import deepcopy
 
 import pytest
@@ -7,6 +8,7 @@ from mongoengine import (
     Document,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    EmbeddedDocumentListField,
     GenericEmbeddedDocumentField,
     IntField,
     InvalidQueryError,
@@ -60,6 +62,78 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
 
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
+
+    def test_embedded_document_list_field__has__instance_weakref(self):
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class Post(Document):
+            title = StringField()
+            comment = EmbeddedDocumentField(Comment)
+            comments = EmbeddedDocumentListField(Comment)
+            comments2 = ListField(EmbeddedDocumentField(Comment))
+
+        Post.drop_collection()
+
+        for i in range(5):
+            Post(
+                title=f"{i}",
+                comment=Comment(content=f"{i}"),
+                comments=[Comment(content=f"{i}")],
+                comments2=[Comment(content=f"{i}")],
+            ).save()
+
+        posts = list(Post.objects)
+        for post in posts:
+            assert isinstance(post.comments._instance, weakref.ProxyTypes)
+            assert isinstance(post.comments2._instance, weakref.ProxyTypes)
+            assert isinstance(post.comment._instance, weakref.ProxyTypes)
+            for comment in post.comments:
+                assert isinstance(comment._instance, weakref.ProxyTypes)
+            for comment2 in post.comments2:
+                assert isinstance(comment2._instance, weakref.ProxyTypes)
+
+    def test_embedded_document_field_validate_subclass(self):
+        class BaseItem(EmbeddedDocument):
+            f = IntField()
+
+            meta = {"allow_inheritance": True}
+
+            def validate(self, clean=True):
+                if self.f == 0:
+                    raise Exception("can not be 0")
+                return super().validate(clean)
+
+        class RealItem(BaseItem):
+            a = IntField()
+
+            def validate(self, clean=True):
+                if self.f == 1:
+                    raise Exception("can not be 1")
+                return super().validate(clean)
+
+        class TopLevel(Document):
+            item = EmbeddedDocumentField(document_type=BaseItem)
+            items = EmbeddedDocumentListField(document_type=BaseItem)
+
+        passing_item = RealItem(f=2, a=0)
+        item = TopLevel(item=passing_item, items=[passing_item])
+        item.validate()
+
+        failing_item = RealItem(f=1, a=0)
+        item = TopLevel(item=failing_item)
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        item = TopLevel(items=[failing_item])
+        with pytest.raises(Exception, match="can not be 1"):
+            item.validate()
+
+        # verify that super calls the parent
+        failing_item_in_base = RealItem(f=0, a=0)
+        item = TopLevel(item=failing_item_in_base)
+        with pytest.raises(Exception, match="can not be 0"):
+            item.validate()
 
     def test_query_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):

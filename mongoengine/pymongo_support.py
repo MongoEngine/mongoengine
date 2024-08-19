@@ -1,6 +1,7 @@
 """
 Helper functions, constants, and types to aid with PyMongo support.
 """
+
 import pymongo
 from bson import binary, json_util
 from pymongo.errors import OperationFailure
@@ -35,13 +36,17 @@ def count_documents(
         kwargs["hint"] = hint
     if collation is not None:
         kwargs["collation"] = collation
+    kwargs["session"] = connection._get_session()
 
     # count_documents appeared in pymongo 3.7
     if PYMONGO_VERSION >= (3, 7):
         try:
-            return collection.count_documents(
-                filter=filter, session=connection._get_session(), **kwargs
-            )
+            if not filter and set(kwargs) <= {"max_time_ms"}:
+                # when no filter is provided, estimated_document_count
+                # is a lot faster as it uses the collection metadata
+                return collection.estimated_document_count(**kwargs)
+            else:
+                return collection.count_documents(filter=filter, **kwargs)
         except OperationFailure as err:
             if PYMONGO_VERSION >= (4,):
                 raise
@@ -50,15 +55,10 @@ def count_documents(
             # with .count but are no longer working with count_documents (i.e $geoNear, $near, and $nearSphere)
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
-            message = str(err)
-            if not (
-                "not allowed in this context" in message
-                and (
-                    "$where" in message
-                    or "$geoNear" in message
-                    or "$near" in message
-                    or "$nearSphere" in message
-                )
+            if (
+                "$geoNear, $near, and $nearSphere are not allowed in this context"
+                not in str(err)
+                and "$where is not allowed in this context" not in str(err)
             ):
                 raise
 

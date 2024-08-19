@@ -1,3 +1,4 @@
+import threading
 from contextlib import contextmanager
 
 from pymongo.read_concern import ReadConcern
@@ -19,7 +20,31 @@ __all__ = (
     "query_counter",
     "set_write_concern",
     "set_read_write_concern",
+    "no_dereferencing_active_for_class",
 )
+
+
+class MyThreadLocals(threading.local):
+    def __init__(self):
+        self.no_dereferencing_class = {}
+
+
+thread_locals = MyThreadLocals()
+
+
+def no_dereferencing_active_for_class(cls):
+    return cls in thread_locals.no_dereferencing_class
+
+
+def _register_no_dereferencing_for_class(cls):
+    thread_locals.no_dereferencing_class.setdefault(cls, 0)
+    thread_locals.no_dereferencing_class[cls] += 1
+
+
+def _unregister_no_dereferencing_for_class(cls):
+    thread_locals.no_dereferencing_class[cls] -= 1
+    if thread_locals.no_dereferencing_class[cls] == 0:
+        thread_locals.no_dereferencing_class.pop(cls)
 
 
 class switch_db:
@@ -111,7 +136,7 @@ class no_dereference:
     Turns off all dereferencing in Documents for the duration of the context
     manager::
 
-        with no_dereference(Group) as Group:
+        with no_dereference(Group):
             Group.objects.find()
     """
 
@@ -134,15 +159,17 @@ class no_dereference:
 
     def __enter__(self):
         """Change the objects default and _auto_dereference values."""
+        _register_no_dereferencing_for_class(self.cls)
+
         for field in self.deref_fields:
             self.cls._fields[field]._auto_dereference = False
-        return self.cls
 
     def __exit__(self, t, value, traceback):
         """Reset the default and _auto_dereference values."""
+        _unregister_no_dereferencing_for_class(self.cls)
+
         for field in self.deref_fields:
             self.cls._fields[field]._auto_dereference = True
-        return self.cls
 
 
 class no_sub_classes:

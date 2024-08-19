@@ -17,6 +17,7 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
@@ -590,6 +591,65 @@ class TestQueryset(unittest.TestCase):
             Blog.objects().update(set__posts__1__comments__0__name__1="asdf")
 
         Blog.drop_collection()
+
+    def test_update_array_filters(self):
+        """Ensure that updating by array_filters works."""
+
+        class Comment(EmbeddedDocument):
+            comment_tags = ListField(StringField())
+
+        class Blog(Document):
+            tags = ListField(StringField())
+            comments = EmbeddedDocumentField(Comment)
+
+        Blog.drop_collection()
+
+        # update one
+        Blog.objects.create(tags=["test1", "test2", "test3"])
+
+        Blog.objects().update_one(
+            __raw__={"$set": {"tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
+        testc_blogs = Blog.objects(tags="test11111")
+
+        assert testc_blogs.count() == 1
+
+        Blog.drop_collection()
+
+        # update one inner list
+        comments = Comment(comment_tags=["test1", "test2", "test3"])
+        Blog.objects.create(comments=comments)
+
+        Blog.objects().update_one(
+            __raw__={"$set": {"comments.comment_tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
+        testc_blogs = Blog.objects(comments__comment_tags="test11111")
+
+        assert testc_blogs.count() == 1
+
+        # update many
+        Blog.drop_collection()
+
+        Blog.objects.create(tags=["test1", "test2", "test3", "test_all"])
+        Blog.objects.create(tags=["test4", "test5", "test6", "test_all"])
+
+        Blog.objects().update(
+            __raw__={"$set": {"tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+        )
+        testc_blogs = Blog.objects(tags="test11111")
+
+        assert testc_blogs.count() == 1
+
+        Blog.objects().update(
+            __raw__={"$set": {"tags.$[element]": "test_all1234577"}},
+            array_filters=[{"element": {"$eq": "test_all"}}],
+        )
+        testc_blogs = Blog.objects(tags="test_all1234577")
+
+        assert testc_blogs.count() == 2
 
     def test_update_using_positional_operator(self):
         """Ensure that the list fields can be updated using the positional
@@ -2269,6 +2329,46 @@ class TestQueryset(unittest.TestCase):
         post.reload()
         assert post.slug == "When test test it"
 
+    def test_combination_of_mongoengine_and__raw__(self):
+        """Ensure that the '__raw__' update/query works in combination with mongoengine syntax correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            foo = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test", foo="bar")
+        post.save()
+
+        BlogPost.objects(slug="test").update(
+            foo="baz",
+            __raw__={"$set": {"slug": "test test"}},
+        )
+        post.reload()
+        assert post.slug == "test test"
+        assert post.foo == "baz"
+
+        assert BlogPost.objects(foo="baz", __raw__={"slug": "test test"}).count() == 1
+        assert (
+            BlogPost.objects(foo__ne="bar", __raw__={"slug": {"$ne": "test"}}).count()
+            == 1
+        )
+        assert (
+            BlogPost.objects(foo="baz", __raw__={"slug": {"$ne": "test test"}}).count()
+            == 0
+        )
+        assert (
+            BlogPost.objects(foo__ne="baz", __raw__={"slug": "test test"}).count() == 0
+        )
+        assert (
+            BlogPost.objects(
+                foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
+            ).count()
+            == 0
+        )
+
     def test_add_to_set_each(self):
         class Item(Document):
             name = StringField(required=True)
@@ -2679,6 +2779,44 @@ class TestQueryset(unittest.TestCase):
         qs = qs.order_by("-age")
         ages = [p.age for p in qs]
         assert ages == [40, 30, 20]
+
+    def test_order_by_using_raw(self):
+        person_a = self.Person(name="User A", age=20)
+        person_a.save()
+        person_b = self.Person(name="User B", age=30)
+        person_b.save()
+        person_c = self.Person(name="User B", age=25)
+        person_c.save()
+        person_d = self.Person(name="User C", age=40)
+        person_d.save()
+
+        qs = self.Person.objects.order_by(__raw__=[("name", pymongo.DESCENDING)])
+        assert qs._ordering == [("name", pymongo.DESCENDING)]
+        names = [p.name for p in qs]
+        assert names == ["User C", "User B", "User B", "User A"]
+
+        names = [
+            (p.name, p.age)
+            for p in self.Person.objects.order_by(__raw__=[("name", pymongo.ASCENDING)])
+        ]
+        assert names == [("User A", 20), ("User B", 30), ("User B", 25), ("User C", 40)]
+
+        if PYMONGO_VERSION >= (4, 4):
+            # Pymongo >= 4.4 allow to mix single key with tuples inside the list
+            qs = self.Person.objects.order_by(
+                __raw__=["name", ("age", pymongo.ASCENDING)]
+            )
+            names = [(p.name, p.age) for p in qs]
+            assert names == [
+                ("User A", 20),
+                ("User B", 25),
+                ("User B", 30),
+                ("User C", 40),
+            ]
+
+    def test_order_by_using_raw_and_keys_raises_exception(self):
+        with pytest.raises(OperationError):
+            self.Person.objects.order_by("-name", __raw__=[("age", pymongo.ASCENDING)])
 
     def test_confirm_order_by_reference_wont_work(self):
         """Ordering by reference is not possible.  Use map / reduce.. or
@@ -3554,7 +3692,7 @@ class TestQueryset(unittest.TestCase):
                 "t2", language="french"
             )
 
-    def test_text_indexes(self):
+    def test_search_text(self):
         class News(Document):
             title = StringField()
             content = StringField()
@@ -3613,14 +3751,16 @@ class TestQueryset(unittest.TestCase):
         assert "dilma" in new.content
         assert "planejamento" in new.title
 
-        query = News.objects.search_text("candidata")
+        query = News.objects.search_text("candidata", text_score=True)
         assert query._search_text == "candidata"
         new = query.first()
 
         assert isinstance(new.get_text_score(), float)
 
         # count
-        query = News.objects.search_text("brasil").order_by("$text_score")
+        query = News.objects.search_text("brasil", text_score=True).order_by(
+            "$text_score"
+        )
         assert query._search_text == "brasil"
 
         assert query.count() == 3
@@ -3639,6 +3779,13 @@ class TestQueryset(unittest.TestCase):
         # get item
         item = News.objects.search_text("brasil").order_by("$text_score").first()
         assert item.get_text_score() == max_text_score
+
+        # Verify query reproducibility when text_score is disabled
+        # Following wouldn't work for text_score=True  #2759
+        for i in range(10):
+            qs1 = News.objects.search_text("brasil", text_score=False)
+            qs2 = News.objects.search_text("brasil", text_score=False)
+            assert list(qs1) == list(qs2)
 
     def test_distinct_handles_references_to_alias(self):
         register_connection("testdb", "mongoenginetest2")

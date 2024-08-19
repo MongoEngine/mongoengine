@@ -17,6 +17,8 @@ env:
   MONGODB_4_0: 4.0.28
   MONGODB_4_4: 4.4
   MONGODB_5_0: "5.0"
+  MONGODB_6_0: "6.0"
+  MONGODB_7_0: "7.0"
 
   PYMONGO_3_4: 3.4
   PYMONGO_3_6: 3.6
@@ -24,9 +26,15 @@ env:
   PYMONGO_3_11: 3.11
   PYMONGO_3_12: 3.12
   PYMONGO_4_0: 4.0
-  PYMONGO_4_3: 4.3.2
+  PYMONGO_4_3: 4.3.3
+  PYMONGO_4_4: 4.4.1
+  PYMONGO_4_6: 4.6.2
+  PYMONGO_4_7: 4.7.3
+  PYMONGO_4_8: 4.8.0
 
-  MAIN_PYTHON_VERSION: 3.7
+  MAIN_PYTHON_VERSION: 3.9
+
+  MONGOSH: 2.2.15 # Needed for MongoDB 6.0+
 
 jobs:
   linting:
@@ -49,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", 3.11, pypy3.9]
+        python-version: [3.7, 3.8, 3.9, "3.10", 3.11, pypy3.9, pypy3.10]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
@@ -68,6 +76,18 @@ jobs:
           - python-version: "3.11"
             MONGODB: $MONGODB_5_0
             PYMONGO: $PYMONGO_4_3
+          - python-version: "3.11"
+            MONGODB: $MONGODB_6_0
+            PYMONGO: $PYMONGO_4_4
+          - python-version: "3.11"
+            MONGODB: $MONGODB_7_0
+            PYMONGO: $PYMONGO_4_6
+          - python-version: "3.11"
+            MONGODB: $MONGODB_7_0
+            PYMONGO: $PYMONGO_4_7
+          - python-version: "3.11"
+            MONGODB: $MONGODB_7_0
+            PYMONGO: $PYMONGO_4_8
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -78,12 +98,13 @@ jobs:
     - name: install mongo and ci dependencies
       run: |
         bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
+        bash .github/workflows/install_mongosh.sh ${{ matrix.MONGODB }} ${{ env.MONGOSH }}
         bash .github/workflows/install_ci_python_dep.sh
         bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
-      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "-k=test_ci_placeholder"
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- "-k=test_ci_placeholder"
     - name: Run test suite
-      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- -a "--cov=mongoengine"
+      run: tox -e $(echo py${{ matrix.python-version }}-mg${{ matrix.PYMONGO }} | tr -d . | sed -e 's/pypypy/pypy/') -- "--cov=mongoengine"
     - name: Send coverage to Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,6 +115,8 @@ jobs:
   build_doc_dryrun:
     # ensures that readthedocs can be built continuously
     # to avoid that it breaks when new releases are being created
+    # The way RTD works is that it builds the doc on its side
+    # builds are visible at https://readthedocs.org/projects/mongoengine-odm/builds/
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

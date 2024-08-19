@@ -4,7 +4,7 @@ MongoEngine
 :Info: MongoEngine is an ORM-like layer on top of PyMongo.
 :Repository: https://github.com/MongoEngine/mongoengine
 :Author: Harry Marr (http://github.com/hmarr)
-:Maintainer: Stefan Wójcik (http://github.com/wojcikstefan)
+:Maintainer: Bastien Gerard (http://github.com/bagerard)
 
 .. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
   :target: https://travis-ci.org/MongoEngine/mongoengine
@@ -21,6 +21,10 @@ MongoEngine
 .. image:: https://img.shields.io/pypi/v/mongoengine.svg
   :target: https://pypi.python.org/pypi/mongoengine
 
+
+.. image:: https://readthedocs.org/projects/mongoengine-odm/badge/?version=latest
+  :target: https://readthedocs.org/projects/mongoengine-odm/builds/
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.
@@ -31,7 +35,7 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4 and v5.0. Future versions
+MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4, v5.0, v6.0 and v7.0. Future versions
 should be supported as well, but aren't actively tested at the moment. Make
 sure to open an issue or submit a pull request if you experience any problems
 with a more recent MongoDB versions.
@@ -125,8 +129,7 @@ Some simple examples of what MongoEngine code looks like:
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``pytest`` installed. Then, run ``python setup.py test``
-or simply ``pytest``.
+the standard port and have ``pytest`` installed. Then, run ``pytest tests/``.
 
 To run the test suite on every supported Python and PyMongo version, you can
 use ``tox``. You'll need to make sure you have each supported Python version
@@ -138,15 +141,6 @@ installed in your environment and then:
     $ python -m pip install tox
     # Run the test suites
     $ tox
-
-If you wish to run a subset of tests, use the pytest convention:
-
-.. code-block:: shell
-
-    # Run all the tests in a particular test file
-    $ pytest tests/fields/test_fields.py
-    # Run only particular test class in that file
-    $ pytest tests/fields/test_fields.py::TestField
 
 Community
 =========

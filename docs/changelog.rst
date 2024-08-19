@@ -7,7 +7,32 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Switch tox to use pytest instead of legacy `python setup.py test` #2804
+
+Changes in 0.28.2
+=================
+- Fix typing import incompatible with Pymongo 3.7 #2802
+
+Changes in 0.28.1
+=================
+- Fix bug related with recent updates to no_dereference context manager #2799
+
+Changes in 0.28.0
+=================
 - Fix for uuidRepresentation not read when provided in URI #2741
+- Add option to user array_filters https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/ #2769
+- Fix combination of __raw__ and mongoengine syntax #2773
+- Add tests against MongoDB 6.0 and MongoDB 7.0 in the pipeline
+- Fix validate() not being called when inheritance is used in EmbeddedDocument and validate is overriden #2784
+- Add support for readPreferenceTags in connection parameters #2644
+- Use estimated_documents_count OR documents_count when count is called, based on the query #2529
+- Fix no_dereference context manager which wasn't turning off auto-dereferencing correctly in some cases #2788
+- BREAKING CHANGE: no_dereference context manager no longer returns the class in __enter__ #2788
+    as it was useless and making it look like it was returning a different class although it was the same.
+    Thus, it must be called like `with no_dereference(User):` and no longer `with no_dereference(User) as ...:`
+- Added __raw__ to :meth:`~mongoengine.Queryset.order_by()` to allow to provide raw pymongo 'sort' argument and get around some of the limitations #2783
+- Add `text_score` argument on :meth:`~mongoengine.Document.search_text()` to allow text_score computation to be turned off
+    as it interfere with natural returned documents order #2759
 
 Changes in 0.27.0
 =================

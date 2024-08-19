@@ -1,7 +1,5 @@
-black
-flake8
 pre-commit
-pytest
 ipdb
 ipython
 tox
+-e .[test]

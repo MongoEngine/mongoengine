@@ -3,10 +3,7 @@ import threading
 import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
-from pymongo.common import (
-    _UUID_REPRESENTATIONS,
-    _CaseInsensitiveDictionary,
-)
+from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.database import _check_name
 
 # DriverInfo was added in PyMongo 3.7.
@@ -139,7 +136,9 @@ def _get_connection_settings(
                 if uri_dict.get(param):
                     conn_settings[param] = uri_dict[param]
 
-            uri_options: _CaseInsensitiveDictionary = uri_dict["options"]
+            uri_options = uri_dict[
+                "options"
+            ]  # uri_options is a _CaseInsensitiveDictionary
             if "replicaset" in uri_options:
                 conn_settings["replicaSet"] = uri_options["replicaset"]
             if "authsource" in uri_options:
@@ -168,8 +167,16 @@ def _get_connection_settings(
                         preference.name.lower() == read_pf_mode
                         or preference.mode == read_pf_mode
                     ):
-                        conn_settings["read_preference"] = preference
+                        ReadPrefClass = preference.__class__
                         break
+
+                if "readpreferencetags" in uri_options:
+                    conn_settings["read_preference"] = ReadPrefClass(
+                        tag_sets=uri_options["readpreferencetags"]
+                    )
+                else:
+                    conn_settings["read_preference"] = ReadPrefClass()
+
             if "authmechanismproperties" in uri_options:
                 conn_settings["authmechanismproperties"] = uri_options[
                     "authmechanismproperties"
