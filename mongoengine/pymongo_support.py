@@ -43,9 +43,7 @@ def count_documents(
             if not filter and set(kwargs) <= {"max_time_ms"}:
                 # when no filter is provided, estimated_document_count
                 # is a lot faster as it uses the collection metadata
-                return collection.estimated_document_count(
-                    session=connection._get_session(), **kwargs
-                )
+                return collection.estimated_document_count(**kwargs)
             else:
                 return collection.count_documents(
                     filter=filter, session=connection._get_session(), **kwargs
