@@ -590,7 +590,11 @@ class BaseQuerySet:
                 if multi:
                     update_func = collection.update_many
                 result = update_func(
-                    query, update, upsert=upsert, array_filters=array_filters, session=_get_session()
+                    query,
+                    update,
+                    upsert=upsert,
+                    array_filters=array_filters,
+                    session=_get_session(),
                 )
             if full_result:
                 return result

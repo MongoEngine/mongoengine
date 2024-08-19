@@ -30,8 +30,8 @@ from mongoengine import (
 from mongoengine.connection import (
     DEFAULT_DATABASE_NAME,
     ConnectionFailure,
-    _get_session,
     _get_connection_settings,
+    _get_session,
     disconnect,
     get_connection,
     get_db,
