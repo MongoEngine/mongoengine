@@ -8,9 +8,9 @@ mkdir $mongodb_dir/data
 
 $mongodb_dir/bin/mongod --dbpath $mongodb_dir/data --logpath $mongodb_dir/mongodb.log --fork --replSet mongoengine
 if (( $(echo "$MONGODB < 6.0" | bc -l) )); then
-mongo --quiet --eval 'db.runCommand("ping").ok'    # Make sure mongo is awake
-mongo --quiet --eval "rs.initiate()"
+mongo --verbose --eval "rs.initiate()"
+mongo --quiet --eval "rs.status().ok"
 else
-mongosh --quiet --eval 'db.runCommand("ping").ok'  # Make sure mongo is awake
-mongosh --quiet --eval "rs.initiate()"
+mongosh --verbose --eval "rs.initiate()"
+mongosh --quiet --eval "rs.status().ok"
 fi
