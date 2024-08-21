@@ -557,6 +557,6 @@ def run_in_transaction(
         transaction_kwargs["callback"] = callback
         _set_session(session)
         try:
-            session.with_transaction(**transaction_kwargs)
+            return session.with_transaction(**transaction_kwargs)
         finally:
             _clear_session()
