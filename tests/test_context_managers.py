@@ -4,6 +4,7 @@ import time
 import unittest
 from threading import Thread
 
+import pymongo
 import pytest
 from bson import DBRef
 
