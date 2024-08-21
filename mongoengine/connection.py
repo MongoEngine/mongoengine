@@ -25,7 +25,6 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
-    "run_in_transaction",
 ]
 
 
@@ -508,55 +507,3 @@ def _get_session():
 
 def _clear_session():
     return _local_sessions.clear_current()
-
-
-def run_in_transaction(
-    callback,
-    alias=DEFAULT_CONNECTION_NAME,
-    session_kwargs=None,
-    transaction_kwargs=None,
-):
-    """Execute queries within a MongoDB transaction.
-
-    Usage:
-
-    .. code-block:: python
-
-        class A(Document):
-            name = StringField()
-
-        def callback(session):
-            a_doc = A.objects.create(name="a")
-            a_doc.update(name="b")
-        run_in_transaction(callback)
-
-        # With custom args/kwargs
-        def callback(session, custom_arg, customer_kwarg=None):
-            a_doc.update(name=f'{custom_arg}-{custom_kwarg}')
-        run_in_transaction(
-            lambda s: callback(s, 'arg', custom_kwarg='kwarg')
-        )
-
-    Be aware that:
-    - Mongo transactions run inside a session which is bound to a connection. If you attempt to
-      execute a transaction across a different connection alias, pymongo will raise an exception. In
-      other words: you cannot create a transaction that crosses different database connections.
-
-    For more information regarding pymongo transactions: https://pymongo.readthedocs.io/en/stable/api/pymongo/client_session.html#transactions
-    """
-
-    if PYMONGO_VERSION < (3, 9):
-        raise mongoengine.errors.OperationError(
-            "pymongo>=3.9 is required to use transactions"
-        )
-
-    conn = get_connection(alias)
-    session_kwargs = session_kwargs or {}
-    with conn.start_session(**session_kwargs) as session:
-        transaction_kwargs = transaction_kwargs or {}
-        transaction_kwargs["callback"] = callback
-        _set_session(session)
-        try:
-            return session.with_transaction(**transaction_kwargs)
-        finally:
-            _clear_session()
