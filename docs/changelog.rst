@@ -10,6 +10,10 @@ Development
 - Allow gt/gte/lt/lte/ne operators to be used with a list as value on ListField #2813
 - Switch tox to use pytest instead of legacy `python setup.py test` #2804
 - Add support for timeseries collection #2661
+- improve ReferenceField wrong usage detection
+- Fix no_dereference thread-safetyness #2830
+- BREAKING CHANGE: max_length in ListField is now keyword only on ListField signature
+- BREAKING CHANGE: Force `field` argument of ListField/DictField to be a field instance (e.g ListField(StringField()) instead of ListField(StringField)
 
 Changes in 0.28.2
 =================

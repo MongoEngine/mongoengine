@@ -6,6 +6,7 @@ import re
 import socket
 import time
 import uuid
+from inspect import isclass
 from io import BytesIO
 from operator import itemgetter
 
@@ -707,7 +708,6 @@ class EmbeddedDocumentField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
-        # XXX ValidationError raised outside of the "validate" method.
         if not (
             isinstance(document_type, str)
             or issubclass(document_type, EmbeddedDocument)
@@ -910,9 +910,9 @@ class ListField(ComplexBaseField):
         Required means it cannot be empty - as the default for ListFields is []
     """
 
-    def __init__(self, field=None, max_length=None, **kwargs):
+    def __init__(self, field=None, *, max_length=None, **kwargs):
         self.max_length = max_length
-        kwargs.setdefault("default", lambda: [])
+        kwargs.setdefault("default", list)
         super().__init__(field=field, **kwargs)
 
     def __get__(self, instance, owner):
@@ -1035,10 +1035,9 @@ class DictField(ComplexBaseField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        self._auto_dereference = False
-
-        kwargs.setdefault("default", lambda: {})
+        kwargs.setdefault("default", dict)
         super().__init__(*args, field=field, **kwargs)
+        self.set_auto_dereferencing(False)
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
@@ -1151,8 +1150,9 @@ class ReferenceField(BaseField):
             :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, str) and not issubclass(
-            document_type, Document
+        if not (
+            isinstance(document_type, str)
+            or (isclass(document_type) and issubclass(document_type, Document))
         ):
             self.error(
                 "Argument to ReferenceField constructor must be a "
