@@ -615,6 +615,22 @@ class TestQueryset(unittest.TestCase):
 
         assert testc_blogs.count() == 1
 
+        # modify
+        Blog.drop_collection()
+
+        # update one
+        Blog.objects.create(tags=["test1", "test2", "test3"])
+
+        new_blog = Blog.objects().modify(
+            __raw__={"$set": {"tags.$[element]": "test11111"}},
+            array_filters=[{"element": {"$eq": "test2"}}],
+            new=True,
+        )
+        testc_blogs = Blog.objects(tags="test11111")
+        assert new_blog == testc_blogs.first()
+
+        assert testc_blogs.count() == 1
+
         Blog.drop_collection()
 
         # update one inner list
