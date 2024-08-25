@@ -172,8 +172,44 @@ class TestContextManagers(MongoDBTestCase):
         assert isinstance(group.ref, User)
         assert isinstance(group.generic, User)
 
+    def test_no_dereference_context_manager_thread_safe(self):
+        """Ensure no_dereference context manager works in threaded condition"""
+
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            ref = ReferenceField(User, dbref=False)
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user = User(name="user 1").save()
+        Group(ref=user).save()
+
+        def run_in_thread(id):
+            time.sleep(random.uniform(0.1, 0.5))  # Force desync of threads
+            if id % 2 == 0:
+                with no_dereference(Group):
+                    for i in range(20):
+                        time.sleep(random.uniform(0.1, 0.5))
+                        assert Group.ref._auto_dereference is False
+                        group = Group.objects.first()
+                        assert isinstance(group.ref, DBRef)
+            else:
+                for i in range(20):
+                    time.sleep(random.uniform(0.1, 0.5))
+                    assert Group.ref._auto_dereference is True
+                    group = Group.objects.first()
+                    assert isinstance(group.ref, User)
+
+        threads = [
+            TestableThread(target=run_in_thread, args=(id,)) for id in range(100)
+        ]
+        _ = [th.start() for th in threads]
+        _ = [th.join() for th in threads]
+
     def test_no_dereference_context_manager_nested(self):
-        """Ensure that DBRef items in ListFields aren't dereferenced."""
 
         class User(Document):
             name = StringField()
@@ -204,20 +240,6 @@ class TestContextManagers(MongoDBTestCase):
 
         group = Group.objects.first()
         assert isinstance(group.ref, User)
-
-        def run_in_thread(id):
-            time.sleep(random.uniform(0.1, 0.5))  # Force desync of threads
-            if id % 2 == 0:
-                with no_dereference(Group):
-                    group = Group.objects.first()
-                    assert isinstance(group.ref, DBRef)
-            else:
-                group = Group.objects.first()
-                assert isinstance(group.ref, User)
-
-        threads = [TestableThread(target=run_in_thread, args=(id,)) for id in range(10)]
-        _ = [th.start() for th in threads]
-        _ = [th.join() for th in threads]
 
     def test_no_dereference_context_manager_dbref(self):
         """Ensure that DBRef items in ListFields aren't dereferenced"""

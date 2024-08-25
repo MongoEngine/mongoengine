@@ -5326,7 +5326,8 @@ class TestQueryset(unittest.TestCase):
 
         assert isinstance(qs.first().organization, Organization)
 
-        assert isinstance(qs.no_dereference().first().organization, DBRef)
+        user = qs.no_dereference().first()
+        assert isinstance(user.organization, DBRef)
 
         assert isinstance(qs_user.organization, Organization)
         assert isinstance(qs.first().organization, Organization)
