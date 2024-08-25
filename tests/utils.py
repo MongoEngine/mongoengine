@@ -1,3 +1,4 @@
+import functools
 import operator
 import unittest
 
@@ -77,14 +78,13 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
     :param oper: The operator to apply (e.g. operator.ge)
     """
 
+    @functools.wraps(func)
     def _inner(*args, **kwargs):
         mongodb_v = get_mongodb_version()
         if oper(mongodb_v, mongo_version_req):
             return func(*args, **kwargs)
+        else:
+            pretty_version = ".".join(str(n) for n in mongo_version_req)
+            pytest.skip(f"Needs MongoDB {oper.__name__} v{pretty_version}")
 
-        pretty_version = ".".join(str(n) for n in mongo_version_req)
-        pytest.skip(f"Needs MongoDB {oper.__name__} v{pretty_version}")
-
-    _inner.__name__ = func.__name__
-    _inner.__doc__ = func.__doc__
     return _inner

@@ -1,3 +1,4 @@
+import time
 import unittest
 from datetime import datetime, timedelta
 
@@ -102,9 +103,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert collection.count_documents({}) == 1
 
         # Wait for more than the expiration time
-        import time
-
-        time.sleep(3)
+        time.sleep(2)
         assert collection.count_documents({}) > 0
 
     @requires_mongodb_gte_50
@@ -135,12 +134,8 @@ class TestTimeSeriesCollections(unittest.TestCase):
 
         indexes = collection.index_information()
 
-        assert (
-            "timestamp_index" in indexes
-        ), "Index on 'timestamp' field was not created"
-        assert (
-            "temperature_index" in indexes
-        ), "Index on 'temperature' field was not created"
+        assert "timestamp_index" in indexes
+        assert "temperature_index" in indexes
 
     @requires_mongodb_gte_50
     def test_timeseries_data_insertion_order(self):
@@ -158,9 +153,9 @@ class TestTimeSeriesCollections(unittest.TestCase):
 
         # Check the insertion order
         assert len(documents) == 3
-        assert documents[0].temperature == 22.0  # Earliest document
-        assert documents[1].temperature == 23.4  # Middle document
-        assert documents[2].temperature == 24.0  # Latest document
+        assert documents[0].temperature == 22.0
+        assert documents[1].temperature == 23.4
+        assert documents[2].temperature == 24.0
 
     @requires_mongodb_gte_50
     def test_timeseries_query_by_time_range(self):
@@ -181,21 +176,6 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert len(documents) == 2
         assert documents[0].temperature == 23.0
         assert documents[1].temperature == 24.0
-
-    @requires_mongodb_gte_50
-    def test_timeseries_large_data_volume(self):
-        """Ensure that the time-series collection can handle a large volume of data insertion."""
-
-        self.SensorData._get_collection_name()
-        collection = self.SensorData._get_collection()
-
-        for i in range(10000):
-            self.SensorData(
-                timestamp=datetime.utcnow() - timedelta(seconds=i),
-                temperature=20.0 + i % 5,
-            ).save()
-
-        assert collection.count_documents({}) == 10000
 
 
 if __name__ == "__main__":

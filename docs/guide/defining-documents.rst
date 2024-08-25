@@ -491,6 +491,26 @@ The following example shows a :class:`Log` document that will be limited to
         ip_address = StringField()
         meta = {'max_documents': 1000, 'max_size': 2000000}
 
+Timeseries collections
+------------------
+A :class:`~mongoengine.Document` may use a **Timeseries Collection** by specifying
+:attr:`timeseries` in the :attr:`meta` dictionary. Timeseries collection were added
+in MongoDB 5.0 (`doc <https://www.mongodb.com/docs/v5.3/core/timeseries-collections/>`_).
+The following example shows a Document class with a basic setup::
+
+    class SensorData(Document):
+        timestamp = DateTimeField(required=True)
+        temperature = FloatField()
+
+        meta = {
+            "timeseries": {
+                "timeField": "timestamp",
+                "metaField": "temperature",
+                "granularity": "seconds",
+                "expireAfterSeconds": 5,
+            },
+        }
+
 .. defining-indexes_
 
 Indexes
