@@ -241,7 +241,7 @@ Update with Aggregation Pipeline
 It is possible to provide a raw :mod:`PyMongo` aggregation update parameter, which will
 be integrated directly into the update. This is done by using ``__raw__`` keyword argument to the update method
 and provide the pipeline as a list
-`Update with Aggregation Pipeline <https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
+`Update with Aggregation Pipeline <https://www.mongodb.com/docs/manual/reference/method/db.collection.updateMany/#update-with-aggregation->`_
 ::
 
     # 'tags' field is set to 'coding is fun'
@@ -257,7 +257,7 @@ Update with Array Operator
 It is possible to update specific value in array by use array_filters (arrayFilters) operator.
 This is done by using ``__raw__`` keyword argument to the update method and provide the arrayFilters as a list.
 
-`Update with Array Operator <https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered->`_
+`Update with Array Operator <https://www.mongodb.com/docs/manual/reference/operator/update/positional-filtered/>`_
 ::
 
     # assuming an initial 'tags' field == ['test1', 'test2', 'test3']
@@ -447,7 +447,7 @@ would be generating "tag-clouds"::
 
 MongoDB aggregation API
 -----------------------
-If you need to run aggregation pipelines, MongoEngine provides an entry point to `Pymongo's aggregation framework <https://api.mongodb.com/python/current/examples/aggregation.html#aggregation-framework>`_
+If you need to run aggregation pipelines, MongoEngine provides an entry point to `Pymongo's aggregation framework <https://pymongo.readthedocs.io/en/stable/examples/aggregation.html#aggregation-framework>`_
 through :meth:`~mongoengine.queryset.QuerySet.aggregate`. Check out Pymongo's documentation for the syntax and pipeline.
 An example of its use would be::
 
@@ -661,7 +661,7 @@ to push values with index::
 .. note::
     Currently only top level lists are handled, future versions of mongodb /
     pymongo plan to support nested positional operators.  See `The $ positional
-    operator <https://docs.mongodb.com/manual/tutorial/update-documents/#Updating-The%24positionaloperator>`_.
+    operator <https://www.mongodb.com/docs/manual/tutorial/update-documents/#Updating-The%24positionaloperator>`_.
 
 Server-side javascript execution
 ================================

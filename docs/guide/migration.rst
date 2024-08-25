@@ -262,7 +262,7 @@ If you would remove the 'name' field or its index, you would have to call:
     User._get_collection().drop_index('name_1')
 
 .. note:: When adding new fields or new indexes, MongoEngine will take care of creating them
-    (unless `auto_create_index` is disabled) ::
+    (unless `auto_create_index` is disabled)
 
 Recommendations
 ===============

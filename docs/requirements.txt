@@ -1,5 +1,5 @@
-Sphinx==3.3.0
-sphinx-rtd-theme==0.5.0
-readthedocs-sphinx-ext==2.1.1
-docutils==0.17.1
-Jinja2<3.1
+Sphinx==7.4.7
+sphinx-rtd-theme==2.1.0rc2
+readthedocs-sphinx-ext==2.2.5
+docutils==0.20.1
+Jinja2==3.1.4

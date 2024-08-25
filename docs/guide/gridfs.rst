@@ -9,7 +9,7 @@ GridFS support comes in the form of the :class:`~mongoengine.fields.FileField` f
 object. This field acts as a file-like object and provides a couple of
 different ways of inserting and retrieving data. Arbitrary metadata such as
 content type can also be stored alongside the files. The object returned when accessing a
-FileField is a proxy to `Pymongo's GridFS <https://api.mongodb.com/python/current/examples/gridfs.html#gridfs-example>`_
+FileField is a proxy to `Pymongo's GridFS <https://pymongo.readthedocs.io/en/stable/examples/gridfs.html#gridfs-example>`_
 In the following example, a document is created to store details about animals, including a photo::
 
     class Animal(Document):

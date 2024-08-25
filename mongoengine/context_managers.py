@@ -215,7 +215,7 @@ class query_counter:
 
     Be aware that:
 
-    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of documents (https://docs.mongodb.com/manual/tutorial/iterate-a-cursor/#cursor-batches)
+    - Iterating over large amount of documents (>101) makes pymongo issue `getmore` queries to fetch the next batch of documents (https://www.mongodb.com/docs/manual/tutorial/iterate-a-cursor/#cursor-batches)
     - Some queries are ignored by default by the counter (killcursors, db.system.indexes)
     """
 

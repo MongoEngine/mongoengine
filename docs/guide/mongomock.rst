@@ -5,7 +5,7 @@ Use mongomock for testing
 Although we recommend running your tests against a regular MongoDB server, it is sometimes useful to plug
 MongoEngine to alternative implementations (mongomock, montydb, mongita, etc).
 
-`mongomock <https://github.com/vmalloc/mongomock/>`_ is historically the one suggested for MongoEngine and is
+`mongomock <https://github.com/mongomock/mongomock>`_ is historically the one suggested for MongoEngine and is
 a package to do just what the name implies, mocking a mongo database.
 
 To use with mongoengine, simply specify mongomock when connecting with
