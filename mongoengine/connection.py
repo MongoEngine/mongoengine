@@ -484,7 +484,7 @@ class _LocalSessions(threading.local):
 
     def get_current(self):
         if len(self.sessions):
-            return self.sessions[len(self.sessions) - 1]
+            return self.sessions[-1]
 
     def clear_current(self):
         if len(self.sessions):

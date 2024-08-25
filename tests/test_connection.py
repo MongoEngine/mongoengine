@@ -647,6 +647,8 @@ class ConnectionTest(unittest.TestCase):
         # Purposely not catching exception to fail test if thrown.
         mongo_connections["t1"].server_info()
         mongo_connections["t2"].server_info()
+        assert mongo_connections["t1"].address[0] == "localhost"
+        assert mongo_connections["t2"].address[0] == "127.0.0.1"
         assert mongo_connections["t1"] is not mongo_connections["t2"]
 
     def test_connect_2_databases_uses_same_client_if_only_dbname_differs(self):

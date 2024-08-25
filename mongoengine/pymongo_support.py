@@ -40,7 +40,8 @@ def count_documents(
     # count_documents appeared in pymongo 3.7
     if PYMONGO_VERSION >= (3, 7):
         try:
-            if not filter and set(kwargs) <= {"max_time_ms"}:
+            is_active_session = connection._get_session() is not None
+            if not filter and set(kwargs) <= {"max_time_ms"} and not is_active_session:
                 # when no filter is provided, estimated_document_count
                 # is a lot faster as it uses the collection metadata
                 return collection.estimated_document_count(**kwargs)

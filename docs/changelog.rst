@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Add support for transaction through run_in_transaction #2569
 
 Changes in 0.29.0
 =================
