@@ -66,7 +66,7 @@ If you utilize a ``DateTimeField``, you might also use a more flexible date pars
 
 If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
 
-- Pillow>=2.0.0
+- Pillow>=7.0.0
 
 If you need to use signals:
 

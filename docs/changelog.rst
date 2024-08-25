@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix pillow deprecation warning related with LANCZOS filter #2824
 - Allow gt/gte/lt/lte/ne operators to be used with a list as value on ListField #2813
 - Switch tox to use pytest instead of legacy `python setup.py test` #2804
 - Add support for timeseries collection #2661
