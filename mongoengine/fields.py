@@ -49,8 +49,12 @@ from mongoengine.queryset.transform import STRING_OPERATORS
 try:
     from PIL import Image, ImageOps
 
-    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
+    if hasattr(Image, "Resampling"):
+        LANCZOS = Image.Resampling.LANCZOS
+    else:
+        LANCZOS = Image.LANCZOS
 except ImportError:
+    # pillow is optional so may not be installed
     Image = None
     ImageOps = None
 
