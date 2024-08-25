@@ -951,11 +951,11 @@ class ListField(ComplexBaseField):
         if self.field:
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
+            is_iter = hasattr(value, "__iter__")
+            eligible_iter = is_iter and not isinstance(value, (str, BaseDocument))
             if (
-                op in ("set", "unset", None)
-                and hasattr(value, "__iter__")
-                and not isinstance(value, str)
-                and not isinstance(value, BaseDocument)
+                op in ("set", "unset", "gt", "gte", "lt", "lte", "ne", None)
+                and eligible_iter
             ):
                 return [self.field.prepare_query_value(op, v) for v in value]
 
