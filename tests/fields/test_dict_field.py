@@ -116,39 +116,35 @@ class TestDictField(MongoDBTestCase):
         post.reload()
         assert post.info["authors"] == []
 
-    def test_dictfield_dump_document(self):
+    def test_dictfield_dump_document_with_inheritance__cls(self):
         """Ensure a DictField can handle another document's dump."""
 
         class Doc(Document):
             field = DictField()
 
-        class ToEmbed(Document):
-            id = IntField(primary_key=True, default=1)
-            recursive = DictField()
-
         class ToEmbedParent(Document):
-            id = IntField(primary_key=True, default=1)
+            id = IntField(primary_key=True)
             recursive = DictField()
 
             meta = {"allow_inheritance": True}
 
         class ToEmbedChild(ToEmbedParent):
-            pass
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
 
-        to_embed_recursive = ToEmbed(id=1).save()
-        to_embed = ToEmbed(
-            id=2, recursive=to_embed_recursive.to_mongo().to_dict()
-        ).save()
-        doc = Doc(field=to_embed.to_mongo().to_dict())
-        doc.save()
-        assert isinstance(doc.field, dict)
-        assert doc.field == {"_id": 2, "recursive": {"_id": 1, "recursive": {}}}
-        # Same thing with a Document with a _cls field
+        Doc.drop_collection()
+        ToEmbedParent.drop_collection()
+
+        # with a Document with a _cls field
         to_embed_recursive = ToEmbedChild(id=1).save()
         to_embed_child = ToEmbedChild(
             id=2, recursive=to_embed_recursive.to_mongo().to_dict()
         ).save()
-        doc = Doc(field=to_embed_child.to_mongo().to_dict())
+
+        doc_dump_as_dict = to_embed_child.to_mongo().to_dict()
+        doc = Doc(field=doc_dump_as_dict)
+        assert Doc.field._auto_dereference is False
+        assert isinstance(doc.field, dict)  # depends on auto_dereference
         doc.save()
         assert isinstance(doc.field, dict)
         expected = {
@@ -161,6 +157,30 @@ class TestDictField(MongoDBTestCase):
             },
         }
         assert doc.field == expected
+
+        # _ = Doc.objects.first()
+        # assert Doc.field._auto_dereference is False   # Fails, bug #2831
+        # doc = Doc(field=doc_dump_as_dict)
+        # assert isinstance(doc.field, dict) # Fails, bug #2831
+
+    def test_dictfield_dump_document_no_inheritance(self):
+        """Ensure a DictField can handle another document's dump."""
+
+        class Doc(Document):
+            field = DictField()
+
+        class ToEmbed(Document):
+            id = IntField(primary_key=True)
+            recursive = DictField()
+
+        to_embed_recursive = ToEmbed(id=1).save()
+        to_embed = ToEmbed(
+            id=2, recursive=to_embed_recursive.to_mongo().to_dict()
+        ).save()
+        doc = Doc(field=to_embed.to_mongo().to_dict())
+        doc.save()
+        assert isinstance(doc.field, dict)
+        assert doc.field == {"_id": 2, "recursive": {"_id": 1, "recursive": {}}}
 
     def test_dictfield_strict(self):
         """Ensure that dict field handles validation if provided a strict field type."""

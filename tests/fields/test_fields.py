@@ -39,6 +39,7 @@ from mongoengine.base import (
     EmbeddedDocumentList,
     _document_registry,
 )
+from mongoengine.base.fields import _no_dereference_for_fields
 from mongoengine.errors import DeprecatedError
 from tests.utils import MongoDBTestCase
 
@@ -1373,17 +1374,19 @@ class TestField(MongoDBTestCase):
         # Reference is no longer valid
         foo.delete()
         bar = Bar.objects.get()
+
         with pytest.raises(DoesNotExist):
             bar.ref
+
         with pytest.raises(DoesNotExist):
             bar.generic_ref
 
         # When auto_dereference is disabled, there is no trouble returning DBRef
         bar = Bar.objects.get()
         expected = foo.to_dbref()
-        bar._fields["ref"]._auto_dereference = False
+        bar._fields["ref"].set_auto_dereferencing(False)
         assert bar.ref == expected
-        bar._fields["generic_ref"]._auto_dereference = False
+        bar._fields["generic_ref"].set_auto_dereferencing(False)
         assert bar.generic_ref == {"_ref": expected, "_cls": "Foo"}
 
     def test_list_item_dereference(self):
@@ -2730,6 +2733,34 @@ class TestEmbeddedDocumentListField(MongoDBTestCase):
         assert not hasattr(a1.c_field, "custom_data")
         assert hasattr(CustomData.c_field, "custom_data")
         assert custom_data["a"] == CustomData.c_field.custom_data["a"]
+
+
+class TestUtils(MongoDBTestCase):
+    def test__no_dereference_for_fields(self):
+        class User(Document):
+            name = StringField()
+
+        class Group(Document):
+            member = ReferenceField(User)
+
+        User.drop_collection()
+        Group.drop_collection()
+
+        user1 = User(name="user1")
+        user1.save()
+
+        group = Group(member=user1)
+        group.save()
+
+        # Test all inside the context mgr, from class field
+        with _no_dereference_for_fields(Group.member):
+            group = Group.objects.first()
+            assert isinstance(group.member, DBRef)
+
+        # Test instance fetched outside context mgr, patch on instance field
+        group = Group.objects.first()
+        with _no_dereference_for_fields(group._fields["member"]):
+            assert isinstance(group.member, DBRef)
 
 
 if __name__ == "__main__":
