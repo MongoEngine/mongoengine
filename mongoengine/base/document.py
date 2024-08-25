@@ -1,154 +1,1099 @@
-import copy
-import numbers
-import warnings
-from functools import partial
+import re
 
 import pymongo
-from bson import SON, DBRef, ObjectId, json_util
+from bson.dbref import DBRef
+from pymongo.read_preferences import ReadPreference
 
 from mongoengine import signals
-from mongoengine.base.common import get_document
-from mongoengine.base.datastructures import (
+from mongoengine.base import (
     BaseDict,
+    BaseDocument,
     BaseList,
+    DocumentMetaclass,
     EmbeddedDocumentList,
-    LazyReference,
-    StrictDict,
+    TopLevelDocumentMetaclass,
+    get_document,
 )
-from mongoengine.base.fields import ComplexBaseField
 from mongoengine.common import _import_class
-from mongoengine.errors import (
-    FieldDoesNotExist,
-    InvalidDocumentError,
-    LookUpError,
-    OperationError,
-    ValidationError,
+from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.context_managers import (
+    set_write_concern,
+    switch_collection,
+    switch_db,
 )
-from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
+from mongoengine.errors import (
+    InvalidDocumentError,
+    InvalidQueryError,
+    SaveConditionError,
+)
+from mongoengine.pymongo_support import list_collection_names
+from mongoengine.queryset import (
+    NotUniqueError,
+    OperationError,
+    QuerySet,
+    transform,
+)
 
-__all__ = ("BaseDocument", "NON_FIELD_ERRORS")
+__all__ = (
+    "Document",
+    "EmbeddedDocument",
+    "DynamicDocument",
+    "DynamicEmbeddedDocument",
+    "OperationError",
+    "InvalidCollectionError",
+    "NotUniqueError",
+    "MapReduceDocument",
+)
 
-NON_FIELD_ERRORS = "__all__"
 
-try:
-    GEOHAYSTACK = pymongo.GEOHAYSTACK
-except AttributeError:
-    GEOHAYSTACK = None
+def includes_cls(fields):
+    """Helper function used for ensuring and comparing indexes."""
+    first_field = None
+    if len(fields):
+        if isinstance(fields[0], str):
+            first_field = fields[0]
+        elif isinstance(fields[0], (list, tuple)) and len(fields[0]):
+            first_field = fields[0][0]
+    return first_field == "_cls"
 
 
-class BaseDocument:
-    # TODO simplify how `_changed_fields` is used.
-    # Currently, handling of `_changed_fields` seems unnecessarily convoluted:
-    # 1. `BaseDocument` defines `_changed_fields` in its `__slots__`, yet it's
-    #    not setting it to `[]` (or any other value) in `__init__`.
-    # 2. `EmbeddedDocument` sets `_changed_fields` to `[]` it its overloaded
-    #    `__init__`.
-    # 3. `Document` does NOT set `_changed_fields` upon initialization. The
-    #    field is primarily set via `_from_son` or `_clear_changed_fields`,
-    #    though there are also other methods that manipulate it.
-    # 4. The codebase is littered with `hasattr` calls for `_changed_fields`.
-    __slots__ = (
-        "_changed_fields",
-        "_initialised",
-        "_created",
-        "_data",
-        "_dynamic_fields",
-        "_auto_id_field",
-        "_db_field_map",
-        "__weakref__",
-    )
+class InvalidCollectionError(Exception):
+    pass
 
-    _dynamic = False
-    _dynamic_lock = True
-    STRICT = False
 
-    def __init__(self, *args, **values):
+class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
+    r"""A :class:`~mongoengine.Document` that isn't stored in its own
+    collection.  :class:`~mongoengine.EmbeddedDocument`\ s should be used as
+    fields on :class:`~mongoengine.Document`\ s through the
+    :class:`~mongoengine.EmbeddedDocumentField` field type.
+
+    A :class:`~mongoengine.EmbeddedDocument` subclass may be itself subclassed,
+    to create a specialised version of the embedded document that will be
+    stored in the same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To enable this behaviour set :attr:`allow_inheritance` to ``True`` in the
+    :attr:`meta` dictionary.
+    """
+
+    __slots__ = ("_instance",)
+
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass = DocumentMetaclass
+
+    # A generic embedded document doesn't have any immutable properties
+    # that describe it uniquely, hence it shouldn't be hashable. You can
+    # define your own __hash__ method on a subclass if you need your
+    # embedded documents to be hashable.
+    __hash__ = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._instance = None
+        self._changed_fields = []
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self._data == other._data
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __getstate__(self):
+        data = super().__getstate__()
+        data["_instance"] = None
+        return data
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._instance = state["_instance"]
+
+    def to_mongo(self, *args, **kwargs):
+        data = super().to_mongo(*args, **kwargs)
+
+        # remove _id from the SON if it's in it and it's None
+        if "_id" in data and data["_id"] is None:
+            del data["_id"]
+
+        return data
+
+
+class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
+    """The base class used for defining the structure and properties of
+    collections of documents stored in MongoDB. Inherit from this class, and
+    add fields as class attributes to define a document's structure.
+    Individual documents may then be created by making instances of the
+    :class:`~mongoengine.Document` subclass.
+
+    By default, the MongoDB collection used to store documents created using a
+    :class:`~mongoengine.Document` subclass will be the name of the subclass
+    converted to snake_case. A different collection may be specified by
+    providing :attr:`collection` to the :attr:`meta` dictionary in the class
+    definition.
+
+    A :class:`~mongoengine.Document` subclass may be itself subclassed, to
+    create a specialised version of the document that will be stored in the
+    same collection. To facilitate this behaviour a `_cls`
+    field is added to documents (hidden though the MongoEngine interface).
+    To enable this behaviour set :attr:`allow_inheritance` to ``True`` in the
+    :attr:`meta` dictionary.
+
+    A :class:`~mongoengine.Document` may use a **Capped Collection** by
+    specifying :attr:`max_documents` and :attr:`max_size` in the :attr:`meta`
+    dictionary. :attr:`max_documents` is the maximum number of documents that
+    is allowed to be stored in the collection, and :attr:`max_size` is the
+    maximum size of the collection in bytes. :attr:`max_size` is rounded up
+    to the next multiple of 256 by MongoDB internally and mongoengine before.
+    Use also a multiple of 256 to avoid confusions.  If :attr:`max_size` is not
+    specified and :attr:`max_documents` is, :attr:`max_size` defaults to
+    10485760 bytes (10MB).
+
+    Indexes may be created by specifying :attr:`indexes` in the :attr:`meta`
+    dictionary. The value should be a list of field names or tuples of field
+    names. Index direction may be specified by prefixing the field names with
+    a **+** or **-** sign.
+
+    Automatic index creation can be disabled by specifying
+    :attr:`auto_create_index` in the :attr:`meta` dictionary. If this is set to
+    False then indexes will not be created by MongoEngine.  This is useful in
+    production systems where index creation is performed as part of a
+    deployment system.
+
+    By default, _cls will be added to the start of every index (that
+    doesn't contain a list) if allow_inheritance is True. This can be
+    disabled by either setting cls to False on the specific index or
+    by setting index_cls to False on the meta dictionary for the document.
+
+    By default, any extra attribute existing in stored data but not declared
+    in your model will raise a :class:`~mongoengine.FieldDoesNotExist` error.
+    This can be disabled by setting :attr:`strict` to ``False``
+    in the :attr:`meta` dictionary.
+    """
+
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass = TopLevelDocumentMetaclass
+
+    __slots__ = ("__objects",)
+
+    @property
+    def pk(self):
+        """Get the primary key."""
+        if "id_field" not in self._meta:
+            return None
+        return getattr(self, self._meta["id_field"])
+
+    @pk.setter
+    def pk(self, value):
+        """Set the primary key."""
+        return setattr(self, self._meta["id_field"], value)
+
+    def __hash__(self):
+        """Return the hash based on the PK of this document. If it's new
+        and doesn't have a PK yet, return the default object hash instead.
         """
-        Initialise a document or an embedded document.
+        if self.pk is None:
+            return super(BaseDocument, self).__hash__()
 
-        :param values: A dictionary of keys and values for the document.
-            It may contain additional reserved keywords, e.g. "__auto_convert".
-        :param __auto_convert: If True, supplied values will be converted
-            to Python-type values via each field's `to_python` method.
-        :param _created: Indicates whether this is a brand new document
-            or whether it's already been persisted before. Defaults to true.
+        return hash(self.pk)
+
+    @classmethod
+    def _get_db(cls):
+        """Some Model using other db_alias"""
+        return get_db(cls._meta.get("db_alias", DEFAULT_CONNECTION_NAME))
+
+    @classmethod
+    def _disconnect(cls):
+        """Detach the Document class from the (cached) database collection"""
+        cls._collection = None
+
+    @classmethod
+    def _get_collection(cls):
+        """Return the PyMongo collection corresponding to this document.
+
+        Upon first call, this method:
+        1. Initializes a :class:`~pymongo.collection.Collection` corresponding
+           to this document.
+        2. Creates indexes defined in this document's :attr:`meta` dictionary.
+           This happens only if `auto_create_index` is True.
         """
-        self._initialised = False
-        self._created = True
-
-        if args:
-            raise TypeError(
-                "Instantiating a document with positional arguments is not "
-                "supported. Please use `field_name=value` keyword arguments."
-            )
-
-        __auto_convert = values.pop("__auto_convert", True)
-
-        _created = values.pop("_created", True)
-
-        signals.pre_init.send(self.__class__, document=self, values=values)
-
-        # Check if there are undefined fields supplied to the constructor,
-        # if so raise an Exception.
-        if not self._dynamic and (self._meta.get("strict", True) or _created):
-            _undefined_fields = set(values.keys()) - set(
-                list(self._fields.keys()) + ["id", "pk", "_cls", "_text_score"]
-            )
-            if _undefined_fields:
-                msg = f'The fields "{_undefined_fields}" do not exist on the document "{self._class_name}"'
-                raise FieldDoesNotExist(msg)
-
-        if self.STRICT and not self._dynamic:
-            self._data = StrictDict.create(allowed_keys=self._fields_ordered)()
-        else:
-            self._data = {}
-
-        self._dynamic_fields = SON()
-
-        # Assign default values for fields
-        # not set in the constructor
-        for field_name in self._fields:
-            if field_name in values:
-                continue
-            value = getattr(self, field_name, None)
-            setattr(self, field_name, value)
-
-        if "_cls" not in values:
-            self._cls = self._class_name
-
-        # Set actual values
-        dynamic_data = {}
-        FileField = _import_class("FileField")
-        for key, value in values.items():
-            field = self._fields.get(key)
-            if field or key in ("id", "pk", "_cls"):
-                if __auto_convert and value is not None:
-                    if field and not isinstance(field, FileField):
-                        value = field.to_python(value)
-                setattr(self, key, value)
+        if not hasattr(cls, "_collection") or cls._collection is None:
+            # Get the collection, either capped or regular.
+            if cls._meta.get("max_size") or cls._meta.get("max_documents"):
+                cls._collection = cls._get_capped_collection()
+            elif cls._meta.get("timeseries"):
+                cls._collection = cls._get_timeseries_collection()
             else:
-                if self._dynamic:
-                    dynamic_data[key] = value
-                else:
-                    # For strict Document
-                    self._data[key] = value
+                db = cls._get_db()
+                collection_name = cls._get_collection_name()
+                cls._collection = db[collection_name]
 
-        # Set any get_<field>_display methods
-        self.__set_field_display()
+            # Ensure indexes on the collection unless auto_create_index was
+            # set to False. Plus, there is no need to ensure indexes on slave.
+            db = cls._get_db()
+            if cls._meta.get("auto_create_index", True) and db.client.is_primary:
+                cls.ensure_indexes()
 
-        if self._dynamic:
-            self._dynamic_lock = False
-            for key, value in dynamic_data.items():
-                setattr(self, key, value)
+        return cls._collection
 
-        # Flag initialised
-        self._initialised = True
-        self._created = _created
+    @classmethod
+    def _get_timeseries_collection(cls):
+        """Create a new or get an existing timeseries PyMongo collection."""
+        db = cls._get_db()
+        collection_name = cls._get_collection_name()
+        timeseries_opts = cls._meta.get("timeseries")
 
-        signals.post_init.send(self.__class__, document=self)
+        if collection_name in list_collection_names(
+            db, include_system_collections=True
+        ):
+            collection = db[collection_name]
+            collection.options()
+            return collection
+
+        opts = {"expireAfterSeconds": timeseries_opts.pop("expireAfterSeconds", None)}
+        return db.create_collection(
+            name=collection_name,
+            timeseries=timeseries_opts,
+            **opts,
+        )
+
+    @classmethod
+    def _get_capped_collection(cls):
+        """Create a new or get an existing capped PyMongo collection."""
+        db = cls._get_db()
+        collection_name = cls._get_collection_name()
+
+        # Get max document limit and max byte size from meta.
+        max_size = cls._meta.get("max_size") or 10 * 2**20  # 10MB default
+        max_documents = cls._meta.get("max_documents")
+
+        # MongoDB will automatically raise the size to make it a multiple of
+        # 256 bytes. We raise it here ourselves to be able to reliably compare
+        # the options below.
+        if max_size % 256:
+            max_size = (max_size // 256 + 1) * 256
+
+        # If the collection already exists and has different options
+        # (i.e. isn't capped or has different max/size), raise an error.
+        if collection_name in list_collection_names(
+            db, include_system_collections=True
+        ):
+            collection = db[collection_name]
+            options = collection.options()
+            if options.get("max") != max_documents or options.get("size") != max_size:
+                raise InvalidCollectionError(
+                    'Cannot create collection "{}" as a capped '
+                    "collection as it already exists".format(cls._collection)
+                )
+
+            return collection
+
+        # Create a new capped collection.
+        opts = {"capped": True, "size": max_size}
+        if max_documents:
+            opts["max"] = max_documents
+
+        return db.create_collection(collection_name, **opts)
+
+    def to_mongo(self, *args, **kwargs):
+        data = super().to_mongo(*args, **kwargs)
+
+        # If '_id' is None, try and set it from self._data. If that
+        # doesn't exist either, remove '_id' from the SON completely.
+        if data["_id"] is None:
+            if self._data.get("id") is None:
+                del data["_id"]
+            else:
+                data["_id"] = self._data["id"]
+
+        return data
+
+    def modify(self, query=None, **update):
+        """Perform an atomic update of the document in the database and reload
+        the document object using updated version.
+
+        Returns True if the document has been updated or False if the document
+        in the database doesn't match the query.
+
+        .. note:: All unsaved changes that have been made to the document are
+            rejected if the method returns True.
+
+        :param query: the update will be performed only if the document in the
+            database matches the query
+        :param update: Django-style update keyword arguments
+        """
+        if query is None:
+            query = {}
+
+        if self.pk is None:
+            raise InvalidDocumentError("The document does not have a primary key.")
+
+        id_field = self._meta["id_field"]
+        query = query.copy() if isinstance(query, dict) else query.to_query(self)
+
+        if id_field not in query:
+            query[id_field] = self.pk
+        elif query[id_field] != self.pk:
+            raise InvalidQueryError(
+                "Invalid document modify query: it must modify only this document."
+            )
+
+        # Need to add shard key to query, or you get an error
+        query.update(self._object_key)
+
+        updated = self._qs(**query).modify(new=True, **update)
+        if updated is None:
+            return False
+
+        for field in self._fields_ordered:
+            setattr(self, field, self._reload(field, updated[field]))
+
+        self._changed_fields = updated._changed_fields
+        self._created = False
+
+        return True
+
+    def save(
+        self,
+        force_insert=False,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        cascade=None,
+        cascade_kwargs=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs,
+    ):
+        """Save the :class:`~mongoengine.Document` to the database. If the
+        document already exists, it will be updated, otherwise it will be
+        created. Returns the saved object instance.
+
+        :param force_insert: only try to create a new document, don't allow
+            updates of existing documents.
+        :param validate: validates the document; set to ``False`` to skip.
+        :param clean: call the document clean method, requires `validate` to be
+            True.
+        :param write_concern: Extra keyword arguments are passed down to
+            :meth:`~pymongo.collection.Collection.save` OR
+            :meth:`~pymongo.collection.Collection.insert`
+            which will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param cascade: Sets the flag for cascading saves.  You can set a
+            default by setting "cascade" in the document __meta__
+        :param cascade_kwargs: (optional) kwargs dictionary to be passed throw
+            to cascading saves.  Implies ``cascade=True``.
+        :param _refs: A list of processed references used in cascading saves
+        :param save_condition: only perform save if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`OperationError` if the conditions are not satisfied
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
+
+        .. versionchanged:: 0.5
+            In existing documents it only saves changed fields using
+            set / unset.  Saves are cascaded and any
+            :class:`~bson.dbref.DBRef` objects that have changes are
+            saved as well.
+        .. versionchanged:: 0.6
+            Added cascading saves
+        .. versionchanged:: 0.8
+            Cascade saves are optional and default to False.  If you want
+            fine grain control then you can turn off using document
+            meta['cascade'] = True.  Also you can pass different kwargs to
+            the cascade save using cascade_kwargs which overwrites the
+            existing kwargs with custom values.
+        .. versionchanged:: 0.26
+           save() no longer calls :meth:`~mongoengine.Document.ensure_indexes`
+           unless ``meta['auto_create_index_on_save']`` is set to True.
+
+        """
+        signal_kwargs = signal_kwargs or {}
+
+        if self._meta.get("abstract"):
+            raise InvalidDocumentError("Cannot save an abstract document.")
+
+        signals.pre_save.send(self.__class__, document=self, **signal_kwargs)
+
+        if validate:
+            self.validate(clean=clean)
+
+        if write_concern is None:
+            write_concern = {}
+
+        doc_id = self.to_mongo(fields=[self._meta["id_field"]])
+        created = "_id" not in doc_id or self._created or force_insert
+
+        signals.pre_save_post_validation.send(
+            self.__class__, document=self, created=created, **signal_kwargs
+        )
+        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        doc = self.to_mongo()
+
+        # Initialize the Document's underlying pymongo.Collection (+create indexes) if not already initialized
+        # Important to do this here to avoid that the index creation gets wrapped in the try/except block below
+        # and turned into mongoengine.OperationError
+        if self._collection is None:
+            _ = self._get_collection()
+        elif self._meta.get("auto_create_index_on_save", False):
+            # ensure_indexes is called as part of _get_collection so no need to re-call it again here
+            self.ensure_indexes()
+
+        try:
+            # Save a new document or update an existing one
+            if created:
+                object_id = self._save_create(
+                    doc=doc, force_insert=force_insert, write_concern=write_concern
+                )
+            else:
+                object_id, created = self._save_update(
+                    doc, save_condition, write_concern
+                )
+
+            if cascade is None:
+                cascade = self._meta.get("cascade", False) or cascade_kwargs is not None
+
+            if cascade:
+                kwargs = {
+                    "force_insert": force_insert,
+                    "validate": validate,
+                    "write_concern": write_concern,
+                    "cascade": cascade,
+                }
+                if cascade_kwargs:  # Allow granular control over cascades
+                    kwargs.update(cascade_kwargs)
+                kwargs["_refs"] = _refs
+                self.cascade_save(**kwargs)
+
+        except pymongo.errors.DuplicateKeyError as err:
+            message = "Tried to save duplicate unique keys (%s)"
+            raise NotUniqueError(message % err)
+        except pymongo.errors.OperationFailure as err:
+            message = "Could not save document (%s)"
+            if re.match("^E1100[01] duplicate key", str(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
+                message = "Tried to save duplicate unique keys (%s)"
+                raise NotUniqueError(message % err)
+            raise OperationError(message % err)
+
+        # Make sure we store the PK on this document now that it's saved
+        id_field = self._meta["id_field"]
+        if created or id_field not in self._meta.get("shard_key", []):
+            self[id_field] = self._fields[id_field].to_python(object_id)
+
+        signals.post_save.send(
+            self.__class__, document=self, created=created, **signal_kwargs
+        )
+
+        self._clear_changed_fields()
+        self._created = False
+
+        return self
+
+    def _save_create(self, doc, force_insert, write_concern):
+        """Save a new document.
+
+        Helper method, should only be used inside save().
+        """
+        collection = self._get_collection()
+        with set_write_concern(collection, write_concern) as wc_collection:
+            if force_insert:
+                return wc_collection.insert_one(doc).inserted_id
+            # insert_one will provoke UniqueError alongside save does not
+            # therefore, it need to catch and call replace_one.
+            if "_id" in doc:
+                select_dict = {"_id": doc["_id"]}
+                select_dict = self._integrate_shard_key(doc, select_dict)
+                raw_object = wc_collection.find_one_and_replace(select_dict, doc)
+                if raw_object:
+                    return doc["_id"]
+
+            object_id = wc_collection.insert_one(doc).inserted_id
+
+        return object_id
+
+    def _get_update_doc(self):
+        """Return a dict containing all the $set and $unset operations
+        that should be sent to MongoDB based on the changes made to this
+        Document.
+        """
+        updates, removals = self._delta()
+
+        update_doc = {}
+        if updates:
+            update_doc["$set"] = updates
+        if removals:
+            update_doc["$unset"] = removals
+
+        return update_doc
+
+    def _integrate_shard_key(self, doc, select_dict):
+        """Integrates the collection's shard key to the `select_dict`, which will be used for the query.
+        The value from the shard key is taken from the `doc` and finally the select_dict is returned.
+        """
+
+        # Need to add shard key to query, or you get an error
+        shard_key = self._meta.get("shard_key", tuple())
+        for k in shard_key:
+            path = self._lookup_field(k.split("."))
+            actual_key = [p.db_field for p in path]
+            val = doc
+            for ak in actual_key:
+                val = val[ak]
+            select_dict[".".join(actual_key)] = val
+
+        return select_dict
+
+    def _save_update(self, doc, save_condition, write_concern):
+        """Update an existing document.
+
+        Helper method, should only be used inside save().
+        """
+        collection = self._get_collection()
+        object_id = doc["_id"]
+        created = False
+
+        select_dict = {}
+        if save_condition is not None:
+            select_dict = transform.query(self.__class__, **save_condition)
+
+        select_dict["_id"] = object_id
+
+        select_dict = self._integrate_shard_key(doc, select_dict)
+
+        update_doc = self._get_update_doc()
+        if update_doc:
+            upsert = save_condition is None
+            with set_write_concern(collection, write_concern) as wc_collection:
+                last_error = wc_collection.update_one(
+                    select_dict, update_doc, upsert=upsert
+                ).raw_result
+            if not upsert and last_error["n"] == 0:
+                raise SaveConditionError(
+                    "Race condition preventing document update detected"
+                )
+            if last_error is not None:
+                updated_existing = last_error.get("updatedExisting")
+                if updated_existing is False:
+                    created = True
+                    # !!! This is bad, means we accidentally created a new,
+                    # potentially corrupted document. See
+                    # https://github.com/MongoEngine/mongoengine/issues/564
+
+        return object_id, created
+
+    def cascade_save(self, **kwargs):
+        """Recursively save any references and generic references on the
+        document.
+        """
+        _refs = kwargs.get("_refs") or []
+
+        ReferenceField = _import_class("ReferenceField")
+        GenericReferenceField = _import_class("GenericReferenceField")
+
+        for name, cls in self._fields.items():
+            if not isinstance(cls, (ReferenceField, GenericReferenceField)):
+                continue
+
+            ref = self._data.get(name)
+            if not ref or isinstance(ref, DBRef):
+                continue
+
+            if not getattr(ref, "_changed_fields", True):
+                continue
+
+            ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
+            if ref and ref_id not in _refs:
+                _refs.append(ref_id)
+                kwargs["_refs"] = _refs
+                ref.save(**kwargs)
+                ref._changed_fields = []
+
+    @property
+    def _qs(self):
+        """Return the default queryset corresponding to this document."""
+        if not hasattr(self, "__objects"):
+            queryset_class = self._meta.get("queryset_class", QuerySet)
+            self.__objects = queryset_class(self.__class__, self._get_collection())
+        return self.__objects
+
+    @property
+    def _object_key(self):
+        """Return a query dict that can be used to fetch this document.
+
+        Most of the time the dict is a simple PK lookup, but in case of
+        a sharded collection with a compound shard key, it can contain a more
+        complex query.
+
+        Note that the dict returned by this method uses MongoEngine field
+        names instead of PyMongo field names (e.g. "pk" instead of "_id",
+        "some__nested__field" instead of "some.nested.field", etc.).
+        """
+        select_dict = {"pk": self.pk}
+        shard_key = self.__class__._meta.get("shard_key", tuple())
+        for k in shard_key:
+            val = self
+            field_parts = k.split(".")
+            for part in field_parts:
+                val = getattr(val, part)
+            select_dict["__".join(field_parts)] = val
+        return select_dict
+
+    def update(self, **kwargs):
+        """Performs an update on the :class:`~mongoengine.Document`
+        A convenience wrapper to :meth:`~mongoengine.QuerySet.update`.
+
+        Raises :class:`OperationError` if called on an object that has not yet
+        been saved.
+        """
+        if self.pk is None:
+            if kwargs.get("upsert", False):
+                query = self.to_mongo()
+                if "_cls" in query:
+                    del query["_cls"]
+                return self._qs.filter(**query).update_one(**kwargs)
+            else:
+                raise OperationError("attempt to update a document not yet saved")
+
+        # Need to add shard key to query, or you get an error
+        return self._qs.filter(**self._object_key).update_one(**kwargs)
+
+    def delete(self, signal_kwargs=None, **write_concern):
+        """Delete the :class:`~mongoengine.Document` from the database. This
+        will only take effect if the document has been previously saved.
+
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
+        :param write_concern: Extra keyword arguments are passed down which
+            will be used as options for the resultant ``getLastError`` command.
+            For example, ``save(..., w: 2, fsync: True)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        """
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_delete.send(self.__class__, document=self, **signal_kwargs)
+
+        # Delete FileFields separately
+        FileField = _import_class("FileField")
+        for name, field in self._fields.items():
+            if isinstance(field, FileField):
+                getattr(self, name).delete()
+
+        try:
+            self._qs.filter(**self._object_key).delete(
+                write_concern=write_concern, _from_doc_delete=True
+            )
+        except pymongo.errors.OperationFailure as err:
+            message = "Could not delete document (%s)" % err.args
+            raise OperationError(message)
+        signals.post_delete.send(self.__class__, document=self, **signal_kwargs)
+
+    def switch_db(self, db_alias, keep_created=True):
+        """
+        Temporarily switch the database for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_db('archive-db')
+            user.save()
+
+        :param str db_alias: The database alias to use for saving the document
+
+        :param bool keep_created: keep self._created value after switching db, else is reset to True
+
+
+        .. seealso::
+            Use :class:`~mongoengine.context_managers.switch_collection`
+            if you need to read from another collection
+        """
+        with switch_db(self.__class__, db_alias) as cls:
+            collection = cls._get_collection()
+            db = cls._get_db()
+        self._get_collection = lambda: collection
+        self._get_db = lambda: db
+        self._collection = collection
+        self._created = True if not keep_created else self._created
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
+        return self
+
+    def switch_collection(self, collection_name, keep_created=True):
+        """
+        Temporarily switch the collection for a document instance.
+
+        Only really useful for archiving off data and calling `save()`::
+
+            user = User.objects.get(id=user_id)
+            user.switch_collection('old-users')
+            user.save()
+
+        :param str collection_name: The database alias to use for saving the
+            document
+
+        :param bool keep_created: keep self._created value after switching collection, else is reset to True
+
+
+        .. seealso::
+            Use :class:`~mongoengine.context_managers.switch_db`
+            if you need to read from another database
+        """
+        with switch_collection(self.__class__, collection_name) as cls:
+            collection = cls._get_collection()
+        self._get_collection = lambda: collection
+        self._collection = collection
+        self._created = True if not keep_created else self._created
+        self.__objects = self._qs
+        self.__objects._collection_obj = collection
+        return self
+
+    def select_related(self, max_depth=1):
+        """Handles dereferencing of :class:`~bson.dbref.DBRef` objects to
+        a maximum depth in order to cut down the number queries to mongodb.
+        """
+        DeReference = _import_class("DeReference")
+        DeReference()([self], max_depth + 1)
+        return self
+
+    def reload(self, *fields, **kwargs):
+        """Reloads all attributes from the database.
+
+        :param fields: (optional) args list of fields to reload
+        :param max_depth: (optional) depth of dereferencing to follow
+        """
+        max_depth = 1
+        if fields and isinstance(fields[0], int):
+            max_depth = fields[0]
+            fields = fields[1:]
+        elif "max_depth" in kwargs:
+            max_depth = kwargs["max_depth"]
+
+        if self.pk is None:
+            raise self.DoesNotExist("Document does not exist")
+
+        obj = (
+            self._qs.read_preference(ReadPreference.PRIMARY)
+            .filter(**self._object_key)
+            .only(*fields)
+            .limit(1)
+            .select_related(max_depth=max_depth)
+        )
+
+        if obj:
+            obj = obj[0]
+        else:
+            raise self.DoesNotExist("Document does not exist")
+        for field in obj._data:
+            if not fields or field in fields:
+                try:
+                    setattr(self, field, self._reload(field, obj[field]))
+                except (KeyError, AttributeError):
+                    try:
+                        # If field is a special field, e.g. items is stored as _reserved_items,
+                        # a KeyError is thrown. So try to retrieve the field from _data
+                        setattr(self, field, self._reload(field, obj._data.get(field)))
+                    except KeyError:
+                        # If field is removed from the database while the object
+                        # is in memory, a reload would cause a KeyError
+                        # i.e. obj.update(unset__field=1) followed by obj.reload()
+                        delattr(self, field)
+
+        self._changed_fields = (
+            list(set(self._changed_fields) - set(fields))
+            if fields
+            else obj._changed_fields
+        )
+        self._created = False
+        return self
+
+    def _reload(self, key, value):
+        """Used by :meth:`~mongoengine.Document.reload` to ensure the
+        correct instance is linked to self.
+        """
+        if isinstance(value, BaseDict):
+            value = [(k, self._reload(k, v)) for k, v in value.items()]
+            value = BaseDict(value, self, key)
+        elif isinstance(value, EmbeddedDocumentList):
+            value = [self._reload(key, v) for v in value]
+            value = EmbeddedDocumentList(value, self, key)
+        elif isinstance(value, BaseList):
+            value = [self._reload(key, v) for v in value]
+            value = BaseList(value, self, key)
+        elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
+            value._instance = None
+            value._changed_fields = []
+        return value
+
+    def to_dbref(self):
+        """Returns an instance of :class:`~bson.dbref.DBRef` useful in
+        `__raw__` queries."""
+        if self.pk is None:
+            msg = "Only saved documents can have a valid dbref"
+            raise OperationError(msg)
+        return DBRef(self.__class__._get_collection_name(), self.pk)
+
+    @classmethod
+    def register_delete_rule(cls, document_cls, field_name, rule):
+        """This method registers the delete rules to apply when removing this
+        object.
+        """
+        classes = [
+            get_document(class_name)
+            for class_name in cls._subclasses
+            if class_name != cls.__name__
+        ] + [cls]
+        documents = [
+            get_document(class_name)
+            for class_name in document_cls._subclasses
+            if class_name != document_cls.__name__
+        ] + [document_cls]
+
+        for klass in classes:
+            for document_cls in documents:
+                delete_rules = klass._meta.get("delete_rules") or {}
+                delete_rules[(document_cls, field_name)] = rule
+                klass._meta["delete_rules"] = delete_rules
+
+    @classmethod
+    def drop_collection(cls):
+        """Drops the entire collection associated with this
+        :class:`~mongoengine.Document` type from the database.
+
+        Raises :class:`OperationError` if the document has no collection set
+        (i.g. if it is `abstract`)
+        """
+        coll_name = cls._get_collection_name()
+        if not coll_name:
+            raise OperationError(
+                "Document %s has no collection defined (is it abstract ?)" % cls
+            )
+        cls._collection = None
+        db = cls._get_db()
+        db.drop_collection(coll_name)
+
+    @classmethod
+    def create_index(cls, keys, background=False, **kwargs):
+        """Creates the given indexes if required.
+
+        :param keys: a single index key or a list of index keys (to
+            construct a multi-field index); keys may be prefixed with a **+**
+            or a **-** to determine the index ordering
+        :param background: Allows index creation in the background
+        """
+        index_spec = cls._build_index_spec(keys)
+        index_spec = index_spec.copy()
+        fields = index_spec.pop("fields")
+        index_spec["background"] = background
+        index_spec.update(kwargs)
+
+        return cls._get_collection().create_index(fields, **index_spec)
+
+    @classmethod
+    def ensure_indexes(cls):
+        """Checks the document meta data and ensures all the indexes exist.
+
+        Global defaults can be set in the meta - see :doc:`guide/defining-documents`
+
+        By default, this will get called automatically upon first interaction with the
+        Document collection (query, save, etc) so unless you disabled `auto_create_index`, you
+        shouldn't have to call this manually.
+
+        This also gets called upon every call to Document.save if `auto_create_index_on_save` is set to True
+
+        If called multiple times, MongoDB will not re-recreate indexes if they exist already
+
+        .. note:: You can disable automatic index creation by setting
+                  `auto_create_index` to False in the documents meta data
+        """
+        background = cls._meta.get("index_background", False)
+        index_opts = cls._meta.get("index_opts") or {}
+        index_cls = cls._meta.get("index_cls", True)
+
+        collection = cls._get_collection()
+
+        # determine if an index which we are creating includes
+        # _cls as its first field; if so, we can avoid creating
+        # an extra index on _cls, as mongodb will use the existing
+        # index to service queries against _cls
+        cls_indexed = False
+
+        # Ensure document-defined indexes are created
+        if cls._meta["index_specs"]:
+            index_spec = cls._meta["index_specs"]
+            for spec in index_spec:
+                spec = spec.copy()
+                fields = spec.pop("fields")
+                cls_indexed = cls_indexed or includes_cls(fields)
+                opts = index_opts.copy()
+                opts.update(spec)
+
+                # we shouldn't pass 'cls' to the collection.ensureIndex options
+                # because of https://jira.mongodb.org/browse/SERVER-769
+                if "cls" in opts:
+                    del opts["cls"]
+
+                collection.create_index(fields, background=background, **opts)
+
+        # If _cls is being used (for polymorphism), it needs an index,
+        # only if another index doesn't begin with _cls
+        if index_cls and not cls_indexed and cls._meta.get("allow_inheritance"):
+            # we shouldn't pass 'cls' to the collection.ensureIndex options
+            # because of https://jira.mongodb.org/browse/SERVER-769
+            if "cls" in index_opts:
+                del index_opts["cls"]
+
+            collection.create_index("_cls", background=background, **index_opts)
+
+    @classmethod
+    def list_indexes(cls):
+        """Lists all indexes that should be created for the Document collection.
+        It includes all the indexes from super- and sub-classes.
+
+        Note that it will only return the indexes' fields, not the indexes' options
+        """
+        if cls._meta.get("abstract"):
+            return []
+
+        # get all the base classes, subclasses and siblings
+        classes = []
+
+        def get_classes(cls):
+            if cls not in classes and isinstance(cls, TopLevelDocumentMetaclass):
+                classes.append(cls)
+
+            for base_cls in cls.__bases__:
+                if (
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and base_cls != Document
+                    and not base_cls._meta.get("abstract")
+                    and base_cls._get_collection().full_name
+                    == cls._get_collection().full_name
+                    and base_cls not in classes
+                ):
+                    classes.append(base_cls)
+                    get_classes(base_cls)
+            for subclass in cls.__subclasses__():
+                if (
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and subclass._get_collection().full_name
+                    == cls._get_collection().full_name
+                    and subclass not in classes
+                ):
+                    classes.append(subclass)
+                    get_classes(subclass)
+
+        get_classes(cls)
+
+        # get the indexes spec for all the gathered classes
+        def get_indexes_spec(cls):
+            indexes = []
+
+            if cls._meta["index_specs"]:
+                index_spec = cls._meta["index_specs"]
+                for spec in index_spec:
+                    spec = spec.copy()
+                    fields = spec.pop("fields")
+                    indexes.append(fields)
+            return indexes
+
+        indexes = []
+        for klass in classes:
+            for index in get_indexes_spec(klass):
+                if index not in indexes:
+                    indexes.append(index)
+
+        # finish up by appending { '_id': 1 } and { '_cls': 1 }, if needed
+        if [("_id", 1)] not in indexes:
+            indexes.append([("_id", 1)])
+        if cls._meta.get("index_cls", True) and cls._meta.get("allow_inheritance"):
+            indexes.append([("_cls", 1)])
+
+        return indexes
+
+    @classmethod
+    def compare_indexes(cls):
+        """Compares the indexes defined in MongoEngine with the ones
+        existing in the database. Returns any missing/extra indexes.
+        """
+
+        required = cls.list_indexes()
+
+        existing = []
+        collection = cls._get_collection()
+        for info in collection.index_information().values():
+            if "_fts" in info["key"][0]:
+                # Useful for text indexes (but not only)
+                index_type = info["key"][0][1]
+                text_index_fields = info.get("weights").keys()
+                existing.append([(key, index_type) for key in text_index_fields])
+            else:
+                existing.append(info["key"])
+        missing = [index for index in required if index not in existing]
+        extra = [index for index in existing if index not in required]
+
+        # if { _cls: 1 } is missing, make sure it's *really* necessary
+        if [("_cls", 1)] in missing:
+            cls_obsolete = False
+            for index in existing:
+                if includes_cls(index) and index not in extra:
+                    cls_obsolete = True
+                    break
+            if cls_obsolete:
+                missing.remove([("_cls", 1)])
+
+        return {"missing": missing, "extra": extra}
+
+
+class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
+    """A Dynamic Document class allowing flexible, expandable and uncontrolled
+    schemas.  As a :class:`~mongoengine.Document` subclass, acts in the same
+    way as an ordinary document but has expanded style properties.  Any data
+    passed or set against the :class:`~mongoengine.DynamicDocument` that is
+    not a field is automatically converted into a
+    :class:`~mongoengine.fields.DynamicField` and data can be attributed to that
+    field.
+
+    .. note::
+
+        There is one caveat on Dynamic Documents: undeclared fields cannot start with `_`
+    """
+
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass = TopLevelDocumentMetaclass
+
+    _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Handle deletions of fields"""
+        """Delete the attribute by setting to None and allowing _delta
+        to unset it.
+        """
+        field_name = args[0]
+        if field_name in self._dynamic_fields:
+            setattr(self, field_name, None)
+            self._dynamic_fields[field_name].null = False
+        else:
+            super().__delattr__(*args, **kwargs)
+
+
+class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
+    """A Dynamic Embedded Document class allowing flexible, expandable and
+    uncontrolled schemas. See :class:`~mongoengine.DynamicDocument` for more
+    information about dynamic documents.
+    """
+
+    # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
+    my_metaclass = DocumentMetaclass
+
+    _dynamic = True
+
+    def __delattr__(self, *args, **kwargs):
+        """Delete the attribute by setting to None and allowing _delta
+        to unset it.
+        """
         field_name = args[0]
         if field_name in self._fields:
             default = self._fields[field_name].default
@@ -156,1066 +1101,41 @@ class BaseDocument:
                 default = default()
             setattr(self, field_name, default)
         else:
-            super().__delattr__(*args, **kwargs)
+            setattr(self, field_name, None)
 
-    def __setattr__(self, name, value):
-        # Handle dynamic data only if an initialised dynamic document
-        if self._dynamic and not self._dynamic_lock:
-            if name not in self._fields_ordered and not name.startswith("_"):
-                DynamicField = _import_class("DynamicField")
-                field = DynamicField(db_field=name, null=True)
-                field.name = name
-                self._dynamic_fields[name] = field
-                self._fields_ordered += (name,)
 
-            if not name.startswith("_"):
-                value = self.__expand_dynamic_values(name, value)
+class MapReduceDocument:
+    """A document returned from a map/reduce query.
 
-            # Handle marking data as changed
-            if name in self._dynamic_fields:
-                self._data[name] = value
-                if hasattr(self, "_changed_fields"):
-                    self._mark_as_changed(name)
-        try:
-            self__created = self._created
-        except AttributeError:
-            self__created = True
+    :param collection: An instance of :class:`~pymongo.Collection`
+    :param key: Document/result key, often an instance of
+                :class:`~bson.objectid.ObjectId`. If supplied as
+                an ``ObjectId`` found in the given ``collection``,
+                the object can be accessed via the ``object`` property.
+    :param value: The result(s) for this key.
+    """
 
-        if (
-            self._is_document
-            and not self__created
-            and name in self._meta.get("shard_key", tuple())
-            and self._data.get(name) != value
-        ):
-            msg = "Shard Keys are immutable. Tried to update %s" % name
-            raise OperationError(msg)
+    def __init__(self, document, collection, key, value):
+        self._document = document
+        self._collection = collection
+        self.key = key
+        self.value = value
 
-        try:
-            self__initialised = self._initialised
-        except AttributeError:
-            self__initialised = False
-
-        # Check if the user has created a new instance of a class
-        if (
-            self._is_document
-            and self__initialised
-            and self__created
-            and name == self._meta.get("id_field")
-        ):
-            super().__setattr__("_created", False)
-
-        super().__setattr__(name, value)
-
-    def __getstate__(self):
-        data = {}
-        for k in (
-            "_changed_fields",
-            "_initialised",
-            "_created",
-            "_dynamic_fields",
-            "_fields_ordered",
-        ):
-            if hasattr(self, k):
-                data[k] = getattr(self, k)
-        data["_data"] = self.to_mongo()
-        return data
-
-    def __setstate__(self, data):
-        if isinstance(data["_data"], SON):
-            data["_data"] = self.__class__._from_son(data["_data"])._data
-        for k in (
-            "_changed_fields",
-            "_initialised",
-            "_created",
-            "_data",
-            "_dynamic_fields",
-        ):
-            if k in data:
-                setattr(self, k, data[k])
-        if "_fields_ordered" in data:
-            if self._dynamic:
-                self._fields_ordered = data["_fields_ordered"]
-            else:
-                _super_fields_ordered = type(self)._fields_ordered
-                self._fields_ordered = _super_fields_ordered
-
-        dynamic_fields = data.get("_dynamic_fields") or SON()
-        for k in dynamic_fields.keys():
-            setattr(self, k, data["_data"].get(k))
-
-    def __iter__(self):
-        return iter(self._fields_ordered)
-
-    def __getitem__(self, name):
-        """Dictionary-style field access, return a field's value if present."""
-        try:
-            if name in self._fields_ordered:
-                return getattr(self, name)
-        except AttributeError:
-            pass
-        raise KeyError(name)
-
-    def __setitem__(self, name, value):
-        """Dictionary-style field access, set a field's value."""
-        # Ensure that the field exists before settings its value
-        if not self._dynamic and name not in self._fields:
-            raise KeyError(name)
-        return setattr(self, name, value)
-
-    def __contains__(self, name):
-        try:
-            val = getattr(self, name)
-            return val is not None
-        except AttributeError:
-            return False
-
-    def __len__(self):
-        return len(self._data)
-
-    def __repr__(self):
-        try:
-            u = self.__str__()
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            u = "[Bad Unicode data]"
-        repr_type = str if u is None else type(u)
-        return repr_type(f"<{self.__class__.__name__}: {u}>")
-
-    def __str__(self):
-        # TODO this could be simpler?
-        if hasattr(self, "__unicode__"):
-            return self.__unicode__()
-        return "%s object" % self.__class__.__name__
-
-    def __eq__(self, other):
-        if (
-            isinstance(other, self.__class__)
-            and hasattr(other, "id")
-            and other.id is not None
-        ):
-            return self.id == other.id
-        if isinstance(other, DBRef):
-            return (
-                self._get_collection_name() == other.collection and self.id == other.id
-            )
-        if self.id is None:
-            return self is other
-        return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def clean(self):
+    @property
+    def object(self):
+        """Lazy-load the object referenced by ``self.key``. ``self.key``
+        should be the ``primary_key``.
         """
-        Hook for doing document level data cleaning (usually validation or assignment)
-        before validation is run.
+        id_field = self._document()._meta["id_field"]
+        id_field_type = type(id_field)
 
-        Any ValidationError raised by this method will not be associated with
-        a particular field; it will have a special-case association with the
-        field defined by NON_FIELD_ERRORS.
-        """
-        pass
-
-    def get_text_score(self):
-        """
-        Get text score from text query
-        """
-
-        if "_text_score" not in self._data:
-            raise InvalidDocumentError(
-                "This document is not originally built from a text query (or text_score was not set on search_text() call)"
-            )
-
-        return self._data["_text_score"]
-
-    def to_mongo(self, use_db_field=True, fields=None):
-        """
-        Return as SON data ready for use with MongoDB.
-        """
-        fields = fields or []
-
-        data = SON()
-        data["_id"] = None
-        data["_cls"] = self._class_name
-
-        # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
-        root_fields = {f.split(".")[0] for f in fields}
-
-        for field_name in self:
-            if root_fields and field_name not in root_fields:
-                continue
-
-            value = self._data.get(field_name, None)
-            field = self._fields.get(field_name)
-
-            if field is None and self._dynamic:
-                field = self._dynamic_fields.get(field_name)
-
-            if value is not None:
-                f_inputs = field.to_mongo.__code__.co_varnames
-                ex_vars = {}
-                if fields and "fields" in f_inputs:
-                    key = "%s." % field_name
-                    embedded_fields = [
-                        i.replace(key, "") for i in fields if i.startswith(key)
-                    ]
-
-                    ex_vars["fields"] = embedded_fields
-
-                if "use_db_field" in f_inputs:
-                    ex_vars["use_db_field"] = use_db_field
-
-                value = field.to_mongo(value, **ex_vars)
-
-            # Handle self generating fields
-            if value is None and field._auto_gen:
-                value = field.generate()
-                self._data[field_name] = value
-
-            if value is not None or field.null:
-                if use_db_field:
-                    data[field.db_field] = value
-                else:
-                    data[field.name] = value
-
-        # Only add _cls if allow_inheritance is True
-        if not self._meta.get("allow_inheritance"):
-            data.pop("_cls")
-
-        return data
-
-    def validate(self, clean=True):
-        """Ensure that all fields' values are valid and that required fields
-        are present.
-
-        Raises :class:`ValidationError` if any of the fields' values are found
-        to be invalid.
-        """
-        # Ensure that each field is matched to a valid value
-        errors = {}
-        if clean:
+        if not isinstance(self.key, id_field_type):
             try:
-                self.clean()
-            except ValidationError as error:
-                errors[NON_FIELD_ERRORS] = error
-
-        # Get a list of tuples of field names and their current values
-        fields = [
-            (
-                self._fields.get(name, self._dynamic_fields.get(name)),
-                self._data.get(name),
-            )
-            for name in self._fields_ordered
-        ]
-
-        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
-        GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
-
-        for field, value in fields:
-            if value is not None:
-                try:
-                    if isinstance(
-                        field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)
-                    ):
-                        field._validate(value, clean=clean)
-                    else:
-                        field._validate(value)
-                except ValidationError as error:
-                    errors[field.name] = error.errors or error
-                except (ValueError, AttributeError, AssertionError) as error:
-                    errors[field.name] = error
-            elif field.required and not getattr(field, "_auto_gen", False):
-                errors[field.name] = ValidationError(
-                    "Field is required", field_name=field.name
-                )
-
-        if errors:
-            pk = "None"
-            if hasattr(self, "pk"):
-                pk = self.pk
-            elif self._instance and hasattr(self._instance, "pk"):
-                pk = self._instance.pk
-            message = f"ValidationError ({self._class_name}:{pk}) "
-            raise ValidationError(message, errors=errors)
-
-    def to_json(self, *args, **kwargs):
-        """Convert this document to JSON.
-
-        :param use_db_field: Serialize field names as they appear in
-            MongoDB (as opposed to attribute names on this document).
-            Defaults to True.
-        """
-        use_db_field = kwargs.pop("use_db_field", True)
-        if "json_options" not in kwargs:
-            warnings.warn(
-                "No 'json_options' are specified! Falling back to "
-                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
-                "For use with other MongoDB drivers specify the UUID "
-                "representation to use. This will be changed to "
-                "uuid_representation=UNSPECIFIED in a future release.",
-                DeprecationWarning,
-            )
-            kwargs["json_options"] = LEGACY_JSON_OPTIONS
-        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
-
-    @classmethod
-    def from_json(cls, json_data, created=False, **kwargs):
-        """Converts json data to a Document instance
-
-        :param str json_data: The json data to load into the Document
-        :param bool created: Boolean defining whether to consider the newly
-            instantiated document as brand new or as persisted already:
-            * If True, consider the document as brand new, no matter what data
-              it's loaded with (i.e. even if an ID is loaded).
-            * If False and an ID is NOT provided, consider the document as
-              brand new.
-            * If False and an ID is provided, assume that the object has
-              already been persisted (this has an impact on the subsequent
-              call to .save()).
-            * Defaults to ``False``.
-        """
-        # TODO should `created` default to False? If the object already exists
-        # in the DB, you would likely retrieve it from MongoDB itself through
-        # a query, not load it from JSON data.
-        if "json_options" not in kwargs:
-            warnings.warn(
-                "No 'json_options' are specified! Falling back to "
-                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
-                "For use with other MongoDB drivers specify the UUID "
-                "representation to use. This will be changed to "
-                "uuid_representation=UNSPECIFIED in a future release.",
-                DeprecationWarning,
-            )
-            kwargs["json_options"] = LEGACY_JSON_OPTIONS
-        return cls._from_son(json_util.loads(json_data, **kwargs), created=created)
-
-    def __expand_dynamic_values(self, name, value):
-        """Expand any dynamic values to their correct types / values."""
-        if not isinstance(value, (dict, list, tuple)):
-            return value
-
-        # If the value is a dict with '_cls' in it, turn it into a document
-        is_dict = isinstance(value, dict)
-        if is_dict and "_cls" in value:
-            cls = get_document(value["_cls"])
-            return cls(**value)
-
-        if is_dict:
-            value = {k: self.__expand_dynamic_values(k, v) for k, v in value.items()}
-        else:
-            value = [self.__expand_dynamic_values(name, v) for v in value]
-
-        # Convert lists / values so we can watch for any changes on them
-        EmbeddedDocumentListField = _import_class("EmbeddedDocumentListField")
-        if isinstance(value, (list, tuple)) and not isinstance(value, BaseList):
-            if issubclass(type(self), EmbeddedDocumentListField):
-                value = EmbeddedDocumentList(value, self, name)
-            else:
-                value = BaseList(value, self, name)
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, self, name)
-
-        return value
-
-    def _mark_as_changed(self, key):
-        """Mark a key as explicitly changed by the user."""
-        if not hasattr(self, "_changed_fields"):
-            return
-
-        if "." in key:
-            key, rest = key.split(".", 1)
-            key = self._db_field_map.get(key, key)
-            key = f"{key}.{rest}"
-        else:
-            key = self._db_field_map.get(key, key)
-
-        if key not in self._changed_fields:
-            levels, idx = key.split("."), 1
-            while idx <= len(levels):
-                if ".".join(levels[:idx]) in self._changed_fields:
-                    break
-                idx += 1
-            else:
-                self._changed_fields.append(key)
-                # remove lower level changed fields
-                level = ".".join(levels[:idx]) + "."
-                remove = self._changed_fields.remove
-                for field in self._changed_fields[:]:
-                    if field.startswith(level):
-                        remove(field)
-
-    def _clear_changed_fields(self):
-        """Using _get_changed_fields iterate and remove any fields that
-        are marked as changed.
-        """
-        ReferenceField = _import_class("ReferenceField")
-        GenericReferenceField = _import_class("GenericReferenceField")
-
-        for changed in self._get_changed_fields():
-            parts = changed.split(".")
-            data = self
-            for part in parts:
-                if isinstance(data, list):
-                    try:
-                        data = data[int(part)]
-                    except IndexError:
-                        data = None
-                elif isinstance(data, dict):
-                    data = data.get(part, None)
-                else:
-                    field_name = data._reverse_db_field_map.get(part, part)
-                    data = getattr(data, field_name, None)
-
-                if not isinstance(data, LazyReference) and hasattr(
-                    data, "_changed_fields"
-                ):
-                    if getattr(data, "_is_document", False):
-                        continue
-
-                    data._changed_fields = []
-                elif isinstance(data, (list, tuple, dict)):
-                    if hasattr(data, "field") and isinstance(
-                        data.field, (ReferenceField, GenericReferenceField)
-                    ):
-                        continue
-                    BaseDocument._nestable_types_clear_changed_fields(data)
-
-        self._changed_fields = []
-
-    @staticmethod
-    def _nestable_types_clear_changed_fields(data):
-        """Inspect nested data for changed fields
-
-        :param data: data to inspect for changes
-        """
-        Document = _import_class("Document")
-
-        # Loop list / dict fields as they contain documents
-        # Determine the iterator to use
-        if not hasattr(data, "items"):
-            iterator = enumerate(data)
-        else:
-            iterator = data.items()
-
-        for _index_or_key, value in iterator:
-            if hasattr(value, "_get_changed_fields") and not isinstance(
-                value, Document
-            ):  # don't follow references
-                value._clear_changed_fields()
-            elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_clear_changed_fields(value)
-
-    @staticmethod
-    def _nestable_types_changed_fields(changed_fields, base_key, data):
-        """Inspect nested data for changed fields
-
-        :param changed_fields: Previously collected changed fields
-        :param base_key: The base key that must be used to prepend changes to this data
-        :param data: data to inspect for changes
-        """
-        # Loop list / dict fields as they contain documents
-        # Determine the iterator to use
-        if not hasattr(data, "items"):
-            iterator = enumerate(data)
-        else:
-            iterator = data.items()
-
-        for index_or_key, value in iterator:
-            item_key = f"{base_key}{index_or_key}."
-            # don't check anything lower if this key is already marked
-            # as changed.
-            if item_key[:-1] in changed_fields:
-                continue
-
-            if hasattr(value, "_get_changed_fields"):
-                changed = value._get_changed_fields()
-                changed_fields += [f"{item_key}{k}" for k in changed if k]
-            elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_changed_fields(
-                    changed_fields, item_key, value
-                )
-
-    def _get_changed_fields(self):
-        """Return a list of all fields that have explicitly been changed."""
-        EmbeddedDocument = _import_class("EmbeddedDocument")
-        LazyReferenceField = _import_class("LazyReferenceField")
-        ReferenceField = _import_class("ReferenceField")
-        GenericLazyReferenceField = _import_class("GenericLazyReferenceField")
-        GenericReferenceField = _import_class("GenericReferenceField")
-        SortedListField = _import_class("SortedListField")
-
-        changed_fields = []
-        changed_fields += getattr(self, "_changed_fields", [])
-
-        for field_name in self._fields_ordered:
-            db_field_name = self._db_field_map.get(field_name, field_name)
-            key = "%s." % db_field_name
-            data = self._data.get(field_name, None)
-            field = self._fields.get(field_name)
-
-            if db_field_name in changed_fields:
-                # Whole field already marked as changed, no need to go further
-                continue
-
-            if isinstance(field, ReferenceField):  # Don't follow referenced documents
-                continue
-
-            if isinstance(data, EmbeddedDocument):
-                # Find all embedded fields that have been changed
-                changed = data._get_changed_fields()
-                changed_fields += [f"{key}{k}" for k in changed if k]
-            elif isinstance(data, (list, tuple, dict)):
-                if hasattr(field, "field") and isinstance(
-                    field.field,
-                    (
-                        LazyReferenceField,
-                        ReferenceField,
-                        GenericLazyReferenceField,
-                        GenericReferenceField,
-                    ),
-                ):
-                    continue
-                elif isinstance(field, SortedListField) and field._ordering:
-                    # if ordering is affected whole list is changed
-                    if any(field._ordering in d._changed_fields for d in data):
-                        changed_fields.append(db_field_name)
-                        continue
-
-                self._nestable_types_changed_fields(changed_fields, key, data)
-        return changed_fields
-
-    def _delta(self):
-        """Returns the delta (set, unset) of the changes for a document.
-        Gets any values that have been explicitly changed.
-        """
-        # Handles cases where not loaded from_son but has _id
-        doc = self.to_mongo()
-
-        set_fields = self._get_changed_fields()
-        unset_data = {}
-        if hasattr(self, "_changed_fields"):
-            set_data = {}
-            # Fetch each set item from its path
-            for path in set_fields:
-                parts = path.split(".")
-                d = doc
-                new_path = []
-                for p in parts:
-                    if isinstance(d, (ObjectId, DBRef)):
-                        # Don't dig in the references
-                        break
-                    elif isinstance(d, list) and p.isdigit():
-                        # An item of a list (identified by its index) is updated
-                        d = d[int(p)]
-                    elif hasattr(d, "get"):
-                        # dict-like (dict, embedded document)
-                        d = d.get(p)
-                    new_path.append(p)
-                path = ".".join(new_path)
-                set_data[path] = d
-        else:
-            set_data = doc
-            if "_id" in set_data:
-                del set_data["_id"]
-
-        # Determine if any changed items were actually unset.
-        for path, value in list(set_data.items()):
-            if value or isinstance(
-                value, (numbers.Number, bool)
-            ):  # Account for 0 and True that are truthy
-                continue
-
-            parts = path.split(".")
-
-            if self._dynamic and len(parts) and parts[0] in self._dynamic_fields:
-                del set_data[path]
-                unset_data[path] = 1
-                continue
-
-            # If we've set a value that ain't the default value don't unset it.
-            default = None
-            if path in self._fields:
-                default = self._fields[path].default
-            else:  # Perform a full lookup for lists / embedded lookups
-                d = self
-                db_field_name = parts.pop()
-                for p in parts:
-                    if isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
-                    elif hasattr(d, "__getattribute__") and not isinstance(d, dict):
-                        real_path = d._reverse_db_field_map.get(p, p)
-                        d = getattr(d, real_path)
-                    else:
-                        d = d.get(p)
-
-                if hasattr(d, "_fields"):
-                    field_name = d._reverse_db_field_map.get(
-                        db_field_name, db_field_name
-                    )
-                    if field_name in d._fields:
-                        default = d._fields.get(field_name).default
-                    else:
-                        default = None
-
-            if default is not None:
-                default = default() if callable(default) else default
-
-            if value != default:
-                continue
-
-            del set_data[path]
-            unset_data[path] = 1
-        return set_data, unset_data
-
-    @classmethod
-    def _get_collection_name(cls):
-        """Return the collection name for this class. None for abstract
-        class.
-        """
-        return cls._meta.get("collection", None)
-
-    @classmethod
-    def _from_son(cls, son, _auto_dereference=True, created=False):
-        """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
-        if son and not isinstance(son, dict):
-            raise ValueError(
-                "The source SON object needs to be of type 'dict' but a '%s' was found"
-                % type(son)
-            )
-
-        # Get the class name from the document, falling back to the given
-        # class if unavailable
-        class_name = son.get("_cls", cls._class_name)
-
-        # Convert SON to a data dict, making sure each key is a string and
-        # corresponds to the right db field.
-        # This is needed as _from_son is currently called both from BaseDocument.__init__
-        # and from EmbeddedDocumentField.to_python
-        data = {}
-        for key, value in son.items():
-            key = str(key)
-            key = cls._db_field_map.get(key, key)
-            data[key] = value
-
-        # Return correct subclass for document type
-        if class_name != cls._class_name:
-            cls = get_document(class_name)
-
-        errors_dict = {}
-
-        fields = cls._fields
-        if not _auto_dereference:
-            fields = copy.deepcopy(fields)
-
-        for field_name, field in fields.items():
-            field._auto_dereference = _auto_dereference
-            if field.db_field in data:
-                value = data[field.db_field]
-                try:
-                    data[field_name] = (
-                        value if value is None else field.to_python(value)
-                    )
-                    if field_name != field.db_field:
-                        del data[field.db_field]
-                except (AttributeError, ValueError) as e:
-                    errors_dict[field_name] = e
-
-        if errors_dict:
-            errors = "\n".join([f"Field '{k}' - {v}" for k, v in errors_dict.items()])
-            msg = "Invalid data to create a `{}` instance.\n{}".format(
-                cls._class_name,
-                errors,
-            )
-            raise InvalidDocumentError(msg)
-
-        # In STRICT documents, remove any keys that aren't in cls._fields
-        if cls.STRICT:
-            data = {k: v for k, v in data.items() if k in cls._fields}
-
-        obj = cls(__auto_convert=False, _created=created, **data)
-        obj._changed_fields = []
-        if not _auto_dereference:
-            obj._fields = fields
-
-        return obj
-
-    @classmethod
-    def _build_index_specs(cls, meta_indexes):
-        """Generate and merge the full index specs."""
-        geo_indices = cls._geo_indices()
-        unique_indices = cls._unique_with_indexes()
-        index_specs = [cls._build_index_spec(spec) for spec in meta_indexes]
-
-        def merge_index_specs(index_specs, indices):
-            """Helper method for merging index specs."""
-            if not indices:
-                return index_specs
-
-            # Create a map of index fields to index spec. We're converting
-            # the fields from a list to a tuple so that it's hashable.
-            spec_fields = {tuple(index["fields"]): index for index in index_specs}
-
-            # For each new index, if there's an existing index with the same
-            # fields list, update the existing spec with all data from the
-            # new spec.
-            for new_index in indices:
-                candidate = spec_fields.get(tuple(new_index["fields"]))
-                if candidate is None:
-                    index_specs.append(new_index)
-                else:
-                    candidate.update(new_index)
-
-            return index_specs
-
-        # Merge geo indexes and unique_with indexes into the meta index specs.
-        index_specs = merge_index_specs(index_specs, geo_indices)
-        index_specs = merge_index_specs(index_specs, unique_indices)
-        return index_specs
-
-    @classmethod
-    def _build_index_spec(cls, spec):
-        """Build a PyMongo index spec from a MongoEngine index spec."""
-        if isinstance(spec, str):
-            spec = {"fields": [spec]}
-        elif isinstance(spec, (list, tuple)):
-            spec = {"fields": list(spec)}
-        elif isinstance(spec, dict):
-            spec = dict(spec)
-
-        index_list = []
-        direction = None
-
-        # Check to see if we need to include _cls
-        allow_inheritance = cls._meta.get("allow_inheritance")
-        include_cls = (
-            allow_inheritance
-            and not spec.get("sparse", False)
-            and spec.get("cls", True)
-            and "_cls" not in spec["fields"]
-        )
-
-        # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
-        include_cls = include_cls and (
-            spec.get("cls", False) or cls._meta.get("index_cls", True)
-        )
-        if "cls" in spec:
-            spec.pop("cls")
-        for key in spec["fields"]:
-            # If inherited spec continue
-            if isinstance(key, (list, tuple)):
-                continue
-
-            # ASCENDING from +
-            # DESCENDING from -
-            # TEXT from $
-            # HASHED from #
-            # GEOSPHERE from (
-            # GEOHAYSTACK from )
-            # GEO2D from *
-            direction = pymongo.ASCENDING
-            if key.startswith("-"):
-                direction = pymongo.DESCENDING
-            elif key.startswith("$"):
-                direction = pymongo.TEXT
-            elif key.startswith("#"):
-                direction = pymongo.HASHED
-            elif key.startswith("("):
-                direction = pymongo.GEOSPHERE
-            elif key.startswith(")"):
-                try:
-                    direction = pymongo.GEOHAYSTACK
-                except AttributeError:
-                    raise NotImplementedError
-            elif key.startswith("*"):
-                direction = pymongo.GEO2D
-            if key.startswith(("+", "-", "*", "$", "#", "(", ")")):
-                key = key[1:]
-
-            # Use real field name, do it manually because we need field
-            # objects for the next part (list field checking)
-            parts = key.split(".")
-            if parts in (["pk"], ["id"], ["_id"]):
-                key = "_id"
-            else:
-                fields = cls._lookup_field(parts)
-                parts = []
-                for field in fields:
-                    try:
-                        if field != "_id":
-                            field = field.db_field
-                    except AttributeError:
-                        pass
-                    parts.append(field)
-                key = ".".join(parts)
-            index_list.append((key, direction))
-
-        # Don't add cls to a geo index
-        if (
-            include_cls
-            and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
-            and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
-        ):
-            index_list.insert(0, ("_cls", 1))
-
-        if index_list:
-            spec["fields"] = index_list
-
-        return spec
-
-    @classmethod
-    def _unique_with_indexes(cls, namespace=""):
-        """Find unique indexes in the document schema and return them."""
-        unique_indexes = []
-        for field_name, field in cls._fields.items():
-            sparse = field.sparse
-
-            # Generate a list of indexes needed by uniqueness constraints
-            if field.unique:
-                unique_fields = [field.db_field]
-
-                # Add any unique_with fields to the back of the index spec
-                if field.unique_with:
-                    if isinstance(field.unique_with, str):
-                        field.unique_with = [field.unique_with]
-
-                    # Convert unique_with field names to real field names
-                    unique_with = []
-                    for other_name in field.unique_with:
-                        parts = other_name.split(".")
-
-                        # Lookup real name
-                        parts = cls._lookup_field(parts)
-                        name_parts = [part.db_field for part in parts]
-                        unique_with.append(".".join(name_parts))
-
-                        # Unique field should be required
-                        parts[-1].required = True
-                        sparse = not sparse and parts[-1].name not in cls.__dict__
-
-                    unique_fields += unique_with
-
-                # Add the new index to the list
-                fields = [(f"{namespace}{f}", pymongo.ASCENDING) for f in unique_fields]
-                index = {"fields": fields, "unique": True, "sparse": sparse}
-                unique_indexes.append(index)
-
-            if field.__class__.__name__ in {
-                "EmbeddedDocumentListField",
-                "ListField",
-                "SortedListField",
-            }:
-                field = field.field
-
-            # Grab any embedded document field unique indexes
-            if (
-                field.__class__.__name__ == "EmbeddedDocumentField"
-                and field.document_type != cls
-            ):
-                field_namespace = "%s." % field_name
-                doc_cls = field.document_type
-                unique_indexes += doc_cls._unique_with_indexes(field_namespace)
-
-        return unique_indexes
-
-    @classmethod
-    def _geo_indices(cls, inspected=None, parent_field=None):
-        inspected = inspected or []
-        geo_indices = []
-        inspected.append(cls)
-
-        geo_field_type_names = (
-            "EmbeddedDocumentField",
-            "GeoPointField",
-            "PointField",
-            "LineStringField",
-            "PolygonField",
-        )
-
-        geo_field_types = tuple(_import_class(field) for field in geo_field_type_names)
-
-        for field in cls._fields.values():
-            if not isinstance(field, geo_field_types):
-                continue
-
-            if hasattr(field, "document_type"):
-                field_cls = field.document_type
-                if field_cls in inspected:
-                    continue
-
-                if hasattr(field_cls, "_geo_indices"):
-                    geo_indices += field_cls._geo_indices(
-                        inspected, parent_field=field.db_field
-                    )
-            elif field._geo_index:
-                field_name = field.db_field
-                if parent_field:
-                    field_name = f"{parent_field}.{field_name}"
-                geo_indices.append({"fields": [(field_name, field._geo_index)]})
-
-        return geo_indices
-
-    @classmethod
-    def _lookup_field(cls, parts):
-        """Given the path to a given field, return a list containing
-        the Field object associated with that field and all of its parent
-        Field objects.
-
-        Args:
-            parts (str, list, or tuple) - path to the field. Should be a
-            string for simple fields existing on this document or a list
-            of strings for a field that exists deeper in embedded documents.
-
-        Returns:
-            A list of Field instances for fields that were found or
-            strings for sub-fields that weren't.
-
-        Example:
-            >>> user._lookup_field('name')
-            [<mongoengine.fields.StringField at 0x1119bff50>]
-
-            >>> user._lookup_field('roles')
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>]
-
-            >>> user._lookup_field(['roles', 'role'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             <mongoengine.fields.StringField at 0x1119ec050>]
-
-            >>> user._lookup_field('doesnt_exist')
-            raises LookUpError
-
-            >>> user._lookup_field(['roles', 'doesnt_exist'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             'doesnt_exist']
-
-        """
-        # TODO this method is WAY too complicated. Simplify it.
-        # TODO don't think returning a string for embedded non-existent fields is desired
-
-        ListField = _import_class("ListField")
-        DynamicField = _import_class("DynamicField")
-
-        if not isinstance(parts, (list, tuple)):
-            parts = [parts]
-
-        fields = []
-        field = None
-
-        for field_name in parts:
-            # Handle ListField indexing:
-            if field_name.isdigit() and isinstance(field, ListField):
-                fields.append(field_name)
-                continue
-
-            # Look up first field from the document
-            if field is None:
-                if field_name == "pk":
-                    # Deal with "primary key" alias
-                    field_name = cls._meta["id_field"]
-
-                if field_name in cls._fields:
-                    field = cls._fields[field_name]
-                elif cls._dynamic:
-                    field = DynamicField(db_field=field_name)
-                elif cls._meta.get("allow_inheritance") or cls._meta.get(
-                    "abstract", False
-                ):
-                    # 744: in case the field is defined in a subclass
-                    for subcls in cls.__subclasses__():
-                        try:
-                            field = subcls._lookup_field([field_name])[0]
-                        except LookUpError:
-                            continue
-
-                        if field is not None:
-                            break
-                    else:
-                        raise LookUpError('Cannot resolve field "%s"' % field_name)
-                else:
-                    raise LookUpError('Cannot resolve field "%s"' % field_name)
-            else:
-                ReferenceField = _import_class("ReferenceField")
-                GenericReferenceField = _import_class("GenericReferenceField")
-
-                # If previous field was a reference, throw an error (we
-                # cannot look up fields that are on references).
-                if isinstance(field, (ReferenceField, GenericReferenceField)):
-                    raise LookUpError(
-                        "Cannot perform join in mongoDB: %s" % "__".join(parts)
-                    )
-
-                # If the parent field has a "field" attribute which has a
-                # lookup_member method, call it to find the field
-                # corresponding to this iteration.
-                if hasattr(getattr(field, "field", None), "lookup_member"):
-                    new_field = field.field.lookup_member(field_name)
-
-                # If the parent field is a DynamicField or if it's part of
-                # a DynamicDocument, mark current field as a DynamicField
-                # with db_name equal to the field name.
-                elif cls._dynamic and (
-                    isinstance(field, DynamicField)
-                    or getattr(getattr(field, "document_type", None), "_dynamic", None)
-                ):
-                    new_field = DynamicField(db_field=field_name)
-
-                # Else, try to use the parent field's lookup_member method
-                # to find the subfield.
-                elif hasattr(field, "lookup_member"):
-                    new_field = field.lookup_member(field_name)
-
-                # Raise a LookUpError if all the other conditions failed.
-                else:
-                    raise LookUpError(
-                        "Cannot resolve subfield or operator {} "
-                        "on the field {}".format(field_name, field.name)
-                    )
-
-                # If current field still wasn't found and the parent field
-                # is a ComplexBaseField, add the name current field name and
-                # move on.
-                if not new_field and isinstance(field, ComplexBaseField):
-                    fields.append(field_name)
-                    continue
-                elif not new_field:
-                    raise LookUpError('Cannot resolve field "%s"' % field_name)
-
-                field = new_field  # update field to the new field type
-
-            fields.append(field)
-
-        return fields
-
-    @classmethod
-    def _translate_field_name(cls, field, sep="."):
-        """Translate a field attribute name to a database field name."""
-        parts = field.split(sep)
-        parts = [f.db_field for f in cls._lookup_field(parts)]
-        return ".".join(parts)
-
-    def __set_field_display(self):
-        """For each field that specifies choices, create a
-        get_<field>_display method.
-        """
-        fields_with_choices = [(n, f) for n, f in self._fields.items() if f.choices]
-        for attr_name, field in fields_with_choices:
-            setattr(
-                self,
-                "get_%s_display" % attr_name,
-                partial(self.__get_field_display, field=field),
-            )
-
-    def __get_field_display(self, field):
-        """Return the display value for a choice field"""
-        value = getattr(self, field.name)
-        if field.choices and isinstance(field.choices[0], (list, tuple)):
-            if value is None:
-                return None
-            sep = getattr(field, "display_sep", " ")
-            values = (
-                value
-                if field.__class__.__name__ in ("ListField", "SortedListField")
-                else [value]
-            )
-            return sep.join(
-                [str(dict(field.choices).get(val, val)) for val in values or []]
-            )
-        return value
+                self.key = id_field_type(self.key)
+            except Exception:
+                raise Exception("Could not cast key as %s" % id_field_type.__name__)
+
+        if not hasattr(self, "_key_object"):
+            self._key_object = self._document.objects.with_id(self.key)
+            return self._key_object
+        return self._key_object
