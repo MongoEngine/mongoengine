@@ -20,9 +20,6 @@ MongoDB. To install it, simply run
 :doc:`apireference`
   The complete API documentation --- the innards of documents, querysets and fields.
 
-:doc:`upgrade`
-  How to upgrade MongoEngine.
-
 :doc:`faq`
   Frequently Asked Questions
 
@@ -33,7 +30,7 @@ MongoDB and driver support
 --------------------------
 
 MongoEngine is based on the PyMongo driver and tested against multiple versions of MongoDB.
-For further details, please refer to the `readme <https://github.com/MongoEngine/mongoengine#mongoengine>`_.
+For further details, please refer to the `readme <https://github.com/MongoEngine/mongoengine>`_.
 
 Community
 ---------
@@ -47,22 +44,18 @@ Contributing
 
 **Yes please!**  We are always looking for contributions, additions and improvements.
 
-The source is available on `GitHub <http://github.com/MongoEngine/mongoengine>`_
+The source is available on `GitHub <https://github.com/MongoEngine/mongoengine>`_
 and contributions are always encouraged. Contributions can be as simple as
 minor tweaks to this documentation, the website or the core.
 
 To contribute, fork the project on
-`GitHub <http://github.com/MongoEngine/mongoengine>`_ and send a
+`GitHub <https://github.com/MongoEngine/mongoengine>`_ and send a
 pull request.
 
 Changes
 -------
 
-See the :doc:`changelog` for a full list of changes to MongoEngine and
-:doc:`upgrade` for upgrade information.
-
-.. note::  Always read and test the `upgrade <upgrade>`_ documentation before
-    putting updates live in production **;)**
+See the :doc:`changelog` for a full list of changes to MongoEngine.
 
 Offline Reading
 ---------------
@@ -81,7 +74,6 @@ formats for offline reading.
     guide/index
     apireference
     changelog
-    upgrade
     faq
     django
 

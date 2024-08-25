@@ -48,7 +48,7 @@ You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptool
 and thus you can use ``easy_install -U mongoengine``. Another option is
 `pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
 to both create the virtual environment and install the package. Otherwise, you can
-download the source from `GitHub <http://github.com/MongoEngine/mongoengine>`_ and
+download the source from `GitHub <https://github.com/MongoEngine/mongoengine>`_ and
 run ``python setup.py install``.
 
 The support for Python2 was dropped with MongoEngine 0.20.0

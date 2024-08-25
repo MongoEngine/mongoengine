@@ -47,7 +47,7 @@ of the MongoDB connection string is for::
     connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
 
 The URI string can also be used to configure advanced parameters like ssl, replicaSet, etc. For more
-information or example about URI string, you can refer to the `official doc <https://docs.mongodb.com/manual/reference/connection-string/>`_::
+information or example about URI string, you can refer to the `official doc <https://www.mongodb.com/docs/manual/reference/connection-string/>`_::
 
     connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=admin&ssl=true&replicaSet=globaldb")
 
