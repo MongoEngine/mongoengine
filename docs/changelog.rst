@@ -7,10 +7,17 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.29.0
+=================
+- Fix weakref in EmbeddedDocumentListField (causing brief mem leak in certain circumstances) #2827
 - Fix pillow deprecation warning related with LANCZOS filter #2824
 - Allow gt/gte/lt/lte/ne operators to be used with a list as value on ListField #2813
 - Switch tox to use pytest instead of legacy `python setup.py test` #2804
 - Add support for timeseries collection #2661
+- Add support in tests for MongoDB 7.0, pymongo 4.7 and pymongo 4.8 in the CI #2826
+- Add support for `array_filters` in Queryset.modify #2811
+- Integrate a docker-compose setup for local testing #2555
 - improve ReferenceField wrong usage detection
 - Fix no_dereference thread-safetyness #2830
 - BREAKING CHANGE: max_length in ListField is now keyword only on ListField signature
