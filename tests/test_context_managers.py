@@ -550,7 +550,7 @@ class TestContextManagers(MongoDBTestCase):
                 assert A.objects.get(id=a_doc.id).name == "b"
                 raise TestRollbackError()
 
-        assert A.objects.count() == 0
+        assert A.objects.count() == 1
         assert A.objects.get(id=a_doc.id).name == "a"
 
     @requires_mongodb_gte_40
@@ -793,7 +793,7 @@ class TestContextManagers(MongoDBTestCase):
         of value 0 - 9.
 
         We then spin up 10 threads and attempt to update a target
-        record by multiplying it's integer value by 10. Then, if
+        record by multiplying its integer value by 10. Then, if
         the target record is even, throw an exception, which
         should then roll the transaction back. The odd rows always
         succeed.
@@ -809,6 +809,7 @@ class TestContextManagers(MongoDBTestCase):
         class A(Document):
             i = IntField()
 
+        A.drop_collection()
         # Ensure the collection is created
         A.objects.create(i=0)
 

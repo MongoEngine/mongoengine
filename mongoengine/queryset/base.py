@@ -282,7 +282,7 @@ class BaseQuerySet:
         except StopIteration:
             return result
 
-        # If we were able to retrieve the 2nd doc, raise the MultipleObjectsReturned exception.
+        # If we were able to retrieve a 2nd doc, raise the MultipleObjectsReturned exception.
         raise queryset._document.MultipleObjectsReturned(
             "2 or more items returned, instead of 1"
         )
