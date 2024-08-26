@@ -12,7 +12,7 @@ from pymongo.results import UpdateResult
 from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
-from mongoengine.errors import InvalidQueryError
+from mongoengine.errors import BulkWriteError, InvalidQueryError
 from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
@@ -1179,6 +1179,33 @@ class TestQueryset(unittest.TestCase):
         com1 = Comment(id=0)
         com2 = Comment(id=1)
         Comment.objects.insert([com1, com2])
+
+    def test_bulk_insert_ordered(self):
+        class Comment(Document):
+            name = StringField(unique=True)
+
+        Comment.drop_collection()
+        Comment.objects.insert(Comment(name="b"), ordered=True)
+        comments = [Comment(name="a"), Comment(name="b"), Comment(name="c")]
+        with pytest.raises(BulkWriteError):
+            Comment.objects.insert(comments, ordered=True)
+        Comment.objects.get(name="a")
+        with pytest.raises(DoesNotExist):
+            Comment.objects.get(name="c")
+        assert comments[0].pk is not None
+        assert comments[1].pk is None
+        assert comments[2].pk is None
+
+        Comment.drop_collection()
+        Comment.objects.insert(Comment(name="b"), ordered=False)
+        comments = [Comment(name="a"), Comment(name="b"), Comment(name="c")]
+        with pytest.raises(BulkWriteError):
+            Comment.objects.insert(comments, ordered=False)
+        Comment.objects.get(name="a")
+        Comment.objects.get(name="c")
+        assert comments[0].pk is not None
+        assert comments[1].pk is None
+        assert comments[2].pk is not None
 
     def test_insert_raise_if_duplicate_in_constraint(self):
         class Comment(Document):

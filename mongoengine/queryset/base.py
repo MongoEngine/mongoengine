@@ -304,7 +304,12 @@ class BaseQuerySet:
         return result
 
     def insert(
-        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+        self,
+        doc_or_docs,
+        load_bulk=True,
+        write_concern=None,
+        signal_kwargs=None,
+        ordered=True,
     ):
         """bulk insert documents
 
@@ -320,6 +325,11 @@ class BaseQuerySet:
                 each server being written to.
         :param signal_kwargs: (optional) kwargs dictionary to be passed to
             the signal calls.
+        :param ordered (optional): If True (the default) documents will be
+            inserted on the server serially, in the order provided. If an error
+            occurs all remaining inserts are aborted. If False, documents will
+            be inserted on the server in arbitrary order, possibly in parallel,
+            and all document inserts will be attempted.
 
         By default returns document instances, set ``load_bulk`` to False to
         return just ``ObjectIds``
@@ -352,12 +362,14 @@ class BaseQuerySet:
 
         with set_write_concern(self._collection, write_concern) as collection:
             insert_func = collection.insert_many
+            insert_func_kwargs = {"ordered": ordered}
             if return_one:
                 raw = raw[0]
                 insert_func = collection.insert_one
+                insert_func_kwargs = {}
 
         try:
-            inserted_result = insert_func(raw)
+            inserted_result = insert_func(raw, **insert_func_kwargs)
             ids = (
                 [inserted_result.inserted_id]
                 if return_one
@@ -369,6 +381,17 @@ class BaseQuerySet:
         except pymongo.errors.BulkWriteError as err:
             # inserting documents that already have an _id field will
             # give huge performance debt or raise
+            if ordered:
+                inserted = err.details["nInserted"]
+                for doc, raw_doc in zip(docs[:inserted], raw[:inserted]):
+                    doc.pk = raw_doc["_id"]
+            else:
+                not_writed_ids = [
+                    error["op"]["_id"] for error in err.details["writeErrors"]
+                ]
+                for doc, raw_doc in zip(docs, raw):
+                    if raw_doc["_id"] not in not_writed_ids:
+                        doc.pk = raw_doc["_id"]
             message = "Bulk write error: (%s)"
             raise BulkWriteError(message % err.details)
         except pymongo.errors.OperationFailure as err:
