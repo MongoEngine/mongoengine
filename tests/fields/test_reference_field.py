@@ -6,6 +6,26 @@ from tests.utils import MongoDBTestCase
 
 
 class TestReferenceField(MongoDBTestCase):
+    def test_reference_field_fails_init_wrong_document_type(self):
+        class User(Document):
+            name = StringField()
+
+        ERROR_MSG = "Argument to ReferenceField constructor must be a document class or a string"
+        # fails if given an instance
+        with pytest.raises(ValidationError, match=ERROR_MSG):
+
+            class Test(Document):
+                author = ReferenceField(User())
+
+        class NonDocumentSubClass:
+            pass
+
+        # fails if given an non Document subclass
+        with pytest.raises(ValidationError, match=ERROR_MSG):
+
+            class Test(Document):  # noqa: F811
+                author = ReferenceField(NonDocumentSubClass)
+
     def test_reference_validation(self):
         """Ensure that invalid document objects cannot be assigned to
         reference fields.

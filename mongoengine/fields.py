@@ -6,6 +6,7 @@ import re
 import socket
 import time
 import uuid
+from inspect import isclass
 from io import BytesIO
 from operator import itemgetter
 
@@ -52,8 +53,12 @@ from mongoengine.queryset.transform import STRING_OPERATORS
 try:
     from PIL import Image, ImageOps
 
-    LANCZOS = Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
+    if hasattr(Image, "Resampling"):
+        LANCZOS = Image.Resampling.LANCZOS
+    else:
+        LANCZOS = Image.LANCZOS
 except ImportError:
+    # pillow is optional so may not be installed
     Image = None
     ImageOps = None
 
@@ -711,7 +716,6 @@ class EmbeddedDocumentField(BaseField):
     """
 
     def __init__(self, document_type, **kwargs):
-        # XXX ValidationError raised outside of the "validate" method.
         if not (
             isinstance(document_type, str)
             or issubclass(document_type, EmbeddedDocument)
@@ -916,9 +920,9 @@ class ListField(ComplexBaseField):
         Required means it cannot be empty - as the default for ListFields is []
     """
 
-    def __init__(self, field=None, max_length=None, **kwargs):
+    def __init__(self, field=None, *, max_length=None, **kwargs):
         self.max_length = max_length
-        kwargs.setdefault("default", lambda: [])
+        kwargs.setdefault("default", list)
         super().__init__(field=field, **kwargs)
 
     def __get__(self, instance, owner):
@@ -957,11 +961,11 @@ class ListField(ComplexBaseField):
         if self.field:
             # If the value is iterable and it's not a string nor a
             # BaseDocument, call prepare_query_value for each of its items.
+            is_iter = hasattr(value, "__iter__")
+            eligible_iter = is_iter and not isinstance(value, (str, BaseDocument))
             if (
-                op in ("set", "unset", None)
-                and hasattr(value, "__iter__")
-                and not isinstance(value, str)
-                and not isinstance(value, BaseDocument)
+                op in ("set", "unset", "gt", "gte", "lt", "lte", "ne", None)
+                and eligible_iter
             ):
                 return [self.field.prepare_query_value(op, v) for v in value]
 
@@ -1041,10 +1045,9 @@ class DictField(ComplexBaseField):
     """
 
     def __init__(self, field=None, *args, **kwargs):
-        self._auto_dereference = False
-
-        kwargs.setdefault("default", lambda: {})
+        kwargs.setdefault("default", dict)
         super().__init__(*args, field=field, **kwargs)
+        self.set_auto_dereferencing(False)
 
     def validate(self, value):
         """Make sure that a list of valid fields is being used."""
@@ -1157,8 +1160,9 @@ class ReferenceField(BaseField):
             :class:`~pymongo.dbref.DBRef`, regardless of the value of `dbref`.
         """
         # XXX ValidationError raised outside of the "validate" method.
-        if not isinstance(document_type, str) and not issubclass(
-            document_type, Document
+        if not (
+            isinstance(document_type, str)
+            or (isclass(document_type) and issubclass(document_type, Document))
         ):
             self.error(
                 "Argument to ReferenceField constructor must be a "
@@ -2071,7 +2075,7 @@ class ImageField(FileField):
 
 class SequenceField(BaseField):
     """Provides a sequential counter see:
-     https://docs.mongodb.com/manual/reference/method/ObjectId/#ObjectIDs-SequenceNumbers
+     https://www.mongodb.com/docs/manual/reference/method/ObjectId/#ObjectIDs-SequenceNumbers
 
     .. note::
 

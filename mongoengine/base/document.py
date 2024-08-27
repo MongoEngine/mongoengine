@@ -461,13 +461,13 @@ class BaseDocument:
 
     @classmethod
     def from_json(cls, json_data, created=False, **kwargs):
-        """Converts json data to a Document instance
+        """Converts json data to a Document instance.
 
-        :param str json_data: The json data to load into the Document
+        :param str json_data: The json data to load into the Document.
         :param bool created: Boolean defining whether to consider the newly
             instantiated document as brand new or as persisted already:
             * If True, consider the document as brand new, no matter what data
-              it's loaded with (i.e. even if an ID is loaded).
+              it's loaded with (i.e., even if an ID is loaded).
             * If False and an ID is NOT provided, consider the document as
               brand new.
             * If False and an ID is provided, assume that the object has
@@ -806,10 +806,15 @@ class BaseDocument:
 
         fields = cls._fields
         if not _auto_dereference:
+            # if auto_deref is turned off, we copy the fields so
+            # we can mutate the auto_dereference of the fields
             fields = copy.deepcopy(fields)
 
+        # Apply field-name / db-field conversion
         for field_name, field in fields.items():
-            field._auto_dereference = _auto_dereference
+            field.set_auto_dereferencing(
+                _auto_dereference
+            )  # align the field's auto-dereferencing with the document's
             if field.db_field in data:
                 value = data[field.db_field]
                 try:

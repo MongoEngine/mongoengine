@@ -405,7 +405,7 @@ class BaseQuerySet:
             getting the count
         """
         # mimic the fact that setting .limit(0) in pymongo sets no limit
-        # https://docs.mongodb.com/manual/reference/method/cursor.limit/#zero-value
+        # https://www.mongodb.com/docs/manual/reference/method/cursor.limit/#zero-value
         if (
             self._limit == 0
             and with_limit_and_skip is False
@@ -970,7 +970,7 @@ class BaseQuerySet:
         """Limit the number of documents returned in a single batch (each
         batch requires a round trip to the server).
 
-        See http://api.mongodb.com/python/current/api/pymongo/cursor.html#pymongo.cursor.Cursor.batch_size
+        See https://pymongo.readthedocs.io/en/stable/api/pymongo/cursor.html#pymongo.cursor.Cursor
         for details.
 
         :param size: desired size of each batch.
@@ -1204,7 +1204,7 @@ class BaseQuerySet:
     def comment(self, text):
         """Add a comment to the query.
 
-        See https://docs.mongodb.com/manual/reference/method/cursor.comment/#cursor.comment
+        See https://www.mongodb.com/docs/manual/reference/method/cursor.comment/
         for details.
         """
         return self._chainable_method("comment", text)
@@ -1348,7 +1348,7 @@ class BaseQuerySet:
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
             parameter will be removed shortly
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
-            See https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
+            See https://pymongo.readthedocs.io/en/stable/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         """
         using_deprecated_interface = isinstance(pipeline, dict) or bool(suppl_pipeline)
         user_pipeline = [pipeline] if isinstance(pipeline, dict) else list(pipeline)
@@ -1371,7 +1371,7 @@ class BaseQuerySet:
             initial_pipeline.append({"$sort": dict(self._ordering)})
 
         if self._limit is not None:
-            # As per MongoDB Documentation (https://docs.mongodb.com/manual/reference/operator/aggregation/limit/),
+            # As per MongoDB Documentation (https://www.mongodb.com/docs/manual/reference/operator/aggregation/limit/),
             # keeping limit stage right after sort stage is more efficient. But this leads to wrong set of documents
             # for a skip stage that might succeed these. So we need to maintain more documents in memory in such a
             # case (https://stackoverflow.com/a/24161461).
@@ -1410,7 +1410,7 @@ class BaseQuerySet:
                          :class:`~bson.code.Code` or string
         :param output: output collection name, if set to 'inline' will return
            the results inline. This can also be a dictionary containing output options
-           see: http://docs.mongodb.org/manual/reference/command/mapReduce/#dbcmd.mapReduce
+           see: https://www.mongodb.com/docs/manual/reference/command/mapReduce/#mongodb-dbcommand-dbcmd.mapReduce
         :param finalize_f: finalize function, an optional function that
                            performs any post-reduction processing.
         :param scope: values to insert into map/reduce global scope. Optional.

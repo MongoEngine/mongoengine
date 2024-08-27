@@ -1,0 +1,7 @@
+services:
+  mongoengine:
+    build:
+      context: .
+    image: mongoengine:latest
+    ports:
+      - 27017:27017

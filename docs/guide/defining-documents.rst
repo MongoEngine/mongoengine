@@ -29,7 +29,7 @@ documents are serialized based on their field order.
 
 .. _dynamic-document-schemas:
 
-Dynamic document schemas
+Dynamic Document Schemas
 ========================
 One of the benefits of MongoDB is dynamic schemas for a collection, whilst data
 should be planned and organised (after all explicit is better than implicit!)
@@ -260,7 +260,7 @@ document class as the first argument::
     comment2 = Comment(content='Nice article!')
     page = Page(comments=[comment1, comment2])
 
-Embedded documents can also leverage the flexibility of :ref:`dynamic-document-schemas:`
+Embedded documents can also leverage the flexibility of :ref:`dynamic-document-schemas`
 by inheriting :class:`~mongoengine.DynamicEmbeddedDocument`.
 
 Dictionary Fields
@@ -325,7 +325,7 @@ as the constructor's argument::
 .. _many-to-many-with-listfields:
 
 Many to Many with ListFields
-'''''''''''''''''''''''''''
+''''''''''''''''''''''''''''
 
 If you are implementing a many to many relationship via a list of references,
 then the references are stored as DBRefs and to query you need to pass an
@@ -491,6 +491,26 @@ The following example shows a :class:`Log` document that will be limited to
         ip_address = StringField()
         meta = {'max_documents': 1000, 'max_size': 2000000}
 
+Timeseries collections
+----------------------
+A :class:`~mongoengine.Document` may use a **Timeseries Collection** by specifying
+:attr:`timeseries` in the :attr:`meta` dictionary. Timeseries collection were added
+in MongoDB 5.0 (`doc <https://www.mongodb.com/docs/v5.3/core/timeseries-collections/>`_).
+The following example shows a Document class with a basic setup::
+
+    class SensorData(Document):
+        timestamp = DateTimeField(required=True)
+        temperature = FloatField()
+
+        meta = {
+            "timeseries": {
+                "timeField": "timestamp",
+                "metaField": "temperature",
+                "granularity": "seconds",
+                "expireAfterSeconds": 5,
+            },
+        }
+
 .. defining-indexes_
 
 Indexes
@@ -579,7 +599,7 @@ There are a few top level defaults for all indexes that can be set::
 
 
 :attr:`index_opts` (Optional)
-    Set any default index options - see the `full options list <https://docs.mongodb.com/manual/reference/method/db.collection.createIndex/#db.collection.createIndex>`_
+    Set any default index options - see the `full options list <https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/>`_
 
 :attr:`index_background` (Optional)
     Set the default value for if an index should be indexed in the background
