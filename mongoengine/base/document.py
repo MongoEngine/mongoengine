@@ -455,6 +455,7 @@ class BaseDocument:
                 "representation to use. This will be changed to "
                 "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
+                stacklevel=2,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
@@ -486,6 +487,7 @@ class BaseDocument:
                 "representation to use. This will be changed to "
                 "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
+                stacklevel=2,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return cls._from_son(json_util.loads(json_data, **kwargs), created=created)

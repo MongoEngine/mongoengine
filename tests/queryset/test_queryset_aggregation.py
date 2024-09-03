@@ -1,6 +1,6 @@
 import unittest
-import warnings
 
+import pytest
 from pymongo.read_preferences import ReadPreference
 
 from mongoengine import *
@@ -215,7 +215,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         assert list(data) == [{"_id": p3.pk, "name": "SANDRA MARA"}]
 
-    def test_queryset_aggregation_deprecated_interface(self):
+    def test_queryset_aggregation_old_interface_not_working(self):
         class Person(Document):
             name = StringField()
 
@@ -226,27 +226,20 @@ class TestQuerysetAggregate(MongoDBTestCase):
         p3 = Person(name="Sandra Mara")
         Person.objects.insert([p1, p2, p3])
 
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        _1_step_pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
 
-        # Make sure a warning is emitted
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            with self.assertRaises(DeprecationWarning):
-                Person.objects.order_by("name").limit(2).aggregate(*pipeline)
+        # Make sure old interface raises an error as we changed it >= 1.0
+        with pytest.raises(TypeError, match="pipeline must be a list/tuple"):
+            Person.objects.order_by("name").limit(2).aggregate(*_1_step_pipeline)
 
-        # Make sure old interface works as expected with a 1-step pipeline
-        data = Person.objects.order_by("name").limit(2).aggregate(*pipeline)
-
-        assert list(data) == [
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-            {"_id": p3.pk, "name": "SANDRA MARA"},
+        _2_step_pipeline = [
+            {"$project": {"name": {"$toUpper": "$name"}}},
+            {"$limit": 1},
         ]
-
-        # Make sure old interface works as expected with a 2-steps pipeline
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}, {"$limit": 1}]
-        data = Person.objects.order_by("name").limit(2).aggregate(*pipeline)
-
-        assert list(data) == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
+        with pytest.raises(
+            TypeError, match="takes 2 positional arguments but 3 were given"
+        ):
+            Person.objects.order_by("name").limit(2).aggregate(*_2_step_pipeline)
 
     def test_queryset_aggregation_geonear_aggregation_on_pointfield(self):
         """test ensures that $geonear can be used as a 1-stage pipeline and that
@@ -271,7 +264,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
                 }
             }
         ]
-        assert list(Aggr.objects.aggregate(*pipeline)) == [
+        assert list(Aggr.objects.aggregate(pipeline)) == [
             {"_id": agg1.id, "c": 0.0, "name": "X"},
             {"_id": agg2.id, "c": 0.0, "name": "Y"},
         ]

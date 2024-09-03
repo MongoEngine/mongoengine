@@ -7,6 +7,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
+- Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
+- Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 
 Changes in 0.29.0
 =================

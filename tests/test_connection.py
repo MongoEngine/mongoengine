@@ -648,7 +648,11 @@ class ConnectionTest(unittest.TestCase):
         mongo_connections["t1"].server_info()
         mongo_connections["t2"].server_info()
         assert mongo_connections["t1"].address[0] == "localhost"
-        assert mongo_connections["t2"].address[0] == "127.0.0.1"
+
+        assert mongo_connections["t2"].address[0] in (
+            "localhost",
+            "127.0.0.1",
+        )  # depends on db setting
 
     def test_connect_2_databases_uses_same_client_if_only_dbname_differs(self):
         c1 = connect(alias="testdb1", db="testdb1")

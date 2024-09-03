@@ -28,6 +28,8 @@ class TestableThread(Thread):
     REF: https://gist.github.com/sbrugman/59b3535ebcd5aa0e2598293cfa58b6ab
     """
 
+    __test__ = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.exc = None
