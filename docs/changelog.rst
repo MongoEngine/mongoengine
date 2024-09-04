@@ -8,6 +8,10 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
+  Some considerations:
+    - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
+    - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
+    - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
 
 Changes in 0.29.0
 =================

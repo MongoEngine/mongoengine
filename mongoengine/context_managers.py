@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import threading
 from contextlib import contextmanager
 
@@ -327,15 +328,16 @@ def _commit_with_retry(session):
         try:
             # Commit uses write concern set at transaction start.
             session.commit_transaction()
-            print("Transaction committed.")
             break
         except (ConnectionFailure, OperationFailure) as exc:
             # Can retry commit
             if exc.has_error_label("UnknownTransactionCommitResult"):
-                print("UnknownTransactionCommitResult, retrying commit operation ...")
+                logging.warning(
+                    "UnknownTransactionCommitResult, retrying commit operation ..."
+                )
                 continue
             else:
-                print("Error during commit ...")
+                # Error during commit
                 raise
 
 
