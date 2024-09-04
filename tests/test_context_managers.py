@@ -519,8 +519,6 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_updating_a_document_within_a_transaction(self):
-        connect("mongoenginetest")
-
         class A(Document):
             name = StringField()
 
@@ -538,8 +536,6 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_updating_a_document_within_a_transaction_that_fails(self):
-        connect("mongoenginetest")
-
         class A(Document):
             name = StringField()
 
@@ -558,12 +554,15 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_creating_a_document_within_a_transaction(self):
-        connect("mongoenginetest")
 
         class A(Document):
             name = StringField()
 
         A.drop_collection()
+
+        # ensure collection is created (needed for transaction with MongoDB <= 4.2)
+        A.objects.create(name="test")
+        A.objects.delete()
 
         with run_in_transaction():
             a_doc = A.objects.create(name="a")
@@ -578,12 +577,14 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_creating_a_document_within_a_transaction_that_fails(self):
-        connect("mongoenginetest")
 
         class A(Document):
             name = StringField()
 
         A.drop_collection()
+        # ensure collection is created (needed for transaction with MongoDB <= 4.2)
+        A.objects.create(name="test")
+        A.objects.delete()
 
         with pytest.raises(TestRollbackError):
             with run_in_transaction():
@@ -695,8 +696,6 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_exception_in_child_of_a_nested_transaction_rolls_parent_back(self):
-        connect("mongoenginetest")
-
         class A(Document):
             name = StringField()
 
@@ -731,8 +730,6 @@ class TestContextManagers(MongoDBTestCase):
     def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
         self,
     ):
-        connect("mongoenginetest")
-
         class A(Document):
             name = StringField()
 
@@ -772,7 +769,6 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_nested_transactions_create_and_release_sessions_accordingly(self):
-        connect("mongoenginetest")
         with run_in_transaction():
             s1 = _get_session()
             with run_in_transaction():
@@ -808,7 +804,6 @@ class TestContextManagers(MongoDBTestCase):
 
         0 + 10 + 2 + 30 + 4 + 50 + 6 + 70 + 8 + 90 = 270
         """
-        connect("mongoenginetest")
 
         class A(Document):
             i = IntField(unique=True)
