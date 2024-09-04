@@ -1,3 +1,4 @@
+import logging
 import random
 import time
 import unittest
@@ -28,7 +29,7 @@ from tests.utils import (
 
 
 class TestRollbackError(Exception):
-    pass
+    __test__ = False  # Silence pytest warning
 
 
 class TestableThread(Thread):
@@ -37,6 +38,8 @@ class TestableThread(Thread):
 
     REF: https://gist.github.com/sbrugman/59b3535ebcd5aa0e2598293cfa58b6ab
     """
+
+    __test__ = False  # Silence pytest warning
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -753,14 +756,15 @@ class TestContextManagers(MongoDBTestCase):
 
             except TestRollbackError:
                 pass
-            # except OperationError as op_failure:
-            #     """
-            #     See thread safety test below for more details about TransientTransactionError handling
-            #     """
-            #     if "TransientTransactionError" in str(op_failure):
-            #         run_tx()
-            #     else:
-            #         raise op_failure
+            except OperationError as op_failure:
+                """
+                See thread safety test below for more details about TransientTransactionError handling
+                """
+                if "TransientTransactionError" in str(op_failure):
+                    logging.warning("TransientTransactionError - retrying...")
+                    run_tx()
+                else:
+                    raise op_failure
 
         run_tx()
         assert "a" == A.objects.get(id=a_doc.id).name
@@ -789,10 +793,10 @@ class TestContextManagers(MongoDBTestCase):
         case, then no amount of runtime variability should have
         an effect on the output.
 
-        This test sets up 10 records, each with an integer field
+        This test sets up e.g 10 records, each with an integer field
         of value 0 - 9.
 
-        We then spin up 10 threads and attempt to update a target
+        We then spin up e.g 10 threads and attempt to update a target
         record by multiplying its integer value by 10. Then, if
         the target record is even, throw an exception, which
         should then roll the transaction back. The odd rows always
@@ -807,11 +811,13 @@ class TestContextManagers(MongoDBTestCase):
         connect("mongoenginetest")
 
         class A(Document):
-            i = IntField()
+            i = IntField(unique=True)
 
         A.drop_collection()
         # Ensure the collection is created
-        A.objects.create(i=0)
+        _ = A.objects.first()
+
+        thread_count = 20
 
         def thread_fn(idx):
             # Open the transaction at some unknown interval
@@ -819,12 +825,12 @@ class TestContextManagers(MongoDBTestCase):
             try:
                 with run_in_transaction():
                     a = A.objects.get(i=idx)
-                    a.i = idx * 10
+                    a.i = idx * thread_count
                     # Save at some unknown interval
                     time.sleep(random.uniform(0.1, 0.5))
                     a.save()
 
-                    # Force roll backs for the even runs...
+                    # Force rollbacks for the even runs...
                     if idx % 2 == 0:
                         raise TestRollbackError()
             except TestRollbackError:
@@ -841,6 +847,7 @@ class TestContextManagers(MongoDBTestCase):
                 """
                 error_labels = op_failure.details.get("errorLabels", [])
                 if "TransientTransactionError" in error_labels:
+                    logging.warning("TransientTransactionError - retrying...")
                     thread_fn(idx)
                 else:
                     raise op_failure
@@ -854,7 +861,6 @@ class TestContextManagers(MongoDBTestCase):
             A.objects.all().delete()
 
             # Prepopulate the data for reads
-            thread_count = 20
             for i in range(thread_count):
                 A.objects.create(i=i)
 
@@ -868,13 +874,10 @@ class TestContextManagers(MongoDBTestCase):
                 t.join()
 
             # Check the sum
-            expected_sum = 0
-            for i in range(thread_count):
-                if i % 2 == 0:
-                    expected_sum += i
-                else:
-                    expected_sum += i * 10
-            assert expected_sum == 1090
+            expected_sum = sum(
+                i if i % 2 == 0 else i * thread_count for i in range(thread_count)
+            )
+            assert expected_sum == 2090
             assert expected_sum == sum(a.i for a in A.objects.all())
 
 

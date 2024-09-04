@@ -2,6 +2,7 @@ import contextlib
 import threading
 from contextlib import contextmanager
 
+from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
@@ -321,6 +322,23 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
     )
 
 
+def _commit_with_retry(session):
+    while True:
+        try:
+            # Commit uses write concern set at transaction start.
+            session.commit_transaction()
+            print("Transaction committed.")
+            break
+        except (ConnectionFailure, OperationFailure) as exc:
+            # Can retry commit
+            if exc.has_error_label("UnknownTransactionCommitResult"):
+                print("UnknownTransactionCommitResult, retrying commit operation ...")
+                continue
+            else:
+                print("Error during commit ...")
+                raise
+
+
 @contextmanager
 def run_in_transaction(
     alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None
@@ -355,5 +373,6 @@ def run_in_transaction(
             try:
                 _set_session(session)
                 yield
+                _commit_with_retry(session)
             finally:
                 _clear_session()
