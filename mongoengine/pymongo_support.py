@@ -6,6 +6,8 @@ import pymongo
 from bson import binary, json_util
 from pymongo.errors import OperationFailure
 
+from mongoengine import connection
+
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
 # This will be changed to UuidRepresentation.UNSPECIFIED in a future
@@ -38,12 +40,15 @@ def count_documents(
     # count_documents appeared in pymongo 3.7
     if PYMONGO_VERSION >= (3, 7):
         try:
-            if not filter and set(kwargs) <= {"max_time_ms"}:
+            is_active_session = connection._get_session() is not None
+            if not filter and set(kwargs) <= {"max_time_ms"} and not is_active_session:
                 # when no filter is provided, estimated_document_count
                 # is a lot faster as it uses the collection metadata
                 return collection.estimated_document_count(**kwargs)
             else:
-                return collection.count_documents(filter=filter, **kwargs)
+                return collection.count_documents(
+                    filter=filter, session=connection._get_session(), **kwargs
+                )
         except OperationFailure as err:
             if PYMONGO_VERSION >= (4,):
                 raise
@@ -70,9 +75,9 @@ def count_documents(
 def list_collection_names(db, include_system_collections=False):
     """Pymongo>3.7 deprecates collection_names in favour of list_collection_names"""
     if PYMONGO_VERSION >= (3, 7):
-        collections = db.list_collection_names()
+        collections = db.list_collection_names(session=connection._get_session())
     else:
-        collections = db.collection_names()
+        collections = db.collection_names(session=connection._get_session())
 
     if not include_system_collections:
         collections = [c for c in collections if not c.startswith("system.")]

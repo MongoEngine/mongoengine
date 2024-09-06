@@ -1,13 +1,22 @@
 import contextlib
+import logging
 import threading
 from contextlib import contextmanager
 
+from pymongo.errors import ConnectionFailure, OperationFailure
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 
 from mongoengine.base.fields import _no_dereference_for_fields
 from mongoengine.common import _import_class
-from mongoengine.connection import DEFAULT_CONNECTION_NAME, get_db
+from mongoengine.connection import (
+    DEFAULT_CONNECTION_NAME,
+    _clear_session,
+    _get_session,
+    _set_session,
+    get_connection,
+    get_db,
+)
 from mongoengine.pymongo_support import count_documents
 
 __all__ = (
@@ -19,6 +28,7 @@ __all__ = (
     "set_write_concern",
     "set_read_write_concern",
     "no_dereferencing_active_for_class",
+    "run_in_transaction",
 )
 
 
@@ -231,11 +241,11 @@ class query_counter:
         }
 
     def _turn_on_profiling(self):
-        profile_update_res = self.db.command({"profile": 0})
+        profile_update_res = self.db.command({"profile": 0}, session=_get_session())
         self.initial_profiling_level = profile_update_res["was"]
 
         self.db.system.profile.drop()
-        self.db.command({"profile": 2})
+        self.db.command({"profile": 2}, session=_get_session())
 
     def _resets_profiling(self):
         self.db.command({"profile": self.initial_profiling_level})
@@ -311,3 +321,60 @@ def set_read_write_concern(collection, write_concerns, read_concerns):
         write_concern=WriteConcern(**combined_write_concerns),
         read_concern=ReadConcern(**combined_read_concerns),
     )
+
+
+def _commit_with_retry(session):
+    while True:
+        try:
+            # Commit uses write concern set at transaction start.
+            session.commit_transaction()
+            break
+        except (ConnectionFailure, OperationFailure) as exc:
+            # Can retry commit
+            if exc.has_error_label("UnknownTransactionCommitResult"):
+                logging.warning(
+                    "UnknownTransactionCommitResult, retrying commit operation ..."
+                )
+                continue
+            else:
+                # Error during commit
+                raise
+
+
+@contextmanager
+def run_in_transaction(
+    alias=DEFAULT_CONNECTION_NAME, session_kwargs=None, transaction_kwargs=None
+):
+    """run_in_transaction context manager
+    Execute queries within the context in a database transaction.
+
+    Usage:
+
+    .. code-block:: python
+
+        class A(Document):
+            name = StringField()
+
+        with run_in_transaction():
+            a_doc = A.objects.create(name="a")
+            a_doc.update(name="b")
+
+    Be aware that:
+    - Mongo transactions run inside a session which is bound to a connection. If you attempt to
+      execute a transaction across a different connection alias, pymongo will raise an exception. In
+      other words: you cannot create a transaction that crosses different database connections. That
+      said, multiple transaction can be nested within the same session for particular connection.
+
+    For more information regarding pymongo transactions: https://pymongo.readthedocs.io/en/stable/api/pymongo/client_session.html#transactions
+    """
+    conn = get_connection(alias)
+    session_kwargs = session_kwargs or {}
+    with conn.start_session(**session_kwargs) as session:
+        transaction_kwargs = transaction_kwargs or {}
+        with session.start_transaction(**transaction_kwargs):
+            try:
+                _set_session(session)
+                yield
+                _commit_with_retry(session)
+            finally:
+                _clear_session()

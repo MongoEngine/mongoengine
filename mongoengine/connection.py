@@ -1,3 +1,5 @@
+import collections
+import threading
 import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
@@ -34,6 +36,7 @@ DEFAULT_PORT = 27017
 _connection_settings = {}
 _connections = {}
 _dbs = {}
+
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 
@@ -470,3 +473,37 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 # Support old naming convention
 _get_connection = get_connection
 _get_db = get_db
+
+
+class _LocalSessions(threading.local):
+    def __init__(self):
+        self.sessions = collections.deque()
+
+    def append(self, session):
+        self.sessions.append(session)
+
+    def get_current(self):
+        if len(self.sessions):
+            return self.sessions[-1]
+
+    def clear_current(self):
+        if len(self.sessions):
+            self.sessions.pop()
+
+    def clear_all(self):
+        self.sessions.clear()
+
+
+_local_sessions = _LocalSessions()
+
+
+def _set_session(session):
+    _local_sessions.append(session)
+
+
+def _get_session():
+    return _local_sessions.get_current()
+
+
+def _clear_session():
+    return _local_sessions.clear_current()

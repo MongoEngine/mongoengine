@@ -1,24 +1,35 @@
+import logging
 import random
 import time
 import unittest
 from threading import Thread
 
+import pymongo
 import pytest
 from bson import DBRef
 
 from mongoengine import *
-from mongoengine.connection import get_db
+from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
     no_dereference,
     no_sub_classes,
     query_counter,
+    run_in_transaction,
     set_read_write_concern,
     set_write_concern,
     switch_collection,
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
-from tests.utils import MongoDBTestCase
+from tests.utils import (
+    MongoDBTestCase,
+    requires_mongodb_gte_40,
+    requires_mongodb_gte_44,
+)
+
+
+class TestRollbackError(Exception):
+    __test__ = False  # Silence pytest warning
 
 
 class TestableThread(Thread):
@@ -27,6 +38,8 @@ class TestableThread(Thread):
 
     REF: https://gist.github.com/sbrugman/59b3535ebcd5aa0e2598293cfa58b6ab
     """
+
+    __test__ = False  # Silence pytest warning
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -503,6 +516,364 @@ class TestContextManagers(MongoDBTestCase):
                 db.system.indexes.find_one()
             )  # queries on db.system.indexes are ignored as well
             assert q == 1
+
+    @requires_mongodb_gte_40
+    def test_updating_a_document_within_a_transaction(self):
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        with run_in_transaction():
+            a_doc.update(name="b")
+            assert A.objects.get(id=a_doc.id).name == "b"
+            assert A.objects.count() == 1
+
+        assert A.objects.count() == 1
+        assert A.objects.get(id=a_doc.id).name == "b"
+
+    @requires_mongodb_gte_40
+    def test_updating_a_document_within_a_transaction_that_fails(self):
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        with pytest.raises(TestRollbackError):
+            with run_in_transaction():
+                a_doc.update(name="b")
+                assert A.objects.get(id=a_doc.id).name == "b"
+                raise TestRollbackError()
+
+        assert A.objects.count() == 1
+        assert A.objects.get(id=a_doc.id).name == "a"
+
+    @requires_mongodb_gte_40
+    def test_creating_a_document_within_a_transaction(self):
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+
+        # ensure collection is created (needed for transaction with MongoDB <= 4.2)
+        A.objects.create(name="test")
+        A.objects.delete()
+
+        with run_in_transaction():
+            a_doc = A.objects.create(name="a")
+            another_doc = A(name="b").save()
+            assert A.objects.get(id=a_doc.id).name == "a"
+            assert A.objects.get(id=another_doc.id).name == "b"
+            assert A.objects.count() == 2
+
+        assert A.objects.count() == 2
+        assert A.objects.get(id=a_doc.id).name == "a"
+        assert A.objects.get(id=another_doc.id).name == "b"
+
+    @requires_mongodb_gte_40
+    def test_creating_a_document_within_a_transaction_that_fails(self):
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        # ensure collection is created (needed for transaction with MongoDB <= 4.2)
+        A.objects.create(name="test")
+        A.objects.delete()
+
+        with pytest.raises(TestRollbackError):
+            with run_in_transaction():
+                a_doc = A.objects.create(name="a")
+                another_doc = A(name="b").save()
+                assert A.objects.get(id=a_doc.id).name == "a"
+                assert A.objects.get(id=another_doc.id).name == "b"
+                assert A.objects.count() == 2
+                raise TestRollbackError()
+
+        assert A.objects.count() == 0
+
+    @requires_mongodb_gte_40
+    def test_transaction_updates_across_databases(self):
+        connect("mongoenginetest")
+        connect("test2", "test2")
+
+        class A(Document):
+            name = StringField()
+
+        A.objects.all().delete()
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            meta = {"db_alias": "test2"}
+            name = StringField()
+
+        B.objects.all().delete()
+        b_doc = B.objects.create(name="b")
+
+        with run_in_transaction():
+            a_doc.update(name="a2")
+            b_doc.update(name="b2")
+
+        assert "a2" == A.objects.get(id=a_doc.id).name
+        assert "b2" == B.objects.get(id=b_doc.id).name
+
+    @requires_mongodb_gte_44
+    def test_collection_creation_via_upserts_across_databases_in_transaction(self):
+        connect("mongoenginetest")
+        connect("test2", "test2")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            meta = {"db_alias": "test2"}
+            name = StringField()
+
+        B.drop_collection()
+
+        b_doc = B.objects.create(name="b")
+
+        with run_in_transaction():
+            a_doc.update(name="a3")
+            with switch_db(A, "test2"):
+                a_doc.update(name="a4", upsert=True)
+                b_doc.update(name="b3")
+            b_doc.update(name="b4")
+
+        assert "a3" == A.objects.get(id=a_doc.id).name
+        assert "b4" == B.objects.get(id=b_doc.id).name
+        with switch_db(A, "test2"):
+            assert "a4" == A.objects.get(id=a_doc.id).name
+
+    @requires_mongodb_gte_40
+    def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
+        self,
+    ):
+        connect("mongoenginetest")
+        connect("test2", "test2")
+
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        with switch_db(A, "test2"):
+            A.drop_collection()
+
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            meta = {"db_alias": "test2"}
+            name = StringField()
+
+        B.drop_collection()
+
+        b_doc = B.objects.create(name="b")
+
+        try:
+            with run_in_transaction():
+                a_doc.update(name="a3")
+                with switch_db(A, "test2"):
+                    a_doc.update(name="a4", upsert=True)
+                    b_doc.update(name="b3")
+                    b_doc.update(name="b4")
+                raise Exception
+        except Exception:
+            pass
+
+        assert "a" == A.objects.get(id=a_doc.id).name
+        assert "b" == B.objects.get(id=b_doc.id).name
+        with switch_db(A, "test2"):
+            assert 0 == A.objects.all().count()
+
+    @requires_mongodb_gte_40
+    def test_exception_in_child_of_a_nested_transaction_rolls_parent_back(self):
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            name = StringField()
+
+        B.drop_collection()
+        b_doc = B.objects.create(name="b")
+
+        with pytest.raises(TestRollbackError):
+            with run_in_transaction():
+                a_doc.update(name="trx-parent")
+                try:
+                    with run_in_transaction():
+                        b_doc.update(name="trx-child")
+                        raise TestRollbackError()
+                except TestRollbackError as exc:
+                    # at this stage, the parent transaction is still there
+                    assert A.objects.get(id=a_doc.id).name == "trx-parent"
+                    raise exc
+                else:
+                    # makes sure it enters the except above
+                    assert False
+
+        assert A.objects.get(id=a_doc.id).name == "a"
+        assert B.objects.get(id=b_doc.id).name == "b"
+
+    @requires_mongodb_gte_40
+    def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
+        self,
+    ):
+        class A(Document):
+            name = StringField()
+
+        A.drop_collection()
+        a_doc = A.objects.create(name="a")
+
+        class B(Document):
+            name = StringField()
+
+        B.drop_collection()
+        b_doc = B.objects.create(name="b")
+
+        def run_tx():
+            try:
+                with run_in_transaction():
+                    a_doc.update(name="trx-parent")
+                    with run_in_transaction():
+                        b_doc.update(name="trx-child")
+
+                    raise TestRollbackError()
+
+            except TestRollbackError:
+                pass
+            except OperationError as op_failure:
+                """
+                See thread safety test below for more details about TransientTransactionError handling
+                """
+                if "TransientTransactionError" in str(op_failure):
+                    logging.warning("TransientTransactionError - retrying...")
+                    run_tx()
+                else:
+                    raise op_failure
+
+        run_tx()
+        assert "a" == A.objects.get(id=a_doc.id).name
+        assert "trx-child" == B.objects.get(id=b_doc.id).name
+
+    @requires_mongodb_gte_40
+    def test_nested_transactions_create_and_release_sessions_accordingly(self):
+        with run_in_transaction():
+            s1 = _get_session()
+            with run_in_transaction():
+                s2 = _get_session()
+                assert s1 is not s2
+                with run_in_transaction():
+                    pass
+                assert _get_session() is s2
+            assert _get_session() is s1
+
+        assert _get_session() is None
+
+    @requires_mongodb_gte_40
+    def test_thread_safety_of_transactions(self):
+        """
+        Make sure transactions don't step over each other. Each
+        session should be isolated to each thread. If this is the
+        case, then no amount of runtime variability should have
+        an effect on the output.
+
+        This test sets up e.g 10 records, each with an integer field
+        of value 0 - 9.
+
+        We then spin up e.g 10 threads and attempt to update a target
+        record by multiplying its integer value by 10. Then, if
+        the target record is even, throw an exception, which
+        should then roll the transaction back. The odd rows always
+        succeed.
+
+        If the sessions are properly thread safe, we should ALWAYS
+        net out with the following sum across the integer fields
+        of the 10 records:
+
+        0 + 10 + 2 + 30 + 4 + 50 + 6 + 70 + 8 + 90 = 270
+        """
+
+        class A(Document):
+            i = IntField(unique=True)
+
+        A.drop_collection()
+        # Ensure the collection is created
+        _ = A.objects.first()
+
+        thread_count = 20
+
+        def thread_fn(idx):
+            # Open the transaction at some unknown interval
+            time.sleep(random.uniform(0.1, 0.5))
+            try:
+                with run_in_transaction():
+                    a = A.objects.get(i=idx)
+                    a.i = idx * thread_count
+                    # Save at some unknown interval
+                    time.sleep(random.uniform(0.1, 0.5))
+                    a.save()
+
+                    # Force rollbacks for the even runs...
+                    if idx % 2 == 0:
+                        raise TestRollbackError()
+            except TestRollbackError:
+                pass
+            except pymongo.errors.OperationFailure as op_failure:
+                """
+                If there's a TransientTransactionError, retry - the lock could not be acquired.
+
+                Per MongoDB docs: The core transaction API does not incorporate retry logic for
+                "TransientTransactionError". To handle "TransientTransactionError", applications
+                should explicitly incorporate retry logic for the error.
+
+                See: https://www.mongodb.com/docs/manual/core/transactions-in-applications/#-transienttransactionerror-
+                """
+                error_labels = op_failure.details.get("errorLabels", [])
+                if "TransientTransactionError" in error_labels:
+                    logging.warning("TransientTransactionError - retrying...")
+                    thread_fn(idx)
+                else:
+                    raise op_failure
+
+        for r in range(5):
+            """
+            Threads & randomization are tricky - run it multiple times
+            """
+
+            # Clear out the collection for a fresh run
+            A.objects.all().delete()
+
+            # Prepopulate the data for reads
+            for i in range(thread_count):
+                A.objects.create(i=i)
+
+            # Prime the threads
+            threads = [
+                TestableThread(target=thread_fn, args=(i,)) for i in range(thread_count)
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            # Check the sum
+            expected_sum = sum(
+                i if i % 2 == 0 else i * thread_count for i in range(thread_count)
+            )
+            assert expected_sum == 2090
+            assert expected_sum == sum(a.i for a in A.objects.all())
 
 
 if __name__ == "__main__":
