@@ -708,20 +708,30 @@ class TestContextManagers(MongoDBTestCase):
         B.drop_collection()
         b_doc = B.objects.create(name="b")
 
-        with pytest.raises(TestRollbackError):
-            with run_in_transaction():
-                a_doc.update(name="trx-parent")
-                try:
-                    with run_in_transaction():
-                        b_doc.update(name="trx-child")
-                        raise TestRollbackError()
-                except TestRollbackError as exc:
-                    # at this stage, the parent transaction is still there
-                    assert A.objects.get(id=a_doc.id).name == "trx-parent"
-                    raise exc
+        def run_tx():
+            try:
+                with run_in_transaction():
+                    a_doc.update(name="trx-parent")
+                    try:
+                        with run_in_transaction():
+                            b_doc.update(name="trx-child")
+                            raise TestRollbackError()
+                    except TestRollbackError as exc:
+                        # at this stage, the parent transaction is still there
+                        assert A.objects.get(id=a_doc.id).name == "trx-parent"
+                        raise exc
+            except OperationError as op_failure:
+                """
+                See thread safety test below for more details about TransientTransactionError handling
+                """
+                if "TransientTransactionError" in str(op_failure):
+                    logging.warning("TransientTransactionError - retrying...")
+                    run_tx()
                 else:
-                    # makes sure it enters the except above
-                    assert False
+                    raise op_failure
+
+        with pytest.raises(TestRollbackError):
+            run_tx()
 
         assert A.objects.get(id=a_doc.id).name == "a"
         assert B.objects.get(id=b_doc.id).name == "b"
