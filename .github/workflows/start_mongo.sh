@@ -10,8 +10,8 @@ $mongodb_dir/bin/mongod \
  --dbpath $mongodb_dir/data \
  --logpath $mongodb_dir/mongodb.log \
  --fork \
- --replSet \
  --setParameter maxTransactionLockRequestTimeoutMillis=1000 \
+ --replSet \
  mongoengine
 
 if (( $(echo "$MONGODB < 6.0" | bc -l) )); then
