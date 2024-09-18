@@ -4,7 +4,7 @@ import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.common import _UUID_REPRESENTATIONS
-from pymongo.database import _check_name
+from pymongo.database_shared import _check_name
 
 # DriverInfo was added in PyMongo 3.7.
 try:
