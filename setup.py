@@ -42,7 +42,7 @@ CLASSIFIERS = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-install_require = ["pymongo>=3.4,<5.0"]
+install_require = ["pymongo>=3.4,<4.9"]
 tests_require = [
     "pytest",
     "pytest-cov",
