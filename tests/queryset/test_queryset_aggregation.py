@@ -19,10 +19,11 @@ class TestQuerysetAggregate(MongoDBTestCase):
         bars = Bar.objects.read_preference(
             ReadPreference.SECONDARY_PREFERRED
         ).aggregate(pipeline)
-        assert (
-            bars._CommandCursor__collection.read_preference
-            == ReadPreference.SECONDARY_PREFERRED
-        )
+        if hasattr(bars, "_CommandCursor__collection"):
+            read_pref = bars._CommandCursor__collection.read_preference
+        else:  # pymongo >= 4.9
+            read_pref = bars._collection.read_preference
+        assert read_pref == ReadPreference.SECONDARY_PREFERRED
 
     def test_queryset_aggregation_framework(self):
         class Person(Document):
