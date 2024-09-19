@@ -12,7 +12,6 @@ except ImportError:
     dateutil = None
 
 
-
 class TestDateTimeField(MongoDBTestCase):
     def test_datetime_from_empty_string(self):
         """
