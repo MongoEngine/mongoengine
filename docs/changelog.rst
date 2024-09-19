@@ -8,6 +8,11 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+
+Changes in 0.29.1
+=================
+- Add support for freshly released pymongo 4.9 #2849
+
 Changes in 0.29.0
 =================
 - Fix weakref in EmbeddedDocumentListField (causing brief mem leak in certain circumstances) #2827
