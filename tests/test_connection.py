@@ -3,6 +3,8 @@ import unittest
 import uuid
 
 import pymongo
+import pymongo.database
+import pymongo.mongo_client
 import pytest
 from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
@@ -608,7 +610,10 @@ class ConnectionTest(unittest.TestCase):
         connection kwargs
         """
         c = connect(replicaset="local-rs")
-        assert c._MongoClient__options.replica_set_name == "local-rs"
+        if hasattr(c, "_MongoClient__options"):
+            assert c._MongoClient__options.replica_set_name == "local-rs"
+        else:  # pymongo >= 4.9
+            assert c._options.replica_set_name == "local-rs"
         db = get_db()
         assert isinstance(db, pymongo.database.Database)
         assert db.name == "test"
