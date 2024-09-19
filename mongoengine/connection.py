@@ -2,6 +2,7 @@ import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.common import _UUID_REPRESENTATIONS
+
 try:
     from pymongo.database_shared import _check_name
 except ImportError:
