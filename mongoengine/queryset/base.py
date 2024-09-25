@@ -697,7 +697,6 @@ class BaseQuerySet:
     def modify(
         self,
         upsert=False,
-        full_response=False,
         remove=False,
         new=False,
         array_filters=None,
@@ -709,15 +708,7 @@ class BaseQuerySet:
         parameter. If no documents match the query and `upsert` is false,
         returns ``None``. If upserting and `new` is false, returns ``None``.
 
-        If the full_response parameter is ``True``, the return value will be
-        the entire response object from the server, including the 'ok' and
-        'lastErrorObject' fields, rather than just the modified document.
-        This is useful mainly because the 'lastErrorObject' document holds
-        information about the command's execution.
-
         :param upsert: insert if document doesn't exist (default ``False``)
-        :param full_response: return the entire response object from the
-            server (default ``False``, not available for PyMongo 3+)
         :param remove: remove rather than updating (default ``False``)
         :param new: return updated rather than original document
             (default ``False``)
@@ -741,9 +732,6 @@ class BaseQuerySet:
         sort = queryset._ordering
 
         try:
-            if full_response:
-                msg = "With PyMongo 3+, it is not possible anymore to get the full response."
-                warnings.warn(msg, DeprecationWarning)
             if remove:
                 result = queryset._collection.find_one_and_delete(
                     query, sort=sort, session=_get_session(), **self._cursor_args
@@ -768,12 +756,8 @@ class BaseQuerySet:
         except pymongo.errors.OperationFailure as err:
             raise OperationError("Update failed (%s)" % err)
 
-        if full_response:
-            if result["value"] is not None:
-                result["value"] = self._document._from_son(result["value"])
-        else:
-            if result is not None:
-                result = self._document._from_son(result)
+        if result is not None:
+            result = self._document._from_son(result)
 
         return result
 
@@ -1244,7 +1228,7 @@ class BaseQuerySet:
         :param enabled: whether or not snapshot mode is enabled
         """
         msg = "snapshot is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning)
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         queryset = self.clone()
         queryset._snapshot = enabled
         return queryset
@@ -1353,6 +1337,7 @@ class BaseQuerySet:
                 "representation to use. This will be changed to "
                 "uuid_representation=UNSPECIFIED in a future release.",
                 DeprecationWarning,
+                stacklevel=2,
             )
             kwargs["json_options"] = LEGACY_JSON_OPTIONS
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
@@ -1362,24 +1347,18 @@ class BaseQuerySet:
         son_data = json_util.loads(json_data)
         return [self._document._from_son(data) for data in son_data]
 
-    def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
+    def aggregate(self, pipeline, **kwargs):
         """Perform an aggregate function based on your queryset params
 
         :param pipeline: list of aggregation commands,
             see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
-        :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
-            parameter will be removed shortly
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
             See https://pymongo.readthedocs.io/en/stable/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         """
-        using_deprecated_interface = isinstance(pipeline, dict) or bool(suppl_pipeline)
-        user_pipeline = [pipeline] if isinstance(pipeline, dict) else list(pipeline)
-
-        if using_deprecated_interface:
-            msg = "Calling .aggregate() with un unpacked list (*pipeline) is deprecated, it will soon change and will expect a list (similar to pymongo.Collection.aggregate interface), see documentation"
-            warnings.warn(msg, DeprecationWarning)
-
-        user_pipeline += suppl_pipeline
+        if not isinstance(pipeline, (tuple, list)):
+            raise TypeError(
+                f"Starting from 1.0 release pipeline must be a list/tuple, received: {type(pipeline)}"
+            )
 
         initial_pipeline = []
         if self._none or self._empty:
@@ -1402,7 +1381,7 @@ class BaseQuerySet:
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        final_pipeline = initial_pipeline + user_pipeline
+        final_pipeline = initial_pipeline + pipeline
 
         collection = self._collection
         if self._read_preference is not None or self._read_concern is not None:
@@ -1725,7 +1704,7 @@ class BaseQuerySet:
         # TODO: evaluate similar possibilities using modifiers
         if self._snapshot:
             msg = "The snapshot option is not anymore available with PyMongo 3+"
-            warnings.warn(msg, DeprecationWarning)
+            warnings.warn(msg, DeprecationWarning, stacklevel=3)
 
         cursor_args = {}
         if not self._timeout:
