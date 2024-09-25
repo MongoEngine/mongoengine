@@ -519,8 +519,20 @@ class BaseQuerySet:
                     write_concern=write_concern, **{"pull_all__%s" % field_name: self}
                 )
 
+        kwargs = {}
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+        if self._collation:
+            kwargs["collation"] = self._collation
+        if self._comment:
+            kwargs["comment"] = self._comment
+
         with set_write_concern(queryset._collection, write_concern) as collection:
-            result = collection.delete_many(queryset._query, session=_get_session())
+            result = collection.delete_many(
+                queryset._query,
+                session=_get_session(),
+                **kwargs,
+            )
 
             # If we're using an unack'd write concern, we don't really know how
             # many items have been deleted at this point, hence we only return
@@ -582,6 +594,15 @@ class BaseQuerySet:
                 update["$set"]["_cls"] = queryset._document._class_name
             else:
                 update["$set"] = {"_cls": queryset._document._class_name}
+
+        kwargs = {}
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+        if self._collation:
+            kwargs["collation"] = self._collation
+        if self._comment:
+            kwargs["comment"] = self._comment
+
         try:
             with set_read_write_concern(
                 queryset._collection, write_concern, read_concern
@@ -595,6 +616,7 @@ class BaseQuerySet:
                     upsert=upsert,
                     array_filters=array_filters,
                     session=_get_session(),
+                    **kwargs,
                 )
             if full_result:
                 return result
@@ -1388,8 +1410,18 @@ class BaseQuerySet:
                 read_preference=self._read_preference, read_concern=self._read_concern
             )
 
+        if self._hint not in (-1, None):
+            kwargs.setdefault("hint", self._hint)
+        if self._collation:
+            kwargs.setdefault("collation", self._collation)
+        if self._comment:
+            kwargs.setdefault("comment", self._comment)
+
         return collection.aggregate(
-            final_pipeline, cursor={}, session=_get_session(), **kwargs
+            final_pipeline,
+            cursor={},
+            session=_get_session(),
+            **kwargs,
         )
 
     # JS functionality
