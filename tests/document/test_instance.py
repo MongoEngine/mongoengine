@@ -42,7 +42,11 @@ from tests.fixtures import (
     PickleSignalsTest,
     PickleTest,
 )
-from tests.utils import MongoDBTestCase, get_as_pymongo
+from tests.utils import (
+    MongoDBTestCase,
+    db_ops_tracker,
+    get_as_pymongo,
+)
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
@@ -1878,6 +1882,49 @@ class TestDocumentInstance(MongoDBTestCase):
         assert self.Person.objects.count() == 1
         person.delete()
         assert self.Person.objects.count() == 0
+
+    def test_delete_propagates_hint_collation_and_comment(self):
+        """Make sure adding a hint/comment/collation to the query gets added to the query"""
+        mongo_ver = get_mongodb_version()
+
+        base = {"locale": "en", "strength": 2}
+        index_name = "name_1"
+
+        class AggPerson(Document):
+            name = StringField()
+            meta = {
+                "indexes": [{"fields": ["name"], "name": index_name, "collation": base}]
+            }
+
+        AggPerson.drop_collection()
+        _ = AggPerson.objects.first()
+
+        comment = "test_comment"
+
+        with db_ops_tracker() as q:
+            _ = AggPerson.objects().comment(comment).delete()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = AggPerson.objects.hint(index_name).delete()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+
+            assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = AggPerson.objects.collation(base).delete()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["collation"] == base
 
     def test_save_custom_id(self):
         """Ensure that a document may be saved with a custom _id."""

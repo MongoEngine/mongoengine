@@ -3,8 +3,12 @@ import warnings
 
 from pymongo.read_preferences import ReadPreference
 
-from mongoengine import *
-from tests.utils import MongoDBTestCase
+from mongoengine import Document, IntField, PointField, StringField
+from mongoengine.mongodb_support import (
+    MONGODB_36,
+    get_mongodb_version,
+)
+from tests.utils import MongoDBTestCase, db_ops_tracker
 
 
 class TestQuerysetAggregate(MongoDBTestCase):
@@ -86,6 +90,66 @@ class TestQuerysetAggregate(MongoDBTestCase):
             {"_id": p2.pk, "name": "WILSON JUNIOR"},
             {"_id": p3.pk, "name": "SANDRA MARA"},
         ]
+
+    def test_aggregation_comment(self):
+        """Make sure adding a comment to the query gets added to the query"""
+        mongo_ver = get_mongodb_version()
+
+        class AggPerson(Document):
+            name = StringField()
+
+        AggPerson.drop_collection()
+
+        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        comment = "some_comment"
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.comment(comment).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+
+    def test_aggregation_propagates_hint_collation_and_comment(self):
+        """Make sure adding a hint/comment/collation to the query gets added to the query"""
+        mongo_ver = get_mongodb_version()
+
+        base = {"locale": "en", "strength": 2}
+        index_name = "name_1"
+
+        class AggPerson(Document):
+            name = StringField()
+            meta = {
+                "indexes": [{"fields": ["name"], "name": index_name, "collation": base}]
+            }
+
+        AggPerson.drop_collection()
+        _ = AggPerson.objects.first()
+
+        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        comment = "test_comment"
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.comment(comment).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.hint(index_name).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert query_op[CMD_QUERY_KEY]["hint"] == "name_1"
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.collation(base).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["collation"] == base
 
     def test_queryset_aggregation_with_limit(self):
         class Person(Document):

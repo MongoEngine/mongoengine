@@ -27,19 +27,11 @@ from mongoengine.queryset import (
 )
 from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
+    db_ops_tracker,
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
 )
-
-
-class db_ops_tracker(query_counter):
-    def get_ops(self):
-        ignore_query = dict(self._ignored_query)
-        ignore_query["command.count"] = {
-            "$ne": "system.profile"
-        }  # Ignore the query issued by query_counter
-        return list(self.db.system.profile.find(ignore_query))
 
 
 def get_key_compat(mongo_ver):
