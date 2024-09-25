@@ -4,12 +4,7 @@ import pytest
 from bson import Binary
 
 from mongoengine import *
-from mongoengine.mongodb_support import (
-    MONGODB_36,
-    get_mongodb_version,
-)
-from mongoengine.pymongo_support import PYMONGO_VERSION
-from tests.utils import MongoDBTestCase, db_ops_tracker
+from tests.utils import MongoDBTestCase
 
 BIN_VALUE = "\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5".encode(
     "latin-1"
@@ -151,49 +146,3 @@ class TestBinaryField(MongoDBTestCase):
         assert n_updated == 1
         fetched = MyDocument.objects.with_id(doc.id)
         assert fetched.bin_field == BIN_VALUE
-
-    def test_update_propagates_hint_collation_and_comment(self):
-        """Make sure adding a hint/comment/collation to the query gets added to the query"""
-        mongo_ver = get_mongodb_version()
-
-        base = {"locale": "en", "strength": 2}
-        index_name = "name_1"
-
-        class AggPerson(Document):
-            name = StringField()
-            meta = {
-                "indexes": [{"fields": ["name"], "name": index_name, "collation": base}]
-            }
-
-        AggPerson.drop_collection()
-        _ = AggPerson.objects.first()
-
-        comment = "test_comment"
-
-        if PYMONGO_VERSION >= (4, 1):
-            with db_ops_tracker() as q:
-                _ = AggPerson.objects.comment(comment).update_one(name="something")
-                query_op = q.db.system.profile.find(
-                    {"ns": "mongoenginetest.agg_person"}
-                )[0]
-                CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-                assert "hint" not in query_op[CMD_QUERY_KEY]
-                assert query_op[CMD_QUERY_KEY]["comment"] == comment
-                assert "collation" not in query_op[CMD_QUERY_KEY]
-
-        with db_ops_tracker() as q:
-            _ = AggPerson.objects.hint(index_name).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
-            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-
-            assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
-            assert "comment" not in query_op[CMD_QUERY_KEY]
-            assert "collation" not in query_op[CMD_QUERY_KEY]
-
-        with db_ops_tracker() as q:
-            _ = AggPerson.objects.collation(base).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
-            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-            assert "hint" not in query_op[CMD_QUERY_KEY]
-            assert "comment" not in query_op[CMD_QUERY_KEY]
-            assert query_op[CMD_QUERY_KEY]["collation"] == base
