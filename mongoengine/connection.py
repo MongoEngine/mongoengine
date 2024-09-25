@@ -211,6 +211,7 @@ def _get_connection_settings(
             "older drivers in those languages. This will be changed to "
             "'unspecified' in a future release.",
             DeprecationWarning,
+            stacklevel=3,
         )
         kwargs["uuidRepresentation"] = "pythonLegacy"
 
