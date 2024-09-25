@@ -91,23 +91,6 @@ class TestQuerysetAggregate(MongoDBTestCase):
             {"_id": p3.pk, "name": "SANDRA MARA"},
         ]
 
-    def test_aggregation_comment(self):
-        """Make sure adding a comment to the query gets added to the query"""
-        mongo_ver = get_mongodb_version()
-
-        class AggPerson(Document):
-            name = StringField()
-
-        AggPerson.drop_collection()
-
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        comment = "some_comment"
-        with db_ops_tracker() as q:
-            _ = list(AggPerson.objects.comment(comment).aggregate(pipeline))
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
-            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-            assert query_op[CMD_QUERY_KEY]["comment"] == comment
-
     def test_aggregation_propagates_hint_collation_and_comment(self):
         """Make sure adding a hint/comment/collation to the query gets added to the query"""
         mongo_ver = get_mongodb_version()
