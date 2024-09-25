@@ -8,6 +8,7 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from tests.utils import MongoDBTestCase, db_ops_tracker
 
 BIN_VALUE = "\xa9\xf3\x8d(\xd7\x03\x84\xb4k[\x0f\xe3\xa2\x19\x85p[J\xa3\xd2>\xde\xe6\x87\xb1\x7f\xc6\xe6\xd9r\x18\xf5".encode(
@@ -169,13 +170,16 @@ class TestBinaryField(MongoDBTestCase):
 
         comment = "test_comment"
 
-        with db_ops_tracker() as q:
-            _ = AggPerson.objects.comment(comment).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
-            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-            assert "hint" not in query_op[CMD_QUERY_KEY]
-            assert query_op[CMD_QUERY_KEY]["comment"] == comment
-            assert "collation" not in query_op[CMD_QUERY_KEY]
+        if PYMONGO_VERSION >= (4, 1):
+            with db_ops_tracker() as q:
+                _ = AggPerson.objects.comment(comment).update_one(name="something")
+                query_op = q.db.system.profile.find(
+                    {"ns": "mongoenginetest.agg_person"}
+                )[0]
+                CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+                assert "hint" not in query_op[CMD_QUERY_KEY]
+                assert query_op[CMD_QUERY_KEY]["comment"] == comment
+                assert "collation" not in query_op[CMD_QUERY_KEY]
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).update_one(name="something")

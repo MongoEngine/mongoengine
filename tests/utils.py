@@ -2,12 +2,15 @@ import functools
 import operator
 import unittest
 
+import pymongo
 import pytest
 
 from mongoengine import connect
 from mongoengine.connection import disconnect_all, get_db
 from mongoengine.context_managers import query_counter
 from mongoengine.mongodb_support import get_mongodb_version
+
+PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 

@@ -1901,13 +1901,16 @@ class TestDocumentInstance(MongoDBTestCase):
 
         comment = "test_comment"
 
-        with db_ops_tracker() as q:
-            _ = AggPerson.objects().comment(comment).delete()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
-            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-            assert "hint" not in query_op[CMD_QUERY_KEY]
-            assert query_op[CMD_QUERY_KEY]["comment"] == comment
-            assert "collation" not in query_op[CMD_QUERY_KEY]
+        if PYMONGO_VERSION >= (4, 1):
+            with db_ops_tracker() as q:
+                _ = AggPerson.objects().comment(comment).delete()
+                query_op = q.db.system.profile.find(
+                    {"ns": "mongoenginetest.agg_person"}
+                )[0]
+                CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+                assert "hint" not in query_op[CMD_QUERY_KEY]
+                assert query_op[CMD_QUERY_KEY]["comment"] == comment
+                assert "collation" not in query_op[CMD_QUERY_KEY]
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).delete()
