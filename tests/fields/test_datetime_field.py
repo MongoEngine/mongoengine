@@ -2,14 +2,14 @@ import datetime as dt
 
 import pytest
 
+from mongoengine import *
+from mongoengine import connection
+from tests.utils import MongoDBTestCase, get_as_pymongo
+
 try:
     import dateutil
 except ImportError:
     dateutil = None
-
-from mongoengine import *
-from mongoengine import connection
-from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestDateTimeField(MongoDBTestCase):

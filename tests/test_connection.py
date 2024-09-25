@@ -3,6 +3,8 @@ import unittest
 import uuid
 
 import pymongo
+import pymongo.database
+import pymongo.mongo_client
 import pytest
 from bson.tz_util import utc
 from pymongo import MongoClient, ReadPreference
@@ -633,26 +635,40 @@ class ConnectionTest(unittest.TestCase):
         assert conn.read_preference == ReadPreference.SECONDARY_PREFERRED
 
     def test_multiple_connection_settings(self):
-        connect("mongoenginetest", alias="t1", host="localhost")
-
-        connect("mongoenginetest2", alias="t2", host="127.0.0.1")
+        connect(
+            "mongoenginetest",
+            alias="t1",
+            host="localhost",
+            read_preference=ReadPreference.PRIMARY,
+        )
+        connect(
+            "mongoenginetest2",
+            alias="t2",
+            host="127.0.0.1",
+            read_preference=ReadPreference.PRIMARY_PREFERRED,
+        )
 
         mongo_connections = mongoengine.connection._connections
         assert len(mongo_connections.items()) == 2
         assert "t1" in mongo_connections.keys()
         assert "t2" in mongo_connections.keys()
 
-        # Handle PyMongo 3+ Async Connection
+        # Handle PyMongo 3+ Async Connection (lazily established)
         # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
         # Purposely not catching exception to fail test if thrown.
         mongo_connections["t1"].server_info()
         mongo_connections["t2"].server_info()
-        assert mongo_connections["t1"].address[0] == "localhost"
 
+        assert mongo_connections["t1"].address[0] == "localhost"
         assert mongo_connections["t2"].address[0] in (
             "localhost",
             "127.0.0.1",
-        )  # depends on db setting
+        )  # weird but there is a discrepancy in the address in replicaset setup
+        assert mongo_connections["t1"].read_preference == ReadPreference.PRIMARY
+        assert (
+            mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED
+        )
+        assert mongo_connections["t1"] is not mongo_connections["t2"]
 
     def test_connect_2_databases_uses_same_client_if_only_dbname_differs(self):
         c1 = connect(alias="testdb1", db="testdb1")

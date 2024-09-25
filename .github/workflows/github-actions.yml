@@ -20,17 +20,16 @@ env:
   MONGODB_6_0: "6.0"
   MONGODB_7_0: "7.0"
 
-  PYMONGO_3_4: 3.4
-  PYMONGO_3_6: 3.6
-  PYMONGO_3_9: 3.9
   PYMONGO_3_11: 3.11
   PYMONGO_3_12: 3.12
+  PYMONGO_3_13: 3.13
   PYMONGO_4_0: 4.0
   PYMONGO_4_3: 4.3.3
   PYMONGO_4_4: 4.4.1
   PYMONGO_4_6: 4.6.2
   PYMONGO_4_7: 4.7.3
   PYMONGO_4_8: 4.8.0
+  PYMONGO_4_9: 4.9
 
   MAIN_PYTHON_VERSION: 3.9
 
@@ -61,15 +60,12 @@ jobs:
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
-          - python-version: 3.7
-            MONGODB: $MONGODB_3_6
-            PYMONGO: $PYMONGO_3_9
           - python-version: 3.8
-            MONGODB: $MONGODB_4_4
-            PYMONGO: $PYMONGO_3_11
+            MONGODB: $MONGODB_3_6
+            PYMONGO: $PYMONGO_3_12
           - python-version: 3.9
             MONGODB: $MONGODB_4_4
-            PYMONGO: $PYMONGO_3_12
+            PYMONGO: $PYMONGO_3_13
           - python-version: "3.10"
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_4_0
@@ -88,6 +84,9 @@ jobs:
           - python-version: "3.11"
             MONGODB: $MONGODB_7_0
             PYMONGO: $PYMONGO_4_8
+          - python-version: "3.11"
+            MONGODB: $MONGODB_7_0
+            PYMONGO: $PYMONGO_4_9
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
