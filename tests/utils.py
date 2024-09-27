@@ -2,11 +2,15 @@ import functools
 import operator
 import unittest
 
+import pymongo
 import pytest
 
 from mongoengine import connect
 from mongoengine.connection import disconnect_all, get_db
+from mongoengine.context_managers import query_counter
 from mongoengine.mongodb_support import get_mongodb_version
+
+PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
@@ -92,3 +96,12 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
             pytest.skip(f"Needs MongoDB {oper.__name__} v{pretty_version}")
 
     return _inner
+
+
+class db_ops_tracker(query_counter):
+    def get_ops(self):
+        ignore_query = dict(self._ignored_query)
+        ignore_query["command.count"] = {
+            "$ne": "system.profile"
+        }  # Ignore the query issued by query_counter
+        return list(self.db.system.profile.find(ignore_query))
