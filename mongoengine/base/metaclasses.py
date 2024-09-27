@@ -307,7 +307,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             and not parent_doc_cls._meta.get("abstract", True)
         ):
             msg = "Trying to set a collection on a subclass (%s)" % name
-            warnings.warn(msg, SyntaxWarning)
+            warnings.warn(msg, SyntaxWarning, stacklevel=2)
             del attrs["_meta"]["collection"]
 
         # Ensure abstract documents have abstract bases

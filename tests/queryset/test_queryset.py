@@ -27,19 +27,11 @@ from mongoengine.queryset import (
 )
 from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
+    db_ops_tracker,
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
 )
-
-
-class db_ops_tracker(query_counter):
-    def get_ops(self):
-        ignore_query = dict(self._ignored_query)
-        ignore_query["command.count"] = {
-            "$ne": "system.profile"
-        }  # Ignore the query issued by query_counter
-        return list(self.db.system.profile.find(ignore_query))
 
 
 def get_key_compat(mongo_ver):
@@ -474,8 +466,7 @@ class TestQueryset(unittest.TestCase):
 
         A.drop_collection()
 
-        for i in range(100):
-            A.objects.create(s=str(i))
+        A.objects.insert([A(s=str(i)) for i in range(100)], load_bulk=True)
 
         # test iterating over the result set
         cnt = 0
@@ -1283,8 +1274,7 @@ class TestQueryset(unittest.TestCase):
 
         Doc.drop_collection()
 
-        for i in range(1000):
-            Doc(number=i).save()
+        Doc.objects.insert([Doc(number=i) for i in range(1000)], load_bulk=True)
 
         docs = Doc.objects.order_by("number")
 
@@ -5438,8 +5428,9 @@ class TestQueryset(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in range(100):
-            Person(name="No: %s" % i).save()
+
+        persons = [Person(name="No: %s" % i) for i in range(100)]
+        Person.objects.insert(persons, load_bulk=True)
 
         with query_counter() as q:
             assert q == 0
@@ -5469,8 +5460,9 @@ class TestQueryset(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in range(100):
-            Person(name="No: %s" % i).save()
+
+        persons = [Person(name="No: %s" % i) for i in range(100)]
+        Person.objects.insert(persons, load_bulk=True)
 
         with query_counter() as q:
             assert q == 0
@@ -5537,17 +5529,20 @@ class TestQueryset(unittest.TestCase):
         assert 1 == len(users._result_cache)
 
     def test_no_cache(self):
-        """Ensure you can add meta data to file"""
+        """Ensure you can add metadata to file"""
 
         class Noddy(Document):
             fields = DictField()
 
         Noddy.drop_collection()
+
+        noddies = []
         for i in range(100):
             noddy = Noddy()
             for j in range(20):
                 noddy.fields["key" + str(j)] = "value " + str(j)
-            noddy.save()
+            noddies.append(noddy)
+        Noddy.objects.insert(noddies, load_bulk=True)
 
         docs = Noddy.objects.no_cache()
 
@@ -5766,8 +5761,9 @@ class TestQueryset(unittest.TestCase):
             name = StringField()
 
         Person.drop_collection()
-        for i in range(100):
-            Person(name="No: %s" % i).save()
+
+        persons = [Person(name="No: %s" % i) for i in range(100)]
+        Person.objects.insert(persons, load_bulk=True)
 
         with query_counter() as q:
             if Person.objects:

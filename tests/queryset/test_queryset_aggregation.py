@@ -1,9 +1,12 @@
-import warnings
-
+import pytest
 from pymongo.read_preferences import ReadPreference
 
-from mongoengine import *
-from tests.utils import MongoDBTestCase
+from mongoengine import Document, IntField, PointField, StringField
+from mongoengine.mongodb_support import (
+    MONGODB_36,
+    get_mongodb_version,
+)
+from tests.utils import MongoDBTestCase, db_ops_tracker
 
 
 class TestQuerysetAggregate(MongoDBTestCase):
@@ -85,6 +88,49 @@ class TestQuerysetAggregate(MongoDBTestCase):
             {"_id": p2.pk, "name": "WILSON JUNIOR"},
             {"_id": p3.pk, "name": "SANDRA MARA"},
         ]
+
+    def test_aggregation_propagates_hint_collation_and_comment(self):
+        """Make sure adding a hint/comment/collation to the query gets added to the query"""
+        mongo_ver = get_mongodb_version()
+
+        base = {"locale": "en", "strength": 2}
+        index_name = "name_1"
+
+        class AggPerson(Document):
+            name = StringField()
+            meta = {
+                "indexes": [{"fields": ["name"], "name": index_name, "collation": base}]
+            }
+
+        AggPerson.drop_collection()
+        _ = AggPerson.objects.first()
+
+        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        comment = "test_comment"
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.comment(comment).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.hint(index_name).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert query_op[CMD_QUERY_KEY]["hint"] == "name_1"
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert "collation" not in query_op[CMD_QUERY_KEY]
+
+        with db_ops_tracker() as q:
+            _ = list(AggPerson.objects.collation(base).aggregate(pipeline))
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert "comment" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["collation"] == base
 
     def test_queryset_aggregation_with_limit(self):
         class Person(Document):
@@ -215,7 +261,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         assert list(data) == [{"_id": p3.pk, "name": "SANDRA MARA"}]
 
-    def test_queryset_aggregation_deprecated_interface(self):
+    def test_queryset_aggregation_old_interface_not_working(self):
         class Person(Document):
             name = StringField()
 
@@ -226,27 +272,20 @@ class TestQuerysetAggregate(MongoDBTestCase):
         p3 = Person(name="Sandra Mara")
         Person.objects.insert([p1, p2, p3])
 
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
+        _1_step_pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
 
-        # Make sure a warning is emitted
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
-            with self.assertRaises(DeprecationWarning):
-                Person.objects.order_by("name").limit(2).aggregate(*pipeline)
+        # Make sure old interface raises an error as we changed it >= 1.0
+        with pytest.raises(TypeError, match="pipeline must be a list/tuple"):
+            Person.objects.order_by("name").limit(2).aggregate(*_1_step_pipeline)
 
-        # Make sure old interface works as expected with a 1-step pipeline
-        data = Person.objects.order_by("name").limit(2).aggregate(*pipeline)
-
-        assert list(data) == [
-            {"_id": p1.pk, "name": "ISABELLA LUANNA"},
-            {"_id": p3.pk, "name": "SANDRA MARA"},
+        _2_step_pipeline = [
+            {"$project": {"name": {"$toUpper": "$name"}}},
+            {"$limit": 1},
         ]
-
-        # Make sure old interface works as expected with a 2-steps pipeline
-        pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}, {"$limit": 1}]
-        data = Person.objects.order_by("name").limit(2).aggregate(*pipeline)
-
-        assert list(data) == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
+        with pytest.raises(
+            TypeError, match="takes 2 positional arguments but 3 were given"
+        ):
+            Person.objects.order_by("name").limit(2).aggregate(*_2_step_pipeline)
 
     def test_queryset_aggregation_geonear_aggregation_on_pointfield(self):
         """test ensures that $geonear can be used as a 1-stage pipeline and that
@@ -271,7 +310,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
                 }
             }
         ]
-        assert list(Aggr.objects.aggregate(*pipeline)) == [
+        assert list(Aggr.objects.aggregate(pipeline)) == [
             {"_id": agg1.id, "c": 0.0, "name": "X"},
             {"_id": agg2.id, "c": 0.0, "name": "Y"},
         ]
