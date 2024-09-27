@@ -14,6 +14,7 @@ from mongoengine.base import (
     TopLevelDocumentMetaclass,
     get_document,
 )
+from mongoengine.base.utils import NonOrderedList
 from mongoengine.common import _import_class
 from mongoengine.connection import (
     DEFAULT_CONNECTION_NAME,
@@ -1043,9 +1044,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 # Useful for text indexes (but not only)
                 index_type = info["key"][0][1]
                 text_index_fields = info.get("weights").keys()
-                existing.append([(key, index_type) for key in text_index_fields])
+                # Use NonOrderedList to avoid order comparison, see #2612
+                existing.append(
+                    NonOrderedList([(key, index_type) for key in text_index_fields])
+                )
             else:
                 existing.append(info["key"])
+
         missing = [index for index in required if index not in existing]
         extra = [index for index in existing if index not in required]
 
