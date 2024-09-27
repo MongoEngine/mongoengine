@@ -1343,6 +1343,14 @@ class BaseQuerySet:
     def aggregate(self, pipeline, *suppl_pipeline, **kwargs):
         """Perform an aggregate function based on your queryset params
 
+        If the queryset contains a query or skip/limit/sort or if the target Document class
+        uses inheritance, this method will add steps prior to the provided pipeline in an arbitrary order.
+        This may affect the performance or outcome of the aggregation, so use it consciously.
+
+        For complex/critical pipelines, we recommended to use the aggregation framework of Pymongo directly,
+        it is available through the collection object (YourDocument._collection.aggregate) and will guarantee
+        that you have full control on the pipeline.
+
         :param pipeline: list of aggregation commands,
             see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
         :param suppl_pipeline: unpacked list of pipeline (added to support deprecation of the old interface)
@@ -1380,7 +1388,18 @@ class BaseQuerySet:
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        final_pipeline = initial_pipeline + user_pipeline
+        # geoNear and collStats must be the first stages in the pipeline if present
+        first_step = []
+        new_user_pipeline = []
+        for step_step in user_pipeline:
+            if "$geoNear" in step_step:
+                first_step.append(step_step)
+            elif "$collStats" in step_step:
+                first_step.append(step_step)
+            else:
+                new_user_pipeline.append(step_step)
+
+        final_pipeline = first_step + initial_pipeline + new_user_pipeline
 
         collection = self._collection
         if self._read_preference is not None or self._read_concern is not None:
