@@ -16,6 +16,7 @@ Development
 - Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
+- BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
 
 Changes in 0.29.0
 =================
