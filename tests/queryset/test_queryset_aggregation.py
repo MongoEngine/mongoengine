@@ -354,7 +354,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
                 }
             }
         ]
-        res = list(Aggr.objects.aggregate(*pipeline))
+        res = list(Aggr.objects.aggregate(pipeline))
         assert res == [
             {"_cls": "BaseClass.Aggr", "_id": x.id, "c": 0.0, "name": "X"},
             {"_cls": "BaseClass.Aggr", "_id": y.id, "c": 0.0, "name": "Y"},
