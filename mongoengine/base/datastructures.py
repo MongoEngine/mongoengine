@@ -177,6 +177,7 @@ class BaseList(list):
     remove = mark_as_changed_wrapper(list.remove)
     reverse = mark_as_changed_wrapper(list.reverse)
     sort = mark_as_changed_wrapper(list.sort)
+    clear = mark_as_changed_wrapper(list.clear)
     __delitem__ = mark_as_changed_wrapper(list.__delitem__)
     __iadd__ = mark_as_changed_wrapper(list.__iadd__)
     __imul__ = mark_as_changed_wrapper(list.__imul__)
