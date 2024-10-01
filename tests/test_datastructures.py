@@ -185,7 +185,7 @@ class TestBaseList:
         base_list = BaseList(values, instance=None, name="my_name")
         assert values == list(base_list)
 
-    def test___iter___allow_modification_while_iterating_withou_error(self):
+    def test___iter___allow_modification_while_iterating_without_error(self):
         # regular list allows for this, thus this subclass must comply to that
         base_list = BaseList([True, False, True, False], instance=None, name="my_name")
         for idx, val in enumerate(base_list):
@@ -364,6 +364,11 @@ class TestBaseList:
         base_list = self._get_baselist([1, 2, 11])
         base_list.sort(key=lambda i: str(i))
         assert base_list == [1, 11, 2]
+
+    def test_clear_calls_mark_as_changed(self):
+        base_list = self._get_baselist([True, False])
+        base_list.clear()
+        assert base_list._instance._changed_fields == ["my_name"]
 
 
 class TestStrictDict(unittest.TestCase):
