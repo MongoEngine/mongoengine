@@ -12,7 +12,7 @@ from mongoengine.base import (
     DocumentMetaclass,
     EmbeddedDocumentList,
     TopLevelDocumentMetaclass,
-    get_document,
+    _DocumentRegistry,
 )
 from mongoengine.base.utils import NonOrderedList
 from mongoengine.common import _import_class
@@ -851,12 +851,12 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         object.
         """
         classes = [
-            get_document(class_name)
+            _DocumentRegistry.get(class_name)
             for class_name in cls._subclasses
             if class_name != cls.__name__
         ] + [cls]
         documents = [
-            get_document(class_name)
+            _DocumentRegistry.get(class_name)
             for class_name in document_cls._subclasses
             if class_name != document_cls.__name__
         ] + [document_cls]

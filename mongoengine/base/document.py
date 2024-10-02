@@ -7,7 +7,7 @@ import pymongo
 from bson import SON, DBRef, ObjectId, json_util
 
 from mongoengine import signals
-from mongoengine.base.common import get_document
+from mongoengine.base.common import _DocumentRegistry
 from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
@@ -500,7 +500,7 @@ class BaseDocument:
         # If the value is a dict with '_cls' in it, turn it into a document
         is_dict = isinstance(value, dict)
         if is_dict and "_cls" in value:
-            cls = get_document(value["_cls"])
+            cls = _DocumentRegistry.get(value["_cls"])
             return cls(**value)
 
         if is_dict:
@@ -802,7 +802,7 @@ class BaseDocument:
 
         # Return correct subclass for document type
         if class_name != cls._class_name:
-            cls = get_document(class_name)
+            cls = _DocumentRegistry.get(class_name)
 
         errors_dict = {}
 

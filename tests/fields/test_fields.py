@@ -37,7 +37,7 @@ from mongoengine import (
 from mongoengine.base import (
     BaseField,
     EmbeddedDocumentList,
-    _document_registry,
+    _DocumentRegistry,
 )
 from mongoengine.base.fields import _no_dereference_for_fields
 from mongoengine.errors import DeprecatedError
@@ -1678,7 +1678,7 @@ class TestField(MongoDBTestCase):
 
         # Mimic User and Link definitions being in a different file
         # and the Link model not being imported in the User file.
-        del _document_registry["Link"]
+        _DocumentRegistry.unregister("Link")
 
         user = User.objects.first()
         try:
