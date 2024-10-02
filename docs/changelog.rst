@@ -13,6 +13,7 @@ Development
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
     - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
+- Fix use of $geoNear or $collStats in aggregate #2493
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
 - BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)

@@ -1,5 +1,3 @@
-import unittest
-
 import pytest
 from pymongo.read_preferences import ReadPreference
 
@@ -334,6 +332,44 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         assert list(data) == []
 
+    def test_aggregate_geo_near_used_as_initial_step_before_cls_implicit_step(self):
+        class BaseClass(Document):
+            meta = {"allow_inheritance": True}
 
-if __name__ == "__main__":
-    unittest.main()
+        class Aggr(BaseClass):
+            name = StringField()
+            c = PointField()
+
+        BaseClass.drop_collection()
+
+        x = Aggr(name="X", c=[10.634584, 35.8245029]).save()
+        y = Aggr(name="Y", c=[10.634584, 35.8245029]).save()
+
+        pipeline = [
+            {
+                "$geoNear": {
+                    "near": {"type": "Point", "coordinates": [10.634584, 35.8245029]},
+                    "distanceField": "c",
+                    "spherical": True,
+                }
+            }
+        ]
+        res = list(Aggr.objects.aggregate(pipeline))
+        assert res == [
+            {"_cls": "BaseClass.Aggr", "_id": x.id, "c": 0.0, "name": "X"},
+            {"_cls": "BaseClass.Aggr", "_id": y.id, "c": 0.0, "name": "Y"},
+        ]
+
+    def test_aggregate_collstats_used_as_initial_step_before_cls_implicit_step(self):
+        class SomeDoc(Document):
+            name = StringField()
+
+        SomeDoc.drop_collection()
+
+        SomeDoc(name="X").save()
+        SomeDoc(name="Y").save()
+
+        pipeline = [{"$collStats": {"count": {}}}]
+        res = list(SomeDoc.objects.aggregate(pipeline))
+        assert len(res) == 1
+        assert res[0]["count"] == 2
