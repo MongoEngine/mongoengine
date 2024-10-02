@@ -7,16 +7,19 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
   Some considerations:
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
     - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
 - Fix use of $geoNear or $collStats in aggregate #2493
-- Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
-- Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
+- BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
+- BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
+- BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
+- BugFix - Calling .clear on a ListField wasn't being marked as changed (and flushed to db upon .save()) #2858
 
 Changes in 0.29.0
 =================

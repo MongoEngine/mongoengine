@@ -5,11 +5,17 @@ from bson.son import SON
 
 from mongoengine import *
 from mongoengine.queryset import Q, transform
+from tests.utils import MongoDBTestCase
 
 
-class TestTransform(unittest.TestCase):
-    def setUp(self):
-        connect(db="mongoenginetest")
+class TestTransform(MongoDBTestCase):
+
+    def test_transform_str_datetime(self):
+        data = {"date": {"$ne": "2015-12-01T00:00:00"}}
+        assert transform.query(**data) == {"date": {"$ne": "2015-12-01T00:00:00"}}
+        assert transform.query(date__ne="2015-12-01T00:00:00") == {
+            "date": {"$ne": "2015-12-01T00:00:00"}
+        }
 
     def test_transform_query(self):
         """Ensure that the _transform_query function operates correctly."""

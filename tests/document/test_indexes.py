@@ -66,6 +66,8 @@ class TestIndexes(unittest.TestCase):
         for expected in expected_specs:
             assert expected["fields"] in info
 
+        assert BlogPost.compare_indexes() == {"missing": [], "extra": []}
+
     def _index_test_inheritance(self, InheritFrom):
         class BlogPost(InheritFrom):
             date = DateTimeField(db_field="addDate", default=datetime.now)
@@ -949,6 +951,8 @@ class TestIndexes(unittest.TestCase):
         ]["key"]
         assert info["provider_ids.foo_1_provider_ids.bar_1"]["sparse"]
 
+        assert MyDoc.compare_indexes() == {"missing": [], "extra": []}
+
     def test_text_indexes(self):
         class Book(Document):
             title = DictField()
@@ -967,6 +971,8 @@ class TestIndexes(unittest.TestCase):
         indexes = Book.objects._collection.index_information()
         assert "ref_id_hashed" in indexes
         assert ("ref_id", "hashed") in indexes["ref_id_hashed"]["key"]
+
+        assert Book.compare_indexes() == {"missing": [], "extra": []}
 
     def test_indexes_after_database_drop(self):
         """
@@ -1045,6 +1051,8 @@ class TestIndexes(unittest.TestCase):
         TestDoc.ensure_indexes()
         TestChildDoc.ensure_indexes()
 
+        assert TestDoc.compare_indexes() == {"missing": [], "extra": []}
+
         index_info = TestDoc._get_collection().index_information()
         for key in index_info:
             del index_info[key][
@@ -1082,8 +1090,33 @@ class TestIndexes(unittest.TestCase):
         TestDoc.drop_collection()
         TestDoc.ensure_indexes()
 
+        assert TestDoc.compare_indexes() == {"missing": [], "extra": []}
+
         index_info = TestDoc._get_collection().index_information()
         assert "shard_1_1__cls_1_txt_1_1" in index_info
+
+    def test_compare_indexes_works_with_compound_text_indexes(self):
+        """The order of the fields in case of text indexes don't matter
+        so it's important to ensure that the compare_indexes method works that way
+        https://github.com/MongoEngine/mongoengine/issues/2612
+        """
+
+        class Sample1(Document):
+            a = StringField()
+            b = StringField()
+
+            meta = {"indexes": [{"fields": ["$a", "$b"]}]}
+
+        class Sample2(Document):
+            a = StringField()
+            b = StringField()
+
+            meta = {"indexes": [{"fields": ["$b", "$a"]}]}
+
+        Sample1.drop_collection()
+        Sample2.drop_collection()
+        assert Sample1.compare_indexes() == {"missing": [], "extra": []}
+        assert Sample2.compare_indexes() == {"missing": [], "extra": []}
 
 
 if __name__ == "__main__":

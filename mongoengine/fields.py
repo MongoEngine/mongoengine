@@ -14,7 +14,6 @@ import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
 from bson.decimal128 import Decimal128, create_decimal128_context
-from bson.int64 import Int64
 from pymongo import ReturnDocument
 
 try:
@@ -68,7 +67,6 @@ __all__ = (
     "URLField",
     "EmailField",
     "IntField",
-    "LongField",
     "FloatField",
     "DecimalField",
     "BooleanField",
@@ -365,13 +363,6 @@ class IntField(BaseField):
             return value
 
         return super().prepare_query_value(op, int(value))
-
-
-class LongField(IntField):
-    """64-bit integer field. (Equivalent to IntField since the support to Python2 was dropped)"""
-
-    def to_mongo(self, value):
-        return Int64(value)
 
 
 class FloatField(BaseField):
