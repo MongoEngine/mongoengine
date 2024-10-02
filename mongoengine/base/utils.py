@@ -20,3 +20,13 @@ class LazyRegexCompiler:
 
     def __set__(self, instance, value):
         raise AttributeError("Can not set attribute LazyRegexCompiler")
+
+
+class NonOrderedList(list):
+    """Simple utility class to compare lists without considering order (useful in context of indexes)"""
+
+    def __eq__(self, other):
+        if isinstance(other, list):
+            # Compare sorted versions of the lists
+            return sorted(self) == sorted(other)
+        return False
