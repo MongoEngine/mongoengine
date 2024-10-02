@@ -77,7 +77,6 @@ Fields
 .. autoclass:: mongoengine.fields.EmailField
 .. autoclass:: mongoengine.fields.EnumField
 .. autoclass:: mongoengine.fields.IntField
-.. autoclass:: mongoengine.fields.LongField
 .. autoclass:: mongoengine.fields.FloatField
 .. autoclass:: mongoengine.fields.DecimalField
 .. autoclass:: mongoengine.fields.Decimal128Field
