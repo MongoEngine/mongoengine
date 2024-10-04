@@ -30,7 +30,7 @@ from mongoengine.base import (
     GeoJsonBaseField,
     LazyReference,
     ObjectIdField,
-    get_document,
+    _DocumentRegistry,
 )
 from mongoengine.base.utils import LazyRegexCompiler
 from mongoengine.common import _import_class
@@ -725,7 +725,7 @@ class EmbeddedDocumentField(BaseField):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 resolved_document_type = self.owner_document
             else:
-                resolved_document_type = get_document(self.document_type_obj)
+                resolved_document_type = _DocumentRegistry.get(self.document_type_obj)
 
             if not issubclass(resolved_document_type, EmbeddedDocument):
                 # Due to the late resolution of the document_type
@@ -801,7 +801,7 @@ class GenericEmbeddedDocumentField(BaseField):
 
     def to_python(self, value):
         if isinstance(value, dict):
-            doc_cls = get_document(value["_cls"])
+            doc_cls = _DocumentRegistry.get(value["_cls"])
             value = doc_cls._from_son(value)
 
         return value
@@ -879,7 +879,7 @@ class DynamicField(BaseField):
 
     def to_python(self, value):
         if isinstance(value, dict) and "_cls" in value:
-            doc_cls = get_document(value["_cls"])
+            doc_cls = _DocumentRegistry.get(value["_cls"])
             if "_ref" in value:
                 value = doc_cls._get_db().dereference(
                     value["_ref"], session=_get_session()
@@ -1171,7 +1171,7 @@ class ReferenceField(BaseField):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
-                self.document_type_obj = get_document(self.document_type_obj)
+                self.document_type_obj = _DocumentRegistry.get(self.document_type_obj)
         return self.document_type_obj
 
     @staticmethod
@@ -1195,7 +1195,7 @@ class ReferenceField(BaseField):
         if auto_dereference and isinstance(ref_value, DBRef):
             if hasattr(ref_value, "cls"):
                 # Dereference using the class type specified in the reference
-                cls = get_document(ref_value.cls)
+                cls = _DocumentRegistry.get(ref_value.cls)
             else:
                 cls = self.document_type
 
@@ -1335,7 +1335,7 @@ class CachedReferenceField(BaseField):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
-                self.document_type_obj = get_document(self.document_type_obj)
+                self.document_type_obj = _DocumentRegistry.get(self.document_type_obj)
         return self.document_type_obj
 
     @staticmethod
@@ -1498,7 +1498,7 @@ class GenericReferenceField(BaseField):
 
         auto_dereference = instance._fields[self.name]._auto_dereference
         if auto_dereference and isinstance(value, dict):
-            doc_cls = get_document(value["_cls"])
+            doc_cls = _DocumentRegistry.get(value["_cls"])
             instance._data[self.name] = self._lazy_load_ref(doc_cls, value["_ref"])
 
         return super().__get__(instance, owner)
@@ -2443,7 +2443,7 @@ class LazyReferenceField(BaseField):
             if self.document_type_obj == RECURSIVE_REFERENCE_CONSTANT:
                 self.document_type_obj = self.owner_document
             else:
-                self.document_type_obj = get_document(self.document_type_obj)
+                self.document_type_obj = _DocumentRegistry.get(self.document_type_obj)
         return self.document_type_obj
 
     def build_lazyref(self, value):
@@ -2584,7 +2584,7 @@ class GenericLazyReferenceField(GenericReferenceField):
         elif value is not None:
             if isinstance(value, (dict, SON)):
                 value = LazyReference(
-                    get_document(value["_cls"]),
+                    _DocumentRegistry.get(value["_cls"]),
                     value["_ref"].id,
                     passthrough=self.passthrough,
                 )

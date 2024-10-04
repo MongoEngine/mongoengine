@@ -13,7 +13,7 @@ from pymongo.common import validate_read_preference
 from pymongo.read_concern import ReadConcern
 
 from mongoengine import signals
-from mongoengine.base import get_document
+from mongoengine.base import _DocumentRegistry
 from mongoengine.common import _import_class
 from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
@@ -1956,7 +1956,9 @@ class BaseQuerySet:
         """Translate fields' paths to their db equivalents."""
         subclasses = []
         if self._document._meta["allow_inheritance"]:
-            subclasses = [get_document(x) for x in self._document._subclasses][1:]
+            subclasses = [_DocumentRegistry.get(x) for x in self._document._subclasses][
+                1:
+            ]
 
         db_field_paths = []
         for field in fields:

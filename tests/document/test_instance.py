@@ -13,7 +13,7 @@ from pymongo.errors import DuplicateKeyError
 
 from mongoengine import *
 from mongoengine import signals
-from mongoengine.base import _document_registry, get_document
+from mongoengine.base import _DocumentRegistry
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import (
@@ -392,7 +392,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         # Mimic Place and NicePlace definitions being in a different file
         # and the NicePlace model not being imported in at query time.
-        del _document_registry["Place.NicePlace"]
+        _DocumentRegistry.unregister("Place.NicePlace")
 
         with pytest.raises(NotRegistered):
             list(Place.objects.all())
@@ -407,8 +407,8 @@ class TestDocumentInstance(MongoDBTestCase):
 
         Location.drop_collection()
 
-        assert Area == get_document("Area")
-        assert Area == get_document("Location.Area")
+        assert Area == _DocumentRegistry.get("Area")
+        assert Area == _DocumentRegistry.get("Location.Area")
 
     def test_creation(self):
         """Ensure that document may be created using keyword arguments."""

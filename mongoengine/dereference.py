@@ -5,7 +5,7 @@ from mongoengine.base import (
     BaseList,
     EmbeddedDocumentList,
     TopLevelDocumentMetaclass,
-    get_document,
+    _DocumentRegistry,
 )
 from mongoengine.base.datastructures import LazyReference
 from mongoengine.connection import _get_session, get_db
@@ -131,9 +131,9 @@ class DeReference:
                     elif isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
                     elif isinstance(v, (dict, SON)) and "_ref" in v:
-                        reference_map.setdefault(get_document(v["_cls"]), set()).add(
-                            v["_ref"].id
-                        )
+                        reference_map.setdefault(
+                            _DocumentRegistry.get(v["_cls"]), set()
+                        ).add(v["_ref"].id)
                     elif isinstance(v, (dict, list, tuple)) and depth <= self.max_depth:
                         field_cls = getattr(
                             getattr(field, "field", None), "document_type", None
@@ -151,9 +151,9 @@ class DeReference:
             elif isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
             elif isinstance(item, (dict, SON)) and "_ref" in item:
-                reference_map.setdefault(get_document(item["_cls"]), set()).add(
-                    item["_ref"].id
-                )
+                reference_map.setdefault(
+                    _DocumentRegistry.get(item["_cls"]), set()
+                ).add(item["_ref"].id)
             elif isinstance(item, (dict, list, tuple)) and depth - 1 <= self.max_depth:
                 references = self._find_references(item, depth - 1)
                 for key, refs in references.items():
@@ -198,9 +198,9 @@ class DeReference:
                     )
                     for ref in references:
                         if "_cls" in ref:
-                            doc = get_document(ref["_cls"])._from_son(ref)
+                            doc = _DocumentRegistry.get(ref["_cls"])._from_son(ref)
                         elif doc_type is None:
-                            doc = get_document(
+                            doc = _DocumentRegistry.get(
                                 "".join(x.capitalize() for x in collection.split("_"))
                             )._from_son(ref)
                         else:
@@ -235,7 +235,7 @@ class DeReference:
                     (items["_ref"].collection, items["_ref"].id), items
                 )
             elif "_cls" in items:
-                doc = get_document(items["_cls"])._from_son(items)
+                doc = _DocumentRegistry.get(items["_cls"])._from_son(items)
                 _cls = doc._data.pop("_cls", None)
                 del items["_cls"]
                 doc._data = self._attach_objects(doc._data, depth, doc, None)
