@@ -23,6 +23,7 @@ Development
 - BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
 - BugFix - Calling .clear on a ListField wasn't being marked as changed (and flushed to db upon .save()) #2858
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
+- BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
 
 Changes in 0.29.0
 =================

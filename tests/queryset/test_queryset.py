@@ -28,6 +28,7 @@ from mongoengine.queryset import (
 from mongoengine.queryset.base import BaseQuerySet
 from tests.utils import (
     db_ops_tracker,
+    get_as_pymongo,
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
     requires_mongodb_lt_42,
@@ -4456,7 +4457,7 @@ class TestQueryset(unittest.TestCase):
         ]
         assert ([("_cls", 1), ("message", 1)], False, False) in info
 
-    def test_where(self):
+    def test_where_query(self):
         """Ensure that where clauses work."""
 
         class IntPair(Document):
@@ -4498,6 +4499,60 @@ class TestQueryset(unittest.TestCase):
 
         with pytest.raises(TypeError):
             list(IntPair.objects.where(fielda__gte=3))
+
+    def test_where_query_field_name_subs(self):
+        class DomainObj(Document):
+            field_1 = StringField(db_field="field_2")
+
+        DomainObj.drop_collection()
+
+        DomainObj(field_1="test").save()
+
+        obj = DomainObj.objects.where("this[~field_1] == 'NOTMATCHING'")
+        assert not list(obj)
+
+        obj = DomainObj.objects.where("this[~field_1] == 'test'")
+        assert list(obj)
+
+    def test_where_modify(self):
+        class DomainObj(Document):
+            field = StringField()
+
+        DomainObj.drop_collection()
+
+        DomainObj(field="test").save()
+
+        obj = DomainObj.objects.where("this[~field] == 'NOTMATCHING'")
+        assert not list(obj)
+
+        obj = DomainObj.objects.where("this[~field] == 'test'")
+        assert list(obj)
+
+        qs = DomainObj.objects.where("this[~field] == 'NOTMATCHING'").modify(
+            field="new"
+        )
+        assert not qs
+
+        qs = DomainObj.objects.where("this[~field] == 'test'").modify(field="new")
+        assert qs
+
+    def test_where_modify_field_name_subs(self):
+        class DomainObj(Document):
+            field_1 = StringField(db_field="field_2")
+
+        DomainObj.drop_collection()
+
+        DomainObj(field_1="test").save()
+
+        obj = DomainObj.objects.where("this[~field_1] == 'NOTMATCHING'").modify(
+            field_1="new"
+        )
+        assert not obj
+
+        obj = DomainObj.objects.where("this[~field_1] == 'test'").modify(field_1="new")
+        assert obj
+
+        assert get_as_pymongo(obj) == {"_id": obj.id, "field_2": "new"}
 
     def test_scalar(self):
         class Organization(Document):
