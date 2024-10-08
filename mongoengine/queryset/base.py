@@ -727,6 +727,11 @@ class BaseQuerySet:
 
         queryset = self.clone()
         query = queryset._query
+
+        if self._where_clause:
+            where_clause = self._sub_js_fields(self._where_clause)
+            query["$where"] = where_clause
+
         if not remove:
             update = transform.update(queryset._document, **update)
         sort = queryset._ordering
