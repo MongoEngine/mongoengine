@@ -20,7 +20,7 @@ class TestReferenceField(MongoDBTestCase):
         class NonDocumentSubClass:
             pass
 
-        # fails if given an non Document subclass
+        # fails if given a non Document subclass
         with pytest.raises(ValidationError, match=ERROR_MSG):
 
             class Test(Document):  # noqa: F811
@@ -46,12 +46,17 @@ class TestReferenceField(MongoDBTestCase):
         with pytest.raises(ValidationError):
             ReferenceField(EmbeddedDocument)
 
-        user = User(name="Test User")
+        unsaved_user = User(name="Test User")
 
         # Ensure that the referenced object must have been saved
         post1 = BlogPost(content="Chips and gravy taste good.")
-        post1.author = user
-        with pytest.raises(ValidationError):
+        post1.author = unsaved_user
+        expected_error = (
+            "The instance of the document 'User' you are "
+            "trying to reference has an empty 'id'. You can only reference "
+            "documents once they have been saved to the database"
+        )
+        with pytest.raises(ValidationError, match=expected_error):
             post1.save()
 
         # Check that an invalid object type cannot be used
@@ -61,6 +66,7 @@ class TestReferenceField(MongoDBTestCase):
             post1.validate()
 
         # Ensure ObjectID's are accepted as references
+        user = User(name="Test User")
         user_object_id = user.pk
         post3 = BlogPost(content="Chips and curry sauce taste good.")
         post3.author = user_object_id
