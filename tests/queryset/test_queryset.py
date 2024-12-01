@@ -9,7 +9,44 @@ from bson import DBRef, ObjectId
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 
-from mongoengine import *
+from mongoengine import (
+    CASCADE,
+    DENY,
+    NULLIFY,
+    PULL,
+    BooleanField,
+    ComplexDateTimeField,
+    DateTimeField,
+    DecimalField,
+    DictField,
+    Document,
+    DynamicDocument,
+    DynamicField,
+    EmailField,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    EmbeddedDocumentListField,
+    FloatField,
+    GenericEmbeddedDocumentField,
+    GenericReferenceField,
+    GeoPointField,
+    IntField,
+    ListField,
+    MapField,
+    NotUniqueError,
+    ObjectIdField,
+    OperationError,
+    QuerySetNoCache,
+    ReferenceField,
+    SequenceField,
+    SortedListField,
+    StringField,
+    URLField,
+    UUIDField,
+    ValidationError,
+    connect,
+    register_connection,
+)
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError

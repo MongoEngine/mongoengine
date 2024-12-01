@@ -1,10 +1,15 @@
+# mypy: disable-error-code="attr-defined,union-attr,assignment"
+from __future__ import annotations
+
 import copy
 import numbers
 import warnings
 from functools import partial
+from typing import TYPE_CHECKING, Any
 
 import pymongo
 from bson import SON, DBRef, ObjectId, json_util
+from typing_extensions import Self
 
 from mongoengine import signals
 from mongoengine.base.common import _DocumentRegistry
@@ -15,7 +20,7 @@ from mongoengine.base.datastructures import (
     LazyReference,
     StrictDict,
 )
-from mongoengine.base.fields import ComplexBaseField
+from mongoengine.base.fields import BaseField, ComplexBaseField
 from mongoengine.common import _import_class
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -26,12 +31,15 @@ from mongoengine.errors import (
 )
 from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
 
+if TYPE_CHECKING:
+    from mongoengine.fields import DynamicField
+
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
 NON_FIELD_ERRORS = "__all__"
 
 try:
-    GEOHAYSTACK = pymongo.GEOHAYSTACK
+    GEOHAYSTACK = pymongo.GEOHAYSTACK  # type: ignore[attr-defined]
 except AttributeError:
     GEOHAYSTACK = None
 
@@ -62,7 +70,12 @@ class BaseDocument:
     _dynamic_lock = True
     STRICT = False
 
-    def __init__(self, *args, **values):
+    # Fields, added by metaclass
+    _class_name: str
+    _fields: dict[str, BaseField]
+    _meta: dict[str, Any]
+
+    def __init__(self, *args, **values) -> None:
         """
         Initialise a document or an embedded document.
 
@@ -103,7 +116,7 @@ class BaseDocument:
         else:
             self._data = {}
 
-        self._dynamic_fields = SON()
+        self._dynamic_fields: SON[str, DynamicField] = SON()
 
         # Assign default values for fields
         # not set in the constructor
@@ -329,13 +342,15 @@ class BaseDocument:
 
         return self._data["_text_score"]
 
-    def to_mongo(self, use_db_field=True, fields=None):
+    def to_mongo(
+        self, use_db_field: bool = True, fields: list[str] | None = None
+    ) -> SON[Any, Any]:
         """
         Return as SON data ready for use with MongoDB.
         """
         fields = fields or []
 
-        data = SON()
+        data: SON[str, Any] = SON()
         data["_id"] = None
         data["_cls"] = self._class_name
 
@@ -354,7 +369,7 @@ class BaseDocument:
 
             if value is not None:
                 f_inputs = field.to_mongo.__code__.co_varnames
-                ex_vars = {}
+                ex_vars: dict[str, Any] = {}
                 if fields and "fields" in f_inputs:
                     key = "%s." % field_name
                     embedded_fields = [
@@ -370,7 +385,7 @@ class BaseDocument:
 
             # Handle self generating fields
             if value is None and field._auto_gen:
-                value = field.generate()
+                value = field.generate()  # type: ignore[attr-defined]
                 self._data[field_name] = value
 
             if value is not None or field.null:
@@ -385,7 +400,7 @@ class BaseDocument:
 
         return data
 
-    def validate(self, clean=True):
+    def validate(self, clean: bool = True) -> None:
         """Ensure that all fields' values are valid and that required fields
         are present.
 
@@ -439,7 +454,7 @@ class BaseDocument:
             message = f"ValidationError ({self._class_name}:{pk}) "
             raise ValidationError(message, errors=errors)
 
-    def to_json(self, *args, **kwargs):
+    def to_json(self, *args: Any, **kwargs: Any) -> str:
         """Convert this document to JSON.
 
         :param use_db_field: Serialize field names as they appear in
@@ -461,7 +476,7 @@ class BaseDocument:
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
-    def from_json(cls, json_data, created=False, **kwargs):
+    def from_json(cls, json_data: str, created: bool = False, **kwargs: Any) -> Self:
         """Converts json data to a Document instance.
 
         :param str json_data: The json data to load into the Document.
@@ -687,7 +702,7 @@ class BaseDocument:
                 self._nestable_types_changed_fields(changed_fields, key, data)
         return changed_fields
 
-    def _delta(self):
+    def _delta(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """Returns the delta (set, unset) of the changes for a document.
         Gets any values that have been explicitly changed.
         """
@@ -771,14 +786,16 @@ class BaseDocument:
         return set_data, unset_data
 
     @classmethod
-    def _get_collection_name(cls):
+    def _get_collection_name(cls) -> str | None:
         """Return the collection name for this class. None for abstract
         class.
         """
         return cls._meta.get("collection", None)
 
     @classmethod
-    def _from_son(cls, son, _auto_dereference=True, created=False):
+    def _from_son(
+        cls, son: dict[str, Any], _auto_dereference: bool = True, created: bool = False
+    ) -> Self:
         """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
         if son and not isinstance(son, dict):
             raise ValueError(

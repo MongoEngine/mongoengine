@@ -1,6 +1,7 @@
 import json
 import random
 from decimal import Decimal
+from typing import Type
 
 import pytest
 from bson.decimal128 import Decimal128
@@ -15,7 +16,7 @@ class Decimal128Document(Document):
     dec128_max_100 = Decimal128Field(max_value=100)
 
 
-def generate_test_cls() -> Document:
+def generate_test_cls() -> Type[Document]:
     Decimal128Document.drop_collection()
     Decimal128Document(dec128_fld=None).save()
     Decimal128Document(dec128_fld=Decimal(1)).save()

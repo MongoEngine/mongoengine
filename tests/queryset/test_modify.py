@@ -10,7 +10,7 @@ from mongoengine import (
 
 
 class Doc(Document):
-    id = IntField(primary_key=True)
+    id = IntField(primary_key=True)  # type: ignore[assignment]
     value = IntField()
 
 

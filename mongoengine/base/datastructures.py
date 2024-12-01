@@ -1,9 +1,17 @@
-import weakref
+from __future__ import annotations
 
-from bson import DBRef
+import weakref
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+from bson import DBRef, ObjectId
 
 from mongoengine.common import _import_class
 from mongoengine.errors import DoesNotExist, MultipleObjectsReturned
+
+if TYPE_CHECKING:
+    from mongoengine import Document
+
+_T = TypeVar("_T", bound="Document")
 
 __all__ = (
     "BaseDict",
@@ -356,7 +364,7 @@ class EmbeddedDocumentList(BaseList):
 class StrictDict:
     __slots__ = ()
     _special_fields = {"get", "pop", "iteritems", "items", "keys", "create"}
-    _classes = {}
+    _classes: dict[str, Any] = {}
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -435,7 +443,7 @@ class StrictDict:
         return cls._classes[allowed_keys]
 
 
-class LazyReference(DBRef):
+class LazyReference(Generic[_T], DBRef):
     __slots__ = ("_cached_doc", "passthrough", "document_type")
 
     def fetch(self, force=False):
@@ -449,19 +457,21 @@ class LazyReference(DBRef):
     def pk(self):
         return self.id
 
-    def __init__(self, document_type, pk, cached_doc=None, passthrough=False):
+    def __init__(
+        self, document_type: type[_T], pk: ObjectId, cached_doc=None, passthrough=False
+    ):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough
-        super().__init__(self.document_type._get_collection_name(), pk)
+        super().__init__(self.document_type._get_collection_name(), pk)  # type: ignore[arg-type]
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         if not self.passthrough:
             raise KeyError()
         document = self.fetch()
         return document[name]
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if not object.__getattribute__(self, "passthrough"):
             raise AttributeError()
         document = self.fetch()

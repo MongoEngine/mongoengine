@@ -1,5 +1,9 @@
-_class_registry_cache = {}
-_field_list_cache = []
+from __future__ import annotations
+
+from typing import Any
+
+_class_registry_cache: dict[str, Any] = {}
+_field_list_cache: list[Any] = []
 
 
 def _import_class(cls_name):

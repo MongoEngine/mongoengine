@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING
 
 from mongoengine.errors import NotRegistered
 
-__all__ = ("UPDATE_OPERATORS", "_DocumentRegistry")
+if TYPE_CHECKING:
+    from mongoengine.document import Document
 
+__all__ = ("UPDATE_OPERATORS", "_DocumentRegistry")
 
 UPDATE_OPERATORS = {
     "set",
@@ -24,7 +29,7 @@ UPDATE_OPERATORS = {
 }
 
 
-_document_registry = {}
+_document_registry: dict[str, type[Document]] = {}
 
 
 class _DocumentRegistry:
@@ -33,7 +38,7 @@ class _DocumentRegistry:
     """
 
     @staticmethod
-    def get(name):
+    def get(name: str) -> type[Document]:
         doc = _document_registry.get(name, None)
         if not doc:
             # Possible old style name
@@ -58,7 +63,7 @@ class _DocumentRegistry:
         return doc
 
     @staticmethod
-    def register(DocCls):
+    def register(DocCls: type[Document]) -> None:
         ExistingDocCls = _document_registry.get(DocCls._class_name)
         if (
             ExistingDocCls is not None
@@ -76,7 +81,7 @@ class _DocumentRegistry:
         _document_registry[DocCls._class_name] = DocCls
 
     @staticmethod
-    def unregister(doc_cls_name):
+    def unregister(doc_cls_name: str):
         _document_registry.pop(doc_cls_name)
 
 

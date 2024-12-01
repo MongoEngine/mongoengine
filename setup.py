@@ -42,10 +42,14 @@ CLASSIFIERS = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-install_require = ["pymongo>=3.4,<5.0"]
+install_require = [
+    "pymongo>=3.4,<5.0",
+    "typing_extensions>=4.1",
+]
 tests_require = [
     "pytest",
     "pytest-cov",
+    "pytest-mypy-plugins",
     "coverage",
     "blinker",
     "Pillow>=7.0.0",
@@ -62,6 +66,9 @@ setup(
     download_url="https://github.com/MongoEngine/mongoengine/tarball/master",
     license="MIT",
     include_package_data=True,
+    package_data={
+        "mongoengine": ["py.typed"],
+    },
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     platforms=["any"],

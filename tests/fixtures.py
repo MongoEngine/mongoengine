@@ -1,8 +1,19 @@
 import pickle
 from datetime import datetime
 
-from mongoengine import *
-from mongoengine import signals
+from mongoengine import (
+    DateTimeField,
+    Document,
+    DynamicDocument,
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    FileField,
+    IntField,
+    ListField,
+    StringField,
+    signals,
+)
 
 
 class PickleEmbedded(EmbeddedDocument):

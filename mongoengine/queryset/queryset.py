@@ -1,3 +1,8 @@
+# mypy: disable-error-code="call-overload,arg-type,return-value"
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Iterator, TypeVar
+
 from mongoengine.errors import OperationError
 from mongoengine.queryset.base import (
     CASCADE,
@@ -7,6 +12,9 @@ from mongoengine.queryset.base import (
     PULL,
     BaseQuerySet,
 )
+
+if TYPE_CHECKING:
+    from mongoengine.document import Document
 
 __all__ = (
     "QuerySet",
@@ -18,12 +26,15 @@ __all__ = (
     "PULL",
 )
 
+_T = TypeVar("_T", bound="Document")
+_U = TypeVar("_U", bound="QuerySet[Any]")
+
 # The maximum number of items to display in a QuerySet.__repr__
 REPR_OUTPUT_SIZE = 20
 ITER_CHUNK_SIZE = 100
 
 
-class QuerySet(BaseQuerySet):
+class QuerySet(BaseQuerySet[_T]):
     """The default queryset, that builds queries and handles a set of results
     returned from a query.
 
@@ -35,7 +46,7 @@ class QuerySet(BaseQuerySet):
     _len = None
     _result_cache = None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         """Iteration utilises a results cache which iterates the cursor
         in batches of ``ITER_CHUNK_SIZE``.
 
@@ -50,7 +61,7 @@ class QuerySet(BaseQuerySet):
         # iterating over the cache.
         return iter(self._result_cache)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Since __len__ is called quite frequently (for example, as part of
         list(qs)), we populate the result cache and cache the length.
         """
@@ -132,7 +143,7 @@ class QuerySet(BaseQuerySet):
             # information in other places.
             self._has_more = False
 
-    def count(self, with_limit_and_skip=False):
+    def count(self, with_limit_and_skip: bool = False) -> int:
         """Count the selected elements in the query.
 
         :param with_limit_and_skip (optional): take any :meth:`limit` or
@@ -148,7 +159,7 @@ class QuerySet(BaseQuerySet):
 
         return self._len
 
-    def no_cache(self):
+    def no_cache(self) -> QuerySetNoCache[_T]:
         """Convert to a non-caching queryset"""
         if self._result_cache is not None:
             raise OperationError("QuerySet already cached")
@@ -156,7 +167,7 @@ class QuerySet(BaseQuerySet):
         return self._clone_into(QuerySetNoCache(self._document, self._collection))
 
 
-class QuerySetNoCache(BaseQuerySet):
+class QuerySetNoCache(BaseQuerySet[_T]):
     """A non caching QuerySet"""
 
     def cache(self):

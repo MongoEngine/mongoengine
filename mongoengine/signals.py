@@ -15,7 +15,7 @@ try:
     signals_available = True
 except ImportError:
 
-    class Namespace:
+    class Namespace:  # type: ignore[no-redef]
         def signal(self, name, doc=None):
             return _FakeSignal(name, doc)
 

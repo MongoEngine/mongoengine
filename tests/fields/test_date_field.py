@@ -5,9 +5,9 @@ import pytest
 try:
     import dateutil
 except ImportError:
-    dateutil = None
+    dateutil = None  # type: ignore[assignment]
 
-from mongoengine import *
+from mongoengine import DateField, Document, ValidationError
 from tests.utils import MongoDBTestCase
 
 
