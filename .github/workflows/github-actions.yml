@@ -49,6 +49,18 @@ jobs:
     - run: bash .github/workflows/install_ci_python_dep.sh
     - run: pre-commit run -a
 
+  type-check:
+    # Can be moved to pre-commit, separate step for now.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        check-latest: true
+    - run: bash .github/workflows/install_ci_python_typing_deps.sh
+    - run: mypy mongoengine tests
+
   test:
     # Test suite run against recent python versions
     # and against a few combination of MongoDB and pymongo

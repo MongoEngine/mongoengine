@@ -8,7 +8,7 @@ import pymongo
 import pytest
 from bson import DBRef
 
-from mongoengine import *
+from mongoengine import Document, connect, register_connection
 from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
     no_dereference,
@@ -19,6 +19,14 @@ from mongoengine.context_managers import (
     set_write_concern,
     switch_collection,
     switch_db,
+)
+from mongoengine.errors import OperationError
+from mongoengine.fields import (
+    GenericReferenceField,
+    IntField,
+    ListField,
+    ReferenceField,
+    StringField,
 )
 from mongoengine.pymongo_support import count_documents
 from tests.utils import (

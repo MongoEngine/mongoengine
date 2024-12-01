@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import contextlib
 import operator
 import threading
 import weakref
+from typing import TYPE_CHECKING, Any, Callable, Iterable, NoReturn
 
 import pymongo
 from bson import SON, DBRef, ObjectId
@@ -14,6 +17,10 @@ from mongoengine.base.datastructures import (
 )
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError
+
+if TYPE_CHECKING:
+    from mongoengine.document import Document
+
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
@@ -36,8 +43,8 @@ class BaseField:
     may be added to subclasses of `Document` to define a document's schema.
     """
 
-    name = None  # set in TopLevelDocumentMetaclass
-    _geo_index = False
+    name: str = None  # type: ignore[assignment] # set in TopLevelDocumentMetaclass
+    _geo_index: bool | str = False
     _auto_gen = False  # Call `generate` to generate a value
     _thread_local_storage = threading.local()
 
@@ -49,17 +56,17 @@ class BaseField:
 
     def __init__(
         self,
-        db_field=None,
-        required=False,
-        default=None,
-        unique=False,
-        unique_with=None,
-        primary_key=False,
-        validation=None,
-        choices=None,
-        null=False,
-        sparse=False,
-        **kwargs,
+        db_field: str | None = None,
+        required: bool = False,
+        default: Any | None | Callable[[], Any] = None,
+        unique: bool = False,
+        unique_with: str | Iterable[str] | None = None,
+        primary_key: bool = False,
+        validation: Callable[[Any], None] | None = None,
+        choices: Any = None,
+        null: bool = False,
+        sparse: bool = False,
+        **kwargs: Any,
     ):
         """
         :param db_field: The database field to store this field in
@@ -173,7 +180,7 @@ class BaseField:
         # Get value from document instance if available
         return instance._data.get(self.name)
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Any, value: Any) -> None:
         """Descriptor for assigning a value to a field in a document."""
         # If setting to None and there is a default value provided for this
         # field, then set the value to the default value.
@@ -209,16 +216,21 @@ class BaseField:
 
         instance._data[self.name] = value
 
-    def error(self, message="", errors=None, field_name=None):
+    def error(
+        self,
+        message: str = "",
+        errors: dict[str, Any] | None = None,
+        field_name: str | None = None,
+    ) -> NoReturn:
         """Raise a ValidationError."""
         field_name = field_name if field_name else self.name
         raise ValidationError(message, errors=errors, field_name=field_name)
 
-    def to_python(self, value):
+    def to_python(self, value: Any) -> Any:
         """Convert a MongoDB-compatible type to a Python type."""
         return value
 
-    def to_mongo(self, value):
+    def to_mongo(self, value: Any) -> Any:
         """Convert a Python type to a MongoDB-compatible type."""
         return self.to_python(value)
 
@@ -234,13 +246,13 @@ class BaseField:
 
         return self.to_mongo(value, **ex_vars)
 
-    def prepare_query_value(self, op, value):
+    def prepare_query_value(self, op: str, value: Any) -> Any:
         """Prepare a value that is being used in a query for PyMongo."""
         if op in UPDATE_OPERATORS:
             self.validate(value)
         return value
 
-    def validate(self, value, clean=True):
+    def validate(self, value: Any, clean: bool = True) -> None:
         """Perform validation on a value."""
         pass
 
@@ -292,13 +304,13 @@ class BaseField:
         self.validate(value, **kwargs)
 
     @property
-    def owner_document(self):
-        return self._owner_document
+    def owner_document(self) -> type[Document]:
+        return self._owner_document  # type: ignore[return-value]
 
     def _set_owner_document(self, owner_document):
         self._owner_document = owner_document
 
-    @owner_document.setter
+    @owner_document.setter  # type: ignore[attr-defined,no-redef]
     def owner_document(self, owner_document):
         self._set_owner_document(owner_document)
 

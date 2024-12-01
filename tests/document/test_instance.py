@@ -11,8 +11,46 @@ import pytest
 from bson import DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError
 
-from mongoengine import *
-from mongoengine import signals
+from mongoengine import (
+    CASCADE,
+    DENY,
+    PULL,
+    BooleanField,
+    ComplexDateTimeField,
+    DateTimeField,
+    DecimalField,
+    DictField,
+    Document,
+    DoesNotExist,
+    DynamicDocument,
+    DynamicEmbeddedDocument,
+    DynamicField,
+    EmailField,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    EmbeddedDocumentListField,
+    FileField,
+    FloatField,
+    GenericEmbeddedDocumentField,
+    GenericReferenceField,
+    GeoPointField,
+    IntField,
+    InvalidCollectionError,
+    LazyReferenceField,
+    ListField,
+    MapField,
+    ObjectIdField,
+    OperationError,
+    ReferenceField,
+    SequenceField,
+    SortedListField,
+    StringField,
+    URLField,
+    UUIDField,
+    ValidationError,
+    register_connection,
+    signals,
+)
 from mongoengine.base import _DocumentRegistry
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
