@@ -33,16 +33,18 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-install_require = ["pymongo>=3.4,<5.0"]
+install_require = ["pymongo>=3.12,<5.0"]
 tests_require = [
     "pytest",
     "pytest-cov",
