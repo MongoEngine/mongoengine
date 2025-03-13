@@ -470,20 +470,25 @@ class TestIndexes(unittest.TestCase):
         elif mongo_db < MONGODB_80:
             query_plan = Test.objects(id=obj.id).exclude("a").explain()
             assert (
-                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = Test.objects(id=obj.id).only("id").explain()
             assert (
-                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = Test.objects(a=1).only("a").exclude("id").explain()
             assert (
-                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
-            PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
+            PROJECTION_STR = (
+                "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
+            )
             assert query_plan["queryPlanner"]["winningPlan"]["stage"] == PROJECTION_STR
 
         query_plan = Test.objects(a=1).explain()
