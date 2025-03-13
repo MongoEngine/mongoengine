@@ -13,6 +13,7 @@ MONGODB_44 = (4, 4)
 MONGODB_50 = (5, 0)
 MONGODB_60 = (6, 0)
 MONGODB_70 = (7, 0)
+MONGODB_80 = (8, 0)
 
 
 def get_mongodb_version():
