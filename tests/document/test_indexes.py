@@ -465,11 +465,31 @@ class TestIndexes(unittest.TestCase):
 
             query_plan = Test.objects(a=1).only("a").exclude("id").explain()
             assert (
-                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "FETCH"
+            )
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"][
+                    "inputStage"
+                ]
+                == "IXSCAN"
             )
             assert (
                 query_plan["queryPlanner"]["winningPlan"]["stage"]
                 == "PROJECTION_SIMPLE"
+            )
+
+            query_plan = Test.objects(a=1).explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"][
+                    "inputStage"
+                ]
+                == "IXSCAN"
+            )
+
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
             )
         elif mongo_db < MONGODB_80:
             query_plan = Test.objects(id=obj.id).exclude("a").explain()
@@ -495,12 +515,16 @@ class TestIndexes(unittest.TestCase):
             )
             assert query_plan["queryPlanner"]["winningPlan"]["stage"] == PROJECTION_STR
 
-        query_plan = Test.objects(a=1).explain()
-        assert (
-            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
-        )
+            query_plan = Test.objects(a=1).explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
+            )
 
-        assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
 
     def test_index_on_id(self):
         class BlogPost(Document):
