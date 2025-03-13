@@ -470,7 +470,7 @@ class TestIndexes(unittest.TestCase):
             )
             assert (
                 query_plan["queryPlanner"]["winningPlan"]["stage"]
-                == "PROJECTION_SIMPLE"
+                == "PROJECTION_COVERED"
             )
 
             query_plan = Test.objects(a=1).explain()
