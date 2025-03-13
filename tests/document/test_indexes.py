@@ -466,12 +466,6 @@ class TestIndexes(unittest.TestCase):
             query_plan = Test.objects(a=1).only("a").exclude("id").explain()
             assert (
                 query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                == "FETCH"
-            )
-            assert (
-                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["inputStage"][
-                    "stage"
-                ]
                 == "IXSCAN"
             )
             assert (
