@@ -14,16 +14,20 @@ MONGOSH=$2
 
 PLATFORM="linux-x64"
 
-if (( $(echo "$MONGODB < 6.0" | bc -l) )); then
-  echo "mongosh is not needed for MongoDB versions less than 6.0"
-  exit 0
+# Extract major version explicitly
+MONGODB_MAJOR_VERSION=$(echo "$MONGODB" | cut -d'.' -f1)
+
+# Check if MongoDB major version is greater than or equal to 6
+if [ "$MONGODB_MAJOR_VERSION" -lt 6 ]; then
+    echo "mongosh is not needed for MongoDB versions less than 6.0"
+    exit 0
 fi
 
 DOWNLOAD_URL="https://downloads.mongodb.com/compass/mongosh-${MONGOSH}-${PLATFORM}.tgz"
 TARBALL="mongosh-${MONGOSH}-${PLATFORM}.tgz"
 
 echo "Downloading mongosh ${MONGOSH} for ${PLATFORM}..."
-if ! wget -q --show-progress "$DOWNLOAD_URL"; then
+if ! wget --quiet "$DOWNLOAD_URL"; then
     echo "Failed to download mongosh. Please check the version and your internet connection."
     exit 1
 fi
