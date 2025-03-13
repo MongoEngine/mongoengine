@@ -467,6 +467,10 @@ class TestIndexes(unittest.TestCase):
             assert (
                 query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
             )
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["stage"]
+                == "PROJECTION_SIMPLE"
+            )
         elif mongo_db < MONGODB_80:
             query_plan = Test.objects(id=obj.id).exclude("a").explain()
             assert (
