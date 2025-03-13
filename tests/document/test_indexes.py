@@ -469,8 +469,8 @@ class TestIndexes(unittest.TestCase):
                 == "FETCH"
             )
             assert (
-                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"][
-                    "inputStage"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["inputStage"][
+                    "stage"
                 ]
                 == "IXSCAN"
             )
