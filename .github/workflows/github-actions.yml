@@ -60,7 +60,7 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
         MONGODB: [$MONGODB_4_0]
-        PYMONGO: [$PYMONGO_3_11]
+        PYMONGO: [$PYMONGO_3_12]
         include:
           - python-version: "3.9"
             MONGODB: $MONGODB_4_4
