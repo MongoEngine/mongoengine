@@ -13,15 +13,14 @@ on:
     tags:
       - 'v[0-9]+\.[0-9]+\.[0-9]+*'
 env:
-  MONGODB_3_6: "3.6.23"
   MONGODB_4_0: "4.0.28"
+  MONGODB_4_2: "4.2.25"
   MONGODB_4_4: "4.4.29"
   MONGODB_5_0: "5.0.31"
   MONGODB_6_0: "6.0.20"
   MONGODB_7_0: "7.0.17"
   MONGODB_8_0: "8.0.5"
 
-  PYMONGO_3_11: "3.11.3"
   PYMONGO_3_12: "3.12.3"
   PYMONGO_3_13: "3.13.0"
   PYMONGO_4_0:  "4.0.2"
@@ -59,13 +58,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", pypy3.9, pypy3.10]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
         MONGODB: [$MONGODB_4_0]
         PYMONGO: [$PYMONGO_3_11]
         include:
-          - python-version: "3.8"
-            MONGODB: $MONGODB_3_6
-            PYMONGO: $PYMONGO_3_12
           - python-version: "3.9"
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_13
