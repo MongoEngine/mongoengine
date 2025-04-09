@@ -2706,6 +2706,32 @@ class TestQueryset(unittest.TestCase):
         ages = [p.age for p in self.Person.objects.order_by("")]
         assert ages == [40, 20, 30]
 
+    def test_last(self):
+        """Ensure the retrieval of the latest object from the QuerySet based on the specified ordering."""
+        person1 = self.Person(name="User B", age=40).save()
+        person2 = self.Person(name="User A", age=20).save()
+        person3 = self.Person(name="User C", age=30).save()
+
+        assert self.Person.objects.order_by("age").last() == person1
+        assert self.Person.objects.order_by("-age").last() == person2
+
+        person2.age = 31
+        person2.save()
+        assert self.Person.objects.order_by("-age").last() == person3
+        assert self.Person.objects.order_by("age").last() == person1
+
+        person1.age = 41
+        person1.save()
+        assert self.Person.objects.order_by("age").last() == person1
+
+        assert self.Person.objects.order_by("name").last() == person3
+
+        assert self.Person.objects.filter(age__lt=40).order_by("age").last() == person2
+        assert self.Person.objects.filter(age__gt=50).order_by("age").last() is None
+
+        with pytest.raises(OperationError):
+            self.Person.objects.last()
+
     def test_order_by_optional(self):
         class BlogPost(Document):
             title = StringField()
