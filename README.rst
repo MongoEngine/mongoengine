@@ -77,13 +77,14 @@ Examples
 Some simple examples of what MongoEngine code looks like:
 
 .. code :: python
-
+    import datetime
     from mongoengine import *
+
     connect('mydb')
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=datetime.datetime.utcnow)
+        posted = DateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
         tags = ListField(StringField(max_length=50))
         meta = {'allow_inheritance': True}
 
