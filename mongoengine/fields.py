@@ -111,6 +111,14 @@ __all__ = (
 RECURSIVE_REFERENCE_CONSTANT = "self"
 
 
+def _unsaved_object_error(document):
+    return (
+        f"The instance of the document '{document}' you are "
+        "trying to reference has an empty 'id'. You can only reference "
+        "documents once they have been saved to the database"
+    )
+
+
 class StringField(BaseField):
     """A unicode string field."""
 
@@ -1215,10 +1223,7 @@ class ReferenceField(BaseField):
 
             # XXX ValidationError raised outside of the "validate" method.
             if id_ is None:
-                self.error(
-                    "You can only reference documents once they have"
-                    " been saved to the database"
-                )
+                self.error(_unsaved_object_error(document.__class__.__name__))
 
             # Use the attributes from the document instance, so that they
             # override the attributes of this field's document type
@@ -1262,10 +1267,7 @@ class ReferenceField(BaseField):
             )
 
         if isinstance(value, Document) and value.id is None:
-            self.error(
-                "You can only reference documents once they have been "
-                "saved to the database"
-            )
+            self.error(_unsaved_object_error(value.__class__.__name__))
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -1370,10 +1372,7 @@ class CachedReferenceField(BaseField):
             # We need the id from the saved object to create the DBRef
             id_ = document.pk
             if id_ is None:
-                self.error(
-                    "You can only reference documents once they have"
-                    " been saved to the database"
-                )
+                self.error(_unsaved_object_error(document.__class__.__name__))
         else:
             self.error("Only accept a document object")
 
@@ -1394,10 +1393,7 @@ class CachedReferenceField(BaseField):
         # XXX ValidationError raised outside of the "validate" method.
         if isinstance(value, Document):
             if value.pk is None:
-                self.error(
-                    "You can only reference documents once they have"
-                    " been saved to the database"
-                )
+                self.error(_unsaved_object_error(value.__class__.__name__))
             value_dict = {"_id": value.pk}
             for field in self.fields:
                 value_dict.update({field: value[field]})
@@ -1411,10 +1407,7 @@ class CachedReferenceField(BaseField):
             self.error("A CachedReferenceField only accepts documents")
 
         if isinstance(value, Document) and value.id is None:
-            self.error(
-                "You can only reference documents once they have been "
-                "saved to the database"
-            )
+            self.error(_unsaved_object_error(value.__class__.__name__))
 
     def lookup_member(self, member_name):
         return self.document_type._fields.get(member_name)
@@ -1513,10 +1506,7 @@ class GenericReferenceField(BaseField):
 
         # We need the id from the saved object to create the DBRef
         elif isinstance(value, Document) and value.id is None:
-            self.error(
-                "You can only reference documents once they have been"
-                " saved to the database"
-            )
+            self.error(_unsaved_object_error(value.__class__.__name__))
 
     def to_mongo(self, document):
         if document is None:
@@ -1533,10 +1523,7 @@ class GenericReferenceField(BaseField):
             id_ = document.id
             if id_ is None:
                 # XXX ValidationError raised outside of the "validate" method.
-                self.error(
-                    "You can only reference documents once they have"
-                    " been saved to the database"
-                )
+                self.error(_unsaved_object_error(document.__class__.__name__))
         else:
             id_ = document
 
@@ -2535,10 +2522,7 @@ class LazyReferenceField(BaseField):
                 )
 
         if pk is None:
-            self.error(
-                "You can only reference documents once they have been "
-                "saved to the database"
-            )
+            self.error(_unsaved_object_error(self.document_type.__name__))
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -2607,8 +2591,9 @@ class GenericLazyReferenceField(GenericReferenceField):
     def validate(self, value):
         if isinstance(value, LazyReference) and value.pk is None:
             self.error(
-                "You can only reference documents once they have been"
-                " saved to the database"
+                _unsaved_object_error(
+                    self.__class__.__name__
+                )  # Actual class is difficult to predict here
             )
         return super().validate(value)
 

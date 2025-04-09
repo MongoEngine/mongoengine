@@ -9,6 +9,7 @@ from mongoengine import *
 from mongoengine.connection import get_db
 from mongoengine.mongodb_support import (
     MONGODB_42,
+    MONGODB_80,
     get_mongodb_version,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
@@ -450,31 +451,72 @@ class TestIndexes(unittest.TestCase):
 
         # Need to be explicit about covered indexes as mongoDB doesn't know if
         # the documents returned might have more keys in that here.
-        query_plan = Test.objects(id=obj.id).exclude("a").explain()
-        assert (
-            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
-        )
-
-        query_plan = Test.objects(id=obj.id).only("id").explain()
-        assert (
-            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IDHACK"
-        )
-
         mongo_db = get_mongodb_version()
-        query_plan = Test.objects(a=1).only("a").exclude("id").explain()
-        assert (
-            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
-        )
+        if mongo_db >= MONGODB_80:
+            query_plan = Test.objects(id=obj.id).exclude("a").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+            )
 
-        PROJECTION_STR = "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
-        assert query_plan["queryPlanner"]["winningPlan"]["stage"] == PROJECTION_STR
+            query_plan = Test.objects(id=obj.id).only("id").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+            )
 
-        query_plan = Test.objects(a=1).explain()
-        assert (
-            query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"] == "IXSCAN"
-        )
+            query_plan = Test.objects(a=1).only("a").exclude("id").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
+            )
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["stage"]
+                == "PROJECTION_COVERED"
+            )
 
-        assert query_plan.get("queryPlanner").get("winningPlan").get("stage") == "FETCH"
+            query_plan = Test.objects(a=1).explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
+            )
+
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
+        elif mongo_db < MONGODB_80:
+            query_plan = Test.objects(id=obj.id).exclude("a").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
+            )
+
+            query_plan = Test.objects(id=obj.id).only("id").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
+            )
+
+            query_plan = Test.objects(a=1).only("a").exclude("id").explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
+            )
+
+            PROJECTION_STR = (
+                "PROJECTION" if mongo_db < MONGODB_42 else "PROJECTION_COVERED"
+            )
+            assert query_plan["queryPlanner"]["winningPlan"]["stage"] == PROJECTION_STR
+
+            query_plan = Test.objects(a=1).explain()
+            assert (
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
+            )
+
+            assert (
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
+            )
 
     def test_index_on_id(self):
         class BlogPost(Document):

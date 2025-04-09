@@ -7,13 +7,17 @@ mongodb_dir=$(find ${PWD}/ -type d -name "mongodb-linux-x86_64*")
 mkdir $mongodb_dir/data
 
 args=(--dbpath $mongodb_dir/data --logpath $mongodb_dir/mongodb.log --fork --replSet mongoengine)
-if (( $(echo "$MONGODB > 3.8" | bc -l) )); then
+
+# Parse version components
+MAJOR=$(echo "$MONGODB" | cut -d'.' -f1)
+MINOR=$(echo "$MONGODB" | cut -d'.' -f2)
+if [ "$MAJOR" -gt 3 ] || ([ "$MAJOR" -eq 3 ] && [ "$MINOR" -ge 8 ]); then
     args+=(--setParameter maxTransactionLockRequestTimeoutMillis=1000)
 fi
 
 $mongodb_dir/bin/mongod "${args[@]}"
 
-if (( $(echo "$MONGODB < 6.0" | bc -l) )); then
+if [ "$MAJOR" -lt 6 ]; then
 mongo --verbose --eval "rs.initiate()"
 mongo --quiet --eval "rs.status().ok"
 else
