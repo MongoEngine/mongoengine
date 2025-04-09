@@ -25,7 +25,6 @@ from mongoengine.errors import (
     SaveConditionError,
 )
 from mongoengine.mongodb_support import (
-    MONGODB_34,
     MONGODB_36,
     get_mongodb_version,
 )
@@ -536,17 +535,12 @@ class TestDocumentInstance(MongoDBTestCase):
         doc = Animal(is_mammal=True, name="Dog")
         doc.save()
 
-        mongo_db = get_mongodb_version()
-
         with query_counter() as q:
             doc.name = "Cat"
             doc.save()
             query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
             assert query_op["op"] == "update"
-            if mongo_db <= MONGODB_34:
-                assert set(query_op["query"].keys()) == {"_id", "is_mammal"}
-            else:
-                assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
+            assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
 
         Animal.drop_collection()
 

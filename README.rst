@@ -35,7 +35,7 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4, v5.0, v6.0 and v7.0. Future versions
+MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4, v5.0, v6.0, v7.0 and v8.0. Future versions
 should be supported as well, but aren't actively tested at the moment. Make
 sure to open an issue or submit a pull request if you experience any problems
 with a more recent MongoDB versions.
@@ -58,7 +58,7 @@ Dependencies
 All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
 At the very least, you'll need these two packages to use MongoEngine:
 
-- pymongo>=3.4
+- pymongo>=3.12
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 
