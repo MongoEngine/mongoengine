@@ -1,3 +1,4 @@
+import copy
 import os
 import pickle
 import unittest
@@ -3847,6 +3848,53 @@ class TestDocumentInstance(MongoDBTestCase):
         # Ensure index creation exception aren't swallowed (#1688)
         with pytest.raises(DuplicateKeyError):
             User.objects().select_related()
+
+    def test_deepcopy(self):
+        regex_field = StringField(regex=r"(^ABC\d\d\d\d$)")
+        no_regex_field = StringField()
+        # Copy copied field object
+        copy.deepcopy(copy.deepcopy(regex_field))
+        copy.deepcopy(copy.deepcopy(no_regex_field))
+        # Copy same field object multiple times to make sure we restore __deepcopy__ correctly
+        copy.deepcopy(regex_field)
+        copy.deepcopy(regex_field)
+        copy.deepcopy(no_regex_field)
+        copy.deepcopy(no_regex_field)
+
+    def test_deepcopy_with_reference_itself(self):
+        class User(Document):
+            name = StringField(regex=r"(.*)")
+            other_user = ReferenceField("self")
+
+        user1 = User(name="John").save()
+        User(name="Bob", other_user=user1).save()
+
+        user1.other_user = user1
+        user1.save()
+        for u in User.objects:
+            copied_u = copy.deepcopy(u)
+            assert copied_u is not u
+            assert copied_u._fields["name"] is u._fields["name"]
+            assert (
+                copied_u._fields["name"].regex is u._fields["name"].regex
+            )  # Compiled regex objects are atomic
+
+    def test_from_son_with_auto_dereference_disabled(self):
+        class User(Document):
+            name = StringField(regex=r"(^ABC\d\d\d\d$)")
+
+        data = {"name": "ABC0000"}
+        user_obj = User._from_son(son=data, _auto_dereference=False)
+
+        assert user_obj._fields["name"] is not User.name
+        assert (
+            user_obj._fields["name"].regex is User.name.regex
+        )  # Compiled regex are atomic
+        copied_user = copy.deepcopy(user_obj)
+        assert user_obj._fields["name"] is not copied_user._fields["name"]
+        assert (
+            user_obj._fields["name"].regex is copied_user._fields["name"].regex
+        )  # Compiled regex are atomic
 
     def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
         self,
