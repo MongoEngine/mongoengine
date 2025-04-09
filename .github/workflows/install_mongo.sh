@@ -16,6 +16,8 @@ if [[ "${MONGODB}" =~ ^(7.0|8.0) ]]; then
   mongo_build="mongodb-linux-x86_64-ubuntu2004-${MONGODB}"
 elif [[ "${MONGODB}" =~ ^(4.0|4.2|4.4|5.0|6.0) ]]; then
   mongo_build="mongodb-linux-x86_64-ubuntu1804-${MONGODB}"
+elif [[ "${MONGODB}" =~ ^3.6$ ]]; then
+  mongo_build="mongodb-linux-x86_64-${MONGODB}"
 else
   echo "Error: Unsupported MongoDB version: ${MONGODB}"
   usage

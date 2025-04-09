@@ -6,7 +6,6 @@ from mongoengine.connection import get_connection
 
 # Constant that can be used to compare the version retrieved with
 # get_mongodb_version()
-MONGODB_34 = (3, 4)
 MONGODB_36 = (3, 6)
 MONGODB_42 = (4, 2)
 MONGODB_44 = (4, 4)
