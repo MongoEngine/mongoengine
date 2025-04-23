@@ -733,7 +733,15 @@ class BaseQuerySet:
             query["$where"] = where_clause
 
         if not remove:
-            update = transform.update(queryset._document, **update)
+            if "__raw__" in update and isinstance(
+                update["__raw__"], list
+            ):  # Case of Update with Aggregation Pipeline
+                update = [
+                    transform.update(queryset._document, **{"__raw__": u})
+                    for u in update["__raw__"]
+                ]
+            else:
+                update = transform.update(queryset._document, **update)
         sort = queryset._ordering
 
         try:
