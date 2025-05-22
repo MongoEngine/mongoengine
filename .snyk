@@ -1,0 +1,8 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+ignore: {}
+patch: {}
+exclude:
+  global:
+    # Tests should be ignored, as per: https://www.notion.so/prolific/Snyk-Code-Ignore-all-test-cases-1fb70df1d2028073aea7f24b6791f028?pvs=4
+    - ./tests/**/*.py
