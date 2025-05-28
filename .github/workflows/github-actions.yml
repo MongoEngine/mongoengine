@@ -13,12 +13,11 @@ on:
     tags:
       - 'v[0-9]+\.[0-9]+\.[0-9]+*'
 env:
-  MONGODB_3_6: 3.6.23
-  MONGODB_4_0: 4.0.28
-  MONGODB_4_4: 4.4
-  MONGODB_5_0: "5.0"
-  MONGODB_6_0: "6.0"
-  MONGODB_7_0: "7.0"
+  MONGODB_4_4: "4.4.29"
+  MONGODB_5_0: "5.0.31"
+  MONGODB_6_0: "6.0.22"
+  MONGODB_7_0: "7.0.19"
+  MONGODB_8_0: "8.0.9"
 
   PYMONGO_3_4: 3.4
   PYMONGO_3_6: 3.6
@@ -58,11 +57,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9, "3.10", 3.11, pypy3.9, pypy3.10]
-        MONGODB: [$MONGODB_4_0]
-        PYMONGO: [$PYMONGO_3_11]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
+        MONGODB: [$MONGODB_4_4]
+        PYMONGO: [$PYMONGO_3_12]
         include:
-          - python-version: 3.8
+          - python-version: "3.9"
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_11
           - python-version: 3.9
@@ -99,7 +98,6 @@ jobs:
     - name: install mongo and ci dependencies
       run: |
         bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
-        bash .github/workflows/install_mongosh.sh ${{ matrix.MONGODB }} ${{ env.MONGOSH }}
         bash .github/workflows/install_ci_python_dep.sh
         bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
