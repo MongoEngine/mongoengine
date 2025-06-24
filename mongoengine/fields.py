@@ -16,8 +16,6 @@ from bson import SON, Binary, DBRef, ObjectId
 from bson.decimal128 import Decimal128, create_decimal128_context
 from pymongo import ReturnDocument
 
-from mongoengine.base.datastructures import RawDict
-
 try:
     import dateutil
 except ImportError:
@@ -83,7 +81,6 @@ __all__ = (
     "SortedListField",
     "EmbeddedDocumentListField",
     "DictField",
-    "LazyDictField",
     "MapField",
     "ReferenceField",
     "CachedReferenceField",
@@ -1098,66 +1095,6 @@ class DictField(ComplexBaseField):
             if to_python and value
             else value or None
         )
-
-
-class LazyDictField(ComplexBaseField):
-    """A lazy dictionary field that wraps a standard Python dictionary.
-    Unlike the :class:`~mongoengine.fields.DictField`, it will
-    **not** be automatically deserialized. Manual deserialization must be triggered
-    using the ``deserialize()`` method.
-
-    .. note::
-        Required means it cannot be empty - as the default for DictFields is {}
-    """
-
-    def __init__(self, field=None, *args, **kwargs):
-        kwargs.setdefault("default", dict)
-        super().__init__(*args, field=field, **kwargs)
-        self.set_auto_dereferencing(False)
-
-    def validate(self, value):
-        """Make sure that a list of valid fields is being used."""
-        if not isinstance(value, dict):
-            self.error("Only dictionaries may be used in a DictField")
-
-        if key_not_string(value):
-            msg = "Invalid dictionary key - documents must have only string keys"
-            self.error(msg)
-
-        # Following condition applies to MongoDB >= 3.6
-        # older Mongo has stricter constraints but
-        # it will be rejected upon insertion anyway
-        # Having a validation that depends on the MongoDB version
-        # is not straightforward as the field isn't aware of the connected Mongo
-        if key_starts_with_dollar(value):
-            self.error(
-                'Invalid dictionary key name - keys may not startswith "$" characters'
-            )
-        super().validate(value)
-
-    def lookup_member(self, member_name):
-        return DictField(db_field=member_name)
-
-    def prepare_query_value(self, op, value):
-        match_operators = [*STRING_OPERATORS]
-
-        if op in match_operators and isinstance(value, str):
-            return StringField().prepare_query_value(op, value)
-
-        if hasattr(
-            self.field, "field"
-        ):  # Used for instance when using DictField(ListField(IntField()))
-            if op in ("set", "unset") and isinstance(value, dict):
-                return {
-                    k: self.field.prepare_query_value(op, v) for k, v in value.items()
-                }
-            return self.field.prepare_query_value(op, value)
-
-        return super().prepare_query_value(op, value)
-
-    def to_python(self, value):
-        self._data = RawDict(value, super().to_python)
-        return self._data
 
 
 class MapField(DictField):
