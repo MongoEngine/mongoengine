@@ -1047,7 +1047,6 @@ def key_starts_with_dollar(d):
             return True
 
 
-# TODO: make a LazyDictField that lazily deferences on access
 class DictField(ComplexBaseField):
     """A dictionary field that wraps a standard Python dictionary. This is
     similar to an embedded document, but the structure is not defined.
@@ -1100,6 +1099,14 @@ class DictField(ComplexBaseField):
             return self.field.prepare_query_value(op, value)
 
         return super().prepare_query_value(op, value)
+
+    def to_python(self, value):
+        to_python = getattr(self.field, "to_python", None)
+        return (
+            {k: to_python(v) for k, v in value.items()}
+            if to_python and value
+            else value or None
+        )
 
 
 class LazyDictField(ComplexBaseField):
