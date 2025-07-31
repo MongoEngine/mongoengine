@@ -62,8 +62,7 @@ class TestAsyncAggregation:
             ]
 
             results = []
-            cursor = await Sale.objects.async_aggregate(pipeline)
-            async for doc in cursor:
+            async for doc in Sale.objects.async_aggregate(pipeline):
                 results.append(doc)
 
             assert len(results) == 2
@@ -115,10 +114,9 @@ class TestAsyncAggregation:
 
             results = []
             # Use queryset filter before aggregation
-            cursor = await Order.objects.filter(status="completed").async_aggregate(
+            async for doc in Order.objects.filter(status="completed").async_aggregate(
                 pipeline
-            )
-            async for doc in cursor:
+            ):
                 results.append(doc)
 
             assert len(results) == 2
@@ -278,8 +276,7 @@ class TestAsyncAggregation:
             ]
 
             results = []
-            cursor = await Book.objects.async_aggregate(pipeline)
-            async for doc in cursor:
+            async for doc in Book.objects.async_aggregate(pipeline):
                 results.append(doc)
 
             assert len(results) == 2
@@ -323,12 +320,9 @@ class TestAsyncAggregation:
 
             results = []
             # Apply sort and limit before aggregation
-            cursor = (
-                await Score.objects.order_by("-score")
-                .limit(5)
-                .async_aggregate(pipeline)
-            )
-            async for doc in cursor:
+            async for doc in (
+                Score.objects.order_by("-score").limit(5).async_aggregate(pipeline)
+            ):
                 results.append(doc)
 
             assert len(results) == 5
@@ -365,8 +359,7 @@ class TestAsyncAggregation:
             ]
 
             results = []
-            cursor = await Event.objects.async_aggregate(pipeline)
-            async for doc in cursor:
+            async for doc in Event.objects.async_aggregate(pipeline):
                 results.append(doc)
 
             assert len(results) == 0

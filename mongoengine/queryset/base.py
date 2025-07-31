@@ -2317,6 +2317,58 @@ class BaseQuerySet:
 
         return self._async_iter_results()
 
+    async def async_select_related(self, max_depth=1):
+        """Async version of select_related that handles dereferencing of DBRef objects.
+
+        :param max_depth: The maximum depth to recurse to
+        """
+        from mongoengine.dereference import AsyncDeReference
+
+        # Make select related work the same for querysets
+        max_depth += 1
+        queryset = self.clone()
+
+        # Convert to list first to get all items
+        items = await queryset.async_to_list()
+
+        # Use async dereference
+        async_dereference = AsyncDeReference()
+        dereferenced_items = await async_dereference(items, max_depth=max_depth)
+
+        return dereferenced_items
+
+    async def async_in_bulk(self, object_ids):
+        """Async version of in_bulk - retrieve a set of documents by their ids.
+
+        :param object_ids: a list or tuple of ObjectId's
+        :rtype: dict of ObjectId's as keys and collection-specific
+                Document subclasses as values.
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+
+        doc_map = {}
+        collection = await self._async_get_collection()
+
+        cursor = collection.find(
+            {"_id": {"$in": object_ids}}, session=_get_session(), **self._cursor_args
+        )
+
+        async for doc in cursor:
+            if self._scalar:
+                doc_map[doc["_id"]] = self._get_scalar(self._document._from_son(doc))
+            elif self._as_pymongo:
+                doc_map[doc["_id"]] = doc
+            else:
+                doc_map[doc["_id"]] = self._document._from_son(
+                    doc,
+                    _auto_dereference=self._auto_dereference,
+                )
+
+        return doc_map
+
     async def _async_empty_iter(self):
         """Empty async iterator."""
         return
@@ -2553,7 +2605,7 @@ class BaseQuerySet:
 
         return result.deleted_count
 
-    async def async_aggregate(self, pipeline, **kwargs):
+    def async_aggregate(self, pipeline, **kwargs):
         """Execute an aggregation pipeline asynchronously.
 
         If the queryset contains a query or skip/limit/sort or if the target Document class
@@ -2568,77 +2620,17 @@ class BaseQuerySet:
             see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
         :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
             See https://pymongo.readthedocs.io/en/stable/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
-        :return: AsyncCommandCursor with results
+        :return: AsyncAggregationIterator that can be used directly with async for
+
+        Example:
+            async for doc in Model.objects.async_aggregate(pipeline):
+                process(doc)
         """
-        from mongoengine.connection import DEFAULT_CONNECTION_NAME
-
-        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
-        ensure_async_connection(alias)
-
-        if not isinstance(pipeline, (tuple, list)):
-            raise TypeError(
-                f"Starting from 1.0 release pipeline must be a list/tuple, received: {type(pipeline)}"
-            )
-
-        initial_pipeline = []
-        if self._none or self._empty:
-            initial_pipeline.append({"$limit": 1})
-            initial_pipeline.append({"$match": {"$expr": False}})
-
-        if self._query:
-            initial_pipeline.append({"$match": self._query})
-
-        if self._ordering:
-            initial_pipeline.append({"$sort": dict(self._ordering)})
-
-        if self._limit is not None:
-            # As per MongoDB Documentation (https://www.mongodb.com/docs/manual/reference/operator/aggregation/limit/),
-            # keeping limit stage right after sort stage is more efficient. But this leads to wrong set of documents
-            # for a skip stage that might succeed these. So we need to maintain more documents in memory in such a
-            # case (https://stackoverflow.com/a/24161461).
-            initial_pipeline.append({"$limit": self._limit + (self._skip or 0)})
-
-        if self._skip is not None:
-            initial_pipeline.append({"$skip": self._skip})
-
-        # geoNear and collStats must be the first stages in the pipeline if present
-        first_step = []
-        new_user_pipeline = []
-        for step_step in pipeline:
-            if "$geoNear" in step_step:
-                first_step.append(step_step)
-            elif "$collStats" in step_step:
-                first_step.append(step_step)
-            else:
-                new_user_pipeline.append(step_step)
-
-        final_pipeline = first_step + initial_pipeline + new_user_pipeline
-
-        collection = await self._async_get_collection()
-        if self._read_preference is not None or self._read_concern is not None:
-            collection = collection.with_options(
-                read_preference=self._read_preference, read_concern=self._read_concern
-            )
-
-        if self._hint not in (-1, None):
-            kwargs.setdefault("hint", self._hint)
-        if self._collation:
-            kwargs.setdefault("collation", self._collation)
-        if self._comment:
-            kwargs.setdefault("comment", self._comment)
-
-        # Get async session if available
-        from mongoengine.async_utils import _get_async_session
-
-        session = await _get_async_session()
-        if session:
-            kwargs["session"] = session
-
-        return await collection.aggregate(
-            final_pipeline,
-            cursor={},
-            **kwargs,
+        from mongoengine.async_iterators import (
+            AsyncAggregationIterator,
         )
+
+        return AsyncAggregationIterator(self, pipeline, kwargs)
 
     async def async_distinct(self, field):
         """Get distinct values for a field asynchronously.
