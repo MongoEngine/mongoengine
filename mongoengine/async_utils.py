@@ -1,5 +1,7 @@
 """Async utility functions for MongoEngine async support."""
 
+import contextvars
+
 from mongoengine.connection import (
     DEFAULT_CONNECTION_NAME,
     ConnectionFailure,
@@ -9,6 +11,9 @@ from mongoengine.connection import (
     get_async_db,
     is_async_connection,
 )
+
+# Context variable for async sessions
+_async_session_context = contextvars.ContextVar('mongoengine_async_session', default=None)
 
 
 async def get_async_collection(collection_name, alias=DEFAULT_CONNECTION_NAME):
@@ -47,6 +52,22 @@ def ensure_sync_connection(alias=DEFAULT_CONNECTION_NAME):
             f"Connection '{alias}' is async. Use connect() to create "
             "a sync connection. Current operation requires sync connection."
         )
+
+
+async def _get_async_session():
+    """Get the current async session if any.
+    
+    :return: Current async session or None
+    """
+    return _async_session_context.get()
+
+
+async def _set_async_session(session):
+    """Set the current async session.
+    
+    :param session: The async session to set
+    """
+    _async_session_context.set(session)
 
 
 async def async_exec_js(code, *args, **kwargs):
@@ -94,4 +115,6 @@ __all__ = [
     'ensure_sync_connection',
     'async_exec_js',
     'AsyncContextManager',
+    '_get_async_session',
+    '_set_async_session',
 ]

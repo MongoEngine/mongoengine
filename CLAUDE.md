@@ -236,3 +236,55 @@ When working on async support implementation, follow this workflow:
 - Projects can use both sync and async QuerySets in same codebase
 - Connection type determines which methods are available
 - Clear error messages guide users to correct method usage
+
+### Phase 3 Implementation Learnings
+
+#### ReferenceField Async Design
+- **AsyncReferenceProxy Pattern**: In async context, ReferenceField returns a proxy object requiring explicit `await proxy.fetch()`
+- This prevents accidental sync operations in async code and makes async dereferencing explicit
+- The proxy caches fetched values to avoid redundant database calls
+
+#### Field-Level Async Methods
+- Async methods should be on the field class, not on proxy instances:
+  ```python
+  # Correct - call on field class
+  await AsyncFileDoc.file.async_put(file_obj, instance=doc)
+  
+  # Incorrect - don't call on proxy instance
+  await doc.file.async_put(file_obj)
+  ```
+- This pattern maintains consistency and avoids confusion with instance methods
+
+#### GridFS Async Implementation
+- Use PyMongo's native `gridfs.asynchronous` module instead of Motor
+- Key imports: `from gridfs.asynchronous import AsyncGridFSBucket`
+- AsyncGridFSProxy handles async file operations (read, delete, replace)
+- File operations return sync GridFSProxy for storage in document to maintain compatibility
+
+#### LazyReferenceField Enhancement
+- Added `async_fetch()` method directly to LazyReference class
+- Maintains same caching behavior as sync version
+- Works seamlessly with existing passthrough mode
+
+#### Error Handling Patterns
+- GridFS operations need careful error handling for missing files
+- Stream position management critical for file reads (always seek(0) after write)
+- Grid ID extraction from different proxy types requires type checking
+
+#### Testing Async Fields
+- Use separate test classes for each field type for clarity
+- Test both positive cases and error conditions
+- Always clean up GridFS collections in teardown to avoid test pollution
+- Verify proxy behavior separately from actual async operations
+
+#### Known Limitations
+- **ListField with ReferenceField**: Currently doesn't auto-convert to AsyncReferenceProxy
+  - This is a complex case requiring deeper changes to ListField
+  - Documented as limitation - users need manual async dereferencing for now
+  - Could be addressed in future enhancement
+
+#### Design Decisions
+- **Explicit over Implicit**: Async dereferencing must be explicit via `fetch()` method
+- **Proxy Pattern**: Provides clear indication when async operation needed
+- **Field-Level Methods**: Consistency with sync API while maintaining async safety
+- **Native PyMongo**: Leverage PyMongo's built-in async support rather than external libraries

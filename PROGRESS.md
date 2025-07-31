@@ -153,12 +153,12 @@ async def async_run_in_transaction():
 - [x] async_create(), async_update(), async_delete() 벌크 작업
 - [x] 비동기 커서 관리 및 최적화
 
-### Phase 3: 필드 및 참조 (2-3주)
-- [ ] ReferenceField에 async_fetch() 메서드 추가
-- [ ] AsyncReferenceProxy 구현
-- [ ] LazyReferenceField 비동기 지원
-- [ ] GridFS 비동기 작업 (async_put, async_get)
-- [ ] 캐스케이드 작업 비동기화
+### Phase 3: 필드 및 참조 (2-3주) ✅ **완료** (2025-07-31)
+- [x] ReferenceField에 async_fetch() 메서드 추가
+- [x] AsyncReferenceProxy 구현
+- [x] LazyReferenceField 비동기 지원
+- [x] GridFS 비동기 작업 (async_put, async_get)
+- [ ] 캐스케이드 작업 비동기화 (Phase 4로 이동)
 
 ### Phase 4: 고급 기능 (3-4주)
 - [ ] 하이브리드 신호 시스템 구현
@@ -305,3 +305,31 @@ author = await post.author.async_fetch()
 - `async_values()`, `async_values_list()` - 필드 프로젝션
 - `async_explain()`, `async_hint()` - 쿼리 최적화
 - 이들은 기본 인프라 구축 후 필요시 추가 가능
+
+### Phase 3: Fields and References Async Support (2025-07-31 완료)
+
+#### 구현 내용
+- **ReferenceField 비동기 지원**: AsyncReferenceProxy 패턴으로 안전한 비동기 참조 처리
+- **LazyReferenceField 개선**: LazyReference 클래스에 async_fetch() 메서드 추가
+- **GridFS 비동기 작업**: PyMongo의 native async API 사용 (gridfs.asynchronous.AsyncGridFSBucket)
+- **필드 레벨 비동기 메서드**: async_put(), async_get(), async_read(), async_delete(), async_replace()
+
+#### 주요 성과
+- 17개 새로운 async 테스트 추가 (참조: 8개, GridFS: 9개)
+- 총 54개 async 테스트 모두 통과 (Phase 1: 23, Phase 2: 14, Phase 3: 17)
+- PyMongo의 native GridFS async API 완벽 통합
+- 명시적 async dereferencing으로 안전한 참조 처리
+
+#### 기술적 세부사항
+- AsyncReferenceProxy 클래스로 async context에서 명시적 fetch() 필요
+- FileField.__get__이 GridFSProxy 반환, async 메서드는 field class에서 호출
+- async_read() 시 stream position reset 처리
+- GridFSProxy 인스턴스에서 grid_id 추출 로직 개선
+
+#### 알려진 제한사항
+- ListField 내 ReferenceField는 AsyncReferenceProxy로 자동 변환되지 않음
+- 이는 low priority로 문서화되어 있으며 필요시 향후 개선 가능
+
+#### Phase 4로 이동된 항목
+- 캐스케이드 작업 (CASCADE, NULLIFY, PULL, DENY) 비동기화
+- 복잡한 참조 관계의 비동기 처리
