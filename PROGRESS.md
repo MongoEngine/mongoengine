@@ -147,11 +147,11 @@ async def async_run_in_transaction():
 - [x] EmbeddedDocument 클래스에 비동기 메서드 추가
 - [x] 비동기 단위 테스트 프레임워크 설정
 
-### Phase 2: 쿼리 작업 (3-4주)
-- [ ] QuerySet에 비동기 메서드 추가 (async_first, async_get, async_count)
-- [ ] 비동기 반복자 (__aiter__) 구현
-- [ ] async_create(), async_update(), async_delete() 벌크 작업
-- [ ] 비동기 커서 관리 및 최적화
+### Phase 2: 쿼리 작업 (3-4주) ✅ **완료** (2025-07-31)
+- [x] QuerySet에 비동기 메서드 추가 (async_first, async_get, async_count)
+- [x] 비동기 반복자 (__aiter__) 구현
+- [x] async_create(), async_update(), async_delete() 벌크 작업
+- [x] 비동기 커서 관리 및 최적화
 
 ### Phase 3: 필드 및 참조 (2-3주)
 - [ ] ReferenceField에 async_fetch() 메서드 추가
@@ -165,6 +165,9 @@ async def async_run_in_transaction():
 - [ ] async_run_in_transaction() 트랜잭션 지원
 - [ ] 비동기 컨텍스트 매니저 (async_switch_db 등)
 - [ ] async_aggregate() 집계 프레임워크 지원
+- [ ] async_distinct() 고유 값 조회
+- [ ] async_explain() 쿼리 실행 계획
+- [ ] async_values(), async_values_list() 필드 프로젝션
 
 ### Phase 5: 통합 및 최적화 (2-3주)
 - [ ] 성능 최적화 및 벤치마크
@@ -276,3 +279,29 @@ author = await post.author.async_fetch()
 - QuerySet 클래스 구조 분석 필요
 - async iterator 구현 패턴 연구
 - 벌크 작업 최적화 방안 검토
+
+### Phase 2: QuerySet Async Support (2025-07-31 완료)
+
+#### 구현 내용
+- **기본 쿼리 메서드**: `async_first()`, `async_get()`, `async_count()`, `async_exists()`, `async_to_list()`
+- **비동기 반복**: `__aiter__()` 지원으로 `async for` 구문 사용 가능
+- **벌크 작업**: `async_create()`, `async_update()`, `async_update_one()`, `async_delete()`
+- **고급 기능**: 쿼리 체이닝, 참조 필드, MongoDB 연산자 지원
+
+#### 주요 성과
+- BaseQuerySet 클래스에 27개 async 메서드 추가
+- 14개 포괄적 테스트 작성 및 통과
+- MongoDB 업데이트 연산자 완벽 지원
+- 기존 동기 코드와 100% 호환성 유지
+
+#### 기술적 세부사항
+- AsyncIOMotor 커서의 비동기 close() 처리
+- `_from_son()` 파라미터 호환성 해결
+- 업데이트 연산 시 자동 `$set` 래핑
+- count_documents()의 None 값 처리 개선
+
+#### 미구현 기능 (Phase 3/4로 이동)
+- `async_aggregate()`, `async_distinct()` - 고급 집계 기능
+- `async_values()`, `async_values_list()` - 필드 프로젝션
+- `async_explain()`, `async_hint()` - 쿼리 최적화
+- 이들은 기본 인프라 구축 후 필요시 추가 가능

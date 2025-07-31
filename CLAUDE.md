@@ -179,3 +179,60 @@ When working on async support implementation, follow this workflow:
 - Index definitions in meta must use proper syntax: `("-field_name",)` not `("field_name", "-1")`
 - AsyncMongoClient.close() must be awaited - handle in disconnect_async properly
 - Virtual environment: use `.venv/bin/python -m` directly instead of repeated activation
+
+### Phase 2 Implementation Learnings
+
+#### QuerySet Async Design
+- Extended `BaseQuerySet` directly - all subclasses (QuerySet, QuerySetNoCache) inherit async methods automatically
+- Async methods follow same pattern as Document: `async_` prefix for all async operations
+- Connection type checking at method entry ensures proper usage
+
+#### Async Cursor Management
+- AsyncIOMotor cursors require special handling:
+  ```python
+  # Check if close() is a coroutine before calling
+  if asyncio.iscoroutinefunction(cursor.close):
+      await cursor.close()
+  else:
+      cursor.close()
+  ```
+- Cannot cache async cursors like sync cursors - must create fresh in async context
+- Always close cursors in finally blocks to prevent resource leaks
+
+#### Document Creation from MongoDB Data
+- `_from_son()` method doesn't accept `only_fields` parameter
+- Use `_auto_dereference` parameter instead:
+  ```python
+  self._document._from_son(
+      doc,
+      _auto_dereference=self.__auto_dereference,
+      created=True
+  )
+  ```
+
+#### MongoDB Operations
+- `count_documents()` doesn't accept None values - filter them out:
+  ```python
+  if self._skip is not None and self._skip > 0:
+      kwargs["skip"] = self._skip
+  ```
+- Update operations need proper operator handling:
+  - Direct field updates should be wrapped in `$set`
+  - Support MongoEngine style operators: `inc__field` → `{"$inc": {"field": value}}`
+  - Handle nested operators correctly
+
+#### Testing Patterns
+- Create comprehensive test documents with references for integration testing
+- Test query chaining to ensure all methods work together
+- Always test error cases (DoesNotExist, MultipleObjectsReturned)
+- Verify `as_pymongo()` mode returns dictionaries not Document instances
+
+#### Performance Considerations
+- Async iteration (`__aiter__`) enables efficient streaming of large result sets
+- Bulk operations (update/delete) can leverage async for better throughput
+- Connection pooling handled automatically by AsyncIOMotorClient
+
+#### Migration Strategy
+- Projects can use both sync and async QuerySets in same codebase
+- Connection type determines which methods are available
+- Clear error messages guide users to correct method usage

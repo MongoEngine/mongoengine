@@ -29,6 +29,11 @@ from mongoengine.errors import (
     NotUniqueError,
     OperationError,
 )
+from mongoengine.async_utils import (
+    ensure_async_connection,
+    ensure_sync_connection,
+    get_async_collection,
+)
 from mongoengine.pymongo_support import (
     LEGACY_JSON_OPTIONS,
     count_documents,
@@ -2086,3 +2091,357 @@ class BaseQuerySet:
         setattr(queryset, "_" + method_name, val)
 
         return queryset
+    
+    # =====================================================
+    # Async methods section
+    # =====================================================
+    
+    async def _async_get_collection(self):
+        """Get async collection for this queryset."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        collection_name = self._document._get_collection_name()
+        return await get_async_collection(collection_name, alias)
+    
+    async def _async_cursor(self):
+        """Return an AsyncIOMotor cursor object for this queryset."""
+        # Note: Unlike sync version, we can't cache async cursors as easily
+        # because they need to be created in async context
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        collection = await self._async_get_collection()
+        
+        # Apply read preference/concern if set
+        if self._read_preference is not None or self._read_concern is not None:
+            collection = collection.with_options(
+                read_preference=self._read_preference,
+                read_concern=self._read_concern
+            )
+        
+        # Create the cursor with same args as sync version
+        cursor = collection.find(self._query, **self._cursor_args)
+        
+        # Apply where clause
+        if self._where_clause:
+            cursor.where(self._sub_js_fields(self._where_clause))
+        
+        # Apply ordering
+        if self._ordering:
+            cursor.sort(self._ordering)
+        
+        # Apply limit and skip
+        if self._limit is not None:
+            cursor.limit(self._limit)
+        if self._skip is not None:
+            cursor.skip(self._skip)
+        
+        # Apply other cursor options
+        if self._hint not in (-1, None):
+            cursor.hint(self._hint)
+        if self._collation is not None:
+            cursor.collation(self._collation)
+        if self._batch_size is not None:
+            cursor.batch_size(self._batch_size)
+        if self._max_time_ms is not None:
+            cursor.max_time_ms(self._max_time_ms)
+        if self._comment:
+            cursor.comment(self._comment)
+        
+        return cursor
+    
+    async def async_first(self):
+        """Async version of first() - retrieve the first object matching the query."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if self._none or self._empty:
+            return None
+        
+        queryset = self.clone()
+        queryset = queryset.limit(1)
+        
+        cursor = await queryset._async_cursor()
+        
+        try:
+            doc = await cursor.__anext__()
+            if self._as_pymongo:
+                return doc
+            return self._document._from_son(
+                doc, 
+                _auto_dereference=self.__auto_dereference,
+                created=True
+            )
+        except StopAsyncIteration:
+            return None
+        finally:
+            # Close cursor to free resources  
+            if hasattr(cursor, 'close'):
+                # For AsyncIOMotor cursor, close() is a coroutine
+                import asyncio
+                if asyncio.iscoroutinefunction(cursor.close):
+                    await cursor.close()
+                else:
+                    cursor.close()
+    
+    async def async_get(self, *q_objs, **query):
+        """Async version of get() - retrieve the matching object.
+        
+        Raises DoesNotExist if no object found, MultipleObjectsReturned if more than one.
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        queryset = self.clone()
+        queryset = queryset.order_by().limit(2)
+        queryset = queryset.filter(*q_objs, **query)
+        
+        cursor = await queryset._async_cursor()
+        
+        try:
+            doc = await cursor.__anext__()
+            if self._as_pymongo:
+                result = doc
+            else:
+                result = self._document._from_son(
+                    doc,
+                    _auto_dereference=self.__auto_dereference,
+                    created=True
+                )
+        except StopAsyncIteration:
+            msg = "%s matching query does not exist." % queryset._document._class_name
+            raise queryset._document.DoesNotExist(msg)
+        
+        try:
+            # Check if there is another match
+            await cursor.__anext__()
+            # For async context, we already know there are 2+ items
+            msg = "Multiple items returned, instead of 1"
+            raise queryset._document.MultipleObjectsReturned(msg)
+        except StopAsyncIteration:
+            pass
+        finally:
+            if hasattr(cursor, 'close'):
+                import asyncio
+                if asyncio.iscoroutinefunction(cursor.close):
+                    await cursor.close()
+                else:
+                    cursor.close()
+        
+        return result
+    
+    async def async_count(self, with_limit_and_skip=False):
+        """Async version of count() - count the selected elements in the query."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if (self._limit == 0 and with_limit_and_skip is False 
+            or self._none or self._empty):
+            return 0
+        
+        kwargs = {}
+        if with_limit_and_skip:
+            if self._limit is not None and self._limit != 0:
+                kwargs["limit"] = self._limit
+            if self._skip is not None and self._skip > 0:
+                kwargs["skip"] = self._skip
+            
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+            
+        if self._collation:
+            kwargs["collation"] = self._collation
+        
+        collection = await self._async_get_collection()
+        count = await collection.count_documents(self._query, **kwargs)
+        
+        return count
+    
+    async def async_to_list(self, length=None):
+        """Convert the queryset to a list asynchronously.
+        
+        :param length: maximum number of items to retrieve
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if self._none or self._empty:
+            return []
+        
+        queryset = self.clone()
+        if length is not None:
+            queryset = queryset.limit(length)
+        
+        results = []
+        async for doc in queryset:
+            results.append(doc)
+        
+        return results
+    
+    async def async_exists(self):
+        """Check if any documents match the query."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if self._none or self._empty:
+            return False
+        
+        queryset = self.clone()
+        queryset = queryset.limit(1).only("id")
+        
+        result = await queryset.async_first()
+        return result is not None
+    
+    def __aiter__(self):
+        """Async iterator support."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if self._none or self._empty:
+            return self._async_empty_iter()
+        
+        return self._async_iter_results()
+    
+    async def _async_empty_iter(self):
+        """Empty async iterator."""
+        return
+        yield  # Make this an async generator
+    
+    async def _async_iter_results(self):
+        """Async generator that yields documents."""
+        cursor = await self._async_cursor()
+        
+        try:
+            async for doc in cursor:
+                if self._as_pymongo:
+                    yield doc
+                else:
+                    yield self._document._from_son(
+                        doc,
+                        _auto_dereference=self.__auto_dereference,
+                        created=True
+                    )
+        finally:
+            if hasattr(cursor, 'close'):
+                import asyncio
+                if asyncio.iscoroutinefunction(cursor.close):
+                    await cursor.close()
+                else:
+                    cursor.close()
+    
+    async def async_create(self, **kwargs):
+        """Create and save a document asynchronously."""
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        doc = self._document(**kwargs)
+        return await doc.async_save(force_insert=True)
+    
+    async def async_update(self, upsert=False, multi=True, write_concern=None, **update):
+        """Update documents matching the query asynchronously.
+        
+        :param upsert: insert if document doesn't exist (default False)
+        :param multi: update multiple documents (default True)
+        :param write_concern: write concern options
+        :param update: update operations to perform
+        :returns: number of documents affected
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if not update:
+            raise OperationError("No update parameters passed")
+        
+        queryset = self.clone()
+        query = queryset._query
+        
+        # Process the update dict to handle field names and operators
+        update_dict = {}
+        for key, value in update.items():
+            # Handle operators like inc__field, set__field, etc.
+            if "__" in key and key.split("__")[0] in ["inc", "set", "unset", "push", "pull", "addToSet"]:
+                op, field = key.split("__", 1)
+                mongo_op = f"${op}"
+                if mongo_op not in update_dict:
+                    update_dict[mongo_op] = {}
+                field_name = queryset._document._translate_field_name(field)
+                update_dict[mongo_op][field_name] = value
+            elif key.startswith("$"):
+                # Direct MongoDB operator
+                update_dict[key] = {}
+                for field_name, field_value in value.items():
+                    field_name = queryset._document._translate_field_name(field_name)
+                    update_dict[key][field_name] = field_value
+            else:
+                # Direct field update - wrap in $set
+                if "$set" not in update_dict:
+                    update_dict["$set"] = {}
+                key = queryset._document._translate_field_name(key)
+                update_dict["$set"][key] = value
+        
+        collection = await self._async_get_collection()
+        
+        # Determine update method
+        if multi:
+            result = await collection.update_many(query, update_dict, upsert=upsert)
+        else:
+            result = await collection.update_one(query, update_dict, upsert=upsert)
+        
+        return result.modified_count
+    
+    async def async_update_one(self, upsert=False, write_concern=None, **update):
+        """Update a single document matching the query."""
+        return await self.async_update(upsert=upsert, multi=False, 
+                                     write_concern=write_concern, **update)
+    
+    async def async_delete(self, write_concern=None, _from_doc_delete=False, 
+                         cascade_refs=None):
+        """Delete documents matching the query asynchronously.
+        
+        :param write_concern: write concern options
+        :param _from_doc_delete: internal flag for document delete
+        :param cascade_refs: handle cascade deletes
+        :returns: number of deleted documents
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        queryset = self.clone()
+        doc = queryset._document
+        
+        if write_concern is None:
+            write_concern = {}
+        
+        # For now, handle simple case without signals or cascade
+        # TODO: Implement full async signal and cascade support
+        has_delete_signal = signals.signals_available and (
+            signals.pre_delete.has_receivers_for(doc) or
+            signals.post_delete.has_receivers_for(doc)
+        )
+        
+        call_document_delete = (
+            queryset._skip or queryset._limit or has_delete_signal
+        ) and not _from_doc_delete
+        
+        if call_document_delete:
+            cnt = 0
+            async for doc in queryset:
+                await doc.async_delete(**write_concern)
+                cnt += 1
+            return cnt
+        
+        # Simple delete without cascade handling for now
+        collection = await self._async_get_collection()
+        result = await collection.delete_many(self._query)
+        
+        return result.deleted_count
