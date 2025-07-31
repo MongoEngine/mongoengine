@@ -287,4 +287,46 @@ When working on async support implementation, follow this workflow:
 - **Explicit over Implicit**: Async dereferencing must be explicit via `fetch()` method
 - **Proxy Pattern**: Provides clear indication when async operation needed
 - **Field-Level Methods**: Consistency with sync API while maintaining async safety
+
+### Phase 4 Advanced Features Implementation Learnings
+
+#### Cascade Operations Async Implementation
+- **Cursor Handling**: AsyncIOMotor cursors need special iteration - collect documents first, then process
+- **Bulk Operations**: Convert Document objects to IDs for PULL operations to avoid InvalidDocument errors
+- **Operator Support**: Add new operators like `pull_all` to the QuerySet operator mapping
+- **Error Handling**: Be flexible with error message assertions - MongoDB messages may vary between versions
+
+#### Async Transaction Implementation  
+- **PyMongo API**: `session.start_transaction()` is a coroutine that must be awaited, not a context manager
+- **Session Management**: Use proper async session handling with retry logic for commit operations
+- **Error Recovery**: Implement automatic abort on exceptions with proper cleanup in finally blocks
+- **Connection Requirements**: MongoDB transactions require replica set or sharded cluster setup
+
+#### Async Context Managers
+- **Collection Caching**: Handle both `_collection` (sync) and `_async_collection` (async) attributes separately
+- **Exception Safety**: Always restore original state in `__aexit__` even when exceptions occur
+- **Method Binding**: Use `@classmethod` wrapper pattern for dynamic method replacement
+
+#### Async Aggregation Framework
+- **Pipeline Execution**: `collection.aggregate()` returns a coroutine that must be awaited to get AsyncCommandCursor
+- **Cursor Iteration**: Use `async for` with the awaited cursor result
+- **Session Integration**: Pass async session to aggregation operations for transaction support
+- **Query Integration**: Properly merge queryset filters with aggregation pipeline stages
+
+#### Testing Async MongoDB Operations
+- **Fixture Setup**: Always use `@pytest_asyncio.fixture` for async fixtures, not `@pytest.fixture`
+- **Connection Testing**: Skip tests gracefully when MongoDB doesn't support required features (transactions, replica sets)
+- **Error Message Flexibility**: Use partial string matching for error assertions across MongoDB versions
+- **Resource Cleanup**: Ensure all collections are properly dropped in test teardown
+
+#### Regression Prevention
+- **EmbeddedDocument Compatibility**: Always check `hasattr(instance, '_get_db_alias')` before calling connection methods
+- **Field Descriptor Safety**: Handle cases where descriptors are accessed on non-Document instances
+- **Backward Compatibility**: Ensure all existing sync functionality remains unchanged
+
+#### Implementation Quality Guidelines
+- **Professional Standards**: All code should be ready for upstream contribution
+- **Comprehensive Testing**: Each feature needs multiple test scenarios including edge cases
+- **Documentation**: Every public method needs clear docstrings with usage examples
+- **Error Messages**: Provide clear guidance to users on proper async/sync method usage
 - **Native PyMongo**: Leverage PyMongo's built-in async support rather than external libraries

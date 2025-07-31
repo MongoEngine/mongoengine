@@ -986,31 +986,22 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         FileField = _import_class("FileField")
         for name, field in self._fields.items():
             if isinstance(field, FileField):
-                # For now, file deletion remains synchronous
-                # TODO: Implement async file deletion when GridFS async support is added
-                getattr(self, name).delete()
+                # Use async deletion for GridFS files
+                file_proxy = getattr(self, name)
+                if file_proxy and hasattr(file_proxy, 'grid_id') and file_proxy.grid_id:
+                    from mongoengine.fields import AsyncGridFSProxy
+                    async_proxy = AsyncGridFSProxy(
+                        grid_id=file_proxy.grid_id,
+                        db_alias=field.db_alias,
+                        collection_name=field.collection_name
+                    )
+                    await async_proxy.async_delete()
 
         try:
-            # We need to implement async delete in QuerySet first
-            # For now, we'll use the collection directly
-            collection = await self._async_get_collection()
-            
-            # Build the filter based on object key
-            filter_dict = {}
-            for key, value in self._object_key.items():
-                if key == "pk":
-                    filter_dict["_id"] = value
-                else:
-                    # Convert MongoEngine field names to MongoDB field names
-                    field_name = key.replace("__", ".")
-                    filter_dict[field_name] = value
-            
-            # Apply write concern if provided
-            operation_kwargs = {}
-            if write_concern:
-                operation_kwargs.update(write_concern)
-            
-            await collection.delete_one(filter_dict, session=_get_session(), **operation_kwargs)
+            # Use QuerySet's async_delete method which handles cascade rules
+            await self._qs.filter(**self._object_key).async_delete(
+                write_concern=write_concern, _from_doc_delete=True
+            )
             
         except pymongo.errors.OperationFailure as err:
             message = "Could not delete document (%s)" % err.args

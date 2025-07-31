@@ -1247,7 +1247,8 @@ class ReferenceField(BaseField):
         
         # In async context, return AsyncReferenceProxy for DBRefs
         if auto_dereference and isinstance(ref_value, DBRef):
-            if is_async_connection(instance._get_db_alias()):
+            # Only check async connection for Document instances that have _get_db_alias
+            if hasattr(instance, '_get_db_alias') and is_async_connection(instance._get_db_alias()):
                 return AsyncReferenceProxy(self, instance)
             
             # Sync context - normal dereferencing

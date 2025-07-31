@@ -2368,9 +2368,13 @@ class BaseQuerySet:
         update_dict = {}
         for key, value in update.items():
             # Handle operators like inc__field, set__field, etc.
-            if "__" in key and key.split("__")[0] in ["inc", "set", "unset", "push", "pull", "addToSet"]:
+            if "__" in key and key.split("__")[0] in ["inc", "set", "unset", "push", "pull", "pull_all", "addToSet"]:
                 op, field = key.split("__", 1)
-                mongo_op = f"${op}"
+                # Convert pull_all to pullAll for MongoDB
+                if op == "pull_all":
+                    mongo_op = "$pullAll"
+                else:
+                    mongo_op = f"${op}"
                 if mongo_op not in update_dict:
                     update_dict[mongo_op] = {}
                 field_name = queryset._document._translate_field_name(field)
@@ -2422,8 +2426,7 @@ class BaseQuerySet:
         if write_concern is None:
             write_concern = {}
         
-        # For now, handle simple case without signals or cascade
-        # TODO: Implement full async signal and cascade support
+        # Check for delete signals
         has_delete_signal = signals.signals_available and (
             signals.pre_delete.has_receivers_for(doc) or
             signals.post_delete.has_receivers_for(doc)
@@ -2440,8 +2443,235 @@ class BaseQuerySet:
                 cnt += 1
             return cnt
         
-        # Simple delete without cascade handling for now
+        # Handle cascade delete rules
+        delete_rules = doc._meta.get("delete_rules") or {}
+        delete_rules = list(delete_rules.items())
+        
+        # If we have delete rules, we need to get the actual documents
+        if delete_rules:
+            # Collect documents to delete once
+            docs_to_delete = []
+            async for d in self.clone():
+                docs_to_delete.append(d)
+            
+            # Check for DENY rules before actually deleting/nullifying any other references
+            for rule_entry, rule in delete_rules:
+                document_cls, field_name = rule_entry
+                if document_cls._meta.get("abstract"):
+                    continue
+                    
+                if rule == DENY:
+                    refs_count = await document_cls.objects(**{field_name + "__in": docs_to_delete}).limit(1).async_count()
+                    if refs_count > 0:
+                        raise OperationError(
+                            "Could not delete document (%s.%s refers to it)"
+                            % (document_cls.__name__, field_name)
+                        )
+            
+            # Check all the other rules
+            for rule_entry, rule in delete_rules:
+                document_cls, field_name = rule_entry
+                if document_cls._meta.get("abstract"):
+                    continue
+                    
+                if rule == CASCADE:
+                    cascade_refs = set() if cascade_refs is None else cascade_refs
+                    # Handle recursive reference
+                    if doc._collection == document_cls._collection:
+                        for ref in docs_to_delete:
+                            cascade_refs.add(ref.id)
+                    refs = document_cls.objects(
+                        **{field_name + "__in": docs_to_delete, "pk__nin": cascade_refs}
+                    )
+                    if await refs.async_count() > 0:
+                        await refs.async_delete(write_concern=write_concern, cascade_refs=cascade_refs)
+                elif rule == NULLIFY:
+                    await document_cls.objects(**{field_name + "__in": docs_to_delete}).async_update(
+                        write_concern=write_concern, **{"unset__%s" % field_name: 1}
+                    )
+                elif rule == PULL:
+                    # Convert documents to their IDs for pull operation
+                    doc_ids = [d.id for d in docs_to_delete]
+                    await document_cls.objects(**{field_name + "__in": docs_to_delete}).async_update(
+                        write_concern=write_concern, **{"pull_all__%s" % field_name: doc_ids}
+                    )
+        
+        # Perform the actual delete
         collection = await self._async_get_collection()
-        result = await collection.delete_many(self._query)
+        
+        kwargs = {}
+        if self._hint not in (-1, None):
+            kwargs["hint"] = self._hint
+        if self._collation:
+            kwargs["collation"] = self._collation
+        if self._comment:
+            kwargs["comment"] = self._comment
+            
+        # Get async session if available
+        from mongoengine.async_utils import _get_async_session
+        session = await _get_async_session()
+        if session:
+            kwargs["session"] = session
+            
+        result = await collection.delete_many(
+            queryset._query,
+            **kwargs
+        )
         
         return result.deleted_count
+    
+    async def async_aggregate(self, pipeline, **kwargs):
+        """Execute an aggregation pipeline asynchronously.
+        
+        If the queryset contains a query or skip/limit/sort or if the target Document class
+        uses inheritance, this method will add steps prior to the provided pipeline in an arbitrary order.
+        This may affect the performance or outcome of the aggregation, so use it consciously.
+        
+        For complex/critical pipelines, we recommended to use the aggregation framework of PyMongo directly,
+        it is available through the collection object (YourDocument._async_collection.aggregate) and will guarantee
+        that you have full control on the pipeline.
+        
+        :param pipeline: list of aggregation commands,
+            see: https://www.mongodb.com/docs/manual/core/aggregation-pipeline/
+        :param kwargs: (optional) kwargs dictionary to be passed to pymongo's aggregate call
+            See https://pymongo.readthedocs.io/en/stable/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
+        :return: AsyncCommandCursor with results
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        if not isinstance(pipeline, (tuple, list)):
+            raise TypeError(
+                f"Starting from 1.0 release pipeline must be a list/tuple, received: {type(pipeline)}"
+            )
+        
+        initial_pipeline = []
+        if self._none or self._empty:
+            initial_pipeline.append({"$limit": 1})
+            initial_pipeline.append({"$match": {"$expr": False}})
+        
+        if self._query:
+            initial_pipeline.append({"$match": self._query})
+        
+        if self._ordering:
+            initial_pipeline.append({"$sort": dict(self._ordering)})
+        
+        if self._limit is not None:
+            # As per MongoDB Documentation (https://www.mongodb.com/docs/manual/reference/operator/aggregation/limit/),
+            # keeping limit stage right after sort stage is more efficient. But this leads to wrong set of documents
+            # for a skip stage that might succeed these. So we need to maintain more documents in memory in such a
+            # case (https://stackoverflow.com/a/24161461).
+            initial_pipeline.append({"$limit": self._limit + (self._skip or 0)})
+        
+        if self._skip is not None:
+            initial_pipeline.append({"$skip": self._skip})
+        
+        # geoNear and collStats must be the first stages in the pipeline if present
+        first_step = []
+        new_user_pipeline = []
+        for step_step in pipeline:
+            if "$geoNear" in step_step:
+                first_step.append(step_step)
+            elif "$collStats" in step_step:
+                first_step.append(step_step)
+            else:
+                new_user_pipeline.append(step_step)
+        
+        final_pipeline = first_step + initial_pipeline + new_user_pipeline
+        
+        collection = await self._async_get_collection()
+        if self._read_preference is not None or self._read_concern is not None:
+            collection = collection.with_options(
+                read_preference=self._read_preference, read_concern=self._read_concern
+            )
+        
+        if self._hint not in (-1, None):
+            kwargs.setdefault("hint", self._hint)
+        if self._collation:
+            kwargs.setdefault("collation", self._collation)
+        if self._comment:
+            kwargs.setdefault("comment", self._comment)
+        
+        # Get async session if available
+        from mongoengine.async_utils import _get_async_session
+        session = await _get_async_session()
+        if session:
+            kwargs["session"] = session
+        
+        return await collection.aggregate(
+            final_pipeline,
+            cursor={},
+            **kwargs,
+        )
+    
+    async def async_distinct(self, field):
+        """Get distinct values for a field asynchronously.
+        
+        :param field: the field to get distinct values for
+        :return: list of distinct values
+        
+        .. note:: This is a command and won't take ordering or limit into
+           account.
+        """
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+        
+        queryset = self.clone()
+        
+        try:
+            field = self._fields_to_dbfields([field]).pop()
+        except LookUpError:
+            pass
+        
+        collection = await self._async_get_collection()
+        
+        # Get async session if available
+        from mongoengine.async_utils import _get_async_session
+        session = await _get_async_session()
+        
+        raw_values = await collection.distinct(field, filter=queryset._query, session=session)
+        
+        if not self._auto_dereference:
+            return raw_values
+        
+        distinct = self._dereference(raw_values, 1, name=field, instance=self._document)
+        
+        doc_field = self._document._fields.get(field.split(".", 1)[0])
+        instance = None
+        
+        # We may need to cast to the correct type eg. ListField(EmbeddedDocumentField)
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
+        ListField = _import_class("ListField")
+        GenericEmbeddedDocumentField = _import_class("GenericEmbeddedDocumentField")
+        if isinstance(doc_field, ListField):
+            doc_field = getattr(doc_field, "field", doc_field)
+        if isinstance(doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)):
+            instance = getattr(doc_field, "document_type", None)
+        
+        # handle distinct on subdocuments
+        if "." in field:
+            for field_part in field.split(".")[1:]:
+                # if looping on embedded document, get the document type instance
+                if instance and isinstance(
+                    doc_field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)
+                ):
+                    doc_field = instance._fields.get(field_part)
+                    if isinstance(doc_field, ListField):
+                        doc_field = getattr(doc_field, "field", doc_field)
+                    instance = getattr(doc_field, "document_type", None)
+                    continue
+                doc_field = None
+        
+        # Cast each distinct value to the correct type
+        if self._none or self._empty:
+            return []
+        
+        if doc_field and not isinstance(distinct, list):
+            distinct = [distinct]
+        
+        if instance:
+            distinct = [instance._from_son(d) for d in distinct]
+        
+        return distinct
