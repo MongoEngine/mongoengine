@@ -127,6 +127,38 @@ Some simple examples of what MongoEngine code looks like:
     >>> BlogPost.objects(tags='mongodb').count()
     1
 
+Async Support (Experimental)
+============================
+MongoEngine now supports asynchronous operations using PyMongo's AsyncMongoClient.
+This allows you to use async/await syntax for database operations:
+
+.. code :: python
+
+    import datetime
+    import asyncio
+    from mongoengine import *
+
+    async def main():
+        # Connect asynchronously
+        await connect_async('mydb')
+
+        # All document operations have async equivalents
+        post = TextPost(title='Async Post', content='Async content')
+        await post.async_save()
+
+        # Async queries
+        post = await TextPost.objects.async_get(title='Async Post')
+        await post.async_delete()
+
+        # Async reload
+        await post.async_reload()
+
+    # Run the async function
+    asyncio.run(main())
+
+Note: Async support is experimental and currently includes basic CRUD operations.
+QuerySet async methods and advanced features are still under development.
+
 Tests
 =====
 To run the test suite, ensure you are running a local instance of MongoDB on

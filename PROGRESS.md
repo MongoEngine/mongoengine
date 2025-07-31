@@ -141,11 +141,11 @@ async def async_run_in_transaction():
 
 ## 구현 로드맵
 
-### Phase 1: 기본 구조 (2-3주)
-- [ ] 하이브리드 연결 관리자 구현 (connect_async, is_async_connection)
-- [ ] Document 클래스에 async_save(), async_delete() 메서드 추가
-- [ ] EmbeddedDocument 클래스에 비동기 메서드 추가
-- [ ] 비동기 단위 테스트 프레임워크 설정
+### Phase 1: 기본 구조 (2-3주) ✅ **완료** (2025-07-31)
+- [x] 하이브리드 연결 관리자 구현 (connect_async, is_async_connection)
+- [x] Document 클래스에 async_save(), async_delete() 메서드 추가
+- [x] EmbeddedDocument 클래스에 비동기 메서드 추가
+- [x] 비동기 단위 테스트 프레임워크 설정
 
 ### Phase 2: 쿼리 작업 (3-4주)
 - [ ] QuerySet에 비동기 메서드 추가 (async_first, async_get, async_count)
@@ -249,3 +249,30 @@ author = await post.author.async_fetch()
 ---
 
 이 문서는 구현 진행에 따라 지속적으로 업데이트됩니다.
+
+## 완료된 작업
+
+### Phase 1: Foundation (2025-07-31 완료)
+
+#### 구현 내용
+- **연결 관리**: `connect_async()`, `disconnect_async()`, `is_async_connection()` 구현
+- **Document 메서드**: `async_save()`, `async_delete()`, `async_reload()`, `async_ensure_indexes()`, `async_drop_collection()` 추가
+- **헬퍼 유틸리티**: `async_utils.py` 모듈 생성 (ensure_async_connection, get_async_collection 등)
+- **테스트**: 23개 async 테스트 작성 및 모두 통과
+
+#### 주요 성과
+- 기존 동기 코드와 100% 호환성 유지
+- Sync/Async 연결 타입 자동 감지 및 검증
+- 명확한 에러 메시지로 사용자 가이드
+- 포괄적인 테스트 커버리지
+
+#### 배운 점
+- contextvars를 사용한 async 컨텍스트 관리가 효과적
+- 연결 타입을 enum으로 관리하여 타입 안정성 확보
+- pytest-asyncio의 fixture 설정이 중요함 (@pytest_asyncio.fixture 사용)
+- cascade save for unsaved references는 별도 구현 필요
+
+#### 다음 단계 준비사항
+- QuerySet 클래스 구조 분석 필요
+- async iterator 구현 패턴 연구
+- 벌크 작업 최적화 방안 검토

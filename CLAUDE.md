@@ -135,3 +135,47 @@ When working on async support implementation, follow this workflow:
 2. **Explicit Async Methods**: Rather than automatic async/sync switching, use explicit method names
 3. **Connection Type Enforcement**: Runtime errors when using wrong method type with connection
 4. **Gradual Migration Path**: Projects can migrate incrementally by connection type
+
+### Phase 1 Implementation Learnings
+
+#### Testing Async Code
+- Use `pytest-asyncio` for async test support
+- Always use `@pytest_asyncio.fixture` instead of `@pytest.fixture` for async fixtures
+- Test setup/teardown must be done via fixtures with `yield`, not `setup_method`/`teardown_method`
+- Example pattern:
+  ```python
+  @pytest_asyncio.fixture(autouse=True)
+  async def setup_and_teardown(self):
+      await connect_async(db="test_db", alias="test_alias")
+      Document._meta["db_alias"] = "test_alias"
+      yield
+      await Document.async_drop_collection()
+      await disconnect_async("test_alias")
+  ```
+
+#### Connection Management
+- `ConnectionType` enum tracks whether connection is SYNC or ASYNC
+- Store in `_connection_types` dict alongside `_connections`
+- Always check connection type before operations:
+  ```python
+  def ensure_async_connection(alias):
+      if not is_async_connection(alias):
+          raise RuntimeError("Connection is not async")
+  ```
+
+#### Error Handling Patterns
+- Be flexible in error message assertions - messages may vary
+- Example: `assert "different connection" in str(exc) or "synchronous connection" in str(exc)`
+- Always provide clear error messages guiding users to correct method
+
+#### Implementation Patterns
+- Add `_get_db_alias()` classmethod to Document for proper alias resolution
+- Use `contextvars` for async context management instead of thread-local storage
+- Export new functions in `__all__` to avoid import errors
+- For cascade operations with unsaved references, implement step-by-step
+
+#### Common Pitfalls
+- Forgetting to add new functions to `__all__` causes ImportError
+- Index definitions in meta must use proper syntax: `("-field_name",)` not `("field_name", "-1")`
+- AsyncMongoClient.close() must be awaited - handle in disconnect_async properly
+- Virtual environment: use `.venv/bin/python -m` directly instead of repeated activation
