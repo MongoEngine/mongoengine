@@ -10,6 +10,7 @@ User Guide
    defining-documents
    document-instances
    querying
+   async-support
    validation
    gridfs
    signals
