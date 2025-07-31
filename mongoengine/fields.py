@@ -1199,8 +1199,10 @@ class ReferenceField(BaseField):
         db = ref_cls._get_db()
         collection = db[dbref.collection]
 
+        from mongoengine.async_utils import _get_async_session
+
         # Get current async session if any
-        session = None  # TODO: Implement proper async session handling
+        session = await _get_async_session()
 
         # Use async find_one
         dereferenced_doc = await collection.find_one({"_id": dbref.id}, session=session)
