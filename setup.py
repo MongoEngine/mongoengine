@@ -45,6 +45,7 @@ CLASSIFIERS = [
 ]
 
 install_require = ["pymongo>=3.12,<5.0"]
+async_require = ["pymongo>=4.13,<5.0"]
 tests_require = [
     "pytest",
     "pytest-cov",
@@ -73,6 +74,7 @@ setup(
     install_requires=install_require,
     extras_require={
         "test": tests_require,
+        "async": async_require,
     },
     packages=find_packages(exclude=["tests", "tests.*"]),
 )

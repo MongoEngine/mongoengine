@@ -62,17 +62,17 @@ Basic Queries
 
     # Get single document
     user = await User.objects.async_get(name="John")
-    
+
     # Get first matching document
     user = await User.objects.filter(email__contains="@gmail.com").async_first()
-    
+
     # Count documents
     count = await User.objects.async_count()
     total_users = await User.objects.filter(active=True).async_count()
-    
+
     # Check existence
     exists = await User.objects.filter(name="John").async_exists()
-    
+
     # Convert to list
     users = await User.objects.filter(active=True).async_to_list()
 
@@ -116,10 +116,10 @@ Update Operations
 
     # Update single document
     result = await User.objects.filter(name="John").async_update_one(email="newemail@example.com")
-    
+
     # Bulk update
     result = await User.objects.filter(active=False).async_update(active=True)
-    
+
     # Update with operators
     await User.objects.filter(name="John").async_update(inc__login_count=1)
     await User.objects.filter(email="old@example.com").async_update(
@@ -134,7 +134,7 @@ Delete Operations
 
     # Delete matching documents
     result = await User.objects.filter(active=False).async_delete()
-    
+
     # Delete with cascade (if references exist)
     await User.objects.filter(name="John").async_delete()
 
@@ -160,7 +160,7 @@ In async context, reference fields return an ``AsyncReferenceProxy`` that requir
     # Create and save documents
     user = User(name="Alice", email="alice@example.com")
     await user.async_save()
-    
+
     post = Post(title="My Post", author=user)
     await post.async_save()
 
@@ -193,31 +193,31 @@ File Storage
 .. code-block:: python
 
     from mongoengine import Document, FileField
-    
+
     class MyDocument(Document):
         name = StringField()
         file = FileField()
 
     # Store file asynchronously
     doc = MyDocument(name="My Document")
-    
+
     with open("example.txt", "rb") as f:
         file_data = f.read()
-    
+
     # Put file
     await MyDocument.file.async_put(file_data, instance=doc, filename="example.txt")
     await doc.async_save()
 
     # Read file
     file_content = await MyDocument.file.async_read(doc)
-    
+
     # Get file metadata
     file_proxy = await MyDocument.file.async_get(doc)
     print(f"File size: {file_proxy.length}")
-    
+
     # Delete file
     await MyDocument.file.async_delete(doc)
-    
+
     # Replace file
     await MyDocument.file.async_replace(new_file_data, doc, filename="new_example.txt")
 
@@ -235,13 +235,13 @@ MongoDB transactions are supported through the ``async_run_in_transaction`` cont
             # All operations within this block are transactional
             sender = await Account.objects.async_get(user_id="sender123")
             receiver = await Account.objects.async_get(user_id="receiver456")
-            
+
             sender.balance -= 100
             receiver.balance += 100
-            
+
             await sender.async_save()
             await receiver.async_save()
-            
+
             # Automatically commits on success, rolls back on exception
 
     # Usage
@@ -305,7 +305,7 @@ Aggregation Pipelines
     pipeline = [
         {"$match": {"active": True}},
         {"$group": {
-            "_id": "$department", 
+            "_id": "$department",
             "count": {"$sum": 1},
             "avg_salary": {"$avg": "$salary"}
         }},
@@ -327,7 +327,7 @@ Distinct Values
     # Get unique values
     departments = await User.objects.async_distinct("department")
     active_emails = await User.objects.filter(active=True).async_distinct("email")
-    
+
     # Distinct on embedded documents
     cities = await User.objects.async_distinct("address.city")
 
@@ -362,7 +362,7 @@ You can use both sync and async operations in the same application by using diff
     # Sync connection
     connect('mydb', alias='sync_conn')
 
-    # Async connection  
+    # Async connection
     await connect_async('mydb', alias='async_conn')
 
     # Configure models to use specific connections
@@ -409,14 +409,14 @@ Batch Processing
     async def process_users_in_batches(batch_size=100):
         total = await User.objects.async_count()
         processed = 0
-        
+
         while processed < total:
             batch = await User.objects.skip(processed).limit(batch_size).async_to_list()
-            
+
             for user in batch:
                 await process_single_user(user)
                 await user.async_save()
-            
+
             processed += len(batch)
             print(f"Processed {processed}/{total} users")
 
@@ -475,7 +475,7 @@ Query execution plan analysis is not implemented as it's primarily a debugging f
 .. code-block:: python
 
     from mongoengine.connection import get_db
-    
+
     db = get_db()  # Get async database
     collection = db[User._get_collection_name()]
     explanation = await collection.find({"active": True}).explain()
@@ -516,13 +516,13 @@ Step-by-Step Migration
 ----------------------
 
 1. **Update connection**:
-   
+
    .. code-block:: python
 
        # Before
        connect('mydb')
-       
-       # After  
+
+       # After
        await connect_async('mydb')
 
 2. **Update function signatures**:
@@ -532,7 +532,7 @@ Step-by-Step Migration
        # Before
        def get_user(name):
            return User.objects.get(name=name)
-       
+
        # After
        async def get_user(name):
            return await User.objects.async_get(name=name)
@@ -546,7 +546,7 @@ Step-by-Step Migration
        users = User.objects.filter(active=True)
        for user in users:
            process(user)
-       
+
        # After
        await user.async_save()
        async for user in User.objects.filter(active=True):
@@ -558,7 +558,7 @@ Step-by-Step Migration
 
        # Before (sync context)
        author = post.author  # Automatic dereferencing
-       
+
        # After (async context)
        author = await post.author.async_fetch()  # Explicit fetching
 

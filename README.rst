@@ -51,14 +51,22 @@ to both create the virtual environment and install the package. Otherwise, you c
 download the source from `GitHub <https://github.com/MongoEngine/mongoengine>`_ and
 run ``python setup.py install``.
 
+For async support, you need PyMongo 4.13+ and can install it with:
+
+.. code-block:: shell
+
+    # Install MongoEngine with async support
+    $ python -m pip install mongoengine[async]
+
 The support for Python2 was dropped with MongoEngine 0.20.0
 
 Dependencies
 ============
 All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
-At the very least, you'll need these two packages to use MongoEngine:
+At the very least, you'll need these packages to use MongoEngine:
 
-- pymongo>=3.12
+- pymongo>=3.12 (for synchronous operations)
+- pymongo>=4.13 (for asynchronous operations)
 
 If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
 
@@ -152,7 +160,7 @@ All major database operations are available with async/await syntax:
         post = await TextPost.objects.async_get(title='Async Post')
         posts = await TextPost.objects.filter(tags='python').async_to_list()
         count = await TextPost.objects.async_count()
-        
+
         # Async iteration
         async for post in TextPost.objects.filter(published=True):
             print(post.title)
@@ -176,10 +184,10 @@ All major database operations are available with async/await syntax:
         from mongoengine import FileField
         class MyDoc(Document):
             file = FileField()
-        
+
         doc = MyDoc()
         await MyDoc.file.async_put(file_data, instance=doc)
-        
+
         # Context managers
         from mongoengine import async_switch_db
         async with async_switch_db(MyDoc, 'other_db'):
@@ -205,20 +213,20 @@ All major database operations are available with async/await syntax:
 The following features are intentionally not implemented due to low priority or complexity:
 
 - **async_values()**, **async_values_list()**: Field projection methods
-  
+
   *Reason*: Low usage frequency in typical applications. Can be implemented if needed.
 
 - **async_explain()**: Query execution plan analysis
-  
+
   *Reason*: Debugging/optimization feature with limited general use.
 
 - **Hybrid Signal System**: Automatic sync/async signal handling
-  
-  *Reason*: High complexity due to backward compatibility requirements. 
+
+  *Reason*: High complexity due to backward compatibility requirements.
   Consider as separate project if needed.
 
 - **ListField with ReferenceField**: Automatic AsyncReferenceProxy conversion
-  
+
   *Reason*: Complex implementation requiring deep changes to ListField.
   Manual async dereferencing is required for now.
 
