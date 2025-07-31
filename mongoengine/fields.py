@@ -1189,37 +1189,39 @@ class ReferenceField(BaseField):
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
 
         return ref_cls._from_son(dereferenced_son)
-    
+
     @staticmethod
     async def _async_lazy_load_ref(ref_cls, dbref, instance):
         """Async version of _lazy_load_ref."""
-        from mongoengine.async_utils import ensure_async_connection, _get_async_session
-        
+        from mongoengine.async_utils import (
+            _get_async_session,
+            ensure_async_connection,
+        )
+
         ensure_async_connection(instance._get_db_alias())
         db = ref_cls._get_db()
         collection = db[dbref.collection]
-        
+
         # Get current async session if any
         session = await _get_async_session()
-        
+
         # Use async find_one
-        dereferenced_doc = await collection.find_one(
-            {"_id": dbref.id},
-            session=session
-        )
-        
+        dereferenced_doc = await collection.find_one({"_id": dbref.id}, session=session)
+
         if dereferenced_doc is None:
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
-        
+
         return ref_cls._from_son(dereferenced_doc)
-    
+
     async def async_fetch(self, instance):
         """Async version of reference dereferencing."""
         from mongoengine.connection import is_async_connection
-        
+
         if not is_async_connection(instance._get_db_alias()):
-            raise RuntimeError("Connection is not async. Use sync dereferencing instead.")
-        
+            raise RuntimeError(
+                "Connection is not async. Use sync dereferencing instead."
+            )
+
         ref_value = instance._data.get(self.name)
         if isinstance(ref_value, DBRef):
             if hasattr(ref_value, "cls"):
@@ -1239,18 +1241,22 @@ class ReferenceField(BaseField):
             return self
 
         # Check if we're in async context
+        from mongoengine.base.datastructures import (
+            AsyncReferenceProxy,
+        )
         from mongoengine.connection import is_async_connection
-        from mongoengine.base.datastructures import AsyncReferenceProxy
-        
+
         ref_value = instance._data.get(self.name)
         auto_dereference = instance._fields[self.name]._auto_dereference
-        
+
         # In async context, return AsyncReferenceProxy for DBRefs
         if auto_dereference and isinstance(ref_value, DBRef):
             # Only check async connection for Document instances that have _get_db_alias
-            if hasattr(instance, '_get_db_alias') and is_async_connection(instance._get_db_alias()):
+            if hasattr(instance, "_get_db_alias") and is_async_connection(
+                instance._get_db_alias()
+            ):
                 return AsyncReferenceProxy(self, instance)
-            
+
             # Sync context - normal dereferencing
             if hasattr(ref_value, "cls"):
                 # Dereference using the class type specified in the reference
@@ -1947,24 +1953,24 @@ class FileField(BaseField):
                 self.error("FileField only accepts GridFSProxy values")
             if not isinstance(value.grid_id, ObjectId):
                 self.error("Invalid GridFSProxy value")
-    
+
     async def async_put(self, file_obj, instance=None, **kwargs):
         """Async version of put() for storing files."""
         from mongoengine.connection import is_async_connection
-        
+
         if not is_async_connection(self.db_alias):
             raise RuntimeError("Use put() with sync connection")
-        
+
         # Create AsyncGridFSProxy
         proxy = AsyncGridFSProxy(
             key=self.name,
             instance=instance,
             db_alias=self.db_alias,
-            collection_name=self.collection_name
+            collection_name=self.collection_name,
         )
-        
+
         await proxy.async_put(file_obj, **kwargs)
-        
+
         # Store the proxy in the document
         if instance:
             # Create a sync proxy for storage
@@ -1973,20 +1979,20 @@ class FileField(BaseField):
                 key=self.name,
                 instance=instance,
                 db_alias=self.db_alias,
-                collection_name=self.collection_name
+                collection_name=self.collection_name,
             )
             instance._data[self.name] = sync_proxy
             instance._mark_as_changed(self.name)
-        
+
         return proxy
-    
+
     async def async_get(self, instance):
         """Async version of get() for retrieving files."""
         from mongoengine.connection import is_async_connection
-        
+
         if not is_async_connection(self.db_alias):
             raise RuntimeError("Use get() with sync connection")
-        
+
         grid_file = instance._data.get(self.name)
         if grid_file:
             # Extract the grid_id from the GridFSProxy
@@ -1994,14 +2000,14 @@ class FileField(BaseField):
                 grid_id = grid_file.grid_id
             else:
                 grid_id = grid_file
-                
+
             if grid_id:
                 proxy = AsyncGridFSProxy(
                     grid_id=grid_id,
                     key=self.name,
                     instance=instance,
                     db_alias=self.db_alias,
-                    collection_name=self.collection_name
+                    collection_name=self.collection_name,
                 )
                 return proxy
         return None
@@ -2162,7 +2168,7 @@ class ImageField(FileField):
 
 class AsyncGridFSProxy:
     """Async proxy for GridFS file operations."""
-    
+
     def __init__(
         self,
         grid_id=None,
@@ -2177,20 +2183,24 @@ class AsyncGridFSProxy:
         self.db_alias = db_alias
         self.collection_name = collection_name
         self._cached_metadata = None
-    
+
     async def async_get(self):
         """Get file metadata asynchronously."""
         if self.grid_id is None:
             return None
-        
+
         from gridfs.asynchronous import AsyncGridFSBucket
+
+        from mongoengine.async_utils import (
+            _get_async_session,
+            ensure_async_connection,
+        )
         from mongoengine.connection import get_async_db
-        from mongoengine.async_utils import ensure_async_connection, _get_async_session
-        
+
         ensure_async_connection(self.db_alias)
         db = get_async_db(self.db_alias)
         bucket = AsyncGridFSBucket(db, bucket_name=self.collection_name)
-        
+
         try:
             # Get file metadata
             async for grid_out in bucket.find({"_id": self.grid_id}):
@@ -2198,95 +2208,97 @@ class AsyncGridFSProxy:
                 return grid_out
         except Exception:
             return None
-    
+
     async def async_put(self, file_obj, **kwargs):
         """Store file asynchronously."""
         from gridfs.asynchronous import AsyncGridFSBucket
-        from mongoengine.connection import get_async_db
+
         from mongoengine.async_utils import ensure_async_connection
-        
+        from mongoengine.connection import get_async_db
+
         ensure_async_connection(self.db_alias)
-        
+
         if self.grid_id:
             raise GridFSError(
                 "This document already has a file. Either delete "
                 "it or call replace to overwrite it"
             )
-        
+
         db = get_async_db(self.db_alias)
         bucket = AsyncGridFSBucket(db, bucket_name=self.collection_name)
-        
+
         # Upload file
-        filename = kwargs.get('filename', 'unknown')
-        metadata = kwargs.get('metadata', {})
-        
+        filename = kwargs.get("filename", "unknown")
+        metadata = kwargs.get("metadata", {})
+
         # Ensure we're at the beginning of the file
-        if hasattr(file_obj, 'seek'):
+        if hasattr(file_obj, "seek"):
             file_obj.seek(0)
-        
+
         self.grid_id = await bucket.upload_from_stream(
-            filename,
-            file_obj,
-            metadata=metadata
+            filename, file_obj, metadata=metadata
         )
-        
+
         if self.instance:
             self.instance._mark_as_changed(self.key)
-        
+
         return self.grid_id
-    
+
     async def async_read(self, size=-1):
         """Read file content asynchronously."""
         if self.grid_id is None:
             return None
-        
-        from gridfs.asynchronous import AsyncGridFSBucket
-        from mongoengine.connection import get_async_db
-        from mongoengine.async_utils import ensure_async_connection
+
         import io
-        
+
+        from gridfs.asynchronous import AsyncGridFSBucket
+
+        from mongoengine.async_utils import ensure_async_connection
+        from mongoengine.connection import get_async_db
+
         ensure_async_connection(self.db_alias)
         db = get_async_db(self.db_alias)
         bucket = AsyncGridFSBucket(db, bucket_name=self.collection_name)
-        
+
         try:
             # Download to stream
             stream = io.BytesIO()
             await bucket.download_to_stream(self.grid_id, stream)
             stream.seek(0)
-            
+
             if size == -1:
                 return stream.read()
             else:
                 return stream.read(size)
         except Exception:
             return b""
-    
+
     async def async_delete(self):
         """Delete file asynchronously."""
         if self.grid_id is None:
             return
-        
+
         from gridfs.asynchronous import AsyncGridFSBucket
-        from mongoengine.connection import get_async_db
+
         from mongoengine.async_utils import ensure_async_connection
-        
+        from mongoengine.connection import get_async_db
+
         ensure_async_connection(self.db_alias)
         db = get_async_db(self.db_alias)
         bucket = AsyncGridFSBucket(db, bucket_name=self.collection_name)
-        
+
         await bucket.delete(self.grid_id)
         self.grid_id = None
         self._cached_metadata = None
-        
+
         if self.instance:
             self.instance._mark_as_changed(self.key)
-    
+
     async def async_replace(self, file_obj, **kwargs):
         """Replace existing file asynchronously."""
         await self.async_delete()
         return await self.async_put(file_obj, **kwargs)
-    
+
     def __repr__(self):
         return f"<AsyncGridFSProxy: {self.grid_id}>"
 

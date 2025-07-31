@@ -4,7 +4,16 @@ import threading
 import warnings
 from contextvars import ContextVar
 
-from pymongo import AsyncMongoClient, MongoClient, ReadPreference, uri_parser
+from pymongo import MongoClient, ReadPreference, uri_parser
+
+# AsyncMongoClient was added in PyMongo 4.9 (beta) and became stable in 4.13
+try:
+    from pymongo import AsyncMongoClient
+
+    HAS_ASYNC_SUPPORT = True
+except ImportError:
+    AsyncMongoClient = None
+    HAS_ASYNC_SUPPORT = False
 from pymongo.common import _UUID_REPRESENTATIONS
 
 try:
@@ -51,6 +60,7 @@ _connection_types = {}  # Track connection types (sync/async)
 
 class ConnectionType(enum.Enum):
     """Enum to track connection type"""
+
     SYNC = "sync"
     ASYNC = "async"
 
@@ -308,7 +318,7 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
 
     if alias in _connection_settings:
         del _connection_settings[alias]
-    
+
     # Clean up connection type tracking
     if alias in _connection_types:
         del _connection_types[alias]
@@ -486,7 +496,7 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
                 "registered. Use disconnect() first"
             ).format(alias)
             raise ConnectionFailure(err_msg)
-            
+
         # Check if existing connection is async
         if is_async_connection(alias):
             raise ConnectionFailure(
@@ -529,7 +539,9 @@ class _LocalSessions(threading.local):
 _local_sessions = _LocalSessions()
 
 # Context variables for async support
-_async_sessions: ContextVar[collections.deque] = ContextVar('async_sessions', default=collections.deque())
+_async_sessions: ContextVar[collections.deque] = ContextVar(
+    "async_sessions", default=collections.deque()
+)
 
 
 def _set_session(session):
@@ -546,7 +558,7 @@ def _clear_session():
 
 def is_async_connection(alias=DEFAULT_CONNECTION_NAME):
     """Check if the connection with given alias is async.
-    
+
     :param alias: the alias name for the connection
     :return: True if connection is async, False otherwise
     """
@@ -555,33 +567,42 @@ def is_async_connection(alias=DEFAULT_CONNECTION_NAME):
 
 async def connect_async(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     """Connect to the database asynchronously using AsyncMongoClient.
-    
+
     This is the async version of connect(). It creates an AsyncMongoClient
     instance and registers it for use with async operations.
-    
+
     :param db: the name of the database to use
     :param alias: the alias name for the connection
     :param kwargs: keyword arguments passed to AsyncMongoClient
     :return: AsyncMongoClient instance
-    
+    :raises: ImportError if PyMongo version doesn't support async operations
+
     Example:
         >>> await connect_async('mydatabase')
         >>> # Now you can use async operations
         >>> user = User(name="John")
         >>> await user.async_save()
     """
+    if not HAS_ASYNC_SUPPORT:
+        raise ImportError(
+            "AsyncMongoClient is not available. "
+            "Please upgrade to PyMongo 4.13+ to use async features. "
+            "Current async support was introduced in PyMongo 4.9 (beta) "
+            "and became stable in PyMongo 4.13."
+        )
+
     # Check if a connection with this alias already exists
     if alias in _connections:
         prev_conn_setting = _connection_settings[alias]
         new_conn_settings = _get_connection_settings(db, **kwargs)
-        
+
         if new_conn_settings != prev_conn_setting:
             err_msg = (
                 "A different connection with alias `{}` was already "
                 "registered. Use disconnect() or disconnect_async() first"
             ).format(alias)
             raise ConnectionFailure(err_msg)
-        
+
         # If connection already exists and is async, return it
         if is_async_connection(alias):
             return _connections[alias]
@@ -590,35 +611,44 @@ async def connect_async(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
                 f"A synchronous connection with alias '{alias}' already exists. "
                 "Use disconnect() first to replace it with an async connection."
             )
-    
+
     # Register the connection settings
     register_connection(alias, db, **kwargs)
-    
+
     # Get connection settings and create AsyncMongoClient
     conn_settings = _get_connection_settings(db, **kwargs)
     cleaned_settings = {
-        k: v for k, v in conn_settings.items() 
-        if k not in {'name', 'username', 'password', 'authentication_source', 
-                     'authentication_mechanism', 'authmechanismproperties'} and v is not None
+        k: v
+        for k, v in conn_settings.items()
+        if k
+        not in {
+            "name",
+            "username",
+            "password",
+            "authentication_source",
+            "authentication_mechanism",
+            "authmechanismproperties",
+        }
+        and v is not None
     }
-    
+
     # Add driver info if available
     if DriverInfo is not None:
         cleaned_settings.setdefault(
             "driver", DriverInfo("MongoEngine", mongoengine.__version__)
         )
-    
+
     # Create AsyncMongoClient
     try:
         connection = AsyncMongoClient(**cleaned_settings)
         _connections[alias] = connection
         _connection_types[alias] = ConnectionType.ASYNC
-        
+
         # Store database reference
-        if db or conn_settings.get('name'):
-            db_name = db or conn_settings['name']
+        if db or conn_settings.get("name"):
+            db_name = db or conn_settings["name"]
             _dbs[alias] = connection[db_name]
-        
+
         return connection
     except Exception as e:
         raise ConnectionFailure(f"Cannot connect to database {alias} :\n{e}")
@@ -626,15 +656,15 @@ async def connect_async(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
 async def disconnect_async(alias=DEFAULT_CONNECTION_NAME):
     """Close the async connection with a given alias.
-    
+
     This is the async version of disconnect() that properly closes
     AsyncMongoClient connections.
-    
+
     :param alias: the alias name for the connection
     """
     from mongoengine import Document
     from mongoengine.base.common import _get_documents_by_db
-    
+
     connection = _connections.pop(alias, None)
     if connection:
         # Only close if this is the last reference to this connection
@@ -644,30 +674,30 @@ async def disconnect_async(alias=DEFAULT_CONNECTION_NAME):
                 connection.close()
             else:
                 connection.close()
-    
+
     # Clean up database references
     if alias in _dbs:
         # Detach all cached collections in Documents
         for doc_cls in _get_documents_by_db(alias, DEFAULT_CONNECTION_NAME):
             if issubclass(doc_cls, Document):
                 doc_cls._disconnect()
-        
+
         del _dbs[alias]
-    
+
     # Clean up connection settings and type tracking
     if alias in _connection_settings:
         del _connection_settings[alias]
-    
+
     if alias in _connection_types:
         del _connection_types[alias]
 
 
 def get_async_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     """Get the async database for a given alias.
-    
+
     This function returns the database object for async operations.
     It raises an error if the connection is not async.
-    
+
     :param alias: the alias name for the connection
     :param reconnect: whether to reconnect if already connected
     :return: AsyncMongoClient database instance
@@ -677,14 +707,14 @@ def get_async_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
             f"Connection '{alias}' is not async. Use connect_async() to create "
             "an async connection or use get_db() for sync connections."
         )
-    
+
     if reconnect:
         disconnect(alias)
-    
+
     if alias not in _dbs:
         conn = get_connection(alias)
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings["name"]]
         _dbs[alias] = db
-    
+
     return _dbs[alias]

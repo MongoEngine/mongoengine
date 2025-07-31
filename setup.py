@@ -33,6 +33,8 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -45,6 +47,7 @@ CLASSIFIERS = [
 ]
 
 install_require = ["pymongo>=3.12,<5.0"]
+async_require = ["pymongo>=4.13,<5.0"]
 tests_require = [
     "pytest",
     "pytest-cov",
@@ -73,6 +76,7 @@ setup(
     install_requires=install_require,
     extras_require={
         "test": tests_require,
+        "async": async_require,
     },
     packages=find_packages(exclude=["tests", "tests.*"]),
 )

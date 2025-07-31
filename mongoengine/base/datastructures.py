@@ -473,7 +473,7 @@ class LazyReference(DBRef):
 
     def __repr__(self):
         return f"<LazyReference({self.document_type}, {self.pk!r})>"
-    
+
     async def async_fetch(self, force=False):
         """Async version of fetch()."""
         if not self._cached_doc or force:
@@ -485,23 +485,23 @@ class LazyReference(DBRef):
 
 class AsyncReferenceProxy:
     """Proxy object for async reference field access.
-    
+
     This proxy is returned when accessing a ReferenceField in an async context,
     requiring explicit async dereferencing via fetch() method.
     """
-    
+
     __slots__ = ("field", "instance", "_cached_value")
-    
+
     def __init__(self, field, instance):
         self.field = field
         self.instance = instance
         self._cached_value = None
-    
+
     async def fetch(self):
         """Explicitly fetch the referenced document."""
         if self._cached_value is None:
             self._cached_value = await self.field.async_fetch(self.instance)
         return self._cached_value
-    
+
     def __repr__(self):
         return f"<AsyncReferenceProxy: {self.field.name} (unfetched)>"
