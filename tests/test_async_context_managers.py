@@ -5,12 +5,10 @@ import pytest_asyncio
 
 from mongoengine import (
     Document,
-    ListField,
     ReferenceField,
     StringField,
     connect_async,
     disconnect_async,
-    register_connection,
 )
 from mongoengine.async_context_managers import (
     async_no_dereference,
@@ -18,7 +16,8 @@ from mongoengine.async_context_managers import (
     async_switch_db,
 )
 from mongoengine.base.datastructures import AsyncReferenceProxy
-from mongoengine.errors import NotUniqueError, OperationError
+
+# from mongoengine.errors import NotUniqueError, OperationError  # Not used currently
 
 
 class TestAsyncContextManagers:

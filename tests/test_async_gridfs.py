@@ -61,7 +61,7 @@ class TestAsyncGridFS:
             await db.drop_collection("fs.chunks")
             await db.drop_collection("async_images.files")
             await db.drop_collection("async_images.chunks")
-        except:
+        except Exception:
             pass
 
         await disconnect_async("async_gridfs_test")

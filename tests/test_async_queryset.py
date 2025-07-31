@@ -2,7 +2,6 @@
 
 import pytest
 import pytest_asyncio
-from bson import ObjectId
 
 from mongoengine import (
     Document,
@@ -53,7 +52,7 @@ class TestAsyncQuerySet:
         try:
             await AsyncAuthor.async_drop_collection()
             await AsyncBook.async_drop_collection()
-        except:
+        except Exception:
             pass
 
         await disconnect_async("async_qs_test")

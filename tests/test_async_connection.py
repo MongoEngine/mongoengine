@@ -4,14 +4,11 @@ import pymongo
 import pytest
 
 from mongoengine import (
-    Document,
-    StringField,
     connect,
     connect_async,
     disconnect,
     disconnect_async,
     get_async_db,
-    get_db,
     is_async_connection,
 )
 from mongoengine.connection import ConnectionFailure
@@ -137,8 +134,8 @@ class TestAsyncConnection:
     async def test_multiple_async_connections(self):
         """Test multiple async connections with different aliases."""
         # Create multiple connections
-        client1 = await connect_async(db="test_db1", alias="async1")
-        client2 = await connect_async(db="test_db2", alias="async2")
+        await connect_async(db="test_db1", alias="async1")
+        await connect_async(db="test_db2", alias="async2")
 
         # Verify both are async
         assert is_async_connection("async1")

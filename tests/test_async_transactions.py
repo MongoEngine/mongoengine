@@ -17,7 +17,6 @@ from mongoengine import (
 from mongoengine.async_context_managers import (
     async_run_in_transaction,
 )
-from mongoengine.errors import OperationError
 
 
 class TestAsyncTransactions:
@@ -241,7 +240,7 @@ class TestAsyncTransactions:
             await counter.async_save()
 
             # Start transaction but don't commit yet
-            async with async_run_in_transaction() as tx:
+            async with async_run_in_transaction():
                 # Update within transaction
                 await Counter.objects.filter(id=counter.id).async_update(inc__value=10)
 

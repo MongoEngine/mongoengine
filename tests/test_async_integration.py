@@ -72,7 +72,7 @@ class TestAsyncIntegration:
         try:
             await User.async_drop_collection()
             await BlogPost.async_drop_collection()
-        except:
+        except Exception:
             pass
         await disconnect_async("async_test")
 

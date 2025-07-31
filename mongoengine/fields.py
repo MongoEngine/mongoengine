@@ -1193,17 +1193,14 @@ class ReferenceField(BaseField):
     @staticmethod
     async def _async_lazy_load_ref(ref_cls, dbref, instance):
         """Async version of _lazy_load_ref."""
-        from mongoengine.async_utils import (
-            _get_async_session,
-            ensure_async_connection,
-        )
+        from mongoengine.async_utils import ensure_async_connection
 
         ensure_async_connection(instance._get_db_alias())
         db = ref_cls._get_db()
         collection = db[dbref.collection]
 
         # Get current async session if any
-        session = await _get_async_session()
+        session = None  # TODO: Implement proper async session handling
 
         # Use async find_one
         dereferenced_doc = await collection.find_one({"_id": dbref.id}, session=session)
@@ -2191,10 +2188,7 @@ class AsyncGridFSProxy:
 
         from gridfs.asynchronous import AsyncGridFSBucket
 
-        from mongoengine.async_utils import (
-            _get_async_session,
-            ensure_async_connection,
-        )
+        from mongoengine.async_utils import ensure_async_connection
         from mongoengine.connection import get_async_db
 
         ensure_async_connection(self.db_alias)

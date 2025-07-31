@@ -69,7 +69,7 @@ class TestAsyncReferenceField:
             await AsyncAuthor.async_drop_collection()
             await AsyncBook.async_drop_collection()
             await AsyncArticle.async_drop_collection()
-        except:
+        except Exception:
             pass
 
         await disconnect_async("async_ref_test")

@@ -15,7 +15,6 @@ from pymongo.read_concern import ReadConcern
 from mongoengine import signals
 from mongoengine.async_utils import (
     ensure_async_connection,
-    ensure_sync_connection,
     get_async_collection,
 )
 from mongoengine.base import _DocumentRegistry
