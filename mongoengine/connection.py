@@ -298,6 +298,9 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
     from mongoengine import Document
     from mongoengine.base.common import _get_documents_by_db
 
+    # Check if this is an async connection BEFORE popping it
+    was_async = is_async_connection(alias)
+
     connection = _connections.pop(alias, None)
     if connection:
         # MongoEngine may share the same MongoClient across multiple aliases
@@ -306,7 +309,20 @@ def disconnect(alias=DEFAULT_CONNECTION_NAME):
         # Important to use 'is' instead of '==' because clients connected to the same cluster
         # will compare equal even with different options
         if all(connection is not c for c in _connections.values()):
-            connection.close()
+            # Check if this was an async connection
+            if was_async:
+                import warnings
+
+                warnings.warn(
+                    f"Attempting to close async connection '{alias}' with sync disconnect(). "
+                    "Use disconnect_async() instead for proper cleanup.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                # Don't call close() on async connection to avoid the coroutine warning
+                # The connection will be closed when the event loop is cleaned up
+            else:
+                connection.close()
 
     if alias in _dbs:
         # Detach all cached collections in Documents
