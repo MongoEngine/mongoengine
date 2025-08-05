@@ -39,6 +39,7 @@ __all__ = [
     "disconnect",
     "disconnect_async",
     "disconnect_all",
+    "disconnect_all_async",
     "get_connection",
     "get_db",
     "get_async_db",
@@ -685,11 +686,8 @@ async def disconnect_async(alias=DEFAULT_CONNECTION_NAME):
     if connection:
         # Only close if this is the last reference to this connection
         if all(connection is not c for c in _connections.values()):
-            if is_async_connection(alias):
-                # For AsyncMongoClient, we need to call close() method
-                connection.close()
-            else:
-                connection.close()
+            # AsyncMongoClient.close() is a coroutine, must be awaited
+            await connection.close()
 
     # Clean up database references
     if alias in _dbs:
@@ -706,6 +704,23 @@ async def disconnect_async(alias=DEFAULT_CONNECTION_NAME):
 
     if alias in _connection_types:
         del _connection_types[alias]
+
+
+async def disconnect_all_async():
+    """Close all registered async database connections.
+
+    This is the async version of disconnect_all() that properly closes
+    AsyncMongoClient connections. It will only close async connections,
+    leaving sync connections untouched.
+    """
+    # Get list of all async connections
+    async_aliases = [
+        alias for alias in list(_connections.keys()) if is_async_connection(alias)
+    ]
+
+    # Disconnect each async connection
+    for alias in async_aliases:
+        await disconnect_async(alias)
 
 
 def get_async_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):

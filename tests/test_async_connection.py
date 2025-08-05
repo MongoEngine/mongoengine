@@ -7,6 +7,7 @@ from mongoengine import (
     connect,
     connect_async,
     disconnect,
+    disconnect_all_async,
     disconnect_async,
     get_async_db,
     is_async_connection,
@@ -178,3 +179,71 @@ class TestAsyncConnection:
 
         # Clean up
         await disconnect_async("reconnect_test2")
+
+    @pytest.mark.asyncio
+    async def test_disconnect_all_async(self):
+        """Test disconnect_all_async only disconnects async connections."""
+        # Create mix of sync and async connections
+        connect(db="sync_db1", alias="sync1")
+        connect(db="sync_db2", alias="sync2")
+        await connect_async(db="async_db1", alias="async1")
+        await connect_async(db="async_db2", alias="async2")
+        await connect_async(db="async_db3", alias="async3")
+
+        # Verify connections exist
+        assert not is_async_connection("sync1")
+        assert not is_async_connection("sync2")
+        assert is_async_connection("async1")
+        assert is_async_connection("async2")
+        assert is_async_connection("async3")
+
+        from mongoengine.connection import _connections
+
+        assert len(_connections) == 5
+
+        # Disconnect all async connections
+        await disconnect_all_async()
+
+        # Verify only async connections were disconnected
+        assert "sync1" in _connections
+        assert "sync2" in _connections
+        assert "async1" not in _connections
+        assert "async2" not in _connections
+        assert "async3" not in _connections
+
+        # Verify sync connections still work
+        assert not is_async_connection("sync1")
+        assert not is_async_connection("sync2")
+
+        # Clean up remaining sync connections
+        disconnect("sync1")
+        disconnect("sync2")
+
+    @pytest.mark.asyncio
+    async def test_disconnect_all_async_empty(self):
+        """Test disconnect_all_async when no connections exist."""
+        # Should not raise any errors
+        await disconnect_all_async()
+
+    @pytest.mark.asyncio
+    async def test_disconnect_all_async_only_sync(self):
+        """Test disconnect_all_async when only sync connections exist."""
+        # Create only sync connections
+        connect(db="sync_db1", alias="sync1")
+        connect(db="sync_db2", alias="sync2")
+
+        from mongoengine.connection import _connections
+
+        assert len(_connections) == 2
+
+        # Disconnect all async (should do nothing)
+        await disconnect_all_async()
+
+        # Verify sync connections still exist
+        assert len(_connections) == 2
+        assert "sync1" in _connections
+        assert "sync2" in _connections
+
+        # Clean up
+        disconnect("sync1")
+        disconnect("sync2")
