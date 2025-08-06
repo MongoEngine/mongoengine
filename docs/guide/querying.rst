@@ -511,7 +511,7 @@ Getting related data
 When iterating the results of :class:`~mongoengine.fields.ListField` or
 :class:`~mongoengine.fields.DictField` we automatically dereference any
 :class:`~pymongo.dbref.DBRef` objects as efficiently as possible, reducing the
-number the queries to mongo.
+number of queries to mongo.
 
 There are times when that efficiency is not enough, documents that have
 :class:`~mongoengine.fields.ReferenceField` objects or
