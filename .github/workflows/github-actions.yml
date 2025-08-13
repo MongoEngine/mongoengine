@@ -13,14 +13,11 @@ on:
     tags:
       - 'v[0-9]+\.[0-9]+\.[0-9]+*'
 env:
-  MONGODB_3_6: "3.6.23"
-  MONGODB_4_0: "4.0.28"
-  MONGODB_4_2: "4.2.25"
   MONGODB_4_4: "4.4.29"
   MONGODB_5_0: "5.0.31"
-  MONGODB_6_0: "6.0.20"
-  MONGODB_7_0: "7.0.17"
-  MONGODB_8_0: "8.0.5"
+  MONGODB_6_0: "6.0.22"
+  MONGODB_7_0: "7.0.19"
+  MONGODB_8_0: "8.0.9"
 
   PYMONGO_3_12: "3.12.3"
   PYMONGO_3_13: "3.13.0"
@@ -35,8 +32,6 @@ env:
   PYMONGO_4_11: "4.11.2"
 
   MAIN_PYTHON_VERSION: "3.9"
-
-  MONGOSH: "2.4.2" # Needed for MongoDB 6.0+
 
 jobs:
   linting:
@@ -55,17 +50,14 @@ jobs:
   test:
     # Test suite run against recent python versions
     # and against a few combination of MongoDB and pymongo
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy3.9", "pypy3.10"]
-        MONGODB: [$MONGODB_4_0]
+        MONGODB: [$MONGODB_4_4]
         PYMONGO: [$PYMONGO_3_12]
         include:
-          - python-version: "3.9"
-            MONGODB: $MONGODB_3_6
-            PYMONGO: $PYMONGO_3_12
           - python-version: "3.9"
             MONGODB: $MONGODB_4_4
             PYMONGO: $PYMONGO_3_13
@@ -115,7 +107,6 @@ jobs:
     - name: install mongo and ci dependencies
       run: |
         bash .github/workflows/install_mongo.sh ${{ matrix.MONGODB }}
-        bash .github/workflows/install_mongosh.sh ${{ matrix.MONGODB }} ${{ env.MONGOSH }}
         bash .github/workflows/install_ci_python_dep.sh
         bash .github/workflows/start_mongo.sh ${{ matrix.MONGODB }}
     - name: tox dry-run (to pre-install venv)
