@@ -130,6 +130,35 @@ class TestFindAndModify(unittest.TestCase):
         )
         assert blog.tags == ["python", "go", "rust", "code", "java"]
 
+    def test_modify_with_aggregation_update(self):
+        """Ensure that the 'aggregation_update' modify works correctly."""
+
+        class BlogPost(Document):
+            slug = StringField()
+            tags = ListField(StringField())
+
+        BlogPost.drop_collection()
+
+        post = BlogPost(slug="test")
+        post.save()
+
+        BlogPost.objects(slug="test").update(
+            __raw__=[{"$set": {"slug": {"$concat": ["$slug", " ", "$slug"]}}}],
+        )
+        post.reload()
+        assert post.slug == "test test"
+
+        post = BlogPost.objects(slug="test test").modify(
+            __raw__=[
+                {"$set": {"slug": {"$concat": ["$slug", " ", "it"]}}},  # test test it
+                {
+                    "$set": {"slug": {"$concat": ["When", " ", "$slug"]}}
+                },  # When test test it
+            ],
+            new=True,
+        )
+        assert post.slug == "When test test it"
+
 
 if __name__ == "__main__":
     unittest.main()
