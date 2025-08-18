@@ -1398,9 +1398,10 @@ class BaseQuerySet:
         first_step = []
         new_user_pipeline = []
         for step_step in pipeline:
-            if "$geoNear" in step_step:
-                first_step.append(step_step)
-            elif "$collStats" in step_step:
+            if any(
+                el in step_step
+                for el in ["$geoNear", "$collStats", "$search", "$vectorSearch"]
+            ):
                 first_step.append(step_step)
             else:
                 new_user_pipeline.append(step_step)
