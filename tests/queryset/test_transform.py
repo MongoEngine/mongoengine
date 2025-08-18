@@ -396,6 +396,34 @@ class TestTransform(MongoDBTestCase):
 
         Shop.drop_collection()
 
+    def test_transform_generic_reference_field(self):
+        class Object(Document):
+            field = GenericReferenceField()
+
+        Object.drop_collection()
+        objects = Object.objects.insert([Object() for _ in range(8)])
+        # singular queries
+        assert transform.query(Object, field=objects[0].pk) == {
+            "field._ref.$id": objects[0].pk
+        }
+        assert transform.query(Object, field=objects[1].to_dbref()) == {
+            "field._ref": objects[1].to_dbref()
+        }
+
+        # iterable queries
+        assert transform.query(Object, field__in=[objects[2].pk, objects[3].pk]) == {
+            "field._ref.$id": {"$in": [objects[2].pk, objects[3].pk]}
+        }
+        assert transform.query(
+            Object, field__in=[objects[4].to_dbref(), objects[5].to_dbref()]
+        ) == {"field._ref": {"$in": [objects[4].to_dbref(), objects[5].to_dbref()]}}
+
+        # invalid query
+        with pytest.raises(match="cannot be applied to mixed queries"):
+            transform.query(Object, field__in=[objects[6].pk, objects[7].to_dbref()])
+
+        Object.drop_collection()
+
 
 if __name__ == "__main__":
     unittest.main()
