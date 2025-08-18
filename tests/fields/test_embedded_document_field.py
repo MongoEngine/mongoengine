@@ -6,6 +6,7 @@ from bson import ObjectId
 
 from mongoengine import (
     Document,
+    DynamicEmbeddedDocument,
     EmbeddedDocument,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
@@ -223,6 +224,34 @@ class TestEmbeddedDocumentField(MongoDBTestCase):
         assert records[0].id == record_text.id
 
         assert Record.objects(posts__title="foo").count() == 2
+
+    def test_update_dynamic_embedded_document_with_new_fields(self):
+        class Wheel(DynamicEmbeddedDocument):
+            position = StringField()
+
+        class Car(Document):
+            wheels = EmbeddedDocumentListField(Wheel)
+
+        car = Car(
+            wheels=[
+                Wheel(position="front-passenger"),
+                Wheel(position="rear-passenger"),
+                Wheel(position="front-driver"),
+                Wheel(position="rear-driver"),
+            ]
+        ).save()
+
+        Car.objects(wheels__position="front-driver").update(
+            set__wheels__S__damaged=True
+        )
+        car.reload()
+
+        for wheel in car.wheels:
+            if wheel.position == "front-driver":
+                assert wheel.damaged
+            else:
+                with pytest.raises(AttributeError):
+                    wheel.damaged
 
 
 class TestGenericEmbeddedDocumentField(MongoDBTestCase):
@@ -455,3 +484,17 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
 
         copied_map_emb_doc = deepcopy(doc.wallet_map)
         assert copied_map_emb_doc["test"]._instance is None
+
+    def test_update_dynamic_embedded_document_with_new_fields(self):
+        class Laptop(DynamicEmbeddedDocument):
+            operating_system = StringField()
+
+        class Backpack(Document):
+            content = GenericEmbeddedDocumentField(choices=[Laptop])
+
+        backpack = Backpack(content=Laptop(operating_system="Windows")).save()
+
+        Backpack.objects.update(set__content__manufacturer="Acer")
+        backpack.reload()
+
+        assert backpack.content.manufacturer == "Acer"

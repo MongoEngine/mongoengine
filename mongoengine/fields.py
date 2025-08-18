@@ -777,6 +777,12 @@ class EmbeddedDocumentField(BaseField):
             if field:
                 return field
 
+        # DynamicEmbeddedDocuments should always return a field except for positional operators
+        if any(
+            doc_type._dynamic for doc_type in doc_and_subclasses
+        ) and member_name not in ("$", "S"):
+            return DynamicField(db_field=member_name)
+
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
             # Short circuit for special operators, returning them as is
@@ -836,6 +842,12 @@ class GenericEmbeddedDocumentField(BaseField):
                 field = doc_type._fields.get(member_name)
                 if field:
                     return field
+
+        # DynamicEmbeddedDocuments should always return a field except for positional operators
+        if any(
+            document_choice._dynamic for document_choice in document_choices
+        ) and member_name not in ("$", "S"):
+            return DynamicField(db_field=member_name)
 
     def to_mongo(self, document, use_db_field=True, fields=None):
         if document is None:
