@@ -1110,7 +1110,6 @@ class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
     a DictField, except the 'value' of each item must match the specified
     field type.
-
     """
 
     def __init__(self, field=None, *args, **kwargs):
