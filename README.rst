@@ -6,8 +6,8 @@ MongoEngine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Bastien Gerard (http://github.com/bagerard)
 
-.. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
-  :target: https://travis-ci.org/MongoEngine/mongoengine
+.. image:: https://github.com/MongoEngine/mongoengine/actions/workflows/github-actions.yml/badge.svg?branch=master
+  :target: https://github.com/MongoEngine/mongoengine/actions
 
 .. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
   :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
