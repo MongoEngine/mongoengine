@@ -4685,11 +4685,13 @@ class TestQueryset(unittest.TestCase):
             source = EmbeddedDocumentField(EmbeddedModelA)
             target = EmbeddedDocumentField(EmbeddedModelA, null=True)
         
+        # Create one with both values
         Container(
             source=EmbeddedModelA(designator="value1"),
             target=EmbeddedModelB(designator="value2"),
         ).save()
         
+        # Create one with a null target, but the source value will match the query
         Container(
             source=EmbeddedModelA(designator="value1"),
             target=None,
@@ -4698,10 +4700,9 @@ class TestQueryset(unittest.TestCase):
         queryset = Container.objects.filter(
             Q(source__designator="value1") | Q(target__designator="value2")
         ).values_list("source__designator", "target__designator")
-        # This should not raise an AttributeError on NoneType for the second Container's
-        # target__designator
+        # This should not raise an AttributeError on NoneType for the second Container's target__designator
         values = list(queryset)
-        assert values == ["value1", "value2"]
+        assert values == ["value1", "value2", None]
 
     def test_scalar_decimal(self):
         from decimal import Decimal
