@@ -21,6 +21,7 @@ from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.queryset import (
     DoesNotExist,
     MultipleObjectsReturned,
+    Q,
     QuerySet,
     QuerySetManager,
     queryset_manager,
@@ -4673,6 +4674,35 @@ class TestQueryset(unittest.TestCase):
             ("Wilson Jr", 19, "Corumba-GO"),
             ("Gabriel Falcao", 23, "New York"),
         ]
+
+    def test_scalar_embedded_null_parents(self):
+        """Test a multi-scalar query on embedded fields raises an exception when the parent field is null."""
+
+        class EmbeddedModelA(EmbeddedDocument):
+            designator = StringField()
+
+        class Container(Document):
+            source = EmbeddedDocumentField(EmbeddedModelA)
+            target = EmbeddedDocumentField(EmbeddedModelA, null=True)
+
+        # Create one with both values
+        Container(
+            source=EmbeddedModelA(designator="value1"),
+            target=EmbeddedModelA(designator="value2"),
+        ).save()
+
+        # Create one with a null target, but the source value will match the query
+        Container(
+            source=EmbeddedModelA(designator="value1"),
+            target=None,
+        ).save()
+
+        queryset = Container.objects.filter(
+            Q(source__designator="value1") | Q(target__designator="value2")
+        ).values_list("source__designator", "target__designator")
+        # This should not raise an AttributeError on NoneType for the second Container's target__designator
+        values = list(queryset)
+        assert values == [("value1", "value2"), ("value1", None)]
 
     def test_scalar_decimal(self):
         from decimal import Decimal
