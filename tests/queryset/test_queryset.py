@@ -4680,17 +4680,17 @@ class TestQueryset(unittest.TestCase):
 
         class EmbeddedModelA(EmbeddedDocument):
             designator = StringField()
-        
+
         class Container(Document):
             source = EmbeddedDocumentField(EmbeddedModelA)
             target = EmbeddedDocumentField(EmbeddedModelA, null=True)
-        
+
         # Create one with both values
         Container(
             source=EmbeddedModelA(designator="value1"),
-            target=EmbeddedModelB(designator="value2"),
+            target=EmbeddedModelA(designator="value2"),
         ).save()
-        
+
         # Create one with a null target, but the source value will match the query
         Container(
             source=EmbeddedModelA(designator="value1"),
