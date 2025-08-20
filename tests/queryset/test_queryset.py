@@ -4702,7 +4702,7 @@ class TestQueryset(unittest.TestCase):
         ).values_list("source__designator", "target__designator")
         # This should not raise an AttributeError on NoneType for the second Container's target__designator
         values = list(queryset)
-        assert values == ["value1", "value2", None]
+        assert values == [("value1", "value2"), ("value1", None)]
 
     def test_scalar_decimal(self):
         from decimal import Decimal
