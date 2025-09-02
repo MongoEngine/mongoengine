@@ -10,12 +10,12 @@ from mongoengine import (
     ValidationError,
 )
 from mongoengine.base import _DocumentRegistry
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestField(MongoDBTestCase):
 
-    def test_generic_reference(self):
+    def test_generic_reference_field_basics(self):
         """Ensure that a GenericReferenceField properly dereferences items."""
 
         class Link(Document):
@@ -42,7 +42,13 @@ class TestField(MongoDBTestCase):
         bm.save()
 
         bm = Bookmark.objects(bookmark_object=post_1).first()
-
+        assert get_as_pymongo(bm) == {
+            "_id": bm.id,
+            "bookmark_object": {
+                "_cls": "Post",
+                "_ref": post_1.to_dbref(),
+            },
+        }
         assert bm.bookmark_object == post_1
         assert isinstance(bm.bookmark_object, Post)
 
@@ -50,6 +56,13 @@ class TestField(MongoDBTestCase):
         bm.save()
 
         bm = Bookmark.objects(bookmark_object=link_1).first()
+        assert get_as_pymongo(bm) == {
+            "_id": bm.id,
+            "bookmark_object": {
+                "_cls": "Link",
+                "_ref": link_1.to_dbref(),
+            },
+        }
 
         assert bm.bookmark_object == link_1
         assert isinstance(bm.bookmark_object, Link)
@@ -66,14 +79,6 @@ class TestField(MongoDBTestCase):
 
         s1 = SomeObj().save()
         OtherObj(obj=s1).save()
-
-        assert OtherObj.objects.as_pymongo().first() == {
-            "_id": OtherObj.objects.first().id,
-            "obj": {
-                "_cls": "SomeObj",
-                "_ref": s1.to_dbref(),
-            },
-        }
 
         # Query using to_dbref
         assert OtherObj.objects(obj__in=[s1.to_dbref()]).count() == 1
