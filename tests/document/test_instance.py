@@ -1476,6 +1476,65 @@ class TestDocumentInstance(MongoDBTestCase):
 
         assert 2 == self.Person.objects.count()
 
+    def test_save_upsert_false_doesnt_insert_when_deleted(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+        p2 = Person.objects().first()
+        p1.delete()
+        p2.name = " Bob Snr"
+        p2.save(upsert=False)
+
+        assert Person.objects.count() == 0
+
+    def test_save_upsert_true_inserts_when_deleted(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+        p2 = Person.objects().first()
+        p1.delete()
+        p2.name = "Bob Snr"
+        p2.save(upsert=True)
+
+        assert Person.objects.count() == 1
+
+    def test_save_upsert_null_inserts_when_deleted(self):
+        # probably want to remove this as this is bad but preserved for backwards compatibility
+        # see https://github.com/MongoEngine/mongoengine/issues/564
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+        p2 = Person.objects().first()
+        p1.delete()
+        p2.name = "Bob Snr"
+        p2.save(upsert=None)  # default if you dont pass it
+
+        assert Person.objects.count() == 1
+
+    def test_save_upsert_raises_value_error_when_upsert_and_save_condition_set(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+
+        p1 = Person(name="Wilson Snr")
+        p1.save()
+        p1.name = "Bob Snr"
+        with pytest.raises(ValueError):
+            p1.save(save_condition={}, upsert=True)
+
     def test_can_save_if_not_included(self):
         class EmbeddedDoc(EmbeddedDocument):
             pass
