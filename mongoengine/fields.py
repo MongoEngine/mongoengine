@@ -1089,12 +1089,12 @@ class DictField(ComplexBaseField):
         return super().prepare_query_value(op, value)
 
     def to_python(self, value):
+        if value is None:
+            return None
         to_python = getattr(self.field, "to_python", None)
-        return (
-            {k: to_python(v) for k, v in value.items()}
-            if to_python and value
-            else value or None
-        )
+        if not to_python or not value:
+            return value
+        return {k: to_python(v) for k, v in value.items()}
 
 
 class MapField(DictField):
