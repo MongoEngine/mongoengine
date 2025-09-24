@@ -6,8 +6,8 @@ MongoEngine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Bastien Gerard (http://github.com/bagerard)
 
-.. image:: https://travis-ci.org/MongoEngine/mongoengine.svg?branch=master
-  :target: https://travis-ci.org/MongoEngine/mongoengine
+.. image:: https://github.com/MongoEngine/mongoengine/actions/workflows/github-actions.yml/badge.svg?branch=master
+  :target: https://github.com/MongoEngine/mongoengine/actions
 
 .. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
   :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
@@ -35,10 +35,10 @@ an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v3.6, v4.0, v4.4, v5.0, v6.0, v7.0 and v8.0. Future versions
-should be supported as well, but aren't actively tested at the moment. Make
-sure to open an issue or submit a pull request if you experience any problems
-with a more recent MongoDB versions.
+MongoEngine is currently tested against MongoDB v4.4, v5.0, v6.0, v7.0 and
+v8.0. Future versions should be supported as well, but aren't actively tested
+at the moment. Make sure to open an issue or submit a pull request if you
+experience any problems with a more recent MongoDB versions.
 
 Installation
 ============

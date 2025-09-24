@@ -29,7 +29,7 @@ Python3 codebase
 Since 0.20, the codebase is exclusively Python 3.
 
 Earlier versions were exclusively Python2, and were relying on 2to3 to support Python3 installs.
-Travis runs the tests against the main Python 3.x versions.
+Github Actions runs the tests against the main Python 3.x versions.
 
 
 Style Guide
@@ -65,7 +65,7 @@ You can also run all the checks with ``pre-commit run -a``, this is what is used
 Testing
 -------
 
-All tests are run on `Travis <http://travis-ci.org/MongoEngine/mongoengine>`_
+All tests are run on `Github Actions <https://github.com/MongoEngine/mongoengine/actions>`_
 and any pull requests are automatically tested. Any pull requests without
 tests will take longer to be integrated and might be refused.
 
@@ -87,7 +87,7 @@ General Guidelines
 - Ensure tests pass on all supported Python, PyMongo, and MongoDB versions.
   You can test various Python and PyMongo versions locally by executing
   ``tox``. For different MongoDB versions, you can rely on our automated
-  Travis tests.
+  Github Actions tests.
 - Add enhancements or problematic bug fixes to docs/changelog.rst.
 - Add yourself to AUTHORS :)
 
