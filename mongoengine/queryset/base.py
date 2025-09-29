@@ -2104,7 +2104,7 @@ class BaseQuerySet:
         return await get_async_collection(collection_name, alias)
 
     async def _async_cursor(self):
-        """Return an AsyncIOMotor cursor object for this queryset."""
+        """Return an async cursor object for this queryset."""
         # Note: Unlike sync version, we can't cache async cursors as easily
         # because they need to be created in async context
         from mongoengine.connection import DEFAULT_CONNECTION_NAME
@@ -2178,7 +2178,7 @@ class BaseQuerySet:
         finally:
             # Close cursor to free resources
             if hasattr(cursor, "close"):
-                # For AsyncIOMotor cursor, close() is a coroutine
+                # For async cursor, close() is a coroutine
                 import asyncio
 
                 if asyncio.iscoroutinefunction(cursor.close):
@@ -2414,8 +2414,8 @@ class BaseQuerySet:
         :param load_bulk (optional): If True returns the list of document
             instances
         :param write_concern: Extra keyword arguments are passed down to
-                :meth:`~motor.motor_asyncio.AsyncIOMotorCollection.insert_one`
-                or :meth:`~motor.motor_asyncio.AsyncIOMotorCollection.insert_many`
+                :meth:`~pymongo.asynchronous.collection.AsyncCollection.insert_one`
+                or :meth:`~pymongo.asynchronous.collection.AsyncCollection.insert_many`
                 which will be used as options for the resultant
                 ``getLastError`` command.  For example,
                 ``insert(..., {w: 2, fsync: True})`` will wait until at least
