@@ -2405,6 +2405,112 @@ class BaseQuerySet:
         doc = self._document(**kwargs)
         return await doc.async_save(force_insert=True)
 
+    async def async_insert(
+        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+    ):
+        """Bulk insert documents asynchronously.
+
+        :param doc_or_docs: a document or list of documents to be inserted
+        :param load_bulk (optional): If True returns the list of document
+            instances
+        :param write_concern: Extra keyword arguments are passed down to
+                :meth:`~motor.motor_asyncio.AsyncIOMotorCollection.insert_one`
+                or :meth:`~motor.motor_asyncio.AsyncIOMotorCollection.insert_many`
+                which will be used as options for the resultant
+                ``getLastError`` command.  For example,
+                ``insert(..., {w: 2, fsync: True})`` will wait until at least
+                two servers have recorded the write and will force an fsync on
+                each server being written to.
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
+
+        By default returns document instances, set ``load_bulk`` to False to
+        return just ``ObjectIds``
+        """
+        from mongoengine.async_utils import _get_async_session
+        from mongoengine.connection import DEFAULT_CONNECTION_NAME
+
+        alias = self._document._meta.get("db_alias", DEFAULT_CONNECTION_NAME)
+        ensure_async_connection(alias)
+
+        Document = _import_class("Document")
+        if write_concern is None:
+            write_concern = {}
+
+        docs = doc_or_docs
+        return_one = False
+        if isinstance(docs, Document) or issubclass(docs.__class__, Document):
+            return_one = True
+            docs = [docs]
+
+        for doc in docs:
+            if not isinstance(doc, self._document):
+                msg = "Some documents inserted aren't instances of %s" % str(
+                    self._document
+                )
+                raise OperationError(msg)
+            if doc.pk and not doc._created:
+                msg = "Some documents have ObjectIds, use doc.update() instead"
+                raise OperationError(msg)
+
+        signal_kwargs = signal_kwargs or {}
+        signals.pre_bulk_insert.send(self._document, documents=docs, **signal_kwargs)
+
+        raw = [doc.to_mongo() for doc in docs]
+        collection = await self._async_get_collection()
+
+        # Apply write concern if provided
+        if write_concern:
+            collection = collection.with_options(write_concern=write_concern)
+
+        session = await _get_async_session()
+
+        try:
+            if return_one:
+                raw = raw[0]
+                inserted_result = await collection.insert_one(raw, session=session)
+                ids = [inserted_result.inserted_id]
+            else:
+                inserted_result = await collection.insert_many(raw, session=session)
+                ids = inserted_result.inserted_ids
+
+        except pymongo.errors.DuplicateKeyError as err:
+            message = "Could not save document (%s)"
+            raise NotUniqueError(message % err)
+        except pymongo.errors.BulkWriteError as err:
+            # inserting documents that already have an _id field will
+            # give huge performance debt or raise
+            message = "Bulk write error: (%s)"
+            raise BulkWriteError(message % err.details)
+        except pymongo.errors.OperationFailure as err:
+            message = "Could not save document (%s)"
+            if re.match("^E1100[01] duplicate key", str(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
+                message = "Tried to save duplicate unique keys (%s)"
+                raise NotUniqueError(message % err)
+            raise OperationError(message % err)
+
+        # Apply inserted_ids to documents
+        for doc, doc_id in zip(docs, ids):
+            doc.pk = doc_id
+
+        if not load_bulk:
+            signals.post_bulk_insert.send(
+                self._document, documents=docs, loaded=False, **signal_kwargs
+            )
+            return ids[0] if return_one else ids
+
+        # Use async_in_bulk to fetch the documents
+        documents = await self.async_in_bulk(ids)
+        results = [documents.get(obj_id) for obj_id in ids]
+
+        signals.post_bulk_insert.send(
+            self._document, documents=results, loaded=True, **signal_kwargs
+        )
+
+        return results[0] if return_one else results
+
     async def async_update(
         self, upsert=False, multi=True, write_concern=None, **update
     ):
