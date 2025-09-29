@@ -11,6 +11,7 @@ from bson.code import Code
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
 from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
 
 from mongoengine import signals
 from mongoengine.async_utils import (
@@ -2461,6 +2462,12 @@ class BaseQuerySet:
 
         # Apply write concern if provided
         if write_concern:
+            # Convert dict to WriteConcern object if needed
+            if isinstance(write_concern, dict):
+                # Merge with existing write concern
+                combined_concerns = dict(collection.write_concern.document.items())
+                combined_concerns.update(write_concern)
+                write_concern = WriteConcern(**combined_concerns)
             collection = collection.with_options(write_concern=write_concern)
 
         session = await _get_async_session()
