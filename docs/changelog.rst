@@ -17,6 +17,7 @@ Development
 - BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
 - Fix use of $geoNear or $collStats in aggregate #2493
+- Fix use of $search or $vectorSearch in aggregate #2878
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
 - BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
