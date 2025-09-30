@@ -303,6 +303,23 @@ class BaseQuerySet:
             result = None
         return result
 
+    def last(self):
+        """Retrieve the latest object matching the query."""
+        if not self._ordering:
+            raise OperationError(
+                "Cannot use `last()` without ordering. Use `order_by()` on the queryset first."
+            )
+
+        queryset = self.clone()
+        if self._none or self._empty:
+            return None
+
+        try:
+            result = queryset[self.count() - 1]
+        except IndexError:
+            result = None
+        return result
+
     def insert(
         self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
     ):
