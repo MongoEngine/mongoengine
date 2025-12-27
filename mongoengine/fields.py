@@ -140,7 +140,7 @@ class StringField(BaseField):
             pass
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, str):
             self.error("StringField only accepts string values")
 
@@ -212,7 +212,7 @@ class URLField(StringField):
         self.schemes = schemes or self._URL_SCHEMES
         super().__init__(**kwargs)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         # Check first if the scheme is valid
         scheme = value.split("://")[0].lower()
         if scheme not in self.schemes:
@@ -301,7 +301,7 @@ class EmailField(StringField):
 
         return False
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         super().validate(value)
 
         if "@" not in value:
@@ -351,7 +351,7 @@ class IntField(BaseField):
             pass
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         try:
             value = int(value)
         except (TypeError, ValueError):
@@ -389,7 +389,7 @@ class FloatField(BaseField):
             pass
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if isinstance(value, int):
             try:
                 value = float(value)
@@ -480,7 +480,7 @@ class DecimalField(BaseField):
             return str(self.to_python(value))
         return float(self.to_python(value))
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, decimal.Decimal):
             if not isinstance(value, str):
                 value = str(value)
@@ -511,7 +511,7 @@ class BooleanField(BaseField):
             pass
         return value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, bool):
             self.error("BooleanField only accepts boolean values")
 
@@ -532,7 +532,7 @@ class DateTimeField(BaseField):
       need accurate microsecond support.
     """
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         new_value = self.to_mongo(value)
         if not isinstance(new_value, (datetime.datetime, datetime.date)):
             self.error('cannot parse date "%s"' % value)
@@ -668,7 +668,7 @@ class ComplexDateTimeField(StringField):
         stored in MongoDB). This is the reverse function of
         `_convert_from_string`.
 
-        >>> a = datetime(2011, 6, 8, 20, 26, 24, 92284)
+        >>> a = datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         >>> ComplexDateTimeField()._convert_from_datetime(a)
         '2011,06,08,20,26,24,092284'
         """
@@ -710,7 +710,7 @@ class ComplexDateTimeField(StringField):
             else:
                 instance._data[self.name] = value
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         value = self.to_python(value)
         if not isinstance(value, datetime.datetime):
             self.error("Only datetime objects may used in a ComplexDateTimeField")
@@ -799,6 +799,7 @@ class EmbeddedDocumentField(BaseField):
             field = doc_type._fields.get(member_name)
             if field:
                 return field
+        return None
 
     def prepare_query_value(self, op, value):
         if value is not None and not isinstance(value, self.document_type):
@@ -958,7 +959,7 @@ class ListField(ComplexBaseField):
                                                      pk=val['_ref'].id)
         return super().__get__(instance, owner)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used."""
         if not isinstance(value, (list, tuple, BaseQuerySet)):
             self.error("Only lists and tuples may be used in a list field")
@@ -1067,7 +1068,7 @@ class DictField(ComplexBaseField):
         kwargs.setdefault("default", dict)
         super().__init__(*args, field=field, **kwargs)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that a list of valid fields is being used."""
         if isinstance(value, (Document,)):
             value = value.to_mongo().to_dict()
@@ -1226,7 +1227,7 @@ class ReferenceField(BaseField):
         super().prepare_query_value(op, value)
         return self.to_mongo(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
 
         if not isinstance(value, (self.document_type, DBRef, ObjectId)):
             self.error(
@@ -1277,7 +1278,7 @@ class GenericReferenceField(BaseField):
             return LazyReference(document_type=_DocumentRegistry.get(val['_cls']), pk=val['_ref'].id, passthrough=True)
         return super().__get__(instance, owner)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, (Document, DBRef, dict, SON)):
             self.error("GenericReferences can only contain documents")
 
@@ -1343,7 +1344,7 @@ class BinaryField(BaseField):
     def to_mongo(self, value):
         return Binary(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, (bytes, Binary)):
             self.error(
                 "BinaryField only accepts instances of "
@@ -1407,7 +1408,7 @@ class EnumField(BaseField):
             kwargs["choices"] = list(self._enum_cls)  # Implicit validator
         super().__init__(**kwargs)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if isinstance(value, self._enum_cls):
             return super().validate(value)
         try:
@@ -1544,7 +1545,7 @@ class GridFSProxy:
             self._afs = gridfs.AsyncGridFS(await async_get_db(self.db_alias), self.collection_name)
         return self._afs
 
-    def get(self, grid_id=None) -> GridOut:
+    def get(self, grid_id=None) -> GridOut | None:
         if grid_id:
             self.grid_id = grid_id
 
@@ -1558,7 +1559,7 @@ class GridFSProxy:
             # File has been deleted
             return None
 
-    async def aget(self, grid_id=None) -> AsyncGridOut:
+    async def aget(self, grid_id=None) -> AsyncGridOut | None:
         if grid_id:
             self.grid_id = grid_id
 
@@ -1768,7 +1769,7 @@ class FileField(BaseField):
                 value, collection_name=self.collection_name, db_alias=self.db_alias
             )
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if value.grid_id is not None:
             if not isinstance(value, self.proxy_class):
                 self.error("FileField only accepts GridFSProxy values")
@@ -2324,7 +2325,7 @@ class UUIDField(BaseField):
             return None
         return self.to_mongo(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if value is None:
             return
 
@@ -2347,7 +2348,7 @@ class GeoPointField(BaseField):
 
     _geo_index = pymongo.GEO2D
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Make sure that a geo-value is of type (x, y)"""
         if not isinstance(value, (list, tuple)):
             self.error("GeoPointField can only accept tuples or lists of (x, y)")
@@ -2511,7 +2512,7 @@ class Decimal128Field(BaseField):
             return None
         return self.to_mongo(value).to_decimal()
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         if not isinstance(value, Decimal128):
             try:
                 value = Decimal128(value)

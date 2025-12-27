@@ -1,4 +1,3 @@
-import contextlib
 import operator
 import threading
 import weakref
@@ -450,7 +449,7 @@ class ComplexBaseField(BaseField):
             ]
         return value_dict
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """If field is provided ensure the value is valid."""
         errors = {}
         if self.field:
@@ -512,7 +511,7 @@ class ObjectIdField(BaseField):
             return value
         return self.to_mongo(value)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         try:
             ObjectId(str(value))
         except Exception:
@@ -535,7 +534,7 @@ class GeoJsonBaseField(BaseField):
             self._geo_index = False
         super().__init__(*args, **kwargs)
 
-    def validate(self, value):
+    def validate(self, value, clean=True):
         """Validate the GeoJson object based on its type."""
         if isinstance(value, dict):
             if set(value.keys()) == {"type", "coordinates"}:
