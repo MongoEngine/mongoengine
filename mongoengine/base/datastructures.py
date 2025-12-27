@@ -41,7 +41,6 @@ def mark_key_as_changed_wrapper(parent_method):
 class BaseDict(dict):
     """A special dict so we can watch any changes."""
 
-    _dereferenced = False
     _instance = None
     _name = None
 
@@ -78,7 +77,6 @@ class BaseDict(dict):
 
     def __getstate__(self):
         self.instance = None
-        self._dereferenced = False
         return self
 
     def __setstate__(self, state):
@@ -105,7 +103,6 @@ class BaseDict(dict):
 class BaseList(list):
     """A special list so we can watch any changes."""
 
-    _dereferenced = False
     _instance = None
     _name = None
 
@@ -120,6 +117,14 @@ class BaseList(list):
 
         self._name = name
         super().__init__(list_items)
+
+    def __await__(self):
+        """Allow safely using `await` on BaseList (returns self immediately)."""
+
+        async def _return_self():
+            return self
+
+        return _return_self().__await__()
 
     def __getitem__(self, key):
         # change index to positive value because MongoDB does not support negative one
@@ -152,7 +157,6 @@ class BaseList(list):
 
     def __getstate__(self):
         self.instance = None
-        self._dereferenced = False
         return self
 
     def __setstate__(self, state):
@@ -314,6 +318,17 @@ class EmbeddedDocumentList(BaseList):
         """
         self._instance.save(*args, **kwargs)
 
+    async def asave(self, *args, **kwargs):
+        """
+        Saves the ancestor document.
+
+        :param args: Arguments passed up to the ancestor Document's save
+         method.
+        :param kwargs: Keyword arguments passed up to the ancestor Document's
+         save method.
+        """
+        await self._instance.asave(*args, **kwargs)
+
     def delete(self):
         """
         Deletes the embedded documents from the database.
@@ -422,7 +437,6 @@ class StrictDict:
         )
         allowed_keys = frozenset(allowed_keys_tuple)
         if allowed_keys not in cls._classes:
-
             class SpecificStrictDict(cls):
                 __slots__ = allowed_keys_tuple
 
@@ -436,11 +450,20 @@ class StrictDict:
 
 
 class LazyReference(DBRef):
-    __slots__ = ("_cached_doc", "passthrough", "document_type")
+    __slots__ = ("_cached_doc", "passthrough", "document_type", "_async")
 
     def fetch(self, force=False):
+        self.document_type._get_db()
         if not self._cached_doc or force:
             self._cached_doc = self.document_type.objects.get(pk=self.pk)
+            if not self._cached_doc:
+                raise DoesNotExist("Trying to dereference unknown document %s" % (self))
+        return self._cached_doc
+
+    async def afetch(self, force=False):
+        await self.document_type._async_get_db()
+        if not self._cached_doc or force:
+            self._cached_doc = await self.document_type.aobjects.get(pk=self.pk)
             if not self._cached_doc:
                 raise DoesNotExist("Trying to dereference unknown document %s" % (self))
         return self._cached_doc
@@ -449,13 +472,23 @@ class LazyReference(DBRef):
     def pk(self):
         return self.id
 
-    def __init__(self, document_type, pk, cached_doc=None, passthrough=False):
+    @property
+    def value(self):
+        return {"_ref": DBRef(self.document_type._get_collection_name(), self.id), "_cls": self.document_type.__name__}
+
+    def to_dbref(self):
+        return DBRef(self.document_type._get_collection_name(), self.id)
+
+    def __init__(self, document_type, pk, cached_doc=None, passthrough=False, _async=False):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough
+        self._async = _async
         super().__init__(self.document_type._get_collection_name(), pk)
 
     def __getitem__(self, name):
+        if not object.__getattribute__(self, "passthrough"):
+            raise AttributeError()
         if not self.passthrough:
             raise KeyError()
         document = self.fetch()
@@ -464,7 +497,9 @@ class LazyReference(DBRef):
     def __getattr__(self, name):
         if not object.__getattribute__(self, "passthrough"):
             raise AttributeError()
-        document = self.fetch()
+        if not self._cached_doc:
+            self.fetch()
+        document = self._cached_doc
         try:
             return document[name]
         except KeyError:

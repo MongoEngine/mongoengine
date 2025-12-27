@@ -4,17 +4,11 @@ import warnings
 from mongoengine.base.common import _DocumentRegistry
 from mongoengine.base.fields import (
     BaseField,
-    ComplexBaseField,
-    ObjectIdField,
+    ObjectIdField, ComplexBaseField,
 )
+from mongoengine.base.queryset import QuerySetManager, DO_NOTHING
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidDocumentError
-from mongoengine.queryset import (
-    DO_NOTHING,
-    DoesNotExist,
-    MultipleObjectsReturned,
-    QuerySetManager,
-)
+from mongoengine.errors import InvalidDocumentError, DoesNotExist, MultipleObjectsReturned
 
 __all__ = ("DocumentMetaclass", "TopLevelDocumentMetaclass")
 
@@ -91,7 +85,7 @@ class DocumentMetaclass(type):
 
             # Count names to ensure no db_field redefinitions
             field_names[attr_value.db_field] = (
-                field_names.get(attr_value.db_field, 0) + 1
+                    field_names.get(attr_value.db_field, 0) + 1
             )
 
         # Ensure no duplicate db_fields
@@ -121,7 +115,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         for base in flattened_bases:
             if not getattr(base, "_is_base_cls", True) and not getattr(
-                base, "_meta", {}
+                    base, "_meta", {}
             ).get("abstract", True):
                 # Collate hierarchy for _cls and _subclasses
                 class_name.append(base.__name__)
@@ -162,7 +156,6 @@ class DocumentMetaclass(type):
             Document,
             EmbeddedDocument,
             DictField,
-            CachedReferenceField,
         ) = mcs._import_classes()
 
         if issubclass(new_class, Document):
@@ -177,23 +170,12 @@ class DocumentMetaclass(type):
             if f.owner_document is None:
                 f.owner_document = new_class
             delete_rule = getattr(f, "reverse_delete_rule", DO_NOTHING)
-            if isinstance(f, CachedReferenceField):
-                if issubclass(new_class, EmbeddedDocument):
-                    raise InvalidDocumentError(
-                        "CachedReferenceFields is not allowed in EmbeddedDocuments"
-                    )
-
-                if f.auto_sync:
-                    f.start_listener()
-
-                f.document_type._cached_reference_fields.append(f)
-
             if isinstance(f, ComplexBaseField) and hasattr(f, "field"):
                 delete_rule = getattr(f.field, "reverse_delete_rule", DO_NOTHING)
                 if isinstance(f, DictField) and delete_rule != DO_NOTHING:
                     msg = (
-                        "Reverse delete rules are not supported "
-                        "for %s (field: %s)" % (field.__class__.__name__, field.name)
+                            "Reverse delete rules are not supported "
+                            "for %s (field: %s)" % (field.__class__.__name__, field.name)
                     )
                     raise InvalidDocumentError(msg)
 
@@ -202,16 +184,16 @@ class DocumentMetaclass(type):
             if delete_rule != DO_NOTHING:
                 if issubclass(new_class, EmbeddedDocument):
                     msg = (
-                        "Reverse delete rules are not supported for "
-                        "EmbeddedDocuments (field: %s)" % field.name
+                            "Reverse delete rules are not supported for "
+                            "EmbeddedDocuments (field: %s)" % field.name
                     )
                     raise InvalidDocumentError(msg)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
             if (
-                field.name
-                and hasattr(Document, field.name)
-                and EmbeddedDocument not in new_class.mro()
+                    field.name
+                    and hasattr(Document, field.name)
+                    and EmbeddedDocument not in new_class.mro()
             ):
                 msg = "%s is a document method and not a valid field name" % field.name
                 raise InvalidDocumentError(msg)
@@ -240,8 +222,7 @@ class DocumentMetaclass(type):
         Document = _import_class("Document")
         EmbeddedDocument = _import_class("EmbeddedDocument")
         DictField = _import_class("DictField")
-        CachedReferenceField = _import_class("CachedReferenceField")
-        return Document, EmbeddedDocument, DictField, CachedReferenceField
+        return Document, EmbeddedDocument, DictField
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -302,9 +283,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Prevent classes setting collection different to their parents
         # If parent wasn't an abstract class
         if (
-            parent_doc_cls
-            and "collection" in attrs.get("_meta", {})
-            and not parent_doc_cls._meta.get("abstract", True)
+                parent_doc_cls
+                and "collection" in attrs.get("_meta", {})
+                and not parent_doc_cls._meta.get("abstract", True)
         ):
             msg = "Trying to set a collection on a subclass (%s)" % name
             warnings.warn(msg, SyntaxWarning, stacklevel=2)
@@ -342,9 +323,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             b._meta.get("abstract") for b in flattened_bases if hasattr(b, "_meta")
         )
         if (
-            not simple_class
-            and meta["allow_inheritance"] is False
-            and not meta["abstract"]
+                not simple_class
+                and meta["allow_inheritance"] is False
+                and not meta["abstract"]
         ):
             raise ValueError(
                 "Only direct subclasses of Document may set "
@@ -376,8 +357,14 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Provide a default queryset unless exists or one has been set
         if "objects" not in dir(new_class):
             new_class.objects = QuerySetManager()
+        if "aobjects" not in dir(new_class):
+            from mongoengine.asynchronous import AsyncQuerySet
+            new_class.aobjects = QuerySetManager(default=AsyncQuerySet)
 
         # Validate the fields and set primary key if needed
+        ListField = _import_class("ListField")
+        GenericReferenceField = _import_class("GenericReferenceField")
+        ReferenceField = _import_class("ReferenceField")
         for field_name, field in new_class._fields.items():
             if field.primary_key:
                 # Ensure only one primary key is set
@@ -389,6 +376,22 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 if not current_pk:
                     new_class._meta["id_field"] = field_name
                     new_class.id = field
+            if isinstance(field, GenericReferenceField) and field.choices:
+                resolved = []
+                for ch in field.choices:
+                    if isinstance(ch, str) and ch.lower() == "self":
+                        resolved.append(new_class)
+                    else:
+                        resolved.append(ch)
+                field.choices = tuple(resolved)
+            if isinstance(field, ListField) and isinstance(field.field, GenericReferenceField):
+                resolved = []
+                for ch in field.field.choices:
+                    if isinstance(ch, str) and ch.lower() == "self":
+                        resolved.append(new_class)
+                    else:
+                        resolved.append(ch)
+                field.field.choices = tuple(resolved)
 
         # If the document doesn't explicitly define a primary key field, create
         # one. Make it an ObjectIdField and give it a non-clashing name ("id"

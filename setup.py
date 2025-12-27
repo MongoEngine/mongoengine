@@ -33,20 +33,21 @@ CLASSIFIERS = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-install_require = ["pymongo>=3.12,<5.0"]
+install_require = ["pymongo>=4.13,<5.0"]
 tests_require = [
     "pytest",
+    "pytest-asyncio",
     "pytest-cov",
     "coverage",
     "blinker",
@@ -68,7 +69,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     platforms=["any"],
     classifiers=CLASSIFIERS,
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     install_requires=install_require,
     extras_require={
         "test": tests_require,

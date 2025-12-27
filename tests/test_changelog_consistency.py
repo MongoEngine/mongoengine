@@ -10,7 +10,7 @@ def test_package_version_described_in_changelog():
     version_str = get_version()
     changelog_content = Path(os.path.join(DOCS_DIR, "changelog.rst")).read_text()
     assert (
-        version_str in changelog_content
+            version_str in changelog_content
     ), "Version in __init__.py not present in changelog"
 
 

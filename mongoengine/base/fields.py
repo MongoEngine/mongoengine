@@ -6,29 +6,15 @@ import weakref
 import pymongo
 from bson import SON, DBRef, ObjectId
 
-from mongoengine.base.common import UPDATE_OPERATORS
+from mongoengine.base.common import UPDATE_OPERATORS, _DocumentRegistry
 from mongoengine.base.datastructures import (
     BaseDict,
-    BaseList,
-    EmbeddedDocumentList,
+    BaseList, EmbeddedDocumentList,
 )
 from mongoengine.common import _import_class
-from mongoengine.errors import DeprecatedError, ValidationError
+from mongoengine.errors import DeprecatedError, ValidationError, NotRegistered
 
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
-
-
-@contextlib.contextmanager
-def _no_dereference_for_fields(*fields):
-    """Context manager for temporarily disabling a Field's auto-dereferencing
-    (meant to be used from no_dereference context manager)"""
-    try:
-        for field in fields:
-            field._incr_no_dereference_context()
-        yield None
-    finally:
-        for field in fields:
-            field._decr_no_dereference_context()
 
 
 class BaseField:
@@ -48,18 +34,18 @@ class BaseField:
     auto_creation_counter = -1
 
     def __init__(
-        self,
-        db_field=None,
-        required=False,
-        default=None,
-        unique=False,
-        unique_with=None,
-        primary_key=False,
-        validation=None,
-        choices=None,
-        null=False,
-        sparse=False,
-        **kwargs,
+            self,
+            db_field=None,
+            required=False,
+            default=None,
+            unique=False,
+            unique_with=None,
+            primary_key=False,
+            validation=None,
+            choices=None,
+            null=False,
+            sparse=False,
+            **kwargs,
     ):
         """
         :param db_field: The database field to store this field in
@@ -100,17 +86,15 @@ class BaseField:
         self.sparse = sparse
         self._owner_document = None
 
-        self.__auto_dereference = True
-
         # Make sure db_field is a string (if it's explicitly defined).
         if self.db_field is not None and not isinstance(self.db_field, str):
             raise TypeError("db_field should be a string.")
 
         # Make sure db_field doesn't contain any forbidden characters.
         if isinstance(self.db_field, str) and (
-            "." in self.db_field
-            or "\0" in self.db_field
-            or self.db_field.startswith("$")
+                "." in self.db_field
+                or "\0" in self.db_field
+                or self.db_field.startswith("$")
         ):
             raise ValueError(
                 'field names cannot contain dots (".") or null characters '
@@ -137,33 +121,6 @@ class BaseField:
             self.creation_counter = BaseField.creation_counter
             BaseField.creation_counter += 1
 
-    def set_auto_dereferencing(self, value):
-        self.__auto_dereference = value
-
-    @property
-    def _no_dereference_context_local(self):
-        if not hasattr(self._thread_local_storage, "no_dereference_context"):
-            self._thread_local_storage.no_dereference_context = 0
-        return self._thread_local_storage.no_dereference_context
-
-    @property
-    def _no_dereference_context_is_set(self):
-        return self._no_dereference_context_local > 0
-
-    def _incr_no_dereference_context(self):
-        self._thread_local_storage.no_dereference_context = (
-            self._no_dereference_context_local + 1
-        )
-
-    def _decr_no_dereference_context(self):
-        self._thread_local_storage.no_dereference_context = (
-            self._no_dereference_context_local - 1
-        )
-
-    @property
-    def _auto_dereference(self):
-        return self.__auto_dereference and not self._no_dereference_context_is_set
-
     def __get__(self, instance, owner):
         """Descriptor for retrieving a value from a field in a document."""
         if instance is None:
@@ -188,8 +145,8 @@ class BaseField:
         if instance._initialised:
             try:
                 value_has_changed = (
-                    self.name not in instance._data
-                    or instance._data[self.name] != value
+                        self.name not in instance._data
+                        or instance._data[self.name] != value
                 )
                 if value_has_changed:
                     instance._mark_as_changed(self.name)
@@ -247,8 +204,19 @@ class BaseField:
     def _validate_choices(self, value):
         Document = _import_class("Document")
         EmbeddedDocument = _import_class("EmbeddedDocument")
+        GenericReferenceField = _import_class("GenericReferenceField")
 
-        choice_list = self.choices
+        choice_list = []
+        for choice in self.choices:
+            if isinstance(self, GenericReferenceField) and isinstance(choice, str):
+                try:
+                    choice_list.append(_DocumentRegistry.get(choice))
+                except NotRegistered:
+                    self.error(f"{choice} has not been registered in the document registry.")
+            else:
+                choice_list.append(choice)
+        choice_list = tuple(choice_list)
+
         if isinstance(next(iter(choice_list)), (list, tuple)):
             # next(iter) is useful for sets
             choice_list = [k for k, _ in choice_list]
@@ -256,12 +224,12 @@ class BaseField:
         # Choices which are other types of Documents
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
-                self.error("Value must be an instance of %s" % (choice_list))
+                self.error("Value must be an instance of %s" % (choice_list,))
         # Choices which are types other than Documents
         else:
             values = value if isinstance(value, (list, tuple)) else [value]
             if len(set(values) - set(choice_list)):
-                self.error("Value must be one of %s" % str(choice_list))
+                self.error("Value must be one of %s" % str(choice_list, ))
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -319,17 +287,6 @@ class ComplexBaseField(BaseField):
         self.field = field
         super().__init__(**kwargs)
 
-    @staticmethod
-    def _lazy_load_refs(instance, name, ref_values, *, max_depth):
-        _dereference = _import_class("DeReference")()
-        documents = _dereference(
-            ref_values,
-            max_depth=max_depth,
-            instance=instance,
-            name=name,
-        )
-        return documents
-
     def __set__(self, instance, value):
         # Some fields e.g EnumField are converted upon __set__
         # So it is fair to mimic the same behavior when using e.g ListField(EnumField)
@@ -343,63 +300,31 @@ class ComplexBaseField(BaseField):
         return super().__set__(instance, value)
 
     def __get__(self, instance, owner):
-        """Descriptor to automatically dereference references."""
         if instance is None:
-            # Document class being used rather than a document object
             return self
 
-        ReferenceField = _import_class("ReferenceField")
-        GenericReferenceField = _import_class("GenericReferenceField")
-        EmbeddedDocumentListField = _import_class("EmbeddedDocumentListField")
+        EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
 
-        auto_dereference = instance._fields[self.name]._auto_dereference
+        result = super().__get__(instance, owner)
 
-        dereference = auto_dereference and (
-            self.field is None
-            or isinstance(self.field, (GenericReferenceField, ReferenceField))
-        )
+        # Wrap into BaseList / BaseDict
+        if isinstance(result, (list, tuple)):
+            if isinstance(self.field, EmbeddedDocumentField):
+                result = EmbeddedDocumentList(result, instance, self.name)
+                instance._data[self.name] = result
+            elif not isinstance(result, BaseList):
+                result = BaseList(result, instance, self.name)
+                instance._data[self.name] = result
+        elif isinstance(result, dict):
+            if '_cls' in result:
+                cls_ = _DocumentRegistry.get(result['_cls'].split(".")[-1])
+                result = cls_._from_son(result)
+                instance._data[self.name] = result
+            elif not isinstance(result, BaseDict):
+                result = BaseDict(result, instance, self.name)
+                instance._data[self.name] = result
 
-        if (
-            instance._initialised
-            and dereference
-            and instance._data.get(self.name)
-            and not getattr(instance._data[self.name], "_dereferenced", False)
-        ):
-            ref_values = instance._data.get(self.name)
-            instance._data[self.name] = self._lazy_load_refs(
-                ref_values=ref_values, instance=instance, name=self.name, max_depth=1
-            )
-            if hasattr(instance._data[self.name], "_dereferenced"):
-                instance._data[self.name]._dereferenced = True
-
-        value = super().__get__(instance, owner)
-
-        # Convert lists / values so we can watch for any changes on them
-        if isinstance(value, (list, tuple)):
-            if issubclass(type(self), EmbeddedDocumentListField) and not isinstance(
-                value, EmbeddedDocumentList
-            ):
-                value = EmbeddedDocumentList(value, instance, self.name)
-            elif not isinstance(value, BaseList):
-                value = BaseList(value, instance, self.name)
-            instance._data[self.name] = value
-        elif isinstance(value, dict) and not isinstance(value, BaseDict):
-            value = BaseDict(value, instance, self.name)
-            instance._data[self.name] = value
-
-        if (
-            auto_dereference
-            and instance._initialised
-            and isinstance(value, (BaseList, BaseDict))
-            and not value._dereferenced
-        ):
-            value = self._lazy_load_refs(
-                ref_values=value, instance=instance, name=self.name, max_depth=1
-            )
-            value._dereferenced = True
-            instance._data[self.name] = value
-
-        return value
+        return result
 
     def to_python(self, value):
         """Convert a MongoDB-compatible type to a Python type."""
@@ -423,7 +348,6 @@ class ComplexBaseField(BaseField):
                 return value
 
         if self.field:
-            self.field.set_auto_dereferencing(self._auto_dereference)
             value_dict = {
                 key: self.field.to_python(item) for key, item in value.items()
             }
@@ -442,6 +366,12 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, "to_python"):
                     value_dict[k] = v.to_python()
+                elif isinstance(v, dict) and v.get('_cls') and not '_ref' in v:
+                    try:
+                        cls_ = _DocumentRegistry.get(v.get('_cls').split(".")[-1])
+                        value_dict[k] = cls_._from_son(v)
+                    except NotRegistered:
+                        value_dict[k] = self.to_python(v)
                 else:
                     value_dict[k] = self.to_python(v)
 
@@ -462,7 +392,7 @@ class ComplexBaseField(BaseField):
 
         if hasattr(value, "to_mongo"):
             if isinstance(value, Document):
-                return GenericReferenceField().to_mongo(value)
+                return GenericReferenceField(choices=(type(value),)).to_mongo(value)
             cls = value.__class__
             val = value.to_mongo(use_db_field, fields)
             # If it's a document that is not inherited add _cls
@@ -500,7 +430,7 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, "_meta", {})
                     allow_inheritance = meta.get("allow_inheritance")
                     if not allow_inheritance:
-                        value_dict[k] = GenericReferenceField().to_mongo(v)
+                        value_dict[k] = GenericReferenceField(choices=(type(v),)).to_mongo(v)
                     else:
                         collection = v._get_collection_name()
                         value_dict[k] = DBRef(collection, v.pk)
@@ -679,7 +609,7 @@ class GeoJsonBaseField(BaseField):
         elif not len(value) == 2:
             return "Value (%s) must be a two-dimensional point" % repr(value)
         elif not isinstance(value[0], (float, int)) or not isinstance(
-            value[1], (float, int)
+                value[1], (float, int)
         ):
             return "Both values (%s) in point must be float or int" % repr(value)
 

@@ -30,3 +30,4 @@ class NonOrderedList(list):
             # Compare sorted versions of the lists
             return sorted(self) == sorted(other)
         return False
+
