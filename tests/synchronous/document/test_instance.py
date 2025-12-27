@@ -3226,6 +3226,110 @@ class TestDocumentInstance(MongoDBTestCase):
         g0 = Group.objects.first()
         assert "hello - default" == g0.name
 
+    def test_switch_multiple_db_and_multiple_collection_same_time(self):
+        register_connection("testdb-a", "mongoenginetest2")
+        register_connection("testdb-b", "mongoenginetest2")
+
+        class User(Document):
+            name = StringField()
+
+        class Post(Document):
+            title = StringField()
+
+        # Clean default + switched locations
+        User.drop_collection()
+        Post.drop_collection()
+
+        with switch_db(User, "testdb-a"):
+            with switch_collection(User, "users_alt"):
+                User.drop_collection()
+
+        with switch_db(Post, "testdb-b"):
+            with switch_collection(Post, "posts_alt"):
+                Post.drop_collection()
+
+        # Seed default (default DB + default collection)
+        User(name="user - default").save()
+        Post(title="post - default").save()
+        assert 1 == User.objects.count()
+        assert 1 == Post.objects.count()
+
+        # Switch instances to db+collection and save there
+        u0 = User.objects.first()
+        p0 = Post.objects.first()
+
+        u0.switch_db("testdb-a")
+        u0.switch_collection("users_alt")
+        u0.name = "user - testdb-a/users_alt"
+        u0.save()
+
+        p0.switch_db("testdb-b")
+        p0.switch_collection("posts_alt")
+        p0.title = "post - testdb-b/posts_alt"
+        p0.save()
+
+        # Read back from switched db+collection (BOTH at same time)
+        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
+                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+            u = User.objects.first()
+            p = Post.objects.first()
+            assert "user - testdb-a/users_alt" == u.name
+            assert "post - testdb-b/posts_alt" == p.title
+
+        # Default still unchanged
+        u_def = User.objects.first()
+        p_def = Post.objects.first()
+        assert "user - default" == u_def.name
+        assert "post - default" == p_def.title
+
+        # Update only in switched db+collection (same object_id assumption)
+        u_def.switch_db("testdb-a")
+        u_def.switch_collection("users_alt")
+        u_def.update(set__name="user - update")
+
+        p_def.switch_db("testdb-b")
+        p_def.switch_collection("posts_alt")
+        p_def.update(set__title="post - update")
+
+        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
+                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+            u = User.objects.first()
+            p = Post.objects.first()
+            assert "user - update" == u.name
+            assert "post - update" == p.title
+
+            # cleanup switched targets only
+            User.drop_collection()
+            Post.drop_collection()
+            assert 0 == User.objects.count()
+            assert 0 == Post.objects.count()
+
+        # Default still intact after dropping switched collections
+        u_def = User.objects.first()
+        p_def = Post.objects.first()
+        assert "user - default" == u_def.name
+        assert "post - default" == p_def.title
+
+        # Delete in switched target only (same object_id assumption)
+        u_def.switch_db("testdb-a")
+        u_def.switch_collection("users_alt")
+        u_def.delete()
+
+        p_def.switch_db("testdb-b")
+        p_def.switch_collection("posts_alt")
+        p_def.delete()
+
+        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
+                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+            assert 0 == User.objects.count()
+            assert 0 == Post.objects.count()
+
+        # Default still intact
+        u_def = User.objects.first()
+        p_def = Post.objects.first()
+        assert "user - default" == u_def.name
+        assert "post - default" == p_def.title
+
     def test_load_undefined_fields(self):
         class User(Document):
             name = StringField()

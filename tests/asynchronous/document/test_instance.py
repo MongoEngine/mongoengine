@@ -3210,6 +3210,80 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         g0 = await Group.aobjects.first()
         assert "hello - default" == g0.name
 
+    async def test_switch_multiple_db_and_multiple_collection_same_time(self):
+        await async_register_connection("tenantA", "mongoenginetest2")
+        await async_register_connection("tenantB", "mongoenginetest2")
+
+        class User(Document):
+            name = StringField()
+
+        class Post(Document):
+            title = StringField()
+
+        # Clean defaults
+        await User.adrop_collection()
+        await Post.adrop_collection()
+
+        # Clean switched targets (two different db+collection combos)
+        async with switch_db(User, "tenantA"), switch_collection(User, "users_A"):
+            await User.adrop_collection()
+
+        async with switch_db(Post, "tenantB"), switch_collection(Post, "posts_B"):
+            await Post.adrop_collection()
+
+        # Seed defaults (default DB + default collections)
+        await User(name="user-default").asave()
+        await Post(title="post-default").asave()
+
+        assert 1 == await User.aobjects.count()
+        assert 1 == await Post.aobjects.count()
+
+        # Write to BOTH overrides in the SAME context block
+        async with switch_db(User, "tenantA"), switch_collection(User, "users_A"), \
+                switch_db(Post, "tenantB"), switch_collection(Post, "posts_B"):
+            await User(name="user-A").asave()
+            await Post(title="post-B").asave()
+
+            assert 1 == await User.aobjects.count()
+            assert 1 == await Post.aobjects.count()
+
+            u = await User.aobjects.first()
+            p = await Post.aobjects.first()
+            assert u.name == "user-A"
+            assert p.title == "post-B"
+
+        # Verify defaults are unchanged after leaving the block
+        u0 = await User.aobjects.first()
+        p0 = await Post.aobjects.first()
+        assert u0.name == "user-default"
+        assert p0.title == "post-default"
+
+        # Verify switched locations still have their own data (independently)
+        async with switch_db(User, "tenantA"), switch_collection(User, "users_A"):
+            assert 1 == await User.aobjects.count()
+            u = await User.aobjects.first()
+            assert u.name == "user-A"
+
+        async with switch_db(Post, "tenantB"), switch_collection(Post, "posts_B"):
+            assert 1 == await Post.aobjects.count()
+            p = await Post.aobjects.first()
+            assert p.title == "post-B"
+
+        # Cleanup only switched targets (defaults remain)
+        async with switch_db(User, "tenantA"), switch_collection(User, "users_A"):
+            await User.adrop_collection()
+            assert 0 == await User.aobjects.count()
+
+        async with switch_db(Post, "tenantB"), switch_collection(Post, "posts_B"):
+            await Post.adrop_collection()
+            assert 0 == await Post.aobjects.count()
+
+        # Defaults still intact
+        assert 1 == await User.aobjects.count()
+        assert 1 == await Post.aobjects.count()
+        assert (await User.aobjects.first()).name == "user-default"
+        assert (await Post.aobjects.first()).title == "post-default"
+
     async def test_load_undefined_fields(self):
         class User(Document):
             name = StringField()
