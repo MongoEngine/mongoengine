@@ -1346,7 +1346,7 @@ class BaseQuerySet(abc.ABC):
         # --------------------------------------------------------------
         # CASE 2: aggregation pipeline distinct
         # --------------------------------------------------------------
-        pipeline_builder = PipelineBuilder(queryset=queryset, max_depth=2)
+        pipeline_builder = PipelineBuilder(queryset=queryset)
         pipeline = pipeline_builder.build()
 
         # Detect shape of field

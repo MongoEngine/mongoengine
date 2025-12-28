@@ -1334,7 +1334,7 @@ class AsyncBaseQuerySet(abc.ABC):
         # --------------------------------------------------------------
         queryset._query = await _async_queryset_to_values(queryset._query)
 
-        pipeline_builder = PipelineBuilder(queryset=queryset, max_depth=2)
+        pipeline_builder = PipelineBuilder(queryset=queryset)
         pipeline = pipeline_builder.build()
 
         # Detect shape of field

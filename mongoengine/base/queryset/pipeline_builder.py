@@ -14,39 +14,19 @@ from collections import defaultdict
 
 
 class PipelineBuilder:
-    def __init__(self, queryset, max_depth=3):
+    def __init__(self, queryset):
         self.queryset = queryset
         self.document = queryset._document
-        self.max_depth = max_depth
         self.pipeline = []
 
-    # ======================================================================
     # PUBLIC API
-    # ======================================================================
     def build(self):
-        """
-        Build a pipeline with progressive lookup + match pushdown.
-
-        We split queryset._query into "buckets" keyed by the deref-prefix required.
-        Example:
-            - {"name": "x"} -> bucket ""
-            - {"parent.age": {"$gt":50}} -> bucket "parent"
-            - {"parent.company.n": 1} -> bucket "parent.company"
-
-        Then:
-            1) $match bucket "" (local only)
-            2) do lookups in a tree order
-            3) after each lookup stage, $match the bucket for that deref prefix
-            4) finally apply $where/$function (cannot be bucketed safely)
-            5) projection/sort/skip/limit
-        """
         mongo_query = self.queryset._query or {}
 
         # No query: keep the original behavior
         if not mongo_query:
             if self.queryset._select_related:
                 tree = self._build_related_tree(self.queryset._select_related)
-                # original lookup walk (no interleaving needed)
                 self._lookup_walk(self.document, "", tree)
 
             self._projection_stage()
@@ -103,9 +83,7 @@ class PipelineBuilder:
 
         return self.pipeline
 
-    # ======================================================================
     # STAGE BUILDERS: MATCH
-    # ======================================================================
     @staticmethod
     def _convert_where_to_function(query: dict):
         if "$where" not in query:
@@ -128,9 +106,7 @@ class PipelineBuilder:
         }
         return cleaned, function_expr
 
-    # ======================================================================
     # LOOKUP TREE
-    # ======================================================================
     @staticmethod
     def _build_related_tree(fields):
         tree = {}
@@ -161,24 +137,21 @@ class PipelineBuilder:
         Build a lookup tree using *python field names* from bucket prefixes that are
         in *db_field dotted form* (e.g. "info.target", "parent.company").
 
-        This keeps _lookup_walk_interleaved() working even when db_field != attr_name.
+        Supports safe traversal through GenericReferenceField to a common ReferenceField
+        (e.g. target.gp.age where all choices have gp -> same target doc).
         """
 
         def resolve_field_name(doc_cls, db_part: str):
-            # direct attribute name match
             if db_part in doc_cls._fields:
                 return db_part, doc_cls._fields[db_part]
-
-            # db_field match
             for name, fld in doc_cls._fields.items():
                 if getattr(fld, "db_field", None) == db_part:
                     return name, fld
-
             return None, None
 
         tree = {}
 
-        for dotted_prefix in buckets.keys():
+        for dotted_prefix in list(buckets.keys()):
             if not dotted_prefix:
                 continue
 
@@ -186,7 +159,7 @@ class PipelineBuilder:
             node = tree
             cur = self.document
 
-            for db_part in parts:
+            for idx, db_part in enumerate(parts):
                 if cur is None:
                     break
 
@@ -196,25 +169,39 @@ class PipelineBuilder:
 
                 node = node.setdefault(field_name, {})
 
-                # advance cur when prefix continues through embedded/ref
                 from mongoengine.fields import (
                     ListField, EmbeddedDocumentField, EmbeddedDocumentListField,
-                    ReferenceField, GenericReferenceField
+                    ReferenceField, GenericReferenceField,
                 )
 
                 leaf = fld
                 while isinstance(leaf, ListField):
                     leaf = leaf.field
 
+                # ReferenceField: descend into referenced doc
                 if isinstance(leaf, ReferenceField):
                     cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
                     continue
 
+                # GenericReferenceField: descend only if next part is a common ReferenceField
                 if isinstance(leaf, GenericReferenceField):
-                    # can't safely descend into concrete class here; stop
-                    cur = None
-                    continue
+                    if idx < len(parts) - 1:
+                        next_part = parts[idx + 1]
+                        common_ref_field, _common_target = self._generic_common_ref(leaf, next_part)
+                        if common_ref_field is None:
+                            cur = None
+                            break
 
+                        # advance to a representative concrete choice so we can resolve the next field name
+                        from mongoengine.document import _DocumentRegistry
+                        ch0 = (leaf.choices or ())[0]
+                        cur = _DocumentRegistry.get(ch0 if isinstance(ch0, str) else ch0.__name__)
+                        continue
+
+                    cur = None
+                    break
+
+                # Embedded docs: descend
                 if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
                                                                                                   None):
                     cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
@@ -222,18 +209,68 @@ class PipelineBuilder:
 
                 cur = None
 
-            # mark leaf
             node[""] = True
 
         return tree
 
-    # ======================================================================
+    # GENERIC traversal helper (NEW)
+    @staticmethod
+    def _generic_common_ref(generic_field, next_part: str):
+        """
+        If all GenericReferenceField choices share `next_part` as a ReferenceField
+        pointing to the same document type, return (ref_field, ref_target_cls).
+        Else return (None, None).
+        """
+        from mongoengine.document import _DocumentRegistry
+        from mongoengine.fields import ReferenceField, ListField
+
+        choices = getattr(generic_field, "choices", None) or ()
+        doc_classes = []
+        for ch in choices:
+            if isinstance(ch, str):
+                cls = _DocumentRegistry.get(ch)
+            elif isinstance(ch, type):
+                cls = _DocumentRegistry.get(ch.__name__)
+            else:
+                cls = None
+            if cls:
+                doc_classes.append(cls)
+
+        if not doc_classes:
+            return None, None
+
+        ref_targets = []
+        ref_fields = []
+
+        for cls in doc_classes:
+            fld = cls._fields.get(next_part)
+            if fld is None:
+                for _name, f in cls._fields.items():
+                    if getattr(f, "db_field", None) == next_part:
+                        fld = f
+                        break
+            if fld is None:
+                return None, None
+
+            leaf = fld
+            while isinstance(leaf, ListField):
+                leaf = leaf.field
+
+            if not isinstance(leaf, ReferenceField):
+                return None, None
+
+            ref_fields.append(fld)
+            ref_targets.append(getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None))
+
+        if any(t is None for t in ref_targets):
+            return None, None
+        if len({id(t) for t in ref_targets}) != 1:
+            return None, None
+
+        return ref_fields[0], ref_targets[0]
+
     # QUERY BUCKETING (match pushdown)
-    # ======================================================================
     def _bucket_query_by_lookup_prefix(self, doc_cls, query: dict) -> dict:
-        """
-        Bucket by required deref prefix, but store keys in *dotted* form so Mongo can match.
-        """
         buckets = {}
 
         def merge(prefix: str, frag: dict):
@@ -247,18 +284,72 @@ class PipelineBuilder:
                     return
                 buckets[prefix] = {"$and": [existing, frag]}
 
-        def walk(q):
+        def dotted(k: str) -> str:
+            return k.replace("__", ".") if ("__" in k and "." not in k) else k
+
+        def get_field_by_db_part(cur, part):
+            fld = cur._fields.get(part)
+            if fld:
+                return fld
+            for _name, f in cur._fields.items():
+                if getattr(f, "db_field", None) == part:
+                    return f
+            return None
+
+        def path_expr(base_var: str, parts: list[str]) -> str:
+            return base_var + "".join(f".{p}" for p in parts)
+
+        def expr_for_any_map_value(field_db: str, rest: list[str], cond: dict):
+            if len(cond) != 1:
+                return None
+            op, value = next(iter(cond.items()))
+            value_expr = path_expr("$$kv.v", rest)
+            return {
+                "$expr": {
+                    "$anyElementTrue": {
+                        "$map": {
+                            "input": {"$objectToArray": f"${field_db}"},
+                            "as": "kv",
+                            "in": {op: [value_expr, value]},
+                        }
+                    }
+                }
+            }
+
+        def expr_for_nested_list(field_db: str, rest: list[str], cond: dict):
+            if len(cond) != 1:
+                return None
+            op, value = next(iter(cond.items()))
+            value_expr = path_expr("$$it", rest)
+            return {
+                "$expr": {
+                    "$anyElementTrue": {
+                        "$map": {
+                            "input": {
+                                "$reduce": {
+                                    "input": f"${field_db}",
+                                    "initialValue": [],
+                                    "in": {"$concatArrays": ["$$value", "$$this"]},
+                                }
+                            },
+                            "as": "it",
+                            "in": {op: [value_expr, value]},
+                        }
+                    }
+                }
+            }
+
+        def walk(q, cur_doc=doc_cls):
             if not isinstance(q, dict):
                 merge("", q)
                 return
 
-            # logical ops: bucket each clause and reassemble per-prefix
             for op in ("$and", "$or", "$nor"):
                 if op in q:
                     clauses = q.get(op) or []
                     per_prefix = defaultdict(list)
                     for clause in clauses:
-                        sub = self._bucket_query_by_lookup_prefix(doc_cls, clause)
+                        sub = self._bucket_query_by_lookup_prefix(cur_doc, clause)
                         for pfx, frag in sub.items():
                             per_prefix[pfx].append(frag)
                     for pfx, frags in per_prefix.items():
@@ -270,11 +361,48 @@ class PipelineBuilder:
                         merge("", {k: v})
                     continue
 
-                # normalize to dotted form for pipeline matching
-                fk = k.replace("__", ".") if ("__" in k and "." not in k) else k
-                prefix = self._required_lookup_prefix_for_field(doc_cls, fk)
+                fk = dotted(k)
+                parts = fk.split(".")
+                if not parts:
+                    continue
 
-                # IMPORTANT: store fk (not k)
+                first = parts[0]
+                fld0 = get_field_by_db_part(cur_doc, first)
+
+                if fld0 is not None and len(parts) >= 2:
+                    from mongoengine.fields import ListField, MapField, DictField, ReferenceField, GenericReferenceField
+
+                    field_db = getattr(fld0, "db_field", first)
+                    rest = parts[1:]
+
+                    if isinstance(fld0, MapField) and isinstance(getattr(fld0, "field", None), ReferenceField):
+                        prefix = field_db
+                        rewritten = expr_for_any_map_value(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
+                        if rewritten:
+                            merge(prefix, rewritten)
+                            continue
+
+                    if isinstance(fld0, DictField) and isinstance(getattr(fld0, "field", None), GenericReferenceField):
+                        prefix = field_db
+                        rewritten = expr_for_any_map_value(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
+                        if rewritten:
+                            merge(prefix, rewritten)
+                            continue
+
+                    if isinstance(fld0, ListField):
+                        leaf = fld0
+                        depth = 0
+                        while isinstance(leaf, ListField):
+                            depth += 1
+                            leaf = leaf.field
+                        if depth >= 2 and isinstance(leaf, ReferenceField):
+                            prefix = field_db
+                            rewritten = expr_for_nested_list(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
+                            if rewritten:
+                                merge(prefix, rewritten)
+                                continue
+
+                prefix = self._required_lookup_prefix_for_field(cur_doc, fk)
                 merge(prefix, {fk: v})
 
         walk(query)
@@ -282,17 +410,12 @@ class PipelineBuilder:
 
     def _required_lookup_prefix_for_field(self, doc_cls, field_key: str) -> str:
         """
-        Return the *deepest* deref prefix required for a dotted path.
-
-        Examples:
-          "name" -> ""
-          "parent.age" -> "parent"
-          "parent.company.name" -> "parent.company"
-          "info.target.age" (embedded generic ref) -> "info.target"
+        Return the deepest deref prefix required for a dotted path.
+        Handles safe GenericReferenceField -> common ReferenceField traversal.
         """
         from mongoengine.fields import (
             ListField, ReferenceField, GenericReferenceField,
-            EmbeddedDocumentField, EmbeddedDocumentListField
+            EmbeddedDocumentField, EmbeddedDocumentListField,
         )
 
         parts = field_key.split(".")
@@ -306,7 +429,7 @@ class PipelineBuilder:
 
             fld = cur._fields.get(part)
             if fld is None:
-                for name, f in cur._fields.items():
+                for _name, f in cur._fields.items():
                     if getattr(f, "db_field", None) == part:
                         fld = f
                         break
@@ -322,24 +445,31 @@ class PipelineBuilder:
 
             is_terminal = (i == len(parts) - 1)
 
-            # ReferenceField: only deref if there are more path parts
             if isinstance(leaf, ReferenceField):
                 if not is_terminal:
                     last_deref_prefix = ".".join(db_path)
                     cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
                     continue
-                # terminal ref equality => no lookup required
                 return last_deref_prefix
 
-            # GenericReferenceField: only deref if there are more path parts
             if isinstance(leaf, GenericReferenceField):
                 if not is_terminal:
+                    next_part = parts[i + 1]
+                    common_ref_field, _common_target = self._generic_common_ref(leaf, next_part)
+
+                    # If we can traverse into a common ref field, keep going so we can reach "target.gp"
+                    if common_ref_field is not None:
+                        last_deref_prefix = ".".join(db_path)  # at least "target"
+                        from mongoengine.document import _DocumentRegistry
+                        ch0 = (leaf.choices or ())[0]
+                        cur = _DocumentRegistry.get(ch0 if isinstance(ch0, str) else ch0.__name__)
+                        continue
+
                     last_deref_prefix = ".".join(db_path)
                     return last_deref_prefix
-                # terminal generic equality => no lookup required
+
                 return last_deref_prefix
 
-            # Embedded docs: keep walking
             if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
                                                                                               None):
                 cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
@@ -349,9 +479,7 @@ class PipelineBuilder:
 
         return last_deref_prefix
 
-    # ======================================================================
     # INTERLEAVED LOOKUP WALK (lookup -> match -> lookup -> match)
-    # ======================================================================
     def _lookup_walk_interleaved(self, doc_cls, prefix, tree, buckets, embedded_list_path=None):
         from mongoengine.fields import (
             ReferenceField, GenericReferenceField,
@@ -385,7 +513,6 @@ class PipelineBuilder:
                     else:
                         self._add_structured_ref_lookup(target, field, full_path)
 
-                # apply bucket for this deref prefix now
                 bucket = buckets.pop(full_path, None)
                 if bucket:
                     self.pipeline.append({"$match": bucket})
@@ -434,7 +561,6 @@ class PipelineBuilder:
                 if leaf is not None and isinstance(leaf, GenericReferenceField):
                     if leaf.choices:
                         if embedded_list_path:
-                            # GenericRef (or list-of-genericref) inside EmbeddedDocumentListField(...)
                             self._add_embedded_list_generic_lookup(
                                 generic_field=leaf,
                                 list_path=embedded_list_path,
@@ -524,7 +650,6 @@ class PipelineBuilder:
             # ==================== Generic Reference (scalar) ===========================
             if isinstance(field, GenericReferenceField) and field.choices:
                 if embedded_list_path:
-                    # GenericReferenceField inside EmbeddedDocumentListField(...)
                     self._add_embedded_list_generic_lookup(
                         generic_field=field,
                         list_path=embedded_list_path,
@@ -533,9 +658,40 @@ class PipelineBuilder:
                 else:
                     self._add_generic_lookup(field, full_path)
 
+                # apply bucket at "target"
                 bucket = buckets.pop(full_path, None)
                 if bucket:
                     self.pipeline.append({"$match": bucket})
+
+                # NEW: traverse safe common reference fields under generic target (e.g. target.gp)
+                if subtree:
+                    for sub_name, sub_tree in subtree.items():
+                        if sub_name == "":
+                            continue
+
+                        common_ref_field, common_target = self._generic_common_ref(field, sub_name)
+                        if common_ref_field is None or common_target is None:
+                            continue
+
+                        gp_path = f"{full_path}.{common_ref_field.db_field}"
+
+                        # lookup target.gp
+                        self._add_structured_ref_lookup(common_target, common_ref_field, gp_path)
+
+                        # apply bucket at "target.gp"
+                        bucket2 = buckets.pop(gp_path, None)
+                        if bucket2:
+                            self.pipeline.append({"$match": bucket2})
+
+                        # continue deeper (e.g. .age)
+                        if sub_tree:
+                            self._lookup_walk_interleaved(
+                                common_target,
+                                prefix=f"{gp_path}.",
+                                tree=sub_tree,
+                                buckets=buckets,
+                                embedded_list_path=embedded_list_path,
+                            )
                 continue
 
             if isinstance(field, EmbeddedDocumentField):
@@ -552,9 +708,7 @@ class PipelineBuilder:
             if isinstance(field, FileField):
                 continue
 
-    # ======================================================================
-    # Embedded doc helpers (robust across mongoengine versions)
-    # ======================================================================
+    # Embedded doc helpers
     @staticmethod
     def _is_list_of_embedded(field):
         from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
@@ -574,9 +728,7 @@ class PipelineBuilder:
             return dt
         return None
 
-    # ======================================================================
-    # ListField helpers (supports nested ListField(ListField(...)))
-    # ======================================================================
+    # ListField helpers
     @staticmethod
     def _unwrap_list_field(fld):
         from mongoengine.fields import ListField
@@ -589,35 +741,15 @@ class PipelineBuilder:
             cur = cur.field
         return cur, depth
 
-    # ======================================================================
     # Embedded-list deref helper (ListField(EmbeddedDocument) containing refs)
-    # ======================================================================
-    def _add_embedded_list_structured_ref_lookup(
-            self,
-            target_cls,
-            field_shape,  # ReferenceField OR ListField(ReferenceField) OR nested lists
-            list_path,  # e.g. "items" (array of embedded docs)
-            embedded_key,  # e.g. "parents" or "parent"
-    ):
-        """
-        Supports embedded list refs where embedded_key can be:
-          - ReferenceField
-          - ListField(ReferenceField) (including nested lists)
-        by flattening refIds correctly for $lookup.
-        """
+    def _add_embedded_list_structured_ref_lookup(self, target_cls, field_shape, list_path, embedded_key):
         if not target_cls:
             return
 
         safe_list = list_path.replace(".", "_")
         docs_alias = f"{safe_list}_{embedded_key}__docs"
-
-        # This is the array you get from a dotted projection on an array-of-objects:
-        # - for scalar ref: [ObjectId, ObjectId, ...]
-        # - for list ref:   [[ObjectId,...], [ObjectId,...], ...]
         raw_values_expr = {"$ifNull": [f"${list_path}.{embedded_key}", []]}
 
-        # Flatten and normalize into a single array of ObjectIds, regardless of shape.
-        # We delegate actual "extract ids" logic to _build_ref_ids_expr (handles dbref, lists, etc).
         ref_ids_expr = {
             "$cond": [
                 {"$isArray": f"${list_path}"},
@@ -678,9 +810,7 @@ class PipelineBuilder:
 
         self.pipeline.append({"$project": {docs_alias: 0}})
 
-    # ======================================================================
     # MapField deref helpers
-    # ======================================================================
     def _add_map_ref_lookup(self, target_cls, map_field, local_field):
         if not target_cls:
             return
@@ -993,17 +1123,8 @@ class PipelineBuilder:
         for cls in doc_classes:
             self.pipeline.append({"$project": {f"{safe}__{cls.__name__}": 0}})
 
+    # Embedded list generic lookup (unchanged from your version)
     def _add_embedded_list_generic_lookup(self, generic_field, list_path, embedded_key):
-        """
-        EmbeddedDocumentListField(Item) where Item.<embedded_key> is either:
-          - GenericReferenceField
-          - ListField(GenericReferenceField)
-
-        This:
-          - does per-choice lookups
-          - rewrites each embedded item to replace <embedded_key> with the joined doc(s)
-          - keeps missing refs as {_missing_reference: True, _ref:..., _cls:...}
-        """
         from mongoengine.document import _DocumentRegistry
 
         doc_classes = []
@@ -1022,17 +1143,12 @@ class PipelineBuilder:
         safe_list = list_path.replace(".", "_")
         aliases = []
 
-        # dotted projection on array-of-objects:
-        # - scalar generic:  [ {_ref,_cls}, {_ref,_cls}, ... ]
-        # - list generic:    [ [ {_ref,_cls}, ... ], [ {_ref,_cls}, ... ], ... ]
         raw_values_expr = {"$ifNull": [f"${list_path}.{embedded_key}", []]}
 
-        # 1) lookups per concrete class (collect ids across ALL embedded docs, flattening lists)
         for cls in doc_classes:
             alias = f"{safe_list}_{embedded_key}__{cls.__name__}"
             aliases.append(alias)
 
-            # IMPORTANT: $$m is only valid inside $filter/$map scopes.
             class_test_m = {"$regexMatch": {"input": "$$m._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
             class_test_this = {"$regexMatch": {"input": "$$this._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
 
@@ -1047,7 +1163,6 @@ class PipelineBuilder:
                                 "$concatArrays": [
                                     "$$value",
                                     {
-                                        # $$this is either a dict (scalar generic) or an array (list generic)
                                         "$cond": [
                                             {"$isArray": "$$this"},
                                             {
@@ -1091,7 +1206,6 @@ class PipelineBuilder:
                 }
             )
 
-        # 2) transform one generic value in $$val (scalar)
         def value_transform_expr():
             expr = "$$val"
             for cls in reversed(doc_classes):
@@ -1112,12 +1226,8 @@ class PipelineBuilder:
                         "in": {
                             "$cond": [
                                 {"$gt": [{"$size": "$$matches"}, 0]},
-                                {
-                                    "$mergeObjects": [
-                                        {"$first": "$$matches"},
-                                        {"_ref": "$$val._ref", "_cls": "$$val._cls"},
-                                    ]
-                                },
+                                {"$mergeObjects": [{"$first": "$$matches"},
+                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
                                 {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
                             ]
                         },
@@ -1127,7 +1237,6 @@ class PipelineBuilder:
                 expr = {"$cond": [class_test_val, branch, expr]}
             return expr
 
-        # 3) rewrite embedded list items; handle scalar OR list at embedded_key
         self.pipeline.append(
             {
                 "$addFields": {
@@ -1177,13 +1286,10 @@ class PipelineBuilder:
             }
         )
 
-        # 4) cleanup temp arrays
         for alias in aliases:
             self.pipeline.append({"$project": {alias: 0}})
 
-    # ======================================================================
-    # LOOKUP WALKER (your existing one, kept as-is for select_related paths)
-    # ======================================================================
+    # LOOKUP WALKER (kept for select_related paths)
     def _lookup_walk(self, doc_cls, prefix, tree, embedded_list_path=None):
         from mongoengine.fields import (
             ReferenceField, GenericReferenceField,
@@ -1306,9 +1412,7 @@ class PipelineBuilder:
             if isinstance(field, FileField):
                 continue
 
-    # ======================================================================
     # HELPERS: collect leaf ReferenceField document types under a field
-    # ======================================================================
     def _collect_ref_document_types(self, field):
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
@@ -1333,9 +1437,7 @@ class PipelineBuilder:
 
         return doc_types
 
-    # ======================================================================
     # HELPER: concrete subclasses for abstract Document classes
-    # ======================================================================
     def _concrete_subclasses(self, doc_cls):
         result = set()
 
@@ -1351,9 +1453,7 @@ class PipelineBuilder:
         _walk(doc_cls)
         return list(result)
 
-    # ======================================================================
     # HELPER: build expression that returns an array of ObjectIds
-    # ======================================================================
     def _build_ref_ids_expr(self, field, source_expr):
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
@@ -1403,9 +1503,7 @@ class PipelineBuilder:
 
         return []
 
-    # ======================================================================
     # HELPER: build expression that reconstructs value with docs instead of refs
-    # ======================================================================
     def _build_value_expr(self, field, source_expr, docs_expr):
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
@@ -1474,9 +1572,7 @@ class PipelineBuilder:
 
         return source_expr
 
-    # ======================================================================
-    # STRUCTURED LOOKUP FOR ANY REFERENCE SHAPE (scalar, list, dict)
-    # ======================================================================
+    # STRUCTURED LOOKUP FOR ANY REFERENCE SHAPE
     def _add_structured_ref_lookup(self, target_cls, field_shape, local_field):
         if not target_cls:
             return
@@ -1504,9 +1600,7 @@ class PipelineBuilder:
     def _add_dictfield_lookup(self, target_cls, dict_field, local_field):
         self._add_structured_ref_lookup(target_cls, dict_field, local_field)
 
-    # ======================================================================
-    # ABSTRACT DBRef REFERENCE LOOKUP (scalar ReferenceField → abstract base)
-    # ======================================================================
+    # ABSTRACT DBRef LOOKUP (unchanged)
     def _add_abstract_dbref_lookup(self, abstract_cls, field, local_field):
         subclasses = self._concrete_subclasses(abstract_cls)
         if not subclasses:
@@ -1561,9 +1655,7 @@ class PipelineBuilder:
 
             self.pipeline.append({"$project": {temp: 0}})
 
-    # ======================================================================
-    # GENERIC REFERENCE LOOKUP (scalar fields + list generic)
-    # ======================================================================
+    # GENERIC LOOKUP (unchanged from your version)
     def _add_generic_lookup(self, field, local_field, is_list=False):
         from mongoengine.document import _DocumentRegistry
 
@@ -1580,7 +1672,6 @@ class PipelineBuilder:
         if not doc_classes:
             return
 
-        # SCALAR GENERIC
         if not is_list:
             for cls in doc_classes:
                 temp = f"{local_field}__{cls.__name__}"
@@ -1632,7 +1723,6 @@ class PipelineBuilder:
                 self.pipeline.append({"$project": {temp: 0}})
             return
 
-        # LIST GENERIC (flat list only)
         for cls in doc_classes:
             self.pipeline.append(
                 {
@@ -1677,8 +1767,13 @@ class PipelineBuilder:
         def build_item_expr():
             expr = "$$item"
             for cls in reversed(doc_classes):
-                expr = {"$cond": [{"$regexMatch": {"input": "$$item._cls", "regex": f"^{cls._class_name}(\\.|$)"}},
-                                  item_expr_for(cls), expr]}
+                expr = {
+                    "$cond": [
+                        {"$regexMatch": {"input": "$$item._cls", "regex": f"^{cls._class_name}(\\.|$)"}},
+                        item_expr_for(cls),
+                        expr,
+                    ]
+                }
             return expr
 
         self.pipeline.append(
@@ -1688,9 +1783,7 @@ class PipelineBuilder:
         for cls in doc_classes:
             self.pipeline.append({"$project": {f"{local_field}__{cls.__name__}": 0}})
 
-    # ======================================================================
     # PROJECTION / SORT / LIMIT / ETC
-    # ======================================================================
     def _projection_stage(self):
         lf = self.queryset._loaded_fields
         if not lf:
@@ -1699,7 +1792,6 @@ class PipelineBuilder:
         proj = lf.as_dict()
         if "_id" not in proj:
             proj["_id"] = 1
-
         self.pipeline.append({"$project": proj})
 
     def _sort_stage(self):
@@ -1717,10 +1809,9 @@ class PipelineBuilder:
         if self.queryset._limit is not None:
             self.pipeline.append({"$limit": self.queryset._limit})
 
-    # ======================================================================
     # HELPERS: regex conversion
-    # ======================================================================
-    def _convert_regex(self, value):
+    @staticmethod
+    def _convert_regex(value):
         if isinstance(value, re.Pattern):
             pattern = value.pattern
             opts = ""
