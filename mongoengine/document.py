@@ -1182,7 +1182,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
     @property
     def _aqs(self):
-        # todo can we replace this function with _qs
         """Return the default queryset corresponding to this document."""
         if not hasattr(self, "__objects"):
             queryset_class = self._meta.get("queryset_class", AsyncQuerySet)

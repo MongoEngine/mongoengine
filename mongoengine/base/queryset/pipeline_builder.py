@@ -10,6 +10,8 @@ import re
 
 __all__ = ("PipelineBuilder", "needs_aggregation")
 
+from collections import defaultdict
+
 
 class PipelineBuilder:
     def __init__(self, queryset, max_depth=3):
@@ -22,12 +24,78 @@ class PipelineBuilder:
     # PUBLIC API
     # ======================================================================
     def build(self):
-        self._match_stage()
+        """
+        Build a pipeline with progressive lookup + match pushdown.
 
+        We split queryset._query into "buckets" keyed by the deref-prefix required.
+        Example:
+            - {"name": "x"} -> bucket ""
+            - {"parent.age": {"$gt":50}} -> bucket "parent"
+            - {"parent.company.n": 1} -> bucket "parent.company"
+
+        Then:
+            1) $match bucket "" (local only)
+            2) do lookups in a tree order
+            3) after each lookup stage, $match the bucket for that deref prefix
+            4) finally apply $where/$function (cannot be bucketed safely)
+            5) projection/sort/skip/limit
+        """
+        mongo_query = self.queryset._query or {}
+
+        # No query: keep the original behavior
+        if not mongo_query:
+            if self.queryset._select_related:
+                tree = self._build_related_tree(self.queryset._select_related)
+                # original lookup walk (no interleaving needed)
+                self._lookup_walk(self.document, "", tree)
+
+            self._projection_stage()
+            self._sort_stage()
+            self._skip_stage()
+            self._limit_stage()
+            return self.pipeline
+
+        # Convert regex and extract $where
+        mongo_query = self._walk_and_convert_regex(mongo_query)
+        cleaned, function_expr = self._convert_where_to_function(mongo_query)
+
+        # Bucket queries by required lookup prefix
+        buckets = self._bucket_query_by_lookup_prefix(self.document, cleaned)
+
+        # Root/local match first
+        root_match = buckets.pop("", None)
+        if root_match:
+            self.pipeline.append({"$match": root_match})
+
+        # Build lookup tree from:
+        #   - explicit select_related
+        #   - implicit lookup needs from bucket prefixes
+        tree = {}
         if self.queryset._select_related:
-            tree = self._build_related_tree(self.queryset._select_related)
-            self._lookup_walk(self.document, "", tree)
+            tree = self._merge_lookup_trees(tree, self._build_related_tree(self.queryset._select_related))
+        tree = self._merge_lookup_trees(tree, self._auto_lookup_tree_from_buckets(buckets))
 
+        # Walk lookups with interleaved matches
+        if tree:
+            self._lookup_walk_interleaved(
+                doc_cls=self.document,
+                prefix="",
+                tree=tree,
+                buckets=buckets,
+                embedded_list_path=None,
+            )
+
+        # Any leftover buckets (safety net)
+        if buckets:
+            leftovers = [q for q in buckets.values() if q]
+            if leftovers:
+                self.pipeline.append({"$match": leftovers[0] if len(leftovers) == 1 else {"$and": leftovers}})
+
+        # $where/$function last
+        if function_expr:
+            self.pipeline.append({"$match": function_expr})
+
+        # Tail stages
         self._projection_stage()
         self._sort_stage()
         self._skip_stage()
@@ -60,21 +128,6 @@ class PipelineBuilder:
         }
         return cleaned, function_expr
 
-    def _match_stage(self):
-        mongo_query = self.queryset._query
-        if not mongo_query:
-            return
-
-        mongo_query = self._walk_and_convert_regex(mongo_query)
-        cleaned, function_expr = self._convert_where_to_function(mongo_query)
-
-        if function_expr:
-            if cleaned:
-                self.pipeline.append({"$match": cleaned})
-            self.pipeline.append({"$match": function_expr})
-        else:
-            self.pipeline.append({"$match": cleaned})
-
     # ======================================================================
     # LOOKUP TREE
     # ======================================================================
@@ -89,460 +142,217 @@ class PipelineBuilder:
             node[""] = True
         return tree
 
-    # ======================================================================
-    # Embedded doc helpers (robust across mongoengine versions)
-    # ======================================================================
-    @staticmethod
-    def _is_list_of_embedded(field):
-        from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
+    def _merge_lookup_trees(self, a: dict, b: dict) -> dict:
+        if not a:
+            return dict(b or {})
+        if not b:
+            return dict(a)
+        out = dict(a)
+        for k, v in b.items():
+            if k not in out:
+                out[k] = v
+            else:
+                if isinstance(out[k], dict) and isinstance(v, dict):
+                    out[k] = self._merge_lookup_trees(out[k], v)
+        return out
 
-        return (
-                isinstance(field, EmbeddedDocumentListField)
-                or (
-                        isinstance(field, ListField)
-                        and isinstance(getattr(field, "field", None), EmbeddedDocumentField)
+    def _auto_lookup_tree_from_buckets(self, buckets: dict) -> dict:
+        """
+        Build a lookup tree using *python field names* from bucket prefixes that are
+        in *db_field dotted form* (e.g. "info.target", "parent.company").
+
+        This keeps _lookup_walk_interleaved() working even when db_field != attr_name.
+        """
+
+        def resolve_field_name(doc_cls, db_part: str):
+            # direct attribute name match
+            if db_part in doc_cls._fields:
+                return db_part, doc_cls._fields[db_part]
+
+            # db_field match
+            for name, fld in doc_cls._fields.items():
+                if getattr(fld, "db_field", None) == db_part:
+                    return name, fld
+
+            return None, None
+
+        tree = {}
+
+        for dotted_prefix in buckets.keys():
+            if not dotted_prefix:
+                continue
+
+            parts = dotted_prefix.split(".")
+            node = tree
+            cur = self.document
+
+            for db_part in parts:
+                if cur is None:
+                    break
+
+                field_name, fld = resolve_field_name(cur, db_part)
+                if not fld:
+                    break
+
+                node = node.setdefault(field_name, {})
+
+                # advance cur when prefix continues through embedded/ref
+                from mongoengine.fields import (
+                    ListField, EmbeddedDocumentField, EmbeddedDocumentListField,
+                    ReferenceField, GenericReferenceField
                 )
-        )
 
-    @staticmethod
-    def _embedded_doc_type(field):
-        """
-        Safely extract embedded document type from:
-          - EmbeddedDocumentField
-          - EmbeddedDocumentListField
-          - ListField(EmbeddedDocumentField)
-        """
-        dt = getattr(field, "document_type", None)
-        if dt:
-            return dt
-        inner = getattr(field, "field", None)
-        dt = getattr(inner, "document_type", None) if inner else None
-        if dt:
-            return dt
-        return None
+                leaf = fld
+                while isinstance(leaf, ListField):
+                    leaf = leaf.field
 
-    # ======================================================================
-    # ListField helpers (supports nested ListField(ListField(...)))
-    # ======================================================================
-    @staticmethod
-    def _unwrap_list_field(fld):
-        """
-        If fld is ListField(...ListField(...X)), return (leaf, depth).
-        Otherwise return (None, 0).
-        """
-        from mongoengine.fields import ListField
+                if isinstance(leaf, ReferenceField):
+                    cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
+                    continue
 
-        if not isinstance(fld, ListField):
-            return None, 0
+                if isinstance(leaf, GenericReferenceField):
+                    # can't safely descend into concrete class here; stop
+                    cur = None
+                    continue
 
-        depth = 0
-        cur = fld
-        while isinstance(cur, ListField):
-            depth += 1
-            cur = cur.field
-        return cur, depth
+                if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
+                                                                                                  None):
+                    cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
+                    continue
+
+                cur = None
+
+            # mark leaf
+            node[""] = True
+
+        return tree
 
     # ======================================================================
-    # Embedded-list deref helper (ListField(EmbeddedDocument) containing refs)
+    # QUERY BUCKETING (match pushdown)
     # ======================================================================
-    def _add_embedded_list_structured_ref_lookup(
-            self,
-            target_cls,
-            field_shape,  # ReferenceField or ListField(ReferenceField) etc
-            list_path,  # e.g. "items"
-            embedded_key,  # e.g. "song"
-    ):
+    def _bucket_query_by_lookup_prefix(self, doc_cls, query: dict) -> dict:
         """
-        Produces the *working* pattern:
-          - $lookup with refIds = [] unless $isArray("$items")
-          - $addFields items = $map(...) only if $isArray("$items"), else keep "$items"
-          - temp alias WITHOUT dots
+        Bucket by required deref prefix, but store keys in *dotted* form so Mongo can match.
         """
-        if not target_cls:
-            return
+        buckets = {}
 
-        safe_list = list_path.replace(".", "_")
-        docs_alias = f"{safe_list}_{embedded_key}__docs"
-
-        # IMPORTANT:
-        # when items is array-of-embedded-docs, "$items.song" is already an array of ids
-        ref_ids_expr = {
-            "$cond": [
-                {"$isArray": f"${list_path}"},
-                {"$ifNull": [f"${list_path}.{embedded_key}", []]},
-                [],
-            ]
-        }
-
-        self.pipeline.append(
-            {
-                "$lookup": {
-                    "from": target_cls._get_collection_name(),
-                    "let": {"refIds": ref_ids_expr},
-                    "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
-                    "as": docs_alias,
-                }
-            }
-        )
-
-        docs_expr = f"${docs_alias}"
-        per_item_value_expr = self._build_value_expr(
-            field_shape,
-            f"$$it.{embedded_key}",
-            docs_expr,
-        )
-
-        self.pipeline.append(
-            {
-                "$addFields": {
-                    list_path: {
-                        "$cond": [
-                            {"$isArray": f"${list_path}"},
-                            {
-                                "$map": {
-                                    "input": f"${list_path}",
-                                    "as": "it",
-                                    "in": {
-                                        "$mergeObjects": [
-                                            "$$it",
-                                            {embedded_key: per_item_value_expr},
-                                        ]
-                                    },
-                                }
-                            },
-                            f"${list_path}",
-                        ]
-                    }
-                }
-            }
-        )
-
-        self.pipeline.append({"$project": {docs_alias: 0}})
-
-    # ======================================================================
-    # MapField deref helpers
-    # ======================================================================
-    def _add_map_ref_lookup(self, target_cls, map_field, local_field):
-        """
-        MapField(ReferenceField)
-        Stored: {k: ObjectId} (or {k: DBRef} if dbref=True)
-        """
-        if not target_cls:
-            return
-
-        safe = local_field.replace(".", "_")
-        docs_alias = f"{safe}__docs"
-        is_dbref = bool(getattr(map_field.field, "dbref", False))
-        id_from_value_expr = "$$kv.v.$id" if is_dbref else "$$kv.v"
-
-        ref_ids_expr = {
-            "$cond": [
-                {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                {
-                    "$map": {
-                        "input": {"$objectToArray": f"${local_field}"},
-                        "as": "kv",
-                        "in": id_from_value_expr,
-                    }
-                },
-                [],
-            ]
-        }
-
-        self.pipeline.append({
-            "$lookup": {
-                "from": target_cls._get_collection_name(),
-                "let": {"refIds": ref_ids_expr},
-                "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
-                "as": docs_alias,
-            }
-        })
-
-        cls_name = getattr(target_cls, "_class_name", target_cls.__name__)
-
-        self.pipeline.append({
-            "$addFields": {
-                local_field: {
-                    "$cond": [
-                        {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                        {
-                            "$arrayToObject": {
-                                "$map": {
-                                    "input": {"$objectToArray": f"${local_field}"},
-                                    "as": "kv",
-                                    "in": {
-                                        "k": "$$kv.k",
-                                        "v": {
-                                            "$let": {
-                                                "vars": {
-                                                    "refId": {"$ifNull": [id_from_value_expr, None]},
-                                                    "matches": {
-                                                        "$filter": {
-                                                            "input": f"${docs_alias}",
-                                                            "as": "doc",
-                                                            "cond": {"$eq": ["$$doc._id", id_from_value_expr]},
-                                                        }
-                                                    },
-                                                },
-                                                "in": {
-                                                    "$cond": [
-                                                        {"$ifNull": ["$$refId", False]},
-                                                        {
-                                                            "$cond": [
-                                                                {"$gt": [{"$size": "$$matches"}, 0]},
-                                                                {"$first": "$$matches"},
-                                                                {"_missing_reference": True, "_ref": "$$refId",
-                                                                 "_cls": cls_name},
-                                                            ]
-                                                        },
-                                                        None,
-                                                    ]
-                                                },
-                                            }
-                                        },
-                                    },
-                                }
-                            }
-                        },
-                        f"${local_field}",
-                    ]
-                }
-            }
-        })
-
-        self.pipeline.append({"$project": {docs_alias: 0}})
-
-    def _add_map_generic_lookup(self, generic_field, local_field):
-        """
-        MapField(GenericReferenceField(choices=...))
-        Stored: { k: { _ref: DBRef, _cls: "..." }, ... }
-        """
-        from mongoengine.document import _DocumentRegistry
-
-        doc_classes = []
-        for ch in getattr(generic_field, "choices", None) or ():
-            if isinstance(ch, str):
-                cls = _DocumentRegistry.get(ch)
-            elif isinstance(ch, type):
-                cls = _DocumentRegistry.get(ch.__name__)
+        def merge(prefix: str, frag: dict):
+            if not frag:
+                return
+            if prefix not in buckets:
+                buckets[prefix] = frag
             else:
-                continue
-            if cls:
-                doc_classes.append(cls)
-        if not doc_classes:
-            return
+                existing = buckets[prefix]
+                if existing == frag:
+                    return
+                buckets[prefix] = {"$and": [existing, frag]}
 
-        safe = local_field.replace(".", "_")
+        def walk(q):
+            if not isinstance(q, dict):
+                merge("", q)
+                return
 
-        for cls in doc_classes:
-            alias = f"{safe}__{cls.__name__}"
+            # logical ops: bucket each clause and reassemble per-prefix
+            for op in ("$and", "$or", "$nor"):
+                if op in q:
+                    clauses = q.get(op) or []
+                    per_prefix = defaultdict(list)
+                    for clause in clauses:
+                        sub = self._bucket_query_by_lookup_prefix(doc_cls, clause)
+                        for pfx, frag in sub.items():
+                            per_prefix[pfx].append(frag)
+                    for pfx, frags in per_prefix.items():
+                        merge(pfx, frags[0] if len(frags) == 1 else {op: frags})
 
-            ref_ids_expr = {
-                "$cond": [
-                    {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                    {
-                        "$map": {
-                            "input": {
-                                "$filter": {
-                                    "input": {"$objectToArray": f"${local_field}"},
-                                    "as": "kv",
-                                    "cond": {
-                                        "$regexMatch": {
-                                            "input": "$$kv.v._cls",
-                                            "regex": f"^{cls._class_name}(\\.|$)",
-                                        }
-                                    },
-                                }
-                            },
-                            "as": "kv",
-                            "in": "$$kv.v._ref.$id",
-                        }
-                    },
-                    [],
-                ]
-            }
+            for k, v in q.items():
+                if isinstance(k, str) and k.startswith("$"):
+                    if k not in ("$and", "$or", "$nor"):
+                        merge("", {k: v})
+                    continue
 
-            self.pipeline.append({
-                "$lookup": {
-                    "from": cls._get_collection_name(),
-                    "let": {"refIds": ref_ids_expr},
-                    "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
-                    "as": alias,
-                }
-            })
+                # normalize to dotted form for pipeline matching
+                fk = k.replace("__", ".") if ("__" in k and "." not in k) else k
+                prefix = self._required_lookup_prefix_for_field(doc_cls, fk)
 
-        def value_transform_expr():
-            expr = "$$val"
-            for cls in reversed(doc_classes):
-                alias_arr = f"${safe}__{cls.__name__}"
-                class_test = {"$regexMatch": {"input": "$$val._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
-                branch = {
-                    "$let": {
-                        "vars": {
-                            "matches": {
-                                "$filter": {
-                                    "input": alias_arr,
-                                    "as": "doc",
-                                    "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]},
-                                }
-                            }
-                        },
-                        "in": {
-                            "$cond": [
-                                {"$gt": [{"$size": "$$matches"}, 0]},
-                                {"$mergeObjects": [{"$first": "$$matches"},
-                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
-                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
-                            ]
-                        },
-                    }
-                }
-                expr = {"$cond": [class_test, branch, expr]}
-            return expr
+                # IMPORTANT: store fk (not k)
+                merge(prefix, {fk: v})
 
-        self.pipeline.append({
-            "$addFields": {
-                local_field: {
-                    "$cond": [
-                        {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                        {
-                            "$arrayToObject": {
-                                "$map": {
-                                    "input": {"$objectToArray": f"${local_field}"},
-                                    "as": "kv",
-                                    "in": {"k": "$$kv.k",
-                                           "v": {"$let": {"vars": {"val": "$$kv.v"}, "in": value_transform_expr()}}},
-                                }
-                            }
-                        },
-                        f"${local_field}",
-                    ]
-                }
-            }
-        })
+        walk(query)
+        return buckets
 
-        for cls in doc_classes:
-            self.pipeline.append({"$project": {f"{safe}__{cls.__name__}": 0}})
-
-    # ======================================================================
-    # DictField(GenericReferenceField) deref helper
-    # ======================================================================
-    def _add_dict_generic_lookup(self, generic_field, local_field):
+    def _required_lookup_prefix_for_field(self, doc_cls, field_key: str) -> str:
         """
-        DictField(GenericReferenceField(choices=...))
-        Stored: { k: { _ref: DBRef, _cls: "..." }, ... }
+        Return the *deepest* deref prefix required for a dotted path.
+
+        Examples:
+          "name" -> ""
+          "parent.age" -> "parent"
+          "parent.company.name" -> "parent.company"
+          "info.target.age" (embedded generic ref) -> "info.target"
         """
-        from mongoengine.document import _DocumentRegistry
+        from mongoengine.fields import (
+            ListField, ReferenceField, GenericReferenceField,
+            EmbeddedDocumentField, EmbeddedDocumentListField
+        )
 
-        doc_classes = []
-        for ch in getattr(generic_field, "choices", None) or ():
-            if isinstance(ch, str):
-                cls = _DocumentRegistry.get(ch)
-            elif isinstance(ch, type):
-                cls = _DocumentRegistry.get(ch.__name__)
-            else:
+        parts = field_key.split(".")
+        cur = doc_cls
+        db_path = []
+        last_deref_prefix = ""
+
+        for i, part in enumerate(parts):
+            if cur is None:
+                break
+
+            fld = cur._fields.get(part)
+            if fld is None:
+                for name, f in cur._fields.items():
+                    if getattr(f, "db_field", None) == part:
+                        fld = f
+                        break
+            if fld is None:
+                break
+
+            db_part = getattr(fld, "db_field", part)
+            db_path.append(db_part)
+
+            leaf = fld
+            while isinstance(leaf, ListField):
+                leaf = leaf.field
+
+            is_terminal = (i == len(parts) - 1)
+
+            # ReferenceField: only deref if there are more path parts
+            if isinstance(leaf, ReferenceField):
+                if not is_terminal:
+                    last_deref_prefix = ".".join(db_path)
+                    cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
+                    continue
+                # terminal ref equality => no lookup required
+                return last_deref_prefix
+
+            # GenericReferenceField: only deref if there are more path parts
+            if isinstance(leaf, GenericReferenceField):
+                if not is_terminal:
+                    last_deref_prefix = ".".join(db_path)
+                    return last_deref_prefix
+                # terminal generic equality => no lookup required
+                return last_deref_prefix
+
+            # Embedded docs: keep walking
+            if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
+                                                                                              None):
+                cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
                 continue
-            if cls:
-                doc_classes.append(cls)
-        if not doc_classes:
-            return
 
-        safe = local_field.replace(".", "_")
+            cur = None
 
-        for cls in doc_classes:
-            alias = f"{safe}__{cls.__name__}"
-
-            ref_ids_expr = {
-                "$cond": [
-                    {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                    {
-                        "$map": {
-                            "input": {
-                                "$filter": {
-                                    "input": {"$objectToArray": f"${local_field}"},
-                                    "as": "kv",
-                                    "cond": {
-                                        "$regexMatch": {
-                                            "input": "$$kv.v._cls",
-                                            "regex": f"^{cls._class_name}(\\.|$)",
-                                        }
-                                    },
-                                }
-                            },
-                            "as": "kv",
-                            "in": "$$kv.v._ref.$id",
-                        }
-                    },
-                    [],
-                ]
-            }
-
-            self.pipeline.append({
-                "$lookup": {
-                    "from": cls._get_collection_name(),
-                    "let": {"refIds": ref_ids_expr},
-                    "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
-                    "as": alias,
-                }
-            })
-
-        def value_transform_expr():
-            expr = "$$val"
-            for cls in reversed(doc_classes):
-                alias_arr = f"${safe}__{cls.__name__}"
-                class_test = {"$regexMatch": {"input": "$$val._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
-                branch = {
-                    "$let": {
-                        "vars": {
-                            "matches": {
-                                "$filter": {
-                                    "input": alias_arr,
-                                    "as": "doc",
-                                    "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]},
-                                }
-                            }
-                        },
-                        "in": {
-                            "$cond": [
-                                {"$gt": [{"$size": "$$matches"}, 0]},
-                                {"$mergeObjects": [{"$first": "$$matches"},
-                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
-                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
-                            ]
-                        },
-                    }
-                }
-                expr = {"$cond": [class_test, branch, expr]}
-            return expr
-
-        self.pipeline.append({
-            "$addFields": {
-                local_field: {
-                    "$cond": [
-                        {"$eq": [{"$type": f"${local_field}"}, "object"]},
-                        {
-                            "$arrayToObject": {
-                                "$map": {
-                                    "input": {"$objectToArray": f"${local_field}"},
-                                    "as": "kv",
-                                    "in": {"k": "$$kv.k",
-                                           "v": {"$let": {"vars": {"val": "$$kv.v"}, "in": value_transform_expr()}}},
-                                }
-                            }
-                        },
-                        f"${local_field}",
-                    ]
-                }
-            }
-        })
-
-        for cls in doc_classes:
-            self.pipeline.append({"$project": {f"{safe}__{cls.__name__}": 0}})
+        return last_deref_prefix
 
     # ======================================================================
-    # LOOKUP WALKER
+    # INTERLEAVED LOOKUP WALK (lookup -> match -> lookup -> match)
     # ======================================================================
-    def _lookup_walk(self, doc_cls, prefix, tree, embedded_list_path=None):
+    def _lookup_walk_interleaved(self, doc_cls, prefix, tree, buckets, embedded_list_path=None):
         from mongoengine.fields import (
             ReferenceField, GenericReferenceField,
             ListField, DictField, MapField, EmbeddedDocumentField, FileField,
@@ -575,11 +385,17 @@ class PipelineBuilder:
                     else:
                         self._add_structured_ref_lookup(target, field, full_path)
 
+                # apply bucket for this deref prefix now
+                bucket = buckets.pop(full_path, None)
+                if bucket:
+                    self.pipeline.append({"$match": bucket})
+
                 if subtree:
-                    self._lookup_walk(
+                    self._lookup_walk_interleaved(
                         target,
                         prefix=f"{full_path}.",
                         tree=subtree,
+                        buckets=buckets,
                         embedded_list_path=embedded_list_path,
                     )
                 continue
@@ -588,7 +404,826 @@ class PipelineBuilder:
             if isinstance(field, ListField):
                 leaf, _depth = self._unwrap_list_field(field)
 
-                # nested list -> ReferenceField leaf
+                if leaf is not None and isinstance(leaf, ReferenceField):
+                    target = leaf.document_type
+
+                    if embedded_list_path:
+                        self._add_embedded_list_structured_ref_lookup(
+                            target_cls=target,
+                            field_shape=field,
+                            list_path=embedded_list_path,
+                            embedded_key=field.db_field,
+                        )
+                    else:
+                        self._add_structured_ref_lookup(target, field, full_path)
+
+                    bucket = buckets.pop(full_path, None)
+                    if bucket:
+                        self.pipeline.append({"$match": bucket})
+
+                    if subtree:
+                        self._lookup_walk_interleaved(
+                            target,
+                            prefix=f"{full_path}.",
+                            tree=subtree,
+                            buckets=buckets,
+                            embedded_list_path=embedded_list_path,
+                        )
+                    continue
+
+                if leaf is not None and isinstance(leaf, GenericReferenceField):
+                    if leaf.choices:
+                        if embedded_list_path:
+                            # GenericRef (or list-of-genericref) inside EmbeddedDocumentListField(...)
+                            self._add_embedded_list_generic_lookup(
+                                generic_field=leaf,
+                                list_path=embedded_list_path,
+                                embedded_key=field.db_field,
+                            )
+                        else:
+                            self._add_generic_lookup(leaf, full_path, is_list=True)
+
+                    bucket = buckets.pop(full_path, None)
+                    if bucket:
+                        self.pipeline.append({"$match": bucket})
+                    continue
+
+            # ==================== MapField(ReferenceField) =====================
+            if isinstance(field, MapField) and isinstance(field.field, ReferenceField):
+                if not embedded_list_path:
+                    self._add_map_ref_lookup(
+                        target_cls=field.field.document_type,
+                        map_field=field,
+                        local_field=full_path,
+                    )
+
+                bucket = buckets.pop(full_path, None)
+                if bucket:
+                    self.pipeline.append({"$match": bucket})
+                continue
+
+            # ==================== MapField(GenericReferenceField) =====================
+            if isinstance(field, MapField) and isinstance(field.field, GenericReferenceField) and getattr(field.field,
+                                                                                                          "choices",
+                                                                                                          None):
+                if not embedded_list_path:
+                    self._add_map_generic_lookup(field.field, full_path)
+
+                bucket = buckets.pop(full_path, None)
+                if bucket:
+                    self.pipeline.append({"$match": bucket})
+                continue
+
+            # ==================== DictField(GenericReferenceField) =====================
+            if isinstance(field, DictField) and isinstance(field.field, GenericReferenceField) and getattr(field.field,
+                                                                                                           "choices",
+                                                                                                           None):
+                if not embedded_list_path:
+                    self._add_dict_generic_lookup(field.field, full_path)
+
+                bucket = buckets.pop(full_path, None)
+                if bucket:
+                    self.pipeline.append({"$match": bucket})
+                continue
+
+            # ==================== LIST of EmbeddedDocument (descend) =====================
+            if self._is_list_of_embedded(field):
+                embedded_doc = self._embedded_doc_type(field)
+                if subtree and embedded_doc:
+                    self._lookup_walk_interleaved(
+                        embedded_doc,
+                        prefix=f"{full_path}.",
+                        tree=subtree,
+                        buckets=buckets,
+                        embedded_list_path=full_path,
+                    )
+                continue
+
+            # ==================== DictField References (ReferenceField only) ========================
+            if isinstance(field, DictField):
+                refs = self._collect_ref_document_types(field.field)
+                if len(refs) == 1:
+                    target = list(refs)[0]
+                    if not embedded_list_path:
+                        self._add_dictfield_lookup(target, field, full_path)
+
+                    bucket = buckets.pop(full_path, None)
+                    if bucket:
+                        self.pipeline.append({"$match": bucket})
+
+                    if subtree and not embedded_list_path:
+                        self._lookup_walk_interleaved(
+                            target,
+                            prefix=f"{full_path}.",
+                            tree=subtree,
+                            buckets=buckets,
+                            embedded_list_path=embedded_list_path,
+                        )
+                continue
+
+            # ==================== Generic Reference (scalar) ===========================
+            if isinstance(field, GenericReferenceField) and field.choices:
+                if embedded_list_path:
+                    # GenericReferenceField inside EmbeddedDocumentListField(...)
+                    self._add_embedded_list_generic_lookup(
+                        generic_field=field,
+                        list_path=embedded_list_path,
+                        embedded_key=field.db_field,
+                    )
+                else:
+                    self._add_generic_lookup(field, full_path)
+
+                bucket = buckets.pop(full_path, None)
+                if bucket:
+                    self.pipeline.append({"$match": bucket})
+                continue
+
+            if isinstance(field, EmbeddedDocumentField):
+                if subtree:
+                    self._lookup_walk_interleaved(
+                        field.document_type,
+                        f"{full_path}.",
+                        subtree,
+                        buckets,
+                        embedded_list_path=embedded_list_path,
+                    )
+                continue
+
+            if isinstance(field, FileField):
+                continue
+
+    # ======================================================================
+    # Embedded doc helpers (robust across mongoengine versions)
+    # ======================================================================
+    @staticmethod
+    def _is_list_of_embedded(field):
+        from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
+        return (
+                isinstance(field, EmbeddedDocumentListField)
+                or (isinstance(field, ListField) and isinstance(getattr(field, "field", None), EmbeddedDocumentField))
+        )
+
+    @staticmethod
+    def _embedded_doc_type(field):
+        dt = getattr(field, "document_type", None)
+        if dt:
+            return dt
+        inner = getattr(field, "field", None)
+        dt = getattr(inner, "document_type", None) if inner else None
+        if dt:
+            return dt
+        return None
+
+    # ======================================================================
+    # ListField helpers (supports nested ListField(ListField(...)))
+    # ======================================================================
+    @staticmethod
+    def _unwrap_list_field(fld):
+        from mongoengine.fields import ListField
+        if not isinstance(fld, ListField):
+            return None, 0
+        depth = 0
+        cur = fld
+        while isinstance(cur, ListField):
+            depth += 1
+            cur = cur.field
+        return cur, depth
+
+    # ======================================================================
+    # Embedded-list deref helper (ListField(EmbeddedDocument) containing refs)
+    # ======================================================================
+    def _add_embedded_list_structured_ref_lookup(
+            self,
+            target_cls,
+            field_shape,  # ReferenceField OR ListField(ReferenceField) OR nested lists
+            list_path,  # e.g. "items" (array of embedded docs)
+            embedded_key,  # e.g. "parents" or "parent"
+    ):
+        """
+        Supports embedded list refs where embedded_key can be:
+          - ReferenceField
+          - ListField(ReferenceField) (including nested lists)
+        by flattening refIds correctly for $lookup.
+        """
+        if not target_cls:
+            return
+
+        safe_list = list_path.replace(".", "_")
+        docs_alias = f"{safe_list}_{embedded_key}__docs"
+
+        # This is the array you get from a dotted projection on an array-of-objects:
+        # - for scalar ref: [ObjectId, ObjectId, ...]
+        # - for list ref:   [[ObjectId,...], [ObjectId,...], ...]
+        raw_values_expr = {"$ifNull": [f"${list_path}.{embedded_key}", []]}
+
+        # Flatten and normalize into a single array of ObjectIds, regardless of shape.
+        # We delegate actual "extract ids" logic to _build_ref_ids_expr (handles dbref, lists, etc).
+        ref_ids_expr = {
+            "$cond": [
+                {"$isArray": f"${list_path}"},
+                {
+                    "$reduce": {
+                        "input": raw_values_expr,
+                        "initialValue": [],
+                        "in": {
+                            "$concatArrays": [
+                                "$$value",
+                                self._build_ref_ids_expr(field_shape, "$$this"),
+                            ]
+                        },
+                    }
+                },
+                [],
+            ]
+        }
+
+        self.pipeline.append(
+            {
+                "$lookup": {
+                    "from": target_cls._get_collection_name(),
+                    "let": {"refIds": ref_ids_expr},
+                    "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
+                    "as": docs_alias,
+                }
+            }
+        )
+
+        docs_expr = f"${docs_alias}"
+        per_item_value_expr = self._build_value_expr(field_shape, f"$$it.{embedded_key}", docs_expr)
+
+        self.pipeline.append(
+            {
+                "$addFields": {
+                    list_path: {
+                        "$cond": [
+                            {"$isArray": f"${list_path}"},
+                            {
+                                "$map": {
+                                    "input": f"${list_path}",
+                                    "as": "it",
+                                    "in": {
+                                        "$mergeObjects": [
+                                            "$$it",
+                                            {embedded_key: per_item_value_expr},
+                                        ]
+                                    },
+                                }
+                            },
+                            f"${list_path}",
+                        ]
+                    }
+                }
+            }
+        )
+
+        self.pipeline.append({"$project": {docs_alias: 0}})
+
+    # ======================================================================
+    # MapField deref helpers
+    # ======================================================================
+    def _add_map_ref_lookup(self, target_cls, map_field, local_field):
+        if not target_cls:
+            return
+
+        safe = local_field.replace(".", "_")
+        docs_alias = f"{safe}__docs"
+        is_dbref = bool(getattr(map_field.field, "dbref", False))
+        id_from_value_expr = "$$kv.v.$id" if is_dbref else "$$kv.v"
+
+        ref_ids_expr = {
+            "$cond": [
+                {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                {"$map": {"input": {"$objectToArray": f"${local_field}"}, "as": "kv", "in": id_from_value_expr}},
+                [],
+            ]
+        }
+
+        self.pipeline.append(
+            {
+                "$lookup": {
+                    "from": target_cls._get_collection_name(),
+                    "let": {"refIds": ref_ids_expr},
+                    "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
+                    "as": docs_alias,
+                }
+            }
+        )
+
+        cls_name = getattr(target_cls, "_class_name", target_cls.__name__)
+
+        self.pipeline.append(
+            {
+                "$addFields": {
+                    local_field: {
+                        "$cond": [
+                            {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                            {
+                                "$arrayToObject": {
+                                    "$map": {
+                                        "input": {"$objectToArray": f"${local_field}"},
+                                        "as": "kv",
+                                        "in": {
+                                            "k": "$$kv.k",
+                                            "v": {
+                                                "$let": {
+                                                    "vars": {
+                                                        "refId": {"$ifNull": [id_from_value_expr, None]},
+                                                        "matches": {
+                                                            "$filter": {
+                                                                "input": f"${docs_alias}",
+                                                                "as": "doc",
+                                                                "cond": {"$eq": ["$$doc._id", id_from_value_expr]},
+                                                            }
+                                                        },
+                                                    },
+                                                    "in": {
+                                                        "$cond": [
+                                                            {"$ifNull": ["$$refId", False]},
+                                                            {
+                                                                "$cond": [
+                                                                    {"$gt": [{"$size": "$$matches"}, 0]},
+                                                                    {"$first": "$$matches"},
+                                                                    {"_missing_reference": True, "_ref": "$$refId",
+                                                                     "_cls": cls_name},
+                                                                ]
+                                                            },
+                                                            None,
+                                                        ]
+                                                    },
+                                                }
+                                            },
+                                        },
+                                    }
+                                }
+                            },
+                            f"${local_field}",
+                        ]
+                    }
+                }
+            }
+        )
+
+        self.pipeline.append({"$project": {docs_alias: 0}})
+
+    def _add_map_generic_lookup(self, generic_field, local_field):
+        from mongoengine.document import _DocumentRegistry
+
+        doc_classes = []
+        for ch in getattr(generic_field, "choices", None) or ():
+            if isinstance(ch, str):
+                cls = _DocumentRegistry.get(ch)
+            elif isinstance(ch, type):
+                cls = _DocumentRegistry.get(ch.__name__)
+            else:
+                continue
+            if cls:
+                doc_classes.append(cls)
+        if not doc_classes:
+            return
+
+        safe = local_field.replace(".", "_")
+
+        for cls in doc_classes:
+            alias = f"{safe}__{cls.__name__}"
+
+            ref_ids_expr = {
+                "$cond": [
+                    {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                    {
+                        "$map": {
+                            "input": {
+                                "$filter": {
+                                    "input": {"$objectToArray": f"${local_field}"},
+                                    "as": "kv",
+                                    "cond": {
+                                        "$regexMatch": {
+                                            "input": "$$kv.v._cls",
+                                            "regex": f"^{cls._class_name}(\\.|$)",
+                                        }
+                                    },
+                                }
+                            },
+                            "as": "kv",
+                            "in": "$$kv.v._ref.$id",
+                        }
+                    },
+                    [],
+                ]
+            }
+
+            self.pipeline.append(
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr},
+                        "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
+                        "as": alias,
+                    }
+                }
+            )
+
+        def value_transform_expr():
+            expr = "$$val"
+            for cls in reversed(doc_classes):
+                alias_arr = f"${safe}__{cls.__name__}"
+                class_test = {"$regexMatch": {"input": "$$val._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+                branch = {
+                    "$let": {
+                        "vars": {
+                            "matches": {
+                                "$filter": {
+                                    "input": alias_arr,
+                                    "as": "doc",
+                                    "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]},
+                                }
+                            }
+                        },
+                        "in": {
+                            "$cond": [
+                                {"$gt": [{"$size": "$$matches"}, 0]},
+                                {"$mergeObjects": [{"$first": "$$matches"},
+                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
+                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
+                            ]
+                        },
+                    }
+                }
+                expr = {"$cond": [class_test, branch, expr]}
+            return expr
+
+        self.pipeline.append(
+            {
+                "$addFields": {
+                    local_field: {
+                        "$cond": [
+                            {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                            {
+                                "$arrayToObject": {
+                                    "$map": {
+                                        "input": {"$objectToArray": f"${local_field}"},
+                                        "as": "kv",
+                                        "in": {
+                                            "k": "$$kv.k",
+                                            "v": {"$let": {"vars": {"val": "$$kv.v"}, "in": value_transform_expr()}},
+                                        },
+                                    }
+                                }
+                            },
+                            f"${local_field}",
+                        ]
+                    }
+                }
+            }
+        )
+
+        for cls in doc_classes:
+            self.pipeline.append({"$project": {f"{safe}__{cls.__name__}": 0}})
+
+    def _add_dict_generic_lookup(self, generic_field, local_field):
+        from mongoengine.document import _DocumentRegistry
+
+        doc_classes = []
+        for ch in getattr(generic_field, "choices", None) or ():
+            if isinstance(ch, str):
+                cls = _DocumentRegistry.get(ch)
+            elif isinstance(ch, type):
+                cls = _DocumentRegistry.get(ch.__name__)
+            else:
+                continue
+            if cls:
+                doc_classes.append(cls)
+        if not doc_classes:
+            return
+
+        safe = local_field.replace(".", "_")
+
+        for cls in doc_classes:
+            alias = f"{safe}__{cls.__name__}"
+
+            ref_ids_expr = {
+                "$cond": [
+                    {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                    {
+                        "$map": {
+                            "input": {
+                                "$filter": {
+                                    "input": {"$objectToArray": f"${local_field}"},
+                                    "as": "kv",
+                                    "cond": {
+                                        "$regexMatch": {
+                                            "input": "$$kv.v._cls",
+                                            "regex": f"^{cls._class_name}(\\.|$)",
+                                        }
+                                    },
+                                }
+                            },
+                            "as": "kv",
+                            "in": "$$kv.v._ref.$id",
+                        }
+                    },
+                    [],
+                ]
+            }
+
+            self.pipeline.append(
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr},
+                        "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
+                        "as": alias,
+                    }
+                }
+            )
+
+        def value_transform_expr():
+            expr = "$$val"
+            for cls in reversed(doc_classes):
+                alias_arr = f"${safe}__{cls.__name__}"
+                class_test = {"$regexMatch": {"input": "$$val._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+                branch = {
+                    "$let": {
+                        "vars": {
+                            "matches": {
+                                "$filter": {
+                                    "input": alias_arr,
+                                    "as": "doc",
+                                    "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]},
+                                }
+                            }
+                        },
+                        "in": {
+                            "$cond": [
+                                {"$gt": [{"$size": "$$matches"}, 0]},
+                                {"$mergeObjects": [{"$first": "$$matches"},
+                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
+                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
+                            ]
+                        },
+                    }
+                }
+                expr = {"$cond": [class_test, branch, expr]}
+            return expr
+
+        self.pipeline.append(
+            {
+                "$addFields": {
+                    local_field: {
+                        "$cond": [
+                            {"$eq": [{"$type": f"${local_field}"}, "object"]},
+                            {
+                                "$arrayToObject": {
+                                    "$map": {
+                                        "input": {"$objectToArray": f"${local_field}"},
+                                        "as": "kv",
+                                        "in": {
+                                            "k": "$$kv.k",
+                                            "v": {"$let": {"vars": {"val": "$$kv.v"}, "in": value_transform_expr()}},
+                                        },
+                                    }
+                                }
+                            },
+                            f"${local_field}",
+                        ]
+                    }
+                }
+            }
+        )
+
+        for cls in doc_classes:
+            self.pipeline.append({"$project": {f"{safe}__{cls.__name__}": 0}})
+
+    def _add_embedded_list_generic_lookup(self, generic_field, list_path, embedded_key):
+        """
+        EmbeddedDocumentListField(Item) where Item.<embedded_key> is either:
+          - GenericReferenceField
+          - ListField(GenericReferenceField)
+
+        This:
+          - does per-choice lookups
+          - rewrites each embedded item to replace <embedded_key> with the joined doc(s)
+          - keeps missing refs as {_missing_reference: True, _ref:..., _cls:...}
+        """
+        from mongoengine.document import _DocumentRegistry
+
+        doc_classes = []
+        for ch in getattr(generic_field, "choices", None) or ():
+            if isinstance(ch, str):
+                cls = _DocumentRegistry.get(ch)
+            elif isinstance(ch, type):
+                cls = _DocumentRegistry.get(ch.__name__)
+            else:
+                cls = None
+            if cls:
+                doc_classes.append(cls)
+        if not doc_classes:
+            return
+
+        safe_list = list_path.replace(".", "_")
+        aliases = []
+
+        # dotted projection on array-of-objects:
+        # - scalar generic:  [ {_ref,_cls}, {_ref,_cls}, ... ]
+        # - list generic:    [ [ {_ref,_cls}, ... ], [ {_ref,_cls}, ... ], ... ]
+        raw_values_expr = {"$ifNull": [f"${list_path}.{embedded_key}", []]}
+
+        # 1) lookups per concrete class (collect ids across ALL embedded docs, flattening lists)
+        for cls in doc_classes:
+            alias = f"{safe_list}_{embedded_key}__{cls.__name__}"
+            aliases.append(alias)
+
+            # IMPORTANT: $$m is only valid inside $filter/$map scopes.
+            class_test_m = {"$regexMatch": {"input": "$$m._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+            class_test_this = {"$regexMatch": {"input": "$$this._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+
+            ref_ids_expr = {
+                "$cond": [
+                    {"$isArray": f"${list_path}"},
+                    {
+                        "$reduce": {
+                            "input": raw_values_expr,
+                            "initialValue": [],
+                            "in": {
+                                "$concatArrays": [
+                                    "$$value",
+                                    {
+                                        # $$this is either a dict (scalar generic) or an array (list generic)
+                                        "$cond": [
+                                            {"$isArray": "$$this"},
+                                            {
+                                                "$map": {
+                                                    "input": {
+                                                        "$filter": {
+                                                            "input": "$$this",
+                                                            "as": "m",
+                                                            "cond": class_test_m,
+                                                        }
+                                                    },
+                                                    "as": "m",
+                                                    "in": "$$m._ref.$id",
+                                                }
+                                            },
+                                            {
+                                                "$cond": [
+                                                    class_test_this,
+                                                    ["$$this._ref.$id"],
+                                                    [],
+                                                ]
+                                            },
+                                        ]
+                                    },
+                                ]
+                            },
+                        }
+                    },
+                    [],
+                ]
+            }
+
+            self.pipeline.append(
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr},
+                        "pipeline": [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}],
+                        "as": alias,
+                    }
+                }
+            )
+
+        # 2) transform one generic value in $$val (scalar)
+        def value_transform_expr():
+            expr = "$$val"
+            for cls in reversed(doc_classes):
+                alias_arr = f"${safe_list}_{embedded_key}__{cls.__name__}"
+                class_test_val = {"$regexMatch": {"input": "$$val._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+
+                branch = {
+                    "$let": {
+                        "vars": {
+                            "matches": {
+                                "$filter": {
+                                    "input": alias_arr,
+                                    "as": "doc",
+                                    "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]},
+                                }
+                            }
+                        },
+                        "in": {
+                            "$cond": [
+                                {"$gt": [{"$size": "$$matches"}, 0]},
+                                {
+                                    "$mergeObjects": [
+                                        {"$first": "$$matches"},
+                                        {"_ref": "$$val._ref", "_cls": "$$val._cls"},
+                                    ]
+                                },
+                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
+                            ]
+                        },
+                    }
+                }
+
+                expr = {"$cond": [class_test_val, branch, expr]}
+            return expr
+
+        # 3) rewrite embedded list items; handle scalar OR list at embedded_key
+        self.pipeline.append(
+            {
+                "$addFields": {
+                    list_path: {
+                        "$cond": [
+                            {"$isArray": f"${list_path}"},
+                            {
+                                "$map": {
+                                    "input": f"${list_path}",
+                                    "as": "it",
+                                    "in": {
+                                        "$mergeObjects": [
+                                            "$$it",
+                                            {
+                                                embedded_key: {
+                                                    "$cond": [
+                                                        {"$isArray": f"$$it.{embedded_key}"},
+                                                        {
+                                                            "$map": {
+                                                                "input": f"$$it.{embedded_key}",
+                                                                "as": "val",
+                                                                "in": {
+                                                                    "$let": {
+                                                                        "vars": {"val": "$$val"},
+                                                                        "in": value_transform_expr(),
+                                                                    }
+                                                                },
+                                                            }
+                                                        },
+                                                        {
+                                                            "$let": {
+                                                                "vars": {"val": f"$$it.{embedded_key}"},
+                                                                "in": value_transform_expr(),
+                                                            }
+                                                        },
+                                                    ]
+                                                }
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                            f"${list_path}",
+                        ]
+                    }
+                }
+            }
+        )
+
+        # 4) cleanup temp arrays
+        for alias in aliases:
+            self.pipeline.append({"$project": {alias: 0}})
+
+    # ======================================================================
+    # LOOKUP WALKER (your existing one, kept as-is for select_related paths)
+    # ======================================================================
+    def _lookup_walk(self, doc_cls, prefix, tree, embedded_list_path=None):
+        from mongoengine.fields import (
+            ReferenceField, GenericReferenceField,
+            ListField, DictField, MapField, EmbeddedDocumentField, FileField,
+        )
+
+        for field_name, subtree in tree.items():
+            if field_name == "":
+                continue
+
+            field = doc_cls._fields.get(field_name)
+            if not field:
+                continue
+
+            full_path = f"{prefix}{field.db_field}" if prefix else field.db_field
+
+            if isinstance(field, ReferenceField):
+                target = field.document_type_obj
+
+                if embedded_list_path:
+                    self._add_embedded_list_structured_ref_lookup(
+                        target_cls=target,
+                        field_shape=field,
+                        list_path=embedded_list_path,
+                        embedded_key=field.db_field,
+                    )
+                else:
+                    if target and target._meta.get("abstract", False):
+                        self._add_abstract_dbref_lookup(target, field, full_path)
+                    else:
+                        self._add_structured_ref_lookup(target, field, full_path)
+
+                if subtree:
+                    self._lookup_walk(target, prefix=f"{full_path}.", tree=subtree,
+                                      embedded_list_path=embedded_list_path)
+                continue
+
+            if isinstance(field, ListField):
+                leaf, _depth = self._unwrap_list_field(field)
+
                 if leaf is not None and isinstance(leaf, ReferenceField):
                     target = leaf.document_type
 
@@ -603,31 +1238,28 @@ class PipelineBuilder:
                         self._add_structured_ref_lookup(target, field, full_path)
 
                     if subtree:
-                        self._lookup_walk(
-                            target,
-                            prefix=f"{full_path}.",
-                            tree=subtree,
-                            embedded_list_path=embedded_list_path,
-                        )
+                        self._lookup_walk(target, prefix=f"{full_path}.", tree=subtree,
+                                          embedded_list_path=embedded_list_path)
                     continue
 
-                # nested list -> GenericReferenceField leaf (flat list only)
                 if leaf is not None and isinstance(leaf, GenericReferenceField):
-                    if leaf.choices and not embedded_list_path:
-                        self._add_generic_lookup(leaf, full_path, is_list=True)
+                    if leaf.choices:
+                        if embedded_list_path:
+                            self._add_embedded_list_generic_lookup(
+                                generic_field=leaf,
+                                list_path=embedded_list_path,
+                                embedded_key=field.db_field,
+                            )
+                        else:
+                            self._add_generic_lookup(leaf, full_path, is_list=True)
                     continue
 
-            # ==================== MapField(ReferenceField) =====================
             if isinstance(field, MapField) and isinstance(field.field, ReferenceField):
                 if not embedded_list_path:
-                    self._add_map_ref_lookup(
-                        target_cls=field.field.document_type,
-                        map_field=field,
-                        local_field=full_path,
-                    )
+                    self._add_map_ref_lookup(target_cls=field.field.document_type, map_field=field,
+                                             local_field=full_path)
                 continue
 
-            # ==================== MapField(GenericReferenceField) =====================
             if isinstance(field, MapField) and isinstance(field.field, GenericReferenceField) and getattr(field.field,
                                                                                                           "choices",
                                                                                                           None):
@@ -635,7 +1267,6 @@ class PipelineBuilder:
                     self._add_map_generic_lookup(field.field, full_path)
                 continue
 
-            # ==================== DictField(GenericReferenceField) =====================
             if isinstance(field, DictField) and isinstance(field.field, GenericReferenceField) and getattr(field.field,
                                                                                                            "choices",
                                                                                                            None):
@@ -643,19 +1274,12 @@ class PipelineBuilder:
                     self._add_dict_generic_lookup(field.field, full_path)
                 continue
 
-            # ==================== LIST of EmbeddedDocument (descend) =====================
             if self._is_list_of_embedded(field):
                 embedded_doc = self._embedded_doc_type(field)
                 if subtree and embedded_doc:
-                    self._lookup_walk(
-                        embedded_doc,
-                        prefix=f"{full_path}.",
-                        tree=subtree,
-                        embedded_list_path=full_path,
-                    )
+                    self._lookup_walk(embedded_doc, prefix=f"{full_path}.", tree=subtree, embedded_list_path=full_path)
                 continue
 
-            # ==================== DictField References (ReferenceField only) ========================
             if isinstance(field, DictField):
                 refs = self._collect_ref_document_types(field.field)
                 if len(refs) == 1:
@@ -664,15 +1288,10 @@ class PipelineBuilder:
                         self._add_dictfield_lookup(target, field, full_path)
 
                     if subtree and not embedded_list_path:
-                        self._lookup_walk(
-                            target,
-                            prefix=f"{full_path}.",
-                            tree=subtree,
-                            embedded_list_path=embedded_list_path,
-                        )
+                        self._lookup_walk(target, prefix=f"{full_path}.", tree=subtree,
+                                          embedded_list_path=embedded_list_path)
                 continue
 
-            # ==================== Generic Reference (scalar) ===========================
             if isinstance(field, GenericReferenceField) and field.choices:
                 if not embedded_list_path:
                     self._add_generic_lookup(field, full_path)
@@ -680,19 +1299,15 @@ class PipelineBuilder:
 
             if isinstance(field, EmbeddedDocumentField):
                 if subtree:
-                    self._lookup_walk(
-                        field.document_type,
-                        f"{full_path}.",
-                        subtree,
-                        embedded_list_path=embedded_list_path,
-                    )
+                    self._lookup_walk(field.document_type, f"{full_path}.", subtree,
+                                      embedded_list_path=embedded_list_path)
                 continue
 
             if isinstance(field, FileField):
                 continue
 
     # ======================================================================
-    # HELPER: collect leaf ReferenceField document types under a field
+    # HELPERS: collect leaf ReferenceField document types under a field
     # ======================================================================
     def _collect_ref_document_types(self, field):
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
@@ -713,7 +1328,6 @@ class PipelineBuilder:
                 doc_types |= self._collect_ref_document_types(field.field)
             return doc_types
 
-        # We skip GenericReferenceField here (multi-collection)
         if isinstance(field, GenericReferenceField):
             return doc_types
 
@@ -770,12 +1384,7 @@ class PipelineBuilder:
                         "$reduce": {
                             "input": source_expr,
                             "initialValue": [],
-                            "in": {
-                                "$concatArrays": [
-                                    "$$value",
-                                    self._build_ref_ids_expr(field.field, "$$this"),
-                                ]
-                            },
+                            "in": {"$concatArrays": ["$$value", self._build_ref_ids_expr(field.field, "$$this")]},
                         }
                     },
                     [],
@@ -788,12 +1397,7 @@ class PipelineBuilder:
                 "$reduce": {
                     "input": obj_array,
                     "initialValue": [],
-                    "in": {
-                        "$concatArrays": [
-                            "$$value",
-                            self._build_ref_ids_expr(field.field, "$$this.v"),
-                        ]
-                    },
+                    "in": {"$concatArrays": ["$$value", self._build_ref_ids_expr(field.field, "$$this.v")]},
                 }
             }
 
@@ -851,13 +1455,8 @@ class PipelineBuilder:
             return {
                 "$cond": [
                     {"$isArray": source_expr},
-                    {
-                        "$map": {
-                            "input": source_expr,
-                            "as": "item",
-                            "in": self._build_value_expr(field.field, "$$item", docs_expr),
-                        }
-                    },
+                    {"$map": {"input": source_expr, "as": "item",
+                              "in": self._build_value_expr(field.field, "$$item", docs_expr)}},
                     source_expr,
                 ]
             }
@@ -868,10 +1467,7 @@ class PipelineBuilder:
                     "$map": {
                         "input": {"$objectToArray": source_expr},
                         "as": "kv",
-                        "in": {
-                            "k": "$$kv.k",
-                            "v": self._build_value_expr(field.field, "$$kv.v", docs_expr),
-                        },
+                        "in": {"k": "$$kv.k", "v": self._build_value_expr(field.field, "$$kv.v", docs_expr)},
                     }
                 }
             }
@@ -926,42 +1522,42 @@ class PipelineBuilder:
 
             temp = f"{local_field}__{cls.__name__}"
 
-            self.pipeline.append({
-                "$lookup": {
-                    "from": coll,
-                    "localField": f"{local_field}.$id",
-                    "foreignField": "_id",
-                    "as": temp,
-                }
-            })
-
-            self.pipeline.append({
-                "$addFields": {
-                    local_field: {
-                        "$cond": [
-                            {
-                                "$and": [
-                                    {"$ifNull": [f"${local_field}", False]},
-                                    {"$eq": [f"${local_field}.$ref", coll]},
-                                ]
-                            },
-                            {
-                                "$let": {
-                                    "vars": {"matches": f"${temp}", "refId": f"${local_field}"},
-                                    "in": {
-                                        "$cond": [
-                                            {"$gt": [{"$size": "$$matches"}, 0]},
-                                            {"$mergeObjects": [{"$first": "$$matches"}, {"_ref": "$$refId"}]},
-                                            {"_missing_reference": True, "_ref": "$$refId"},
-                                        ]
-                                    },
-                                }
-                            },
-                            f"${local_field}",
-                        ]
+            self.pipeline.append(
+                {
+                    "$lookup": {
+                        "from": coll,
+                        "localField": f"{local_field}.$id",
+                        "foreignField": "_id",
+                        "as": temp,
                     }
                 }
-            })
+            )
+
+            self.pipeline.append(
+                {
+                    "$addFields": {
+                        local_field: {
+                            "$cond": [
+                                {"$and": [{"$ifNull": [f"${local_field}", False]},
+                                          {"$eq": [f"${local_field}.$ref", coll]}]},
+                                {
+                                    "$let": {
+                                        "vars": {"matches": f"${temp}", "refId": f"${local_field}"},
+                                        "in": {
+                                            "$cond": [
+                                                {"$gt": [{"$size": "$$matches"}, 0]},
+                                                {"$mergeObjects": [{"$first": "$$matches"}, {"_ref": "$$refId"}]},
+                                                {"_missing_reference": True, "_ref": "$$refId"},
+                                            ]
+                                        },
+                                    }
+                                },
+                                f"${local_field}",
+                            ]
+                        }
+                    }
+                }
+            )
 
             self.pipeline.append({"$project": {temp: 0}})
 
@@ -989,63 +1585,65 @@ class PipelineBuilder:
             for cls in doc_classes:
                 temp = f"{local_field}__{cls.__name__}"
 
-                self.pipeline.append({
-                    "$lookup": {
-                        "from": cls._get_collection_name(),
-                        "localField": f"{local_field}._ref.$id",
-                        "foreignField": "_id",
-                        "as": temp,
-                    }
-                })
-
-                class_test = {
-                    "$regexMatch": {
-                        "input": f"${local_field}._cls",
-                        "regex": f"^{cls._class_name}(\\.|$)"
-                    }
-                }
-
-                self.pipeline.append({
-                    "$addFields": {
-                        local_field: {
-                            "$cond": [
-                                class_test,
-                                {
-                                    "$let": {
-                                        "vars": {
-                                            "matches": f"${temp}",
-                                            "refVal": f"${local_field}._ref",
-                                            "clsVal": f"${local_field}._cls",
-                                        },
-                                        "in": {
-                                            "$cond": [
-                                                {"$gt": [{"$size": "$$matches"}, 0]},
-                                                {"$mergeObjects": [{"$first": "$$matches"},
-                                                                   {"_ref": "$$refVal", "_cls": "$$clsVal"}]},
-                                                {"_missing_reference": True, "_ref": "$$refVal", "_cls": "$$clsVal"},
-                                            ]
-                                        }
-                                    }
-                                },
-                                f"${local_field}"
-                            ]
+                self.pipeline.append(
+                    {
+                        "$lookup": {
+                            "from": cls._get_collection_name(),
+                            "localField": f"{local_field}._ref.$id",
+                            "foreignField": "_id",
+                            "as": temp,
                         }
                     }
-                })
+                )
+
+                class_test = {"$regexMatch": {"input": f"${local_field}._cls", "regex": f"^{cls._class_name}(\\.|$)"}}
+
+                self.pipeline.append(
+                    {
+                        "$addFields": {
+                            local_field: {
+                                "$cond": [
+                                    class_test,
+                                    {
+                                        "$let": {
+                                            "vars": {
+                                                "matches": f"${temp}",
+                                                "refVal": f"${local_field}._ref",
+                                                "clsVal": f"${local_field}._cls",
+                                            },
+                                            "in": {
+                                                "$cond": [
+                                                    {"$gt": [{"$size": "$$matches"}, 0]},
+                                                    {"$mergeObjects": [{"$first": "$$matches"},
+                                                                       {"_ref": "$$refVal", "_cls": "$$clsVal"}]},
+                                                    {"_missing_reference": True, "_ref": "$$refVal",
+                                                     "_cls": "$$clsVal"},
+                                                ]
+                                            },
+                                        }
+                                    },
+                                    f"${local_field}",
+                                ]
+                            }
+                        }
+                    }
+                )
 
                 self.pipeline.append({"$project": {temp: 0}})
             return
 
         # LIST GENERIC (flat list only)
         for cls in doc_classes:
-            self.pipeline.append({
-                "$lookup": {
-                    "from": cls._get_collection_name(),
-                    "localField": f"{local_field}._ref.$id",
-                    "foreignField": "_id",
-                    "as": f"{local_field}__{cls.__name__}",
+            self.pipeline.append(
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "localField": f"{local_field}._ref.$id",
+                        "foreignField": "_id",
+                        "as": f"{local_field}__{cls.__name__}",
+                    }
                 }
-            })
+            )
 
         def item_expr_for(cls):
             return {
@@ -1069,34 +1667,23 @@ class PipelineBuilder:
                                                        {"_ref": "$$item._ref", "_cls": "$$item._cls"}]},
                                     {"_missing_reference": True, "_ref": "$$item._ref", "_cls": "$$item._cls"},
                                 ]
-                            }
+                            },
                         }
                     },
-                    "$$item"
+                    "$$item",
                 ]
             }
 
         def build_item_expr():
             expr = "$$item"
             for cls in reversed(doc_classes):
-                expr = {"$cond": [
-                    {"$regexMatch": {"input": "$$item._cls", "regex": f"^{cls._class_name}(\\.|$)"}},
-                    item_expr_for(cls),
-                    expr
-                ]}
+                expr = {"$cond": [{"$regexMatch": {"input": "$$item._cls", "regex": f"^{cls._class_name}(\\.|$)"}},
+                                  item_expr_for(cls), expr]}
             return expr
 
-        self.pipeline.append({
-            "$addFields": {
-                local_field: {
-                    "$map": {
-                        "input": f"${local_field}",
-                        "as": "item",
-                        "in": build_item_expr(),
-                    }
-                }
-            }
-        })
+        self.pipeline.append(
+            {"$addFields": {local_field: {"$map": {"input": f"${local_field}", "as": "item", "in": build_item_expr()}}}}
+        )
 
         for cls in doc_classes:
             self.pipeline.append({"$project": {f"{local_field}__{cls.__name__}": 0}})
@@ -1129,36 +1716,6 @@ class PipelineBuilder:
     def _limit_stage(self):
         if self.queryset._limit is not None:
             self.pipeline.append({"$limit": self.queryset._limit})
-
-    # ======================================================================
-    # HELPERS: projection check (kept for compatibility)
-    # ======================================================================
-    def _field_selected_by_projection(self, full_path):
-        lf = self.queryset._loaded_fields
-        if not lf:
-            return True
-
-        proj = lf.as_dict()
-        if not proj:
-            return True
-
-        parts = full_path.split(".")
-
-        for i in range(1, len(parts) + 1):
-            key = ".".join(parts[:i])
-            if key in proj and proj[key] == 0:
-                return False
-
-        has_include = any(v == 1 for v in proj.values())
-        if not has_include:
-            return True
-
-        for i in range(len(parts), 0, -1):
-            key = ".".join(parts[:i])
-            if key in proj:
-                return proj[key] == 1
-
-        return False
 
     # ======================================================================
     # HELPERS: regex conversion

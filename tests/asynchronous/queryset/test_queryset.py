@@ -73,18 +73,20 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             await self.Person.aobjects._collection, AsyncCollection
         )
 
-    async def test_cannot_perform_joins_references(self):
+    async def test_can_perform_joins_references(self):
         class BlogPost(Document):
             author = ReferenceField(self.Person)
             author2 = GenericReferenceField(choices=(self.Person,))
 
-        # test addressing a field from a reference
-        with pytest.raises(InvalidQueryError):
-            await BlogPost.aobjects(author__name="test").to_list()
+        await BlogPost.adrop_collection()
+        await self.Person.adrop_collection()
 
-        # should fail for a generic reference as well
-        with pytest.raises(InvalidQueryError):
-            await BlogPost.aobjects(author2__name="test").to_list()
+        person = await self.Person(name="test").asave()
+        await BlogPost(author=person, author2=person).asave()
+
+        # SHOULD NOT raise
+        await BlogPost.aobjects(author__name="test").to_list()
+        await BlogPost.aobjects(author2__name="test").to_list()
 
     async def test_find(self):
         """Ensure that a query returns a valid set of results."""
@@ -1644,7 +1646,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(DoesNotExist):
             await other2.areload()
 
-    async def test_reverse_delete_rule_cascade_self_referencing(self):  # todo
+    async def test_reverse_delete_rule_cascade_self_referencing(self):
         """Ensure self-referencing CASCADE deletes do not result in infinite
         loop
         """

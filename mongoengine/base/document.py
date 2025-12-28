@@ -1082,34 +1082,33 @@ class BaseDocument:
         Returns:
             A list of Field instances for fields that were found or
             strings for sub-fields that weren't.
-
-        Example:
-            >>> user._lookup_field('name')
-            [<mongoengine.fields.StringField at 0x1119bff50>]
-
-            >>> user._lookup_field('roles')
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>]
-
-            >>> user._lookup_field(['roles', 'role'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             <mongoengine.fields.StringField at 0x1119ec050>]
-
-            >>> user._lookup_field('doesnt_exist')
-            raises LookUpError
-
-            >>> user._lookup_field(['roles', 'doesnt_exist'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             'doesnt_exist']
-
         """
-        # TODO this method is WAY too complicated. Simplify it.
-        # TODO don't think returning a string for embedded non-existent fields is desired
-
         ListField = _import_class("ListField")
         DynamicField = _import_class("DynamicField")
+        DictField = _import_class("DictField")
+        MapField = _import_class("MapField")
+        ReferenceField = _import_class("ReferenceField")
+        GenericReferenceField = _import_class("GenericReferenceField")
 
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
+
+        # Helper: resolve document classes for GenericReferenceField choices
+        def _resolve_generic_choices(generic_field):
+            from mongoengine.document import _DocumentRegistry
+
+            choices = getattr(generic_field, "choices", None) or ()
+            resolved = []
+            for ch in choices:
+                if isinstance(ch, str):
+                    dc = _DocumentRegistry.get(ch)
+                elif isinstance(ch, type):
+                    dc = _DocumentRegistry.get(ch.__name__)
+                else:
+                    dc = None
+                if dc is not None:
+                    resolved.append(dc)
+            return resolved
 
         fields = []
         field = None
@@ -1130,9 +1129,7 @@ class BaseDocument:
                     field = cls._fields[field_name]
                 elif cls._dynamic:
                     field = DynamicField(db_field=field_name)
-                elif cls._meta.get("allow_inheritance") or cls._meta.get(
-                        "abstract", False
-                ):
+                elif cls._meta.get("allow_inheritance") or cls._meta.get("abstract", False):
                     # 744: in case the field is defined in a subclass
                     for subcls in cls.__subclasses__():
                         try:
@@ -1146,55 +1143,117 @@ class BaseDocument:
                         raise LookUpError('Cannot resolve field "%s"' % field_name)
                 else:
                     raise LookUpError('Cannot resolve field "%s"' % field_name)
-            else:
-                ReferenceField = _import_class("ReferenceField")
-                GenericReferenceField = _import_class("GenericReferenceField")
 
-                # If previous field was a reference, throw an error (we
-                # cannot look up fields that are on references).
-                if isinstance(field, (ReferenceField, GenericReferenceField)):
+                fields.append(field)
+                continue
+
+            # ------------------------------------------------------------------
+            # JOINABLE PATH SUPPORT (ReferenceField / GenericReferenceField)
+            # plus ListField(ReferenceField/GenericReferenceField)
+            # ------------------------------------------------------------------
+            join_field = None
+            if isinstance(field, ReferenceField):
+                join_field = field
+            elif isinstance(field, GenericReferenceField):
+                join_field = field
+            elif isinstance(field, ListField) and isinstance(field.field, (ReferenceField, GenericReferenceField)):
+                join_field = field.field
+
+            if isinstance(join_field, ReferenceField):
+                target = getattr(join_field, "document_type", None) or getattr(join_field, "document_type_obj", None)
+                if target is None:
+                    raise LookUpError('Cannot resolve reference target for "%s"' % join_field.name)
+
+                # Delegate resolution to referenced document. This does NOT perform a join;
+                # it only resolves the field definition so the aggregation/query layer can.
+                sub_field = target._lookup_field([field_name])[0]
+                field = sub_field
+                fields.append(field)
+                continue
+
+            if isinstance(join_field, GenericReferenceField):
+                # choices required in your design
+                choice_classes = _resolve_generic_choices(join_field)
+                if not choice_classes:
                     raise LookUpError(
-                        "Cannot perform join in mongoDB: %s" % "__".join(parts)
+                        'Cannot resolve GenericReferenceField choices for "%s"' % "__".join(parts)
                     )
 
-                # If the parent field has a "field" attribute which has a
-                # lookup_member method, call it to find the field
-                # corresponding to this iteration.
+                resolved_fields = []
+                for dc in choice_classes:
+                    resolved_fields.append(dc._lookup_field([field_name])[0])
+
+                # Must be consistent across choices (same Field class)
+                types = {type(f) for f in resolved_fields}
+                if len(types) != 1:
+                    raise LookUpError(
+                        'Ambiguous GenericReferenceField path "%s" (different field types across choices)'
+                        % field_name
+                    )
+
+                field = resolved_fields[0]
+                fields.append(field)
+                continue
+
+            # ------------------------------------------------------------------
+            # MapField/DictField key support:
+            # e.g. my_map__SOMEKEY__number
+            # SOMEKEY is a key, not a schema field.
+            # ------------------------------------------------------------------
+            if isinstance(field, (MapField, DictField)):
+                # Try normal resolution first (some containers expose lookup_member)
+                new_field = None
                 if hasattr(getattr(field, "field", None), "lookup_member"):
                     new_field = field.field.lookup_member(field_name)
-
-                # If the parent field is a DynamicField or if it's part of
-                # a DynamicDocument, mark current field as a DynamicField
-                # with db_name equal to the field name.
-                elif cls._dynamic and (
-                        isinstance(field, DynamicField)
-                        or getattr(getattr(field, "document_type", None), "_dynamic", None)
-                ):
-                    new_field = DynamicField(db_field=field_name)
-
-                # Else, try to use the parent field's lookup_member method
-                # to find the subfield.
                 elif hasattr(field, "lookup_member"):
                     new_field = field.lookup_member(field_name)
 
-                # Raise a LookUpError if all the other conditions failed.
-                else:
-                    raise LookUpError(
-                        "Cannot resolve subfield or operator {} "
-                        "on the field {}".format(field_name, field.name)
-                    )
-
-                # If current field still wasn't found and the parent field
-                # is a ComplexBaseField, add the name current field name and
-                # move on.
-                if not new_field and isinstance(field, ComplexBaseField):
-                    fields.append(field_name)
+                if new_field:
+                    field = new_field
+                    fields.append(field)
                     continue
-                elif not new_field:
-                    raise LookUpError('Cannot resolve field "%s"' % field_name)
 
-                field = new_field  # update field to the new field type
+                # Treat as dictionary key token
+                fields.append(field_name)
+                # Descend into the container value field for the next segment
+                field = field.field
+                continue
 
+            # ------------------------------------------------------------------
+            # Original behavior for embedded/dynamic/complex fields
+            # ------------------------------------------------------------------
+            # If the parent field has a "field" attribute which has a
+            # lookup_member method, call it to find the field
+            if hasattr(getattr(field, "field", None), "lookup_member"):
+                new_field = field.field.lookup_member(field_name)
+
+            # If the parent field is a DynamicField or if it's part of
+            # a DynamicDocument, mark current field as a DynamicField
+            elif cls._dynamic and (
+                    isinstance(field, DynamicField)
+                    or getattr(getattr(field, "document_type", None), "_dynamic", None)
+            ):
+                new_field = DynamicField(db_field=field_name)
+
+            # Else, try to use the parent field's lookup_member method
+            elif hasattr(field, "lookup_member"):
+                new_field = field.lookup_member(field_name)
+
+            else:
+                raise LookUpError(
+                    "Cannot resolve subfield or operator {} "
+                    "on the field {}".format(field_name, field.name)
+                )
+
+            # If current field still wasn't found and the parent field
+            # is a ComplexBaseField, add the name current field name and move on.
+            if not new_field and isinstance(field, ComplexBaseField):
+                fields.append(field_name)
+                continue
+            elif not new_field:
+                raise LookUpError('Cannot resolve field "%s"' % field_name)
+
+            field = new_field
             fields.append(field)
 
         return fields

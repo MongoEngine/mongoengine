@@ -74,18 +74,16 @@ class TestQueryset(unittest.TestCase):
             self.Person.objects._collection, pymongo.collection.Collection
         )
 
-    def test_cannot_perform_joins_references(self):
+    def test_can_perform_joins_references(self):
         class BlogPost(Document):
             author = ReferenceField(self.Person)
             author2 = GenericReferenceField(choices=(self.Person,))
 
         # test addressing a field from a reference
-        with pytest.raises(InvalidQueryError):
-            list(BlogPost.objects(author__name="test"))
+        list(BlogPost.objects(author__name="test"))
 
-        # should fail for a generic reference as well
-        with pytest.raises(InvalidQueryError):
-            list(BlogPost.objects(author2__name="test"))
+        # should pass for a generic reference as well
+        list(BlogPost.objects(author2__name="test"))
 
     def test_find(self):
         """Ensure that a query returns a valid set of results."""
