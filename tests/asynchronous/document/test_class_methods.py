@@ -1,7 +1,6 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_get_db, async_disconnect
 from mongoengine.pymongo_support import async_list_collection_names
 from mongoengine.base.queryset import NULLIFY, PULL
 from tests.asynchronous.utils import reset_async_connections

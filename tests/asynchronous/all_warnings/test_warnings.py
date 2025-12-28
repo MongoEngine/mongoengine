@@ -8,7 +8,7 @@ import unittest
 import warnings
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_disconnect_all
+# from mongoengine import async_connect, async_disconnect_all
 from mongoengine.base.common import _document_registry
 from tests.asynchronous.utils import reset_async_connections
 

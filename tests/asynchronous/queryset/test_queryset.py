@@ -11,8 +11,6 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_disconnect, AsyncQuerySet, async_get_db, AsyncBaseQuerySet, \
-    AsyncQuerySetNoCache, async_register_connection
 from mongoengine.base import LazyReference
 from mongoengine.context_managers import async_query_counter, switch_db
 from mongoengine.errors import InvalidQueryError

@@ -3,7 +3,6 @@ import unittest
 from bson import SON
 
 from mongoengine import *
-from mongoengine.asynchronous import async_disconnect
 from mongoengine.pymongo_support import list_collection_names, async_list_collection_names
 from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo, reset_async_connections
 

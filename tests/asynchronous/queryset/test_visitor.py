@@ -6,7 +6,6 @@ import pytest
 from bson import ObjectId
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_disconnect
 from mongoengine.common import _async_queryset_to_values
 from mongoengine.errors import InvalidQueryError
 from mongoengine.base.queryset import Q

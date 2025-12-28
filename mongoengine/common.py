@@ -1,4 +1,3 @@
-from pymongo import ReadPreference
 from pymongo.database_shared import _check_name
 from pymongo.read_preferences import Secondary, Primary, PrimaryPreferred, SecondaryPreferred, Nearest
 
