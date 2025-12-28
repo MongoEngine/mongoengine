@@ -1151,8 +1151,8 @@ class BaseQuerySet(abc.ABC):
             *fields: dotted paths of reference fields to preload.
                      Examples:
                         select_related("author")
-                        select_related("author.country")
-                        select_related("comments.user")
+                        select_related("author__country")
+                        select_related("comments__user")
 
         Returns:
             QuerySet — clone with select_related instructions
