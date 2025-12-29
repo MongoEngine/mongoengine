@@ -11,6 +11,7 @@ from mongoengine import (
     DictField,
     MapField,
 )
+from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
@@ -565,10 +566,14 @@ class TestQuerysetLookupMatch(MongoDBAsyncTestCase):
         await Child(name="c3", outer=Outer(
             inners=[Inner(parent=p_young, target=per_young), Inner(parent=p_old, target=ani_old)])).asave()
 
-        qs1 = Child.aobjects(outer__inners__parent__age__gt=50)
+        qs1 = Child.aobjects(outer__inners__parent__age__gt=50).select_related("outer__inners__target",
+                                                                               "outer__inners__parent")
+        pipeline = PipelineBuilder(qs1).build()
+        b = [c async for c in qs1]
         assert sorted([c.name async for c in qs1]) == ["c2", "c3"]
 
         qs2 = Child.aobjects(outer__inners__target__age__gt=50)
+        a = [c async for c in qs2]
         assert sorted([c.name async for c in qs2]) == ["c2", "c3"]
 
     # ============================================================

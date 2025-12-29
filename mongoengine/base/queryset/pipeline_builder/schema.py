@@ -18,7 +18,7 @@ class Schema:
 
     @staticmethod
     def unwrap_list_leaf(field):
-        """If field is ListField(...ListField(x)...), return the deepest leaf."""
+        """If the field is ListField(...ListField(x)...), return the deepest leaf."""
         from mongoengine.fields import ListField
         leaf = field
         while isinstance(leaf, ListField):

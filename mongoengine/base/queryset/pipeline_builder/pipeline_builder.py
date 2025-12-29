@@ -8,10 +8,12 @@ field types, including ReferenceFields, GenericReferenceFields, and nested struc
 
 from __future__ import annotations
 
+from typing import Any, Dict, List
+
 from .normalizer import QueryNormalizer
 from .match_planner import MatchPlanner
 from .lookup_planner import LookupPlanner
-from .stage_planner import StageBuilder
+from .stage_builder import StageBuilder
 from .tail_builder import TailBuilder
 
 __all__ = ("PipelineBuilder", "needs_aggregation",)
@@ -30,49 +32,65 @@ class PipelineBuilder:
         self.match_planner = MatchPlanner()
         self.lookup_planner = LookupPlanner()
         self.stage_builder = StageBuilder()
-        self.tail_planner = TailBuilder()
+        self.tail_builder = TailBuilder()
 
-    def build(self):
-        pipeline = []
-        mongo_query = self.qs._query or {}
+    def build(self) -> List[Dict[str, Any]]:
+        pipeline: List[Dict[str, Any]] = []
+        mongo_query: Dict[str, Any] = self.qs._query or {}
 
-        # No query: select_related lookups only + tail stages
+        hydrate_tree = self.lookup_planner.plan_from_select_related(self.qs._select_related)
+
         if not mongo_query:
             if self.qs._select_related:
-                tree = self.lookup_planner.plan_from_select_related(self.qs._select_related)
-                pipeline += self.stage_builder.emit(self.doc, prefix="", tree=tree, buckets=None, interleave=False)
-            pipeline += self.tail_planner.build(self.qs)
+                pipeline.extend(
+                    self.stage_builder.emit(
+                        doc_cls=self.doc,
+                        prefix="",
+                        tree=hydrate_tree,
+                        buckets=None,
+                        interleave=False,
+                        embedded_list_path=None,
+                        hydrate_tree=hydrate_tree,
+                    )
+                )
+            pipeline.extend(self.tail_builder.build(self.qs))
             return pipeline
 
-        # normalize (regex + $where->$function)
         cleaned, function_expr = self.normalizer.normalize(mongo_query)
-
-        # bucket query by required lookup prefix
         buckets = self.match_planner.bucket(self.doc, cleaned)
 
-        # root match first
         root_match = buckets.pop("", None)
         if root_match:
             pipeline.append({"$match": root_match})
 
-        # plan lookups: explicit select_related + implicit from bucket prefixes
-        tree = self.lookup_planner.plan(self.doc, self.qs._select_related, bucket_prefixes=buckets.keys())
+        tree = self.lookup_planner.plan(
+            doc_cls=self.doc,
+            select_related=self.qs._select_related,
+            bucket_prefixes=list(buckets.keys()),
+        )
 
-        # emit lookups interleaved with matches
         if tree:
-            pipeline += self.stage_builder.emit(self.doc, prefix="", tree=tree, buckets=buckets, interleave=True)
+            pipeline.extend(
+                self.stage_builder.emit(
+                    doc_cls=self.doc,
+                    prefix="",
+                    tree=tree,
+                    buckets=buckets,
+                    interleave=True,
+                    embedded_list_path=None,
+                    hydrate_tree=hydrate_tree,
+                )
+            )
 
-        # safety net: leftover buckets
         if buckets:
             leftovers = [q for q in buckets.values() if q]
             if leftovers:
                 pipeline.append({"$match": leftovers[0] if len(leftovers) == 1 else {"$and": leftovers}})
 
-        # $where/$function last
         if function_expr:
             pipeline.append({"$match": function_expr})
 
-        pipeline += self.tail_planner.build(self.qs)
+        pipeline.extend(self.tail_builder.build(self.qs))
         return pipeline
 
 

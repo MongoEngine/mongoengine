@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, Any
+from typing import Any, Dict
 
 from .schema import Schema
 
@@ -9,7 +9,14 @@ from .schema import Schema
 class MatchPlanner:
     """
     Buckets match fragments by the required lookup prefix (db_field dotted path).
-    Contains deref-prefix logic and "pushdown rewrites" (map/list special cases).
+
+    NOTE (filter-only policy):
+      We intentionally DO NOT rewrite matches into $expr forms for:
+        - nested lists of ReferenceField
+        - MapField(ReferenceField)
+        - DictField(GenericReferenceField)
+      because those rewrites assume hydrated subdocuments (e.g. $$it.age),
+      which is false when we keep refs as ObjectId/DBRef unless select_related.
     """
 
     def bucket(self, doc_cls, query: Dict[str, Any]) -> Dict[str, Any]:
@@ -17,7 +24,7 @@ class MatchPlanner:
 
     @staticmethod
     def _bucket_query_by_lookup_prefix(doc_cls, query: dict) -> dict:
-        buckets = {}
+        buckets: Dict[str, Any] = {}
 
         def merge(prefix: str, frag: dict):
             if not frag:
@@ -30,6 +37,7 @@ class MatchPlanner:
                     buckets[prefix] = {"$and": [existing, frag]}
 
         def dotted(k: str) -> str:
+            # Convert mongoengine-style "__" to dotted path if it isn't already dotted.
             return k.replace("__", ".") if ("__" in k and "." not in k) else k
 
         def get_field_by_db_part(cur, part):
@@ -40,49 +48,6 @@ class MatchPlanner:
                 if getattr(f, "db_field", None) == part:
                     return f
             return None
-
-        def path_expr(base_var: str, parts: list[str]) -> str:
-            return base_var + "".join(f".{p}" for p in parts)
-
-        def expr_for_any_map_value(field_db: str, rest: list[str], cond: dict):
-            if len(cond) != 1:
-                return None
-            op, value = next(iter(cond.items()))
-            value_expr = path_expr("$$kv.v", rest)
-            return {
-                "$expr": {
-                    "$anyElementTrue": {
-                        "$map": {
-                            "input": {"$objectToArray": f"${field_db}"},
-                            "as": "kv",
-                            "in": {op: [value_expr, value]},
-                        }
-                    }
-                }
-            }
-
-        def expr_for_nested_list(field_db: str, rest: list[str], cond: dict):
-            if len(cond) != 1:
-                return None
-            op, value = next(iter(cond.items()))
-            value_expr = path_expr("$$it", rest)
-            return {
-                "$expr": {
-                    "$anyElementTrue": {
-                        "$map": {
-                            "input": {
-                                "$reduce": {
-                                    "input": f"${field_db}",
-                                    "initialValue": [],
-                                    "in": {"$concatArrays": ["$$value", "$$this"]},
-                                }
-                            },
-                            "as": "it",
-                            "in": {op: [value_expr, value]},
-                        }
-                    }
-                }
-            }
 
         def walk(q, cur_doc=doc_cls):
             if not isinstance(q, dict):
@@ -103,6 +68,7 @@ class MatchPlanner:
 
             for k, v in q.items():
                 if isinstance(k, str) and k.startswith("$"):
+                    # already handled logical ops above; keep other top-level operators at root
                     if k not in ("$and", "$or", "$nor"):
                         merge("", {k: v})
                     continue
@@ -115,37 +81,9 @@ class MatchPlanner:
                 first = parts[0]
                 fld0 = get_field_by_db_part(cur_doc, first)
 
-                # pushdown rewrites (map/dict/nested list)
-                if fld0 is not None and len(parts) >= 2:
-                    from mongoengine.fields import ListField, MapField, DictField, ReferenceField, GenericReferenceField
-
-                    field_db = getattr(fld0, "db_field", first)
-                    rest = parts[1:]
-
-                    if isinstance(fld0, MapField) and isinstance(getattr(fld0, "field", None), ReferenceField):
-                        rewritten = expr_for_any_map_value(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
-                        if rewritten:
-                            merge(field_db, rewritten)
-                            continue
-
-                    if isinstance(fld0, DictField) and isinstance(getattr(fld0, "field", None), GenericReferenceField):
-                        rewritten = expr_for_any_map_value(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
-                        if rewritten:
-                            merge(field_db, rewritten)
-                            continue
-
-                    if isinstance(fld0, ListField):
-                        leaf = fld0
-                        depth = 0
-                        while isinstance(leaf, ListField):
-                            depth += 1
-                            leaf = leaf.field
-                        if depth >= 2 and isinstance(leaf, ReferenceField):
-                            rewritten = expr_for_nested_list(field_db, rest, v if isinstance(v, dict) else {"$eq": v})
-                            if rewritten:
-                                merge(field_db, rewritten)
-                                continue
-
+                # IMPORTANT:
+                # We do not do any $expr rewrites here (map/dict/nested list), because those rely on hydration.
+                # We only compute the required lookup prefix and bucket the plain predicate.
                 prefix = MatchPlanner.required_lookup_prefix_for_field(cur_doc, fk)
                 merge(prefix, {fk: v})
 
@@ -156,11 +94,18 @@ class MatchPlanner:
     def required_lookup_prefix_for_field(doc_cls, field_key: str) -> str:
         """
         Return the deepest deref prefix required for a dotted path.
-        Handles safe GenericReferenceField -> common ReferenceField traversal.
+        Handles ReferenceField, ListField(ReferenceField), MapField(ReferenceField),
+        DictField(ReferenceField), DictField(GenericReferenceField),
+        and safe GenericReferenceField -> common ReferenceField traversal.
         """
         from mongoengine.fields import (
-            ListField, ReferenceField, GenericReferenceField,
-            EmbeddedDocumentField, EmbeddedDocumentListField,
+            ListField,
+            ReferenceField,
+            GenericReferenceField,
+            EmbeddedDocumentField,
+            EmbeddedDocumentListField,
+            MapField,
+            DictField,
         )
 
         parts = field_key.split(".")
@@ -184,12 +129,35 @@ class MatchPlanner:
             db_part = getattr(fld, "db_field", part)
             db_path.append(db_part)
 
+            is_terminal = (i == len(parts) - 1)
+
+            # ---- unwrap list leaf for type checks
             leaf = fld
             while isinstance(leaf, ListField):
                 leaf = leaf.field
 
-            is_terminal = (i == len(parts) - 1)
+            # ---- MapField(...) / DictField(...)
+            # If user queries "by_key.age" or "d.age", we must deref at that field
+            # (can't be root match). So require lookup prefix at this db_path.
+            if isinstance(fld, MapField):
+                inner = getattr(fld, "field", None)
+                inner_leaf = inner
+                while isinstance(inner_leaf, ListField):
+                    inner_leaf = inner_leaf.field
+                if isinstance(inner_leaf, (ReferenceField, GenericReferenceField)) and not is_terminal:
+                    last_deref_prefix = ".".join(db_path)
+                    return last_deref_prefix
 
+            if isinstance(fld, DictField):
+                inner = getattr(fld, "field", None)
+                inner_leaf = inner
+                while isinstance(inner_leaf, ListField):
+                    inner_leaf = inner_leaf.field
+                if isinstance(inner_leaf, (ReferenceField, GenericReferenceField)) and not is_terminal:
+                    last_deref_prefix = ".".join(db_path)
+                    return last_deref_prefix
+
+            # ---- ReferenceField
             if isinstance(leaf, ReferenceField):
                 if not is_terminal:
                     last_deref_prefix = ".".join(db_path)
@@ -197,6 +165,7 @@ class MatchPlanner:
                     continue
                 return last_deref_prefix
 
+            # ---- GenericReferenceField
             if isinstance(leaf, GenericReferenceField):
                 if not is_terminal:
                     next_part = parts[i + 1]
@@ -213,6 +182,7 @@ class MatchPlanner:
                     return last_deref_prefix
                 return last_deref_prefix
 
+            # ---- embedded doc descend
             if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
                                                                                               None):
                 cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
@@ -225,7 +195,7 @@ class MatchPlanner:
     @staticmethod
     def generic_common_ref(generic_field, next_part: str):
         """
-        If all GenericReferenceField choices share `next_part` as a ReferenceField to same doc type.
+        If all GenericReferenceField choices share `next_part` as a ReferenceField to the same doc type.
         """
         from mongoengine.fields import ReferenceField, ListField
 
@@ -262,3 +232,11 @@ class MatchPlanner:
             return None, None
 
         return representative_field, targets[0]
+
+    @staticmethod
+    def _safe_resolve_generic_choices(generic_field):
+        from .schema import Schema
+        try:
+            return Schema.resolve_generic_choices(generic_field) or []
+        except Exception:
+            return []

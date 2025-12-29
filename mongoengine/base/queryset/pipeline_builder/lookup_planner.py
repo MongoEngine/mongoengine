@@ -1,110 +1,195 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable
+from typing import Any, Dict, Iterable
 
-from .schema import Schema
 from .match_planner import MatchPlanner
 
 
 class LookupPlanner:
     """
-    Pure planning: produces a lookup tree (python field names).
-    Does NOT emit Mongo stages.
+    Builds a lookup tree keyed by *field names* (not db_field), suitable for StageBuilder._walk_lookups.
+
+    Inputs:
+      - select_related: mongoengine select_related spec
+      - bucket_prefixes: iterable of db_field dotted prefixes produced by MatchPlanner.bucket()
+
+    Output:
+      - tree: dict like {"items": {"parent": {}}, "parent": {"gp": {}}}
     """
 
     def plan_from_select_related(self, select_related) -> dict:
-        return self.build_related_tree(select_related)
+        return self._tree_from_select_related(select_related)
 
     def plan(self, doc_cls, select_related, bucket_prefixes: Iterable[str]) -> dict:
-        tree = {}
+        tree: Dict[str, Any] = {}
+
+        # 1) bucket-prefix-derived tree FIRST (filter stages happen earlier)
+        for prefix in bucket_prefixes or ():
+            if not prefix:
+                continue
+            p_tree = self._tree_from_db_prefix(doc_cls, prefix)
+            self._merge_tree(tree, p_tree)
+
+        # 2) select_related tree AFTER (hydrate after filtering)
         if select_related:
-            tree = self.merge_trees(tree, self.build_related_tree(select_related))
-        tree = self.merge_trees(tree, self.auto_tree_from_bucket_prefixes(doc_cls, bucket_prefixes))
+            sr_tree = self.plan_from_select_related(select_related)
+            self._merge_tree(tree, sr_tree)
+
         return tree
 
-    @staticmethod
-    def build_related_tree(fields) -> dict:
-        tree = {}
-        for f in fields or []:
-            parts = f.split("__")
-            node = tree
-            for p in parts:
-                node = node.setdefault(p, {})
-            node[""] = True
-        return tree
+    # ---------------- internals ----------------
 
-    @staticmethod
-    def merge_trees(a: dict, b: dict) -> dict:
-        if not a:
-            return dict(b or {})
-        if not b:
-            return dict(a)
-        out = dict(a)
-        for k, v in b.items():
-            if k not in out:
-                out[k] = v
-            else:
-                if isinstance(out[k], dict) and isinstance(v, dict):
-                    out[k] = LookupPlanner.merge_trees(out[k], v)
-        return out
-
-    def auto_tree_from_bucket_prefixes(self, root_doc_cls, bucket_prefixes: Iterable[str]) -> dict:
+    def _tree_from_db_prefix(self, doc_cls, db_prefix: str) -> dict:
         """
-        Bucket prefixes are db_field dotted (e.g. "target.gp").
-        We build a tree using python field names, with safe GenericRef traversal.
-        """
-        tree: Dict[str, dict] = {}
+        Convert db_field dotted path like "target.gp" into a field-name tree like {"target": {"gp": {}}}.
 
-        for dotted_prefix in bucket_prefixes:
-            if not dotted_prefix:
+        Key behavior:
+          - ReferenceField: if there are more segments, traverse into referenced document
+          - GenericReferenceField: if there are more segments and next segment is a COMMON ReferenceField
+            across choices, traverse into representative choice document so later segments can be planned.
+        """
+        from mongoengine.fields import (
+            EmbeddedDocumentField,
+            EmbeddedDocumentListField,
+            ListField,
+            ReferenceField,
+            GenericReferenceField,
+            MapField,
+            DictField,
+        )
+
+        parts = [p for p in db_prefix.split(".") if p]
+        if not parts:
+            return {}
+
+        cur_doc = doc_cls
+        root: Dict[str, Any] = {}
+        node = root
+
+        i = 0
+        while i < len(parts):
+            if cur_doc is None:
+                break
+
+            db_part = parts[i]
+            fld = self._get_field_by_db_part(cur_doc, db_part)
+            if fld is None:
+                break
+
+            field_name = fld.name
+            node = node.setdefault(field_name, {})
+
+            is_last = (i == len(parts) - 1)
+
+            # unwrap list wrapper for leaf checks
+            leaf = fld
+            while isinstance(leaf, ListField):
+                leaf = leaf.field
+
+            # ---- embedded boundary: descend schema
+            if isinstance(fld, EmbeddedDocumentField):
+                cur_doc = fld.document_type
+                i += 1
                 continue
 
-            parts = dotted_prefix.split(".")
-            node = tree
-            cur = root_doc_cls
+            if isinstance(fld, EmbeddedDocumentListField) or (
+                    isinstance(fld, ListField) and isinstance(getattr(fld, "field", None), EmbeddedDocumentField)
+            ):
+                embedded_dt = getattr(fld, "document_type", None)
+                if embedded_dt is None and isinstance(getattr(fld, "field", None), EmbeddedDocumentField):
+                    embedded_dt = fld.field.document_type
+                cur_doc = embedded_dt
+                i += 1
+                continue
 
-            for idx, db_part in enumerate(parts):
-                if cur is None:
+            # ---- MapField / DictField: lookup happens at this node; deeper handled by MatchPlanner $expr rewrites
+            if isinstance(fld, (MapField, DictField)):
+                break
+
+            # ---- ReferenceField: keep traversing if more segments remain
+            if isinstance(leaf, ReferenceField):
+                if is_last:
+                    break
+                cur_doc = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
+                i += 1
+                continue
+
+            # ---- GenericReferenceField:
+            # If next segment is a COMMON ReferenceField across choices, traverse into representative choice doc
+            if isinstance(leaf, GenericReferenceField):
+                if is_last:
                     break
 
-                field_name, fld = Schema.resolve_field_name(cur, db_part)
-                if not fld:
+                next_part = parts[i + 1]
+                common_ref_field, _common_target = MatchPlanner.generic_common_ref(leaf, next_part)
+                if common_ref_field is None:
+                    # cannot safely traverse beyond generic
                     break
 
-                node = node.setdefault(field_name, {})
+                # Ensure the tree includes the common-ref child
+                # (StageBuilder will use this to emit lookup on target.<common_ref>)
+                node = node.setdefault(common_ref_field.name, {})
 
-                from mongoengine.fields import ReferenceField, GenericReferenceField, EmbeddedDocumentField, \
-                    EmbeddedDocumentListField
+                # Traverse schema as if we're in a representative choice class
+                # so we can plan deeper segments (like ...gp.age... -> prefix target.gp)
+                doc_classes = MatchPlanner._safe_resolve_generic_choices(leaf)
+                cur_doc = doc_classes[0] if doc_classes else None
 
-                leaf = Schema.unwrap_list_leaf(fld)
+                # We consumed "next_part" by inserting common_ref_field.name
+                i += 2
+                continue
 
-                if isinstance(leaf, ReferenceField):
-                    cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
-                    continue
+            # ---- scalar: can't traverse further
+            break
 
-                if isinstance(leaf, GenericReferenceField):
-                    if idx < len(parts) - 1:
-                        next_part = parts[idx + 1]
-                        common_ref_field, _common_target = MatchPlanner.generic_common_ref(leaf, next_part)
-                        if common_ref_field is None:
-                            cur = None
-                            break
+        return root
 
-                        from mongoengine.document import _DocumentRegistry
-                        ch0 = (leaf.choices or ())[0]
-                        cur = _DocumentRegistry.get(ch0 if isinstance(ch0, str) else ch0.__name__)
-                        continue
+    @staticmethod
+    def _merge_tree(dst: dict, src: dict) -> None:
+        for k, v in (src or {}).items():
+            if k not in dst:
+                dst[k] = v if isinstance(v, dict) else {}
+            else:
+                if isinstance(dst[k], dict) and isinstance(v, dict):
+                    LookupPlanner._merge_tree(dst[k], v)
 
-                    cur = None
-                    break
+    @staticmethod
+    def _get_field_by_db_part(doc_cls, db_part: str):
+        if doc_cls is None:
+            return None
 
-                if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
-                                                                                                  None):
-                    cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
-                    continue
+        fld = doc_cls._fields.get(db_part)
+        if fld is not None:
+            return fld
 
-                cur = None
+        for _name, f in doc_cls._fields.items():
+            if getattr(f, "db_field", None) == db_part:
+                return f
 
-            node[""] = True
+        return None
 
-        return tree
+    # ---- select_related converter (keep / adapt to your queryset format)
+    def _tree_from_select_related(self, select_related) -> dict:
+        if not select_related:
+            return {}
+
+        if isinstance(select_related, (list, tuple, set)):
+            paths = []
+            for p in select_related:
+                if isinstance(p, str) and p:
+                    paths.append(p.replace("__", "."))
+            return self._tree_from_paths(paths)
+
+        return {}
+
+    @staticmethod
+    def _tree_from_paths(paths: Iterable[str]) -> dict:
+        root: Dict[str, Any] = {}
+        for p in paths:
+            if not p:
+                continue
+            parts = [x for x in p.split(".") if x]
+            node = root
+            for part in parts:
+                node = node.setdefault(part, {})
+        return root
