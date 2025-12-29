@@ -1,20 +1,82 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
 
 from .schema import Schema
 from .match_planner import MatchPlanner
 
 
+@dataclass(frozen=True)
+class WalkCtx:
+    """
+    Immutable traversal context.
+
+    Attributes:
+        doc_cls: The current MongoEngine Document/EmbeddedDocument class whose fields we are walking.
+        prefix: Field prefix (dot path) to reach the current doc from the root aggregation document.
+        tree: Lookup subtree for the current doc_cls.
+        buckets: Optional dict of pre-planned $match buckets for interleaving.
+        interleave: If True, pop/apply buckets as lookups are emitted.
+        embedded_list_path: If not None, we're walking inside a list of embedded documents at this path.
+        hydrate_tree: Tree indicating which paths are select_related requested (hydrate allowed).
+    """
+    doc_cls: Any
+    prefix: str
+    tree: Dict[str, Any]
+    buckets: Optional[Dict[str, Any]]
+    interleave: bool
+    embedded_list_path: Optional[str]
+    hydrate_tree: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class WalkNode:
+    """
+    Resolved info about a single field visit.
+
+    Computed flags are derived from subtree presence and hydrate_tree request.
+    """
+    field_name: str
+    field: Any
+    subtree: Dict[str, Any]
+    full_path: str
+
+    requested_hydrate: bool
+    subtree_hydrate_tree: Dict[str, Any]
+
+    needs_traversal: bool
+    hydrate_effective: bool
+
+    preserve_orig: bool
+    orig_alias: Optional[str]
+
+
 class StageBuilder:
     """
-    Emits Mongo aggregation stages from a lookup tree.
+    Emits MongoDB aggregation stages from a lookup tree.
 
     Policy:
-      - Only hydrate ($addFields overwrite reference) when select_related asked for it.
+      - Only hydrate ($addFields overwrite reference) when select_related asked for it,
+        OR when required temporarily for deeper traversal.
       - Otherwise: lookup is filter-only (keeps ObjectId/DBRef unchanged) BUT still filters via join results.
-      - If deeper traversal is required to evaluate lookups, we may hydrate temporarily and restore original.
+      - If deeper traversal is required to evaluate lookups, we may hydrate temporarily and restore the original.
+
+    Design:
+      - _walk() traverses the lookup tree and dispatches to small handlers.
+      - All actual stage composition happens in _add_* methods.
+      - Buckets interleaving:
+          - If possible, we convert a bucket on "prefix.somefield" into a foreign-doc match and apply it
+            as a local-root filter against joined docs (avoids filtering the lookup result array and keeps
+            hydration correct).
     """
+
+    def __init__(self) -> None:
+        self._pipeline: List[dict] = []
+
+    # ---------------------------------------------------------------------
+    # Public API
+    # ---------------------------------------------------------------------
 
     def emit(
             self,
@@ -25,416 +87,465 @@ class StageBuilder:
             interleave: bool,
             embedded_list_path=None,
             hydrate_tree: Optional[dict] = None,
-    ):
-        stages: List[dict] = []
-        self._pipeline = stages
+    ) -> List[dict]:
+        """
+        Build pipeline stages for the given lookup tree.
 
-        self._walk_lookups(
+        Args:
+            doc_cls: Root Document class.
+            prefix: Field prefix for this walk (usually "").
+            tree: Lookup tree dict, e.g. {"author": {"books": {...}}}
+            buckets: Optional match bucket dict emitted by planner.
+            interleave: Whether to apply buckets interleaved with lookups.
+            embedded_list_path: Internal: indicates we're walking embedded-doc list items.
+            hydrate_tree: Tree of select_related requested paths.
+
+        Returns:
+            List of aggregation pipeline stages.
+        """
+        ctx = WalkCtx(
             doc_cls=doc_cls,
             prefix=prefix,
-            tree=tree,
+            tree=tree or {},
             buckets=buckets,
-            embedded_list_path=embedded_list_path,
             interleave=interleave,
+            embedded_list_path=embedded_list_path,
             hydrate_tree=hydrate_tree or {},
         )
-        return stages
+        self._walk(ctx)
+        return self._pipeline
 
-    def _walk_lookups(
-            self,
-            doc_cls,
-            prefix,
-            tree,
-            buckets,
-            embedded_list_path=None,
-            interleave=False,
-            hydrate_tree=None,
-    ):
-        from mongoengine.fields import (
-            ReferenceField,
-            GenericReferenceField,
-            ListField,
-            DictField,
-            MapField,
-            EmbeddedDocumentField,
-            FileField,
-        )
+    # ---------------------------------------------------------------------
+    # Traversal / Dispatch
+    # ---------------------------------------------------------------------
 
-        hydrate_tree = hydrate_tree or {}
+    def _walk(self, ctx: WalkCtx) -> None:
+        """Traverse ctx.tree and append stages to self._pipeline."""
+        from mongoengine.fields import FileField
 
-        def apply_bucket(full_path: str):
-            if not interleave or buckets is None:
-                return
-            bucket = buckets.pop(full_path, None)
-            if bucket:
-                self._pipeline.append({"$match": bucket})
-
-        for field_name, subtree in (tree or {}).items():
-            if field_name == "":
+        for field_name, subtree in (ctx.tree or {}).items():
+            if not field_name or field_name == "":
                 continue
 
-            field = doc_cls._fields.get(field_name)
+            field = ctx.doc_cls._fields.get(field_name)
             if not field:
-                continue
-
-            full_path = f"{prefix}{field.db_field}" if prefix else field.db_field
-
-            requested_hydrate = field_name in hydrate_tree
-            subtree_hydrate_tree = hydrate_tree.get(field_name, {}) if requested_hydrate else {}
-
-            # If we need to deref deeper (subtree) and we're not in embedded_list_path mode,
-            # we must hydrate to traverse. If hydrate wasn’t requested, we preserve+restore.
-            needs_traversal = bool(subtree) and not embedded_list_path
-            hydrate_effective = requested_hydrate or needs_traversal
-            preserve_orig = needs_traversal and not requested_hydrate
-            orig_alias = f"__orig__{full_path.replace('.', '_')}" if preserve_orig else None
-
-            # ---------------- ReferenceField ----------------
-            if isinstance(field, ReferenceField):
-                target = field.document_type_obj
-
-                if embedded_list_path:
-                    foreign_match = None
-                    if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                    self._add_embedded_list_structured_ref_lookup(
-                        target_cls=target,
-                        field_shape=field,
-                        list_path=embedded_list_path,
-                        embedded_key=field.db_field,
-                        foreign_match=foreign_match,
-                        hydrate=hydrate_effective,
-                    )
-
-                    if foreign_match is None:
-                        apply_bucket(full_path)
-
-                else:
-                    if preserve_orig:
-                        self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
-
-                    foreign_match = None
-                    if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                    if target and target._meta.get("abstract", False):
-                        self._add_abstract_dbref_lookup(target, full_path)
-                        if foreign_match is not None:
-                            self._pipeline.append({"$match": foreign_match})
-                    else:
-                        self._add_structured_ref_lookup(
-                            target_cls=target,
-                            field_shape=field,
-                            local_field=full_path,
-                            foreign_match=foreign_match,
-                            hydrate=hydrate_effective,
-                        )
-                        if foreign_match is None:
-                            apply_bucket(full_path)
-
-                # descend (only meaningful outside embedded-list mode)
-                if subtree and not embedded_list_path:
-                    self._walk_lookups(
-                        target,
-                        f"{full_path}.",
-                        subtree,
-                        buckets,
-                        embedded_list_path,
-                        interleave,
-                        subtree_hydrate_tree,
-                    )
-
-                if preserve_orig:
-                    self._pipeline.append({"$addFields": {full_path: f"${orig_alias}"}})
-                    self._pipeline.append(self._project_remove(orig_alias))
-
-                continue
-
-            # ---------------- ListField(...) ----------------
-            if isinstance(field, ListField):
-                # handle list of embedded docs BEFORE unwrap refs/generics
-                if self._is_list_of_embedded(field):
-                    embedded_doc = self._embedded_doc_type(field)
-                    if subtree and embedded_doc:
-                        self._walk_lookups(
-                            embedded_doc,
-                            f"{full_path}.",
-                            subtree,
-                            buckets,
-                            embedded_list_path=full_path,
-                            interleave=interleave,
-                            hydrate_tree=subtree_hydrate_tree,
-                        )
-                    continue
-
-                leaf, _depth = Schema.unwrap_list_field(field)
-
-                # List[ReferenceField]
-                if leaf is not None and isinstance(leaf, ReferenceField):
-                    target = leaf.document_type
-
-                    if embedded_list_path:
-                        foreign_match = None
-                        if interleave and buckets is not None:
-                            foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                        self._add_embedded_list_structured_ref_lookup(
-                            target_cls=target,
-                            field_shape=field,
-                            list_path=embedded_list_path,
-                            embedded_key=field.db_field,
-                            foreign_match=foreign_match,
-                            hydrate=hydrate_effective,
-                        )
-
-                        if foreign_match is None:
-                            apply_bucket(full_path)
-
-                    else:
-                        if preserve_orig:
-                            self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
-
-                        foreign_match = None
-                        if interleave and buckets is not None:
-                            foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                        self._add_structured_ref_lookup(
-                            target_cls=target,
-                            field_shape=field,
-                            local_field=full_path,
-                            foreign_match=foreign_match,
-                            hydrate=hydrate_effective,
-                        )
-
-                        if foreign_match is None:
-                            apply_bucket(full_path)
-
-                    if subtree and not embedded_list_path:
-                        self._walk_lookups(
-                            target,
-                            f"{full_path}.",
-                            subtree,
-                            buckets,
-                            embedded_list_path,
-                            interleave,
-                            subtree_hydrate_tree,
-                        )
-
-                    if preserve_orig:
-                        self._pipeline.append({"$addFields": {full_path: f"${orig_alias}"}})
-                        self._pipeline.append(self._project_remove(orig_alias))
-
-                    continue
-
-                # List[GenericReferenceField]
-                if leaf is not None and isinstance(leaf, GenericReferenceField):
-                    if leaf.choices:
-                        if embedded_list_path:
-                            foreign_match = None
-                            if interleave and buckets is not None:
-                                foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                            self._add_embedded_list_generic_lookup(
-                                generic_field=leaf,
-                                list_path=embedded_list_path,
-                                embedded_key=field.db_field,
-                                foreign_match=foreign_match,
-                                hydrate=requested_hydrate,  # select_related only
-                            )
-
-                            if foreign_match is None:
-                                apply_bucket(full_path)
-
-                        else:
-                            # scalar list-of-generic lookup builder currently hydrates; keep behavior
-                            self._add_generic_lookup(leaf, full_path, is_list=True)
-                            apply_bucket(full_path)
-                    continue
-
-            # ---------------- EmbeddedDocumentField ----------------
-            if isinstance(field, EmbeddedDocumentField):
-                if subtree:
-                    self._walk_lookups(
-                        field.document_type,
-                        f"{full_path}.",
-                        subtree,
-                        buckets,
-                        embedded_list_path,
-                        interleave,
-                        subtree_hydrate_tree,
-                    )
-                continue
-
-            # ---------------- MapField(ReferenceField) ----------------
-            if isinstance(field, MapField) and isinstance(field.field, ReferenceField):
-                if embedded_list_path:
-                    apply_bucket(full_path)
-                    continue
-
-                foreign_match = None
-                if interleave and buckets is not None:
-                    foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                target = field.field.document_type_obj or field.field.document_type
-
-                # hydrate only if select_related asked for it
-                self._add_structured_ref_lookup(
-                    target_cls=target,
-                    field_shape=field,  # <-- MapField shape
-                    local_field=full_path,  # <-- "nodes"
-                    foreign_match=foreign_match,
-                    hydrate=requested_hydrate,  # <-- THIS is the key
-                )
-
-                if foreign_match is None:
-                    apply_bucket(full_path)
-
-                continue
-
-            # ---------------- DictField(... ReferenceField ...) ----------------
-            if isinstance(field, DictField):
-                if embedded_list_path:
-                    apply_bucket(full_path)
-                    continue
-
-                target = self._resolve_single_ref_target(field)
-                if target is not None:
-                    foreign_match = None
-                    if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                    # hydrate ONLY if select_related asked for it (or traversal)
-                    self._add_structured_ref_lookup(
-                        target_cls=target,
-                        field_shape=field,  # DictField shape (may nest lists/dicts/refs)
-                        local_field=full_path,  # "mapping0"
-                        foreign_match=foreign_match,
-                        hydrate=requested_hydrate,  # <-- key for this test
-                    )
-
-                    if foreign_match is None:
-                        apply_bucket(full_path)
-
-                    continue
-
-            # ---------------- DictField(GenericReferenceField) ----------------
-            if (
-                    isinstance(field, DictField)
-                    and isinstance(field.field, GenericReferenceField)
-                    and getattr(field.field, "choices", None)
-            ):
-                if embedded_list_path:
-                    apply_bucket(full_path)
-                    continue
-
-                foreign_match = None
-                if interleave and buckets is not None:
-                    foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                # IMPORTANT: hydrate only when select_related asked for it
-                self._add_object_generic_lookup(
-                    generic_field=field.field,
-                    local_field=full_path,
-                    foreign_match=foreign_match,
-                    hydrate=requested_hydrate,
-                )
-
-                if foreign_match is None:
-                    apply_bucket(full_path)
-
-                continue
-
-            # ---------------- GenericReferenceField scalar ----------------
-            if isinstance(field, GenericReferenceField) and field.choices:
-                if embedded_list_path:
-                    # IMPORTANT: embedded-list scalar generic also needs foreign_match pop
-                    foreign_match = None
-                    if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                    self._add_embedded_list_generic_lookup(
-                        generic_field=field,
-                        list_path=embedded_list_path,
-                        embedded_key=field.db_field,
-                        foreign_match=foreign_match,
-                        hydrate=requested_hydrate,  # select_related only
-                    )
-
-                    if foreign_match is None:
-                        apply_bucket(full_path)
-
-                else:
-                    # For traversal under generic, we may hydrate temporarily, then restore.
-                    if preserve_orig:
-                        self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
-
-                    # NOTE: _add_generic_lookup always hydrates this field; that's fine.
-                    self._add_generic_lookup(field, full_path)
-                    apply_bucket(full_path)
-
-                    # ---- SAFE traversal under generic (target__gp__...)
-                    if subtree:
-                        for sub_name, sub_tree in subtree.items():
-                            if sub_name == "":
-                                continue
-
-                            common_ref_field, common_target = MatchPlanner.generic_common_ref(field, sub_name)
-                            if common_ref_field is None or common_target is None:
-                                continue
-
-                            gp_path = f"{full_path}.{common_ref_field.db_field}"
-
-                            foreign_match = None
-                            if interleave and buckets is not None:
-                                foreign_match = self._pop_foreign_match_for_prefix(buckets, gp_path)
-
-                            hydrate_gp = bool(subtree_hydrate_tree.get(sub_name))
-                            hydrate_gp_effective = hydrate_gp or bool(sub_tree)
-
-                            orig_gp_alias = None
-                            if bool(sub_tree) and not hydrate_gp:
-                                orig_gp_alias = f"__orig__{gp_path.replace('.', '_')}"
-                                self._pipeline.append({"$addFields": {orig_gp_alias: f"${gp_path}"}})
-
-                            self._add_structured_ref_lookup(
-                                target_cls=common_target,
-                                field_shape=common_ref_field,
-                                local_field=gp_path,
-                                foreign_match=foreign_match,
-                                hydrate=hydrate_gp_effective,
-                            )
-
-                            if foreign_match is None:
-                                apply_bucket(gp_path)
-
-                            if sub_tree:
-                                self._walk_lookups(
-                                    common_target,
-                                    f"{gp_path}.",
-                                    sub_tree,
-                                    buckets,
-                                    embedded_list_path,
-                                    interleave,
-                                    subtree_hydrate_tree.get(sub_name, {}),
-                                )
-
-                            if orig_gp_alias:
-                                self._pipeline.append({"$addFields": {gp_path: f"${orig_gp_alias}"}})
-                                self._pipeline.append(self._project_remove(orig_gp_alias))
-
-                    if preserve_orig:
-                        self._pipeline.append({"$addFields": {full_path: f"${orig_alias}"}})
-                        self._pipeline.append(self._project_remove(orig_alias))
-
                 continue
 
             if isinstance(field, FileField):
                 continue
 
-    # ----------------- OPTIMIZATION HELPERS -----------------
+            node = self._resolve_node(ctx, field_name, field, subtree or {})
+
+            # Dispatch in priority order:
+            if self._handle_reference_field(ctx, node):
+                continue
+            if self._handle_list_field(ctx, node):
+                continue
+            if self._handle_embedded_document_field(ctx, node):
+                continue
+            if self._handle_map_ref_field(ctx, node):
+                continue
+            if self._handle_dict_field(ctx, node):
+                continue
+            if self._handle_generic_reference_field(ctx, node):
+                continue
+
+            # Non-relational field: nothing to do.
+
+    @staticmethod
+    def _resolve_node(ctx: WalkCtx, field_name: str, field: Any, subtree: Dict[str, Any]) -> WalkNode:
+        """Compute derived properties for one field visit."""
+        full_path = f"{ctx.prefix}{field.db_field}" if ctx.prefix else field.db_field
+
+        requested_hydrate = field_name in ctx.hydrate_tree
+        subtree_hydrate_tree = ctx.hydrate_tree.get(field_name, {}) if requested_hydrate else {}
+
+        # Traversal requires hydration outside embedded-list mode.
+        needs_traversal = bool(subtree) and not ctx.embedded_list_path
+        hydrate_effective = requested_hydrate or needs_traversal
+
+        preserve_orig = needs_traversal and not requested_hydrate
+        orig_alias = f"__orig__{full_path.replace('.', '_')}" if preserve_orig else None
+
+        return WalkNode(
+            field_name=field_name,
+            field=field,
+            subtree=subtree,
+            full_path=full_path,
+            requested_hydrate=requested_hydrate,
+            subtree_hydrate_tree=subtree_hydrate_tree,
+            needs_traversal=needs_traversal,
+            hydrate_effective=hydrate_effective,
+            preserve_orig=preserve_orig,
+            orig_alias=orig_alias,
+        )
+
+    # ---------------------------------------------------------------------
+    # Bucket / preserve helpers
+    # ---------------------------------------------------------------------
+
+    def _apply_bucket_if_any(self, ctx: WalkCtx, full_path: str) -> None:
+        """Apply an interleaved root bucket $match for a given full_path (if any)."""
+        if not ctx.interleave or ctx.buckets is None:
+            return
+        bucket = ctx.buckets.pop(full_path, None)
+        if bucket:
+            self._pipeline.append({"$match": bucket})
+
+    def _maybe_pop_foreign_match(self, ctx: WalkCtx, prefix: str) -> Optional[dict]:
+        """
+        If interleaving is enabled, attempt to pop a bucket for prefix and convert it
+        to a foreign-doc match (keys relative to foreign doc).
+        """
+        if not ctx.interleave or ctx.buckets is None:
+            return None
+        return self._pop_foreign_match_for_prefix(ctx.buckets, prefix)
+
+    def _maybe_preserve(self, full_path: str, preserve: bool, alias: Optional[str]) -> Optional[str]:
+        """Preserve the original field value into alias (for temporary hydration traversal)."""
+        if not preserve or not alias:
+            return None
+        self._pipeline.append({"$addFields": {alias: f"${full_path}"}})
+        return alias
+
+    def _maybe_restore(self, full_path: str, alias: Optional[str]) -> None:
+        """Restore field value from alias and remove alias from projection."""
+        if not alias:
+            return
+        self._pipeline.append({"$addFields": {full_path: f"${alias}"}})
+        self._pipeline.append(self._project_remove(alias))
+
+    # ---------------------------------------------------------------------
+    # Field handlers
+    # ---------------------------------------------------------------------
+
+    def _handle_reference_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import ReferenceField
+
+        if not isinstance(node.field, ReferenceField):
+            return False
+
+        target = node.field.document_type_obj
+        orig_alias = self._maybe_preserve(node.full_path, node.preserve_orig, node.orig_alias)
+        foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+
+        if ctx.embedded_list_path:
+            self._add_embedded_list_structured_ref_lookup(
+                target_cls=target,
+                field_shape=node.field,
+                list_path=ctx.embedded_list_path,
+                embedded_key=node.field.db_field,
+                foreign_match=foreign_match,
+                hydrate=node.hydrate_effective,
+            )
+            if foreign_match is None:
+                self._apply_bucket_if_any(ctx, node.full_path)
+        else:
+            if target and target._meta.get("abstract", False):
+                self._add_abstract_dbref_lookup(target, node.full_path)
+                if foreign_match is not None:
+                    self._pipeline.append({"$match": foreign_match})
+            else:
+                self._add_structured_ref_lookup(
+                    target_cls=target,
+                    field_shape=node.field,
+                    local_field=node.full_path,
+                    foreign_match=foreign_match,
+                    hydrate=node.hydrate_effective,
+                )
+                if foreign_match is None:
+                    self._apply_bucket_if_any(ctx, node.full_path)
+
+        # descend
+        if node.subtree and not ctx.embedded_list_path:
+            self._walk(
+                WalkCtx(
+                    doc_cls=target,
+                    prefix=f"{node.full_path}.",
+                    tree=node.subtree,
+                    buckets=ctx.buckets,
+                    interleave=ctx.interleave,
+                    embedded_list_path=None,
+                    hydrate_tree=node.subtree_hydrate_tree,
+                )
+            )
+
+        self._maybe_restore(node.full_path, orig_alias)
+        return True
+
+    def _handle_list_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import ListField, ReferenceField, GenericReferenceField
+
+        if not isinstance(node.field, ListField):
+            return False
+
+        # list of embedded docs
+        if self._is_list_of_embedded(node.field):
+            embedded_doc = self._embedded_doc_type(node.field)
+            if node.subtree and embedded_doc:
+                self._walk(
+                    WalkCtx(
+                        doc_cls=embedded_doc,
+                        prefix=f"{node.full_path}.",
+                        tree=node.subtree,
+                        buckets=ctx.buckets,
+                        interleave=ctx.interleave,
+                        embedded_list_path=node.full_path,
+                        hydrate_tree=node.subtree_hydrate_tree,
+                    )
+                )
+            return True
+
+        leaf, _depth = Schema.unwrap_list_field(node.field)
+
+        # List[ReferenceField]
+        if leaf is not None and isinstance(leaf, ReferenceField):
+            target = leaf.document_type
+            orig_alias = self._maybe_preserve(node.full_path, node.preserve_orig, node.orig_alias)
+            foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+
+            if ctx.embedded_list_path:
+                self._add_embedded_list_structured_ref_lookup(
+                    target_cls=target,
+                    field_shape=node.field,
+                    list_path=ctx.embedded_list_path,
+                    embedded_key=node.field.db_field,
+                    foreign_match=foreign_match,
+                    hydrate=node.hydrate_effective,
+                )
+                if foreign_match is None:
+                    self._apply_bucket_if_any(ctx, node.full_path)
+            else:
+                self._add_structured_ref_lookup(
+                    target_cls=target,
+                    field_shape=node.field,
+                    local_field=node.full_path,
+                    foreign_match=foreign_match,
+                    hydrate=node.hydrate_effective,
+                )
+                if foreign_match is None:
+                    self._apply_bucket_if_any(ctx, node.full_path)
+
+            if node.subtree and not ctx.embedded_list_path:
+                self._walk(
+                    WalkCtx(
+                        doc_cls=target,
+                        prefix=f"{node.full_path}.",
+                        tree=node.subtree,
+                        buckets=ctx.buckets,
+                        interleave=ctx.interleave,
+                        embedded_list_path=None,
+                        hydrate_tree=node.subtree_hydrate_tree,
+                    )
+                )
+
+            self._maybe_restore(node.full_path, orig_alias)
+            return True
+
+        # List[GenericReferenceField]
+        if leaf is not None and isinstance(leaf, GenericReferenceField) and leaf.choices:
+            if ctx.embedded_list_path:
+                foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+                self._add_embedded_list_generic_lookup(
+                    generic_field=leaf,
+                    list_path=ctx.embedded_list_path,
+                    embedded_key=node.field.db_field,
+                    foreign_match=foreign_match,
+                    hydrate=node.requested_hydrate,  # select_related only
+                )
+                if foreign_match is None:
+                    self._apply_bucket_if_any(ctx, node.full_path)
+            else:
+                # Keep existing behavior for scalar list-of-generic (hydrates)
+                self._add_generic_lookup(leaf, node.full_path, is_list=True)
+                self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        return True
+
+    def _handle_embedded_document_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import EmbeddedDocumentField
+
+        if not isinstance(node.field, EmbeddedDocumentField):
+            return False
+
+        if node.subtree:
+            self._walk(
+                WalkCtx(
+                    doc_cls=node.field.document_type,
+                    prefix=f"{node.full_path}.",
+                    tree=node.subtree,
+                    buckets=ctx.buckets,
+                    interleave=ctx.interleave,
+                    embedded_list_path=ctx.embedded_list_path,
+                    hydrate_tree=node.subtree_hydrate_tree,
+                )
+            )
+        return True
+
+    def _handle_map_ref_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import MapField, ReferenceField
+
+        if not (isinstance(node.field, MapField) and isinstance(node.field.field, ReferenceField)):
+            return False
+
+        if ctx.embedded_list_path:
+            self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+        target = node.field.field.document_type_obj or node.field.field.document_type
+
+        self._add_structured_ref_lookup(
+            target_cls=target,
+            field_shape=node.field,
+            local_field=node.full_path,
+            foreign_match=foreign_match,
+            hydrate=node.requested_hydrate,  # IMPORTANT: hydrate only when select_related asked
+        )
+
+        if foreign_match is None:
+            self._apply_bucket_if_any(ctx, node.full_path)
+
+        return True
+
+    def _handle_dict_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import DictField, GenericReferenceField
+
+        if not isinstance(node.field, DictField):
+            return False
+
+        if ctx.embedded_list_path:
+            self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        # DictField with ReferenceField leaves all pointing to same target
+        target = self._resolve_single_ref_target(node.field)
+        if target is not None:
+            foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+            self._add_structured_ref_lookup(
+                target_cls=target,
+                field_shape=node.field,
+                local_field=node.full_path,
+                foreign_match=foreign_match,
+                hydrate=node.requested_hydrate,  # IMPORTANT
+            )
+            if foreign_match is None:
+                self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        # DictField(GenericReferenceField)
+        if isinstance(node.field.field, GenericReferenceField) and getattr(node.field.field, "choices", None):
+            foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+            self._add_object_generic_lookup(
+                generic_field=node.field.field,
+                local_field=node.full_path,
+                foreign_match=foreign_match,
+                hydrate=node.requested_hydrate,  # IMPORTANT
+            )
+            if foreign_match is None:
+                self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        return True
+
+    def _handle_generic_reference_field(self, ctx: WalkCtx, node: WalkNode) -> bool:
+        from mongoengine.fields import GenericReferenceField
+
+        if not (isinstance(node.field, GenericReferenceField) and node.field.choices):
+            return False
+
+        if ctx.embedded_list_path:
+            foreign_match = self._maybe_pop_foreign_match(ctx, node.full_path)
+            self._add_embedded_list_generic_lookup(
+                generic_field=node.field,
+                list_path=ctx.embedded_list_path,
+                embedded_key=node.field.db_field,
+                foreign_match=foreign_match,
+                hydrate=node.requested_hydrate,  # select_related only
+            )
+            if foreign_match is None:
+                self._apply_bucket_if_any(ctx, node.full_path)
+            return True
+
+        # Scalar generic lookup (existing behavior: hydrates always)
+        orig_alias = self._maybe_preserve(node.full_path, node.preserve_orig, node.orig_alias)
+        self._add_generic_lookup(node.field, node.full_path)
+        self._apply_bucket_if_any(ctx, node.full_path)
+
+        # Safe traversal under generic
+        if node.subtree:
+            self._walk_under_generic(ctx, node)
+
+        self._maybe_restore(node.full_path, orig_alias)
+        return True
+
+    def _walk_under_generic(self, ctx: WalkCtx, node: WalkNode) -> None:
+        """
+        Traverse deeper under a scalar GenericReferenceField by finding common ref fields
+        across choices for a given sub-path.
+        """
+        for sub_name, sub_tree in node.subtree.items():
+            if not sub_name or sub_name == "":
+                continue
+
+            common_ref_field, common_target = MatchPlanner.generic_common_ref(node.field, sub_name)
+            if common_ref_field is None or common_target is None:
+                continue
+
+            gp_path = f"{node.full_path}.{common_ref_field.db_field}"
+
+            foreign_match = self._maybe_pop_foreign_match(ctx, gp_path)
+
+            hydrate_gp = bool(node.subtree_hydrate_tree.get(sub_name))
+            hydrate_gp_effective = hydrate_gp or bool(sub_tree)
+
+            orig_gp_alias = None
+            if bool(sub_tree) and not hydrate_gp:
+                orig_gp_alias = f"__orig__{gp_path.replace('.', '_')}"
+                self._pipeline.append({"$addFields": {orig_gp_alias: f"${gp_path}"}})
+
+            self._add_structured_ref_lookup(
+                target_cls=common_target,
+                field_shape=common_ref_field,
+                local_field=gp_path,
+                foreign_match=foreign_match,
+                hydrate=hydrate_gp_effective,
+            )
+
+            if foreign_match is None:
+                self._apply_bucket_if_any(ctx, gp_path)
+
+            if sub_tree:
+                self._walk(
+                    WalkCtx(
+                        doc_cls=common_target,
+                        prefix=f"{gp_path}.",
+                        tree=sub_tree,
+                        buckets=ctx.buckets,
+                        interleave=ctx.interleave,
+                        embedded_list_path=None,
+                        hydrate_tree=node.subtree_hydrate_tree.get(sub_name, {}),
+                    )
+                )
+
+            if orig_gp_alias:
+                self._pipeline.append({"$addFields": {gp_path: f"${orig_gp_alias}"}})
+                self._pipeline.append(self._project_remove(orig_gp_alias))
+
+    # ---------------------------------------------------------------------
+    # Optimization helpers (buckets -> foreign match)
+    # ---------------------------------------------------------------------
 
     def _pop_foreign_match_for_prefix(self, buckets: dict, prefix: str) -> Optional[dict]:
+        """
+        Pop a bucket for prefix and convert it into a foreign-doc match dict if possible.
+
+        Example:
+            bucket: {"author.age": {"$gt": 10}}
+            prefix: "author"
+            => foreign: {"age": {"$gt": 10}}
+        """
         if prefix not in buckets:
             return None
         candidate = buckets[prefix]
@@ -445,6 +556,10 @@ class StageBuilder:
         return foreign
 
     def _to_foreign_match(self, match: Any, prefix: str) -> Optional[dict]:
+        """
+        Convert a root match dict into a match relative to the foreign doc.
+        Only accepts keys that start with "<prefix>." and only safe operators.
+        """
         if not isinstance(match, dict):
             return None
 
@@ -481,10 +596,13 @@ class StageBuilder:
 
         return out or None
 
-    # ----------------- helpers -----------------
+    # ---------------------------------------------------------------------
+    # Small field-shape helpers
+    # ---------------------------------------------------------------------
 
     @staticmethod
     def _project_remove(*paths: str) -> dict:
+        """Return a $project stage that removes listed fields."""
         return {"$project": {p: 0 for p in paths if p}}
 
     @staticmethod
@@ -536,6 +654,7 @@ class StageBuilder:
     def _docs_to_id_map_expr(docs_expr):
         """
         Build { "<_id str>": <doc> } from an array of docs.
+        (Kept for future optimization; not currently required by the pipeline.)
         """
         return {
             "$arrayToObject": {
@@ -547,10 +666,17 @@ class StageBuilder:
             }
         }
 
-    # ----------------- structured ref lookup -----------------
+    # ---------------------------------------------------------------------
+    # Reference extraction & hydration expressions
+    # ---------------------------------------------------------------------
 
     @staticmethod
     def _build_ref_ids_expr(field, source_expr):
+        """
+        Produce an expression returning an array of referenced _ids from a field that may be:
+          - scalar ReferenceField (ObjectId or DBRef)
+          - list nested structures (ListField / DictField / MapField)
+        """
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
         if isinstance(field, ReferenceField):
@@ -602,17 +728,23 @@ class StageBuilder:
 
     @staticmethod
     def _build_value_expr(field, source_expr, docs_expr):
-        """4.2-safe hydrate expression for ReferenceField/MapField/ListField/DictField."""
+        """
+        MongoDB 4.2-safe hydration expression for ReferenceField / ListField / DictField shapes.
+
+        IMPORTANT:
+          - If reference is missing, we return an explicit marker:
+                {"_missing_reference": True, "_ref": <ObjectId>}
+            This ensures MongoEngine dereferencing can raise DoesNotExist when accessed.
+
+          - For ListField/DictField, we apply recursively.
+        """
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
         # ---- ReferenceField ----
         if isinstance(field, ReferenceField):
             id_expr = f"{source_expr}.$id" if field.dbref else source_expr
 
-            # docs_expr must always be an array
-            docs_arr = {
-                "$cond": [{"$isArray": docs_expr}, docs_expr, []]
-            }
+            docs_arr = {"$cond": [{"$isArray": docs_expr}, docs_expr, []]}
             ids_arr = {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}}
 
             return {
@@ -629,13 +761,8 @@ class StageBuilder:
                             "in": {
                                 "$cond": [
                                     {"$gte": ["$$idx", 0]},
-                                    # hydrated doc
                                     {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                    # explicit missing marker
-                                    {
-                                        "_missing_reference": True,
-                                        "_ref": "$$refId",
-                                    },
+                                    {"_missing_reference": True, "_ref": "$$refId"},
                                 ]
                             },
                         }
@@ -653,13 +780,8 @@ class StageBuilder:
             return {
                 "$cond": [
                     {"$isArray": source_expr},
-                    {
-                        "$map": {
-                            "input": source_expr,
-                            "as": "item",
-                            "in": StageBuilder._build_value_expr(field.field, "$$item", docs_expr),
-                        }
-                    },
+                    {"$map": {"input": source_expr, "as": "item",
+                              "in": StageBuilder._build_value_expr(field.field, "$$item", docs_expr)}},
                     source_expr,
                 ]
             }
@@ -671,37 +793,37 @@ class StageBuilder:
                     "$map": {
                         "input": {"$objectToArray": source_expr},
                         "as": "kv",
-                        "in": {
-                            "k": "$$kv.k",
-                            "v": StageBuilder._build_value_expr(field.field, "$$kv.v", docs_expr),
-                        },
+                        "in": {"k": "$$kv.k", "v": StageBuilder._build_value_expr(field.field, "$$kv.v", docs_expr)},
                     }
                 }
             }
 
         return source_expr
 
+    # ---------------------------------------------------------------------
+    # Foreign-match translation to $expr for local filtering
+    # ---------------------------------------------------------------------
+
     @staticmethod
     def _foreign_match_to_expr(match: Any, var: str = "$$d") -> Optional[dict]:
         """
         Convert a foreign-doc match dict (keys relative to the foreign doc) into an $expr condition
-        usable inside $filter cond.
+        usable inside $filter.cond.
 
         Supported:
-          - field predicates with scalar equality
-          - field predicates with ops: $eq,$ne,$gt,$gte,$lt,$lte,$in,$nin
+          - scalar equality
+          - ops: $eq,$ne,$gt,$gte,$lt,$lte,$in,$nin
           - $and/$or/$nor recursively
-          - $regex (+ optional $options) via $regexMatch
+          - $regex (+ $options) via $regexMatch
 
-        Rejects (returns None):
+        Rejected (returns None):
           - $expr/$where/$function anywhere
-          - unknown operators ($geo*, $elemMatch, etc.)
-          - $exists (ambiguous under $expr if nulls are allowed)
+          - unknown operators
+          - $exists
         """
         if not isinstance(match, dict):
             return None
 
-        # hard reject unsafe
         for bad in ("$expr", "$where", "$function"):
             if bad in match:
                 return None
@@ -709,7 +831,6 @@ class StageBuilder:
         def field_expr(field_path: str, predicate: Any) -> Optional[dict]:
             path = f"{var}.{field_path}" if field_path else var
 
-            # scalar => equality
             if not isinstance(predicate, dict) or not predicate:
                 return {"$eq": [path, predicate]}
 
@@ -731,7 +852,6 @@ class StageBuilder:
                 elif op == "$lte":
                     parts.append({"$lte": [path, val]})
                 elif op == "$in":
-                    # val must be an array for $in
                     if not isinstance(val, list):
                         return None
                     parts.append({"$in": [path, val]})
@@ -740,15 +860,12 @@ class StageBuilder:
                         return None
                     parts.append({"$not": [{"$in": [path, val]}]})
                 elif op == "$regex":
-                    # translate to $regexMatch; handle $options if present
                     regex_pat = val
                 elif op == "$options":
                     regex_opt = val
                 elif op == "$exists":
-                    # can't translate safely in general (null vs missing ambiguity)
                     return None
                 else:
-                    # unknown / unsupported operator
                     return None
 
             if regex_pat is not None:
@@ -766,13 +883,11 @@ class StageBuilder:
         def walk(node: Any) -> Optional[dict]:
             if not isinstance(node, dict):
                 return None
-
             for bad in ("$expr", "$where", "$function"):
                 if bad in node:
                     return None
 
             exprs: List[dict] = []
-
             for k, v in node.items():
                 if not isinstance(k, str):
                     return None
@@ -792,7 +907,6 @@ class StageBuilder:
                     elif k == "$or":
                         exprs.append(sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs})
                     else:  # $nor
-                        # nor(a,b) == not(or(a,b))
                         inner = sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs}
                         exprs.append({"$not": [inner]})
                     continue
@@ -813,6 +927,10 @@ class StageBuilder:
 
         return walk(match)
 
+    # ---------------------------------------------------------------------
+    # Structured Reference lookups
+    # ---------------------------------------------------------------------
+
     def _add_structured_ref_lookup(
             self,
             target_cls,
@@ -821,6 +939,17 @@ class StageBuilder:
             foreign_match: Optional[dict] = None,
             hydrate: bool = False,
     ):
+        """
+        Lookup referenced docs for a field shape that contains ReferenceField leaves.
+
+        Behavior:
+          - Always does ONE unfiltered lookup by refIds (for correct hydration).
+          - If foreign_match is provided:
+              - Prefer local root filtering using $filter/$expr (keeps docs array unfiltered)
+              - If cannot translate safely, fallback to filtered lookup and match non-empty.
+          - If hydrate=True: rewrite local_field using _build_value_expr (missing refs -> marker).
+          - Always removes temporary docs array.
+        """
         if not target_cls:
             return
 
@@ -830,7 +959,7 @@ class StageBuilder:
         ref_ids_expr = self._build_ref_ids_expr(field_shape, f"${local_field}")
         base_pipeline = [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}]
 
-        # 1) Always do a SINGLE unfiltered lookup (only by refIds)
+        # 1) Always unfiltered lookup
         self._pipeline.append(
             {
                 "$lookup": {
@@ -842,7 +971,7 @@ class StageBuilder:
             }
         )
 
-        # 2) If we have a foreign_match, filter roots LOCALLY against joined docs
+        # 2) Local root filtering (preferred)
         if foreign_match:
             cond = self._foreign_match_to_expr(foreign_match, var="$$d")
             if cond is not None:
@@ -851,15 +980,7 @@ class StageBuilder:
                         "$match": {
                             "$expr": {
                                 "$gt": [
-                                    {
-                                        "$size": {
-                                            "$filter": {
-                                                "input": f"${docs_alias}",
-                                                "as": "d",
-                                                "cond": cond,
-                                            }
-                                        }
-                                    },
+                                    {"$size": {"$filter": {"input": f"${docs_alias}", "as": "d", "cond": cond}}},
                                     0,
                                 ]
                             }
@@ -867,8 +988,7 @@ class StageBuilder:
                     }
                 )
             else:
-                # fallback: if we can't safely translate, keep old behavior by pushing down
-                # (optional; you can remove this fallback if you prefer strict)
+                # Fallback: push down match to lookup (may shrink docs and affect hydration)
                 self._pipeline.append(
                     {
                         "$lookup": {
@@ -882,16 +1002,13 @@ class StageBuilder:
                 self._pipeline.append({"$match": {f"{safe}__match_fallback": {"$ne": []}}})
                 self._pipeline.append({"$project": {f"{safe}__match_fallback": 0}})
 
-        # 3) Hydrate (select_related) using unfiltered docs_alias so no false "missing"
+        # 3) Hydrate
         if hydrate:
-            # Use array (Mongo 4.2 safe)
             transformed_expr = self._build_value_expr(field_shape, f"${local_field}", f"${docs_alias}")
             self._pipeline.append({"$addFields": {local_field: transformed_expr}})
 
         # cleanup
         self._pipeline.append({"$project": {docs_alias: 0}})
-
-    # ----------------- embedded list structured ref lookup -----------------
 
     def _add_embedded_list_structured_ref_lookup(
             self,
@@ -902,6 +1019,16 @@ class StageBuilder:
             foreign_match: Optional[dict] = None,
             hydrate: bool = True,
     ):
+        """
+        Like _add_structured_ref_lookup, but the reference lives inside a list of embedded docs.
+
+        Key behavior:
+          - Builds refIds by reducing across list items.
+          - Performs ONE unfiltered lookup (for correct hydration).
+          - If foreign_match exists, filters root docs by joined docs satisfying the condition.
+          - If hydrate=True, rewrites embedded_key values per item:
+              - missing refs => marker dict (includes _cls for better debugging).
+        """
         if not target_cls:
             return
 
@@ -927,7 +1054,7 @@ class StageBuilder:
 
         base_pipeline = [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}]
 
-        # 1) Single unfiltered lookup
+        # 1) Unfiltered lookup
         self._pipeline.append(
             {
                 "$lookup": {
@@ -939,7 +1066,7 @@ class StageBuilder:
             }
         )
 
-        # 2) Local root filtering if foreign_match exists
+        # 2) Local root filtering
         if foreign_match:
             cond = self._foreign_match_to_expr(foreign_match, var="$$d")
             if cond is not None:
@@ -948,15 +1075,7 @@ class StageBuilder:
                         "$match": {
                             "$expr": {
                                 "$gt": [
-                                    {
-                                        "$size": {
-                                            "$filter": {
-                                                "input": f"${docs_alias}",
-                                                "as": "d",
-                                                "cond": cond,
-                                            }
-                                        }
-                                    },
+                                    {"$size": {"$filter": {"input": f"${docs_alias}", "as": "d", "cond": cond}}},
                                     0,
                                 ]
                             }
@@ -964,7 +1083,6 @@ class StageBuilder:
                     }
                 )
             else:
-                # optional fallback, same idea as above
                 match_alias = f"{safe_list}_{safe_key}__match_fallback"
                 self._pipeline.append(
                     {
@@ -979,15 +1097,10 @@ class StageBuilder:
                 self._pipeline.append({"$match": {match_alias: {"$ne": []}}})
                 self._pipeline.append({"$project": {match_alias: 0}})
 
-        # 3) Hydrate embedded list items if requested
+        # 3) Hydrate embedded items
         if hydrate:
-            # ensure docs_alias is treated as array
             docs_arr = {"$cond": [{"$isArray": f"${docs_alias}"}, f"${docs_alias}", []]}
             ids_arr = {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}}
-
-            # NOTE: build_value_expr expects docs_expr to be an array expression
-            # so pass "$$docs" (from $let below) to avoid recomputing map for each item.
-            per_item_value_expr = self._build_value_expr(field_shape, f"$$it.{embedded_key}", "$$docs")
 
             self._pipeline.append(
                 {
@@ -997,10 +1110,7 @@ class StageBuilder:
                                 {"$isArray": f"${list_path}"},
                                 {
                                     "$let": {
-                                        "vars": {
-                                            "docs": docs_arr,
-                                            "ids": ids_arr,
-                                        },
+                                        "vars": {"docs": docs_arr, "ids": ids_arr},
                                         "in": {
                                             "$map": {
                                                 "input": f"${list_path}",
@@ -1010,7 +1120,6 @@ class StageBuilder:
                                                         "$$it",
                                                         {
                                                             embedded_key: {
-                                                                # Inline hydration using the precomputed arrays:
                                                                 "$cond": [
                                                                     {"$ifNull": [f"$$it.{embedded_key}", False]},
                                                                     {
@@ -1049,7 +1158,7 @@ class StageBuilder:
                                                                                             "__str__",
                                                                                             lambda: getattr(target_cls,
                                                                                                             "__name__",
-                                                                                                            "Unknown")
+                                                                                                            "Unknown"),
                                                                                         )(),
                                                                                     },
                                                                                 ]
@@ -1075,9 +1184,15 @@ class StageBuilder:
 
         self._pipeline.append({"$project": {docs_alias: 0}})
 
-    # ----------------- MapField(ReferenceField) filter-only -----------------
+    # ---------------------------------------------------------------------
+    # MapField(ReferenceField) (kept for compatibility; not used by handlers now)
+    # ---------------------------------------------------------------------
 
     def _add_map_ref_lookup(self, target_cls, map_field, local_field: str, foreign_match: Optional[dict] = None):
+        """
+        Older map lookup helper; retained for compatibility.
+        Newer code routes MapField(ReferenceField) through _add_structured_ref_lookup directly.
+        """
         if not target_cls:
             return
 
@@ -1108,7 +1223,9 @@ class StageBuilder:
 
         self._pipeline.append(self._project_remove(docs_alias))
 
-    # ----------------- DictField(GenericReferenceField) filter-only -----------------
+    # ---------------------------------------------------------------------
+    # DictField(GenericReferenceField) support
+    # ---------------------------------------------------------------------
 
     def _add_object_generic_lookup(
             self,
@@ -1120,10 +1237,9 @@ class StageBuilder:
         """
         DictField(GenericReferenceField) support.
 
-        - Always does lookups into each choice collection based on ids found in the dict values.
+        - Always does lookups into each choice collection based on ids in dict values.
         - If foreign_match: filters root docs (keeps old behavior).
-        - If hydrate: rewrites dict values from {"_cls","_ref"} into hydrated document dicts
-          (same shape as scalar GenericReferenceField hydration: merged doc + _ref/_cls).
+        - If hydrate: rewrites dict values into hydrated document dicts (merge doc + _ref/_cls).
         """
         doc_classes = Schema.resolve_generic_choices(generic_field)
         if not doc_classes:
@@ -1164,27 +1280,15 @@ class StageBuilder:
                 pipeline.append({"$match": foreign_match})
 
             self._pipeline.append(
-                {
-                    "$lookup": {
-                        "from": cls._get_collection_name(),
-                        "let": {"refIds": ref_ids_expr},
-                        "pipeline": pipeline,
-                        "as": alias,
-                    }
-                }
+                {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr}, "pipeline": pipeline,
+                             "as": alias}}
             )
 
-        # root filtering when query had members__... predicates
         if foreign_match:
             self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in aliases]}})
 
         if hydrate:
-            # Transform each dict value using the same logic as scalar generic hydration
-            value_expr = self._generic_value_transform_expr(
-                doc_classes,
-                alias_for_cls=alias_for,
-                val_var="$$kv.v",
-            )
+            value_expr = self._generic_value_transform_expr(doc_classes, alias_for_cls=alias_for, val_var="$$kv.v")
 
             self._pipeline.append(
                 {
@@ -1210,7 +1314,9 @@ class StageBuilder:
 
         self._pipeline.append(self._project_remove(*aliases))
 
-    # ----------------- generic lookup helpers -----------------
+    # ---------------------------------------------------------------------
+    # GenericReferenceField helpers
+    # ---------------------------------------------------------------------
 
     @staticmethod
     def _missing_generic_expr(ref_expr, cls_expr):
@@ -1218,6 +1324,10 @@ class StageBuilder:
 
     @staticmethod
     def _generic_value_transform_expr(doc_classes, alias_for_cls, val_var="$$val"):
+        """
+        Build nested $cond expression that hydrates a GenericReferenceField value
+        based on its _cls discriminator.
+        """
         expr = val_var
         for cls in reversed(doc_classes):
             alias_arr = f"${alias_for_cls(cls)}"
@@ -1225,8 +1335,15 @@ class StageBuilder:
 
             branch = {
                 "$let": {
-                    "vars": {"matches": {"$filter": {"input": alias_arr, "as": "doc",
-                                                     "cond": {"$eq": ["$$doc._id", f"{val_var}._ref.$id"]}}}},
+                    "vars": {
+                        "matches": {
+                            "$filter": {
+                                "input": alias_arr,
+                                "as": "doc",
+                                "cond": {"$eq": ["$$doc._id", f"{val_var}._ref.$id"]},
+                            }
+                        }
+                    },
                     "in": {
                         "$cond": [
                             {"$gt": [{"$size": "$$matches"}, 0]},
@@ -1241,7 +1358,9 @@ class StageBuilder:
             expr = {"$cond": [class_test, branch, expr]}
         return expr
 
-    # ----------------- embedded list GenericReferenceField -----------------
+    # ---------------------------------------------------------------------
+    # Embedded list GenericReferenceField support
+    # ---------------------------------------------------------------------
 
     def _add_embedded_list_generic_lookup(
             self,
@@ -1251,6 +1370,17 @@ class StageBuilder:
             foreign_match: Optional[dict] = None,
             hydrate: bool = True,
     ):
+        """
+        GenericReferenceField inside a list of embedded documents.
+
+        - Performs unfiltered lookups per choice collection (for correct hydration).
+        - If foreign_match:
+            - prefer local root filtering using $filter cond conversion
+            - fallback to filtered match lookups.
+        - If hydrate:
+            - rewrite each embedded element's embedded_key value(s) into hydrated docs + _ref/_cls,
+              missing => {"_missing_reference": True, "_ref": ..., "_cls": ...}
+        """
         doc_classes = Schema.resolve_generic_choices(generic_field)
         if not doc_classes:
             return
@@ -1287,13 +1417,8 @@ class StageBuilder:
                                             {"$isArray": "$$this"},
                                             {
                                                 "$map": {
-                                                    "input": {
-                                                        "$filter": {
-                                                            "input": "$$this",
-                                                            "as": "m",
-                                                            "cond": class_test_m,
-                                                        }
-                                                    },
+                                                    "input": {"$filter": {"input": "$$this", "as": "m",
+                                                                          "cond": class_test_m}},
                                                     "as": "m",
                                                     "in": "$$m._ref.$id",
                                                 }
@@ -1311,7 +1436,7 @@ class StageBuilder:
 
         base = [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}]
 
-        # ---------------- 1) Unfiltered lookups (needed for correct hydration) ----------------
+        # 1) Unfiltered lookups
         docs_aliases = []
         for cls in doc_classes:
             a_docs = alias_docs(cls)
@@ -1327,31 +1452,18 @@ class StageBuilder:
                 }
             )
 
-        # ---------------- 2) Root filtering for foreign_match ----------------
+        # 2) Root filtering
         match_aliases = []
         if foreign_match:
             cond = self._foreign_match_to_expr(foreign_match, var="$$d")
-
             if cond is not None:
                 self._pipeline.append(
                     {
                         "$match": {
                             "$expr": {
                                 "$or": [
-                                    {
-                                        "$gt": [
-                                            {
-                                                "$size": {
-                                                    "$filter": {
-                                                        "input": f"${alias_docs(cls)}",
-                                                        "as": "d",
-                                                        "cond": cond,
-                                                    }
-                                                }
-                                            },
-                                            0,
-                                        ]
-                                    }
+                                    {"$gt": [{"$size": {
+                                        "$filter": {"input": f"${alias_docs(cls)}", "as": "d", "cond": cond}}}, 0]}
                                     for cls in doc_classes
                                 ]
                             }
@@ -1359,7 +1471,7 @@ class StageBuilder:
                     }
                 )
             else:
-                # fallback: filtered match lookups
+                # fallback to filtered lookups
                 for cls in doc_classes:
                     a_match = alias_match(cls)
                     match_aliases.append(a_match)
@@ -1379,32 +1491,21 @@ class StageBuilder:
                     self._pipeline.append(self._project_remove(*(match_aliases + docs_aliases)))
                     return
 
-        # ---------------- 3) Hydrate (fast, MongoDB 4.2-safe) ----------------
+        # 3) Hydrate
         if hydrate:
-            # Make MongoDB-friendly $let var names (must start with lowercase)
             def vbase(cls):
                 n = cls.__name__
-                return n[:1].lower() + n[1:]  # Person -> person, Animal -> animal
+                return n[:1].lower() + n[1:]  # must start with the lowercase
 
-            # Outer let: define <cls> Docs arrays
             docs_vars = {}
             for cls in doc_classes:
                 vb = vbase(cls)
-                docs_vars[f"{vb}Docs"] = {
-                    "$cond": [
-                        {"$isArray": f"${alias_docs(cls)}"},
-                        f"${alias_docs(cls)}",
-                        [],
-                    ]
-                }
+                docs_vars[f"{vb}Docs"] = {"$cond": [{"$isArray": f"${alias_docs(cls)}"}, f"${alias_docs(cls)}", []]}
 
-            # Inner let: define <cls>Ids arrays from <cls>Docs
             ids_vars = {}
             for cls in doc_classes:
                 vb = vbase(cls)
-                ids_vars[f"{vb}Ids"] = {
-                    "$map": {"input": f"$${vb}Docs", "as": "d", "in": "$$d._id"}
-                }
+                ids_vars[f"{vb}Ids"] = {"$map": {"input": f"$${vb}Docs", "as": "d", "in": "$$d._id"}}
 
             def hydrate_one_value(val_expr: str):
                 expr = val_expr
@@ -1418,18 +1519,13 @@ class StageBuilder:
                         "$let": {
                             "vars": {
                                 "ref": f"{val_expr}._ref",
-                                "rid": f"{val_expr}._ref.$id",
                                 "idx": {"$indexOfArray": [ids_var, f"{val_expr}._ref.$id"]},
                             },
                             "in": {
                                 "$cond": [
                                     {"$gte": ["$$idx", 0]},
-                                    {
-                                        "$mergeObjects": [
-                                            {"$arrayElemAt": [docs_var, "$$idx"]},
-                                            {"_ref": f"{val_expr}._ref", "_cls": f"{val_expr}._cls"},
-                                        ]
-                                    },
+                                    {"$mergeObjects": [{"$arrayElemAt": [docs_var, "$$idx"]},
+                                                       {"_ref": f"{val_expr}._ref", "_cls": f"{val_expr}._cls"}]},
                                     {"_missing_reference": True, "_ref": "$$ref", "_cls": f"{val_expr}._cls"},
                                 ]
                             },
@@ -1461,13 +1557,10 @@ class StageBuilder:
                                                                     embedded_key: {
                                                                         "$cond": [
                                                                             {"$isArray": f"$$it.{embedded_key}"},
-                                                                            {
-                                                                                "$map": {
-                                                                                    "input": f"$$it.{embedded_key}",
-                                                                                    "as": "val",
-                                                                                    "in": hydrate_one_value("$$val"),
-                                                                                }
-                                                                            },
+                                                                            {"$map": {"input": f"$$it.{embedded_key}",
+                                                                                      "as": "val",
+                                                                                      "in": hydrate_one_value(
+                                                                                          "$$val")}},
                                                                             hydrate_one_value(f"$$it.{embedded_key}"),
                                                                         ]
                                                                     }
@@ -1487,12 +1580,20 @@ class StageBuilder:
                 }
             )
 
-        # ---------------- cleanup ----------------
         self._pipeline.append(self._project_remove(*(docs_aliases + match_aliases)))
 
-    # ----------------- existing generic lookup -----------------
+    # ---------------------------------------------------------------------
+    # Existing scalar generic lookup (kept)
+    # ---------------------------------------------------------------------
 
     def _add_generic_lookup(self, field, local_field, is_list=False):
+        """
+        Existing GenericReferenceField hydration logic (kept as-is).
+
+        Note:
+          - For scalar generic fields, this hydrates always (historical behavior).
+          - For list generic fields, it hydrates each item.
+        """
         doc_classes = Schema.resolve_generic_choices(field)
         if not doc_classes:
             return
@@ -1503,8 +1604,14 @@ class StageBuilder:
         if not is_list:
             for cls in doc_classes:
                 self._pipeline.append(
-                    {"$lookup": {"from": cls._get_collection_name(), "localField": f"{local_field}._ref.$id",
-                                 "foreignField": "_id", "as": alias_for(cls)}}
+                    {
+                        "$lookup": {
+                            "from": cls._get_collection_name(),
+                            "localField": f"{local_field}._ref.$id",
+                            "foreignField": "_id",
+                            "as": alias_for(cls),
+                        }
+                    }
                 )
 
             transformed = self._generic_value_transform_expr(doc_classes, alias_for_cls=alias_for,
@@ -1515,8 +1622,14 @@ class StageBuilder:
 
         for cls in doc_classes:
             self._pipeline.append(
-                {"$lookup": {"from": cls._get_collection_name(), "localField": f"{local_field}._ref.$id",
-                             "foreignField": "_id", "as": alias_for(cls)}}
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "localField": f"{local_field}._ref.$id",
+                        "foreignField": "_id",
+                        "as": alias_for(cls),
+                    }
+                }
             )
 
         item_expr = self._generic_value_transform_expr(doc_classes, alias_for_cls=alias_for, val_var="$$item")
@@ -1524,10 +1637,13 @@ class StageBuilder:
             {"$addFields": {local_field: {"$map": {"input": f"${local_field}", "as": "item", "in": item_expr}}}})
         self._pipeline.append(self._project_remove(*[alias_for(cls) for cls in doc_classes]))
 
-    # ----------------- abstract dbref lookup  -----------------
+    # ---------------------------------------------------------------------
+    # Abstract DBRef lookup
+    # ---------------------------------------------------------------------
 
     @staticmethod
     def _concrete_subclasses(doc_cls):
+        """Return all non-abstract subclasses (recursive) of an abstract base Document."""
         result = set()
 
         def _walk(c):
@@ -1556,7 +1672,6 @@ class StageBuilder:
 
         safe_local = local_field.replace(".", "_")
 
-        # resolve referenced id for DBRef or ObjectId
         ref_id_expr = {
             "$cond": [
                 {"$eq": [{"$type": f"${local_field}"}, "object"]},  # DBRef
@@ -1574,7 +1689,6 @@ class StageBuilder:
                 continue
 
             tmp = f"{safe_local}__{cls.__name__}"
-
             self._pipeline.append(
                 {
                     "$lookup": {
@@ -1588,9 +1702,6 @@ class StageBuilder:
 
             cls_name = getattr(cls, "_class_name", cls.__name__)
 
-            # overwrite local_field with hydrated doc ONLY if:
-            # - we matched, and
-            # - if DBRef: $ref matches this collection
             self._pipeline.append(
                 {
                     "$addFields": {
@@ -1612,28 +1723,23 @@ class StageBuilder:
                                                                 {
                                                                     "$setField": {
                                                                         "field": "_id",
-                                                                        "input": {
-                                                                            "$mergeObjects": [
-                                                                                "$$doc",
-                                                                                {"id": "$$doc._id", "_cls": cls_name},
-                                                                            ]
-                                                                        },
+                                                                        "input":
+                                                                            {"$mergeObjects": ["$$doc",
+                                                                                               {"id": "$$doc._id",
+                                                                                                "_cls": cls_name}]},
                                                                         "value": "$$REMOVE",
                                                                     }
                                                                 },
                                                                 "$$v",
                                                             ]
                                                         },
-                                                        # ObjectId storage: any match is valid
+                                                        # ObjectId storage
                                                         {
                                                             "$setField": {
                                                                 "field": "_id",
-                                                                "input": {
-                                                                    "$mergeObjects": [
-                                                                        "$$doc",
-                                                                        {"id": "$$doc._id", "_cls": cls_name},
-                                                                    ]
-                                                                },
+                                                                "input":
+                                                                    {"$mergeObjects": ["$$doc", {"id": "$$doc._id",
+                                                                                                 "_cls": cls_name}]},
                                                                 "value": "$$REMOVE",
                                                             }
                                                         },
