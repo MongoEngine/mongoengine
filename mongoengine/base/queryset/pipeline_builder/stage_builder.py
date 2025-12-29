@@ -532,6 +532,21 @@ class StageBuilder:
             return next(iter(targets))
         return None
 
+    @staticmethod
+    def _docs_to_id_map_expr(docs_expr):
+        """
+        Build { "<_id str>": <doc> } from an array of docs.
+        """
+        return {
+            "$arrayToObject": {
+                "$map": {
+                    "input": docs_expr,
+                    "as": "d",
+                    "in": {"k": {"$toString": "$$d._id"}, "v": "$$d"},
+                }
+            }
+        }
+
     # ----------------- structured ref lookup -----------------
 
     @staticmethod
@@ -587,18 +602,18 @@ class StageBuilder:
 
     @staticmethod
     def _build_value_expr(field, source_expr, docs_expr):
+        """4.2-safe hydrate expression for ReferenceField/MapField/ListField/DictField."""
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField
 
+        # ---- ReferenceField ----
         if isinstance(field, ReferenceField):
             id_expr = f"{source_expr}.$id" if field.dbref else source_expr
 
-            cls_name = None
-            try:
-                dt = field.document_type
-                if dt is not None:
-                    cls_name = getattr(dt, "_class_name", dt.__name__)
-            except Exception:
-                cls_name = None
+            # docs_expr must always be an array
+            docs_arr = {
+                "$cond": [{"$isArray": docs_expr}, docs_expr, []]
+            }
+            ids_arr = {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}}
 
             return {
                 "$cond": [
@@ -606,15 +621,21 @@ class StageBuilder:
                     {
                         "$let": {
                             "vars": {
-                                "matches": {"$filter": {"input": docs_expr, "as": "doc",
-                                                        "cond": {"$eq": ["$$doc._id", id_expr]}}},
+                                "docs": docs_arr,
+                                "ids": ids_arr,
                                 "refId": id_expr,
+                                "idx": {"$indexOfArray": [ids_arr, id_expr]},
                             },
                             "in": {
                                 "$cond": [
-                                    {"$gt": [{"$size": "$$matches"}, 0]},
-                                    {"$first": "$$matches"},
-                                    {"_missing_reference": True, "_ref": "$$refId", "_cls": cls_name},
+                                    {"$gte": ["$$idx", 0]},
+                                    # hydrated doc
+                                    {"$arrayElemAt": ["$$docs", "$$idx"]},
+                                    # explicit missing marker
+                                    {
+                                        "_missing_reference": True,
+                                        "_ref": "$$refId",
+                                    },
                                 ]
                             },
                         }
@@ -623,33 +644,45 @@ class StageBuilder:
                 ]
             }
 
+        # ---- GenericReferenceField ----
         if isinstance(field, GenericReferenceField):
             return source_expr
 
+        # ---- ListField ----
         if isinstance(field, ListField):
             return {
                 "$cond": [
                     {"$isArray": source_expr},
-                    {"$map": {"input": source_expr, "as": "item",
-                              "in": StageBuilder._build_value_expr(field.field, "$$item", docs_expr)}},
+                    {
+                        "$map": {
+                            "input": source_expr,
+                            "as": "item",
+                            "in": StageBuilder._build_value_expr(field.field, "$$item", docs_expr),
+                        }
+                    },
                     source_expr,
                 ]
             }
 
+        # ---- DictField / MapField ----
         if isinstance(field, DictField):
             return {
                 "$arrayToObject": {
                     "$map": {
                         "input": {"$objectToArray": source_expr},
                         "as": "kv",
-                        "in": {"k": "$$kv.k", "v": StageBuilder._build_value_expr(field.field, "$$kv.v", docs_expr)},
+                        "in": {
+                            "k": "$$kv.k",
+                            "v": StageBuilder._build_value_expr(field.field, "$$kv.v", docs_expr),
+                        },
                     }
                 }
             }
 
         return source_expr
 
-    def _foreign_match_to_expr(self, match: Any, var: str = "$$d") -> Optional[dict]:
+    @staticmethod
+    def _foreign_match_to_expr(match: Any, var: str = "$$d") -> Optional[dict]:
         """
         Convert a foreign-doc match dict (keys relative to the foreign doc) into an $expr condition
         usable inside $filter cond.
@@ -851,6 +884,7 @@ class StageBuilder:
 
         # 3) Hydrate (select_related) using unfiltered docs_alias so no false "missing"
         if hydrate:
+            # Use array (Mongo 4.2 safe)
             transformed_expr = self._build_value_expr(field_shape, f"${local_field}", f"${docs_alias}")
             self._pipeline.append({"$addFields": {local_field: transformed_expr}})
 
@@ -947,8 +981,14 @@ class StageBuilder:
 
         # 3) Hydrate embedded list items if requested
         if hydrate:
-            docs_expr = f"${docs_alias}"
-            per_item_value_expr = self._build_value_expr(field_shape, f"$$it.{embedded_key}", docs_expr)
+            # ensure docs_alias is treated as array
+            docs_arr = {"$cond": [{"$isArray": f"${docs_alias}"}, f"${docs_alias}", []]}
+            ids_arr = {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}}
+
+            # NOTE: build_value_expr expects docs_expr to be an array expression
+            # so pass "$$docs" (from $let below) to avoid recomputing map for each item.
+            per_item_value_expr = self._build_value_expr(field_shape, f"$$it.{embedded_key}", "$$docs")
+
             self._pipeline.append(
                 {
                     "$addFields": {
@@ -956,10 +996,74 @@ class StageBuilder:
                             "$cond": [
                                 {"$isArray": f"${list_path}"},
                                 {
-                                    "$map": {
-                                        "input": f"${list_path}",
-                                        "as": "it",
-                                        "in": {"$mergeObjects": ["$$it", {embedded_key: per_item_value_expr}]},
+                                    "$let": {
+                                        "vars": {
+                                            "docs": docs_arr,
+                                            "ids": ids_arr,
+                                        },
+                                        "in": {
+                                            "$map": {
+                                                "input": f"${list_path}",
+                                                "as": "it",
+                                                "in": {
+                                                    "$mergeObjects": [
+                                                        "$$it",
+                                                        {
+                                                            embedded_key: {
+                                                                # Inline hydration using the precomputed arrays:
+                                                                "$cond": [
+                                                                    {"$ifNull": [f"$$it.{embedded_key}", False]},
+                                                                    {
+                                                                        "$let": {
+                                                                            "vars": {
+                                                                                "refId": (
+                                                                                    f"$$it.{embedded_key}.$id"
+                                                                                    if getattr(field_shape, "dbref",
+                                                                                               False)
+                                                                                    else f"$$it.{embedded_key}"
+                                                                                ),
+                                                                                "idx": {
+                                                                                    "$indexOfArray": [
+                                                                                        "$$ids",
+                                                                                        (
+                                                                                            f"$$it.{embedded_key}.$id"
+                                                                                            if getattr(field_shape,
+                                                                                                       "dbref", False)
+                                                                                            else f"$$it.{embedded_key}"
+                                                                                        ),
+                                                                                    ]
+                                                                                },
+                                                                            },
+                                                                            "in": {
+                                                                                "$cond": [
+                                                                                    {"$gte": ["$$idx", 0]},
+                                                                                    {"$arrayElemAt": ["$$docs",
+                                                                                                      "$$idx"]},
+                                                                                    {
+                                                                                        "_missing_reference": True,
+                                                                                        "_ref": "$$refId",
+                                                                                        "_cls": getattr(
+                                                                                            getattr(target_cls,
+                                                                                                    "_class_name",
+                                                                                                    None),
+                                                                                            "__str__",
+                                                                                            lambda: getattr(target_cls,
+                                                                                                            "__name__",
+                                                                                                            "Unknown")
+                                                                                        )(),
+                                                                                    },
+                                                                                ]
+                                                                            },
+                                                                        }
+                                                                    },
+                                                                    None,
+                                                                ]
+                                                            }
+                                                        },
+                                                    ]
+                                                },
+                                            }
+                                        },
                                     }
                                 },
                                 f"${list_path}",
@@ -1183,8 +1287,13 @@ class StageBuilder:
                                             {"$isArray": "$$this"},
                                             {
                                                 "$map": {
-                                                    "input": {"$filter": {"input": "$$this", "as": "m",
-                                                                          "cond": class_test_m}},
+                                                    "input": {
+                                                        "$filter": {
+                                                            "input": "$$this",
+                                                            "as": "m",
+                                                            "cond": class_test_m,
+                                                        }
+                                                    },
                                                     "as": "m",
                                                     "in": "$$m._ref.$id",
                                                 }
@@ -1202,44 +1311,126 @@ class StageBuilder:
 
         base = [{"$match": {"$expr": {"$in": ["$_id", "$$refIds"]}}}]
 
-        # foreign_match + hydrate => dual lookup (filter roots, hydrate with full docs)
-        if foreign_match and hydrate:
-            match_aliases = []
-            docs_aliases = []
+        # ---------------- 1) Unfiltered lookups (needed for correct hydration) ----------------
+        docs_aliases = []
+        for cls in doc_classes:
+            a_docs = alias_docs(cls)
+            docs_aliases.append(a_docs)
+            self._pipeline.append(
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr_for(cls)},
+                        "pipeline": list(base),
+                        "as": a_docs,
+                    }
+                }
+            )
 
+        # ---------------- 2) Root filtering for foreign_match ----------------
+        match_aliases = []
+        if foreign_match:
+            cond = self._foreign_match_to_expr(foreign_match, var="$$d")
+
+            if cond is not None:
+                self._pipeline.append(
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$or": [
+                                    {
+                                        "$gt": [
+                                            {
+                                                "$size": {
+                                                    "$filter": {
+                                                        "input": f"${alias_docs(cls)}",
+                                                        "as": "d",
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                            0,
+                                        ]
+                                    }
+                                    for cls in doc_classes
+                                ]
+                            }
+                        }
+                    }
+                )
+            else:
+                # fallback: filtered match lookups
+                for cls in doc_classes:
+                    a_match = alias_match(cls)
+                    match_aliases.append(a_match)
+                    self._pipeline.append(
+                        {
+                            "$lookup": {
+                                "from": cls._get_collection_name(),
+                                "let": {"refIds": ref_ids_expr_for(cls)},
+                                "pipeline": base + [{"$match": foreign_match}],
+                                "as": a_match,
+                            }
+                        }
+                    )
+                self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in match_aliases]}})
+
+                if not hydrate:
+                    self._pipeline.append(self._project_remove(*(match_aliases + docs_aliases)))
+                    return
+
+        # ---------------- 3) Hydrate (fast, MongoDB 4.2-safe) ----------------
+        if hydrate:
+            # Make MongoDB-friendly $let var names (must start with lowercase)
+            def vbase(cls):
+                n = cls.__name__
+                return n[:1].lower() + n[1:]  # Person -> person, Animal -> animal
+
+            # Outer let: define <cls> Docs arrays
+            docs_vars = {}
             for cls in doc_classes:
-                a_match = alias_match(cls)
-                a_docs = alias_docs(cls)
-                match_aliases.append(a_match)
-                docs_aliases.append(a_docs)
+                vb = vbase(cls)
+                docs_vars[f"{vb}Docs"] = {
+                    "$cond": [
+                        {"$isArray": f"${alias_docs(cls)}"},
+                        f"${alias_docs(cls)}",
+                        [],
+                    ]
+                }
 
-                self._pipeline.append(
-                    {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                                 "pipeline": base + [{"$match": foreign_match}], "as": a_match}}
-                )
-                self._pipeline.append(
-                    {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                                 "pipeline": list(base), "as": a_docs}}
-                )
+            # Inner let: define <cls>Ids arrays from <cls>Docs
+            ids_vars = {}
+            for cls in doc_classes:
+                vb = vbase(cls)
+                ids_vars[f"{vb}Ids"] = {
+                    "$map": {"input": f"$${vb}Docs", "as": "d", "in": "$$d._id"}
+                }
 
-            self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in match_aliases]}})
-
-            def value_transform_expr():
-                expr = "$$val"
+            def hydrate_one_value(val_expr: str):
+                expr = val_expr
                 for cls in reversed(doc_classes):
-                    alias_arr = f"${alias_docs(cls)}"
-                    class_test_val = regex_match("$$val._cls", cls)
+                    vb = vbase(cls)
+                    docs_var = f"$${vb}Docs"
+                    ids_var = f"$${vb}Ids"
+                    class_test_val = regex_match(f"{val_expr}._cls", cls)
 
                     branch = {
                         "$let": {
-                            "vars": {"matches": {"$filter": {"input": alias_arr, "as": "doc",
-                                                             "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]}}}},
+                            "vars": {
+                                "ref": f"{val_expr}._ref",
+                                "rid": f"{val_expr}._ref.$id",
+                                "idx": {"$indexOfArray": [ids_var, f"{val_expr}._ref.$id"]},
+                            },
                             "in": {
                                 "$cond": [
-                                    {"$gt": [{"$size": "$$matches"}, 0]},
-                                    {"$mergeObjects": [{"$first": "$$matches"},
-                                                       {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
-                                    {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
+                                    {"$gte": ["$$idx", 0]},
+                                    {
+                                        "$mergeObjects": [
+                                            {"$arrayElemAt": [docs_var, "$$idx"]},
+                                            {"_ref": f"{val_expr}._ref", "_cls": f"{val_expr}._cls"},
+                                        ]
+                                    },
+                                    {"_missing_reference": True, "_ref": "$$ref", "_cls": f"{val_expr}._cls"},
                                 ]
                             },
                         }
@@ -1254,25 +1445,38 @@ class StageBuilder:
                             "$cond": [
                                 {"$isArray": f"${list_path}"},
                                 {
-                                    "$map": {
-                                        "input": f"${list_path}",
-                                        "as": "it",
+                                    "$let": {
+                                        "vars": docs_vars,
                                         "in": {
-                                            "$mergeObjects": [
-                                                "$$it",
-                                                {
-                                                    embedded_key: {
-                                                        "$cond": [
-                                                            {"$isArray": f"$$it.{embedded_key}"},
-                                                            {"$map": {"input": f"$$it.{embedded_key}", "as": "val",
-                                                                      "in": {"$let": {"vars": {"val": "$$val"},
-                                                                                      "in": value_transform_expr()}}}},
-                                                            {"$let": {"vars": {"val": f"$$it.{embedded_key}"},
-                                                                      "in": value_transform_expr()}},
-                                                        ]
+                                            "$let": {
+                                                "vars": ids_vars,
+                                                "in": {
+                                                    "$map": {
+                                                        "input": f"${list_path}",
+                                                        "as": "it",
+                                                        "in": {
+                                                            "$mergeObjects": [
+                                                                "$$it",
+                                                                {
+                                                                    embedded_key: {
+                                                                        "$cond": [
+                                                                            {"$isArray": f"$$it.{embedded_key}"},
+                                                                            {
+                                                                                "$map": {
+                                                                                    "input": f"$$it.{embedded_key}",
+                                                                                    "as": "val",
+                                                                                    "in": hydrate_one_value("$$val"),
+                                                                                }
+                                                                            },
+                                                                            hydrate_one_value(f"$$it.{embedded_key}"),
+                                                                        ]
+                                                                    }
+                                                                },
+                                                            ]
+                                                        },
                                                     }
                                                 },
-                                            ]
+                                            }
                                         },
                                     }
                                 },
@@ -1283,99 +1487,10 @@ class StageBuilder:
                 }
             )
 
-            self._pipeline.append(self._project_remove(*(match_aliases + docs_aliases)))
-            return
+        # ---------------- cleanup ----------------
+        self._pipeline.append(self._project_remove(*(docs_aliases + match_aliases)))
 
-        # foreign_match + no hydrate => filtered lookups + root filter only
-        if foreign_match and not hydrate:
-            match_aliases = []
-            for cls in doc_classes:
-                a_match = alias_match(cls)
-                match_aliases.append(a_match)
-                self._pipeline.append(
-                    {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                                 "pipeline": base + [{"$match": foreign_match}], "as": a_match}}
-                )
-            self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in match_aliases]}})
-            self._pipeline.append(self._project_remove(*match_aliases))
-            return
-
-        # no foreign_match: original lookups; hydrate only if requested
-        aliases = []
-        for cls in doc_classes:
-            alias = alias_docs(cls)
-            aliases.append(alias)
-            self._pipeline.append(
-                {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                             "pipeline": list(base), "as": alias}}
-            )
-
-        if not hydrate:
-            self._pipeline.append(self._project_remove(*aliases))
-            return
-
-        def value_transform_expr():
-            expr = "$$val"
-            for cls in reversed(doc_classes):
-                alias_arr = f"${alias_docs(cls)}"
-                class_test_val = regex_match("$$val._cls", cls)
-
-                branch = {
-                    "$let": {
-                        "vars": {"matches": {"$filter": {"input": alias_arr, "as": "doc",
-                                                         "cond": {"$eq": ["$$doc._id", "$$val._ref.$id"]}}}},
-                        "in": {
-                            "$cond": [
-                                {"$gt": [{"$size": "$$matches"}, 0]},
-                                {"$mergeObjects": [{"$first": "$$matches"},
-                                                   {"_ref": "$$val._ref", "_cls": "$$val._cls"}]},
-                                {"_missing_reference": True, "_ref": "$$val._ref", "_cls": "$$val._cls"},
-                            ]
-                        },
-                    }
-                }
-                expr = {"$cond": [class_test_val, branch, expr]}
-            return expr
-
-        self._pipeline.append(
-            {
-                "$addFields": {
-                    list_path: {
-                        "$cond": [
-                            {"$isArray": f"${list_path}"},
-                            {
-                                "$map": {
-                                    "input": f"${list_path}",
-                                    "as": "it",
-                                    "in": {
-                                        "$mergeObjects": [
-                                            "$$it",
-                                            {
-                                                embedded_key: {
-                                                    "$cond": [
-                                                        {"$isArray": f"$$it.{embedded_key}"},
-                                                        {"$map": {"input": f"$$it.{embedded_key}", "as": "val", "in": {
-                                                            "$let": {"vars": {"val": "$$val"},
-                                                                     "in": value_transform_expr()}}}},
-                                                        {"$let": {"vars": {"val": f"$$it.{embedded_key}"},
-                                                                  "in": value_transform_expr()}},
-                                                    ]
-                                                }
-                                            },
-                                        ]
-                                    },
-                                }
-                            },
-                            f"${list_path}",
-                        ]
-                    }
-                }
-            }
-        )
-
-        self._pipeline.append(self._project_remove(*aliases))
-
-    # ----------------- existing generic lookup (unchanged) -----------------
+    # ----------------- existing generic lookup -----------------
 
     def _add_generic_lookup(self, field, local_field, is_list=False):
         doc_classes = Schema.resolve_generic_choices(field)
@@ -1409,7 +1524,7 @@ class StageBuilder:
             {"$addFields": {local_field: {"$map": {"input": f"${local_field}", "as": "item", "in": item_expr}}}})
         self._pipeline.append(self._project_remove(*[alias_for(cls) for cls in doc_classes]))
 
-    # ----------------- abstract dbref lookup (unchanged) -----------------
+    # ----------------- abstract dbref lookup  -----------------
 
     @staticmethod
     def _concrete_subclasses(doc_cls):
