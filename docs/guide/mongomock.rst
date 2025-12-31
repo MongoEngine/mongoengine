@@ -11,6 +11,11 @@ a package to do just what the name implies, mocking a mongo database.
 To use with mongoengine, simply specify mongomock when connecting with
 mongoengine:
 
+.. warning::
+
+    `mongomock` does not support the asynchronous API of MongoEngine (e.g., `async_connect`, `aobjects`, `asave`, etc.).
+    If you need to test asynchronous code, it is recommended to use a real MongoDB server (possibly via Docker).
+
 .. code-block:: python
 
     import mongomock

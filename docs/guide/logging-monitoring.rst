@@ -7,7 +7,7 @@ the driver events (e.g: queries, connections, etc). This can be handy if you wan
 MongoEngine to the driver.
 
 To use `pymongo.monitoring` with MongoEngine, you need to make sure that you are registering the listeners
-**before** establishing the database connection (i.e calling `connect`):
+**before** establishing the database connection (i.e calling `connect` or `async_connect`):
 
 The following snippet provides a basic logging of all command events:
 
@@ -62,6 +62,24 @@ The following snippet provides a basic logging of all command events:
     log.info('Updating through MongoEngine...')
     obiwan.name = 'Obi-Wan Kenobi'
     obiwan.save()
+
+
+    # The asynchronous alternative is as follows:
+
+    async def async_logging_example():
+        await async_connect()
+
+        log.info('GO ASYNC!')
+
+        log.info('Saving an item through MongoEngine (async)...')
+        await Jedi(name='Yoda').asave()
+
+        log.info('Querying through MongoEngine (async)...')
+        yoda = await Jedi.aobjects.first()
+
+        log.info('Updating through MongoEngine (async)...')
+        yoda.name = 'Master Yoda'
+        await yoda.asave()
 
 
 Executing this prints the following output::

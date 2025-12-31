@@ -6,7 +6,17 @@ Connecting
 ==========
 
 .. autofunction:: mongoengine.connect
+.. autofunction:: mongoengine.async_connect
 .. autofunction:: mongoengine.register_connection
+.. autofunction:: mongoengine.async_register_connection
+.. autofunction:: mongoengine.disconnect
+.. autofunction:: mongoengine.async_disconnect
+.. autofunction:: mongoengine.disconnect_all
+.. autofunction:: mongoengine.async_disconnect_all
+.. autofunction:: mongoengine.get_db
+.. autofunction:: mongoengine.async_get_db
+.. autofunction:: mongoengine.get_connection
+.. autofunction:: mongoengine.async_get_connection
 
 Documents
 =========
@@ -19,6 +29,11 @@ Documents
 
       A :class:`~mongoengine.queryset.QuerySet` object that is created lazily
       on access.
+
+   .. attribute:: aobjects
+
+      An :class:`~mongoengine.queryset.AsyncQuerySet` object that is created
+      lazily on access.
 
 .. autoclass:: mongoengine.EmbeddedDocument
    :members:
@@ -47,7 +62,10 @@ Context Managers
 .. autoclass:: mongoengine.context_managers.switch_db
 .. autoclass:: mongoengine.context_managers.switch_collection
 .. autoclass:: mongoengine.context_managers.no_dereference
+.. autoclass:: mongoengine.context_managers.no_sub_classes
 .. autoclass:: mongoengine.context_managers.query_counter
+.. autoclass:: mongoengine.context_managers.async_query_counter
+.. autoclass:: mongoengine.context_managers.run_in_transaction
 
 Querying
 ========
@@ -65,6 +83,13 @@ Querying
       :members:
 
        .. automethod:: mongoengine.queryset.QuerySetNoCache.__call__
+
+    .. autoclass:: mongoengine.queryset.AsyncQuerySet
+      :members:
+      :inherited-members:
+
+    .. autoclass:: mongoengine.queryset.AsyncQuerySetNoCache
+      :members:
 
     .. autofunction:: mongoengine.queryset.queryset_manager
 
@@ -93,7 +118,6 @@ Fields
 .. autoclass:: mongoengine.fields.MapField
 .. autoclass:: mongoengine.fields.ReferenceField
 .. autoclass:: mongoengine.fields.GenericReferenceField
-.. autoclass:: mongoengine.fields.CachedReferenceField
 .. autoclass:: mongoengine.fields.BinaryField
 .. autoclass:: mongoengine.fields.FileField
 .. autoclass:: mongoengine.fields.ImageField

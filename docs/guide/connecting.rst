@@ -13,6 +13,11 @@ function. The first argument is the name of the database to connect to::
     from mongoengine import connect
     connect('project1')
 
+The asynchronous alternative is :func:`~mongoengine.async_connect`::
+
+    from mongoengine import async_connect
+    await async_connect('project1')
+
 By default, MongoEngine assumes that the :program:`mongod` instance is running
 on **localhost** on port **27017**.
 
@@ -46,6 +51,12 @@ of the MongoDB connection string is for::
     # with given credentials against that same database
     connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
 
+The asynchronous alternative is as follows::
+
+    # Connects to 'my_db' database by authenticating
+    # with given credentials against that same database
+    await async_connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
+
 The URI string can also be used to configure advanced parameters like ssl, replicaSet, etc. For more
 information or example about URI string, you can refer to the `official doc <https://www.mongodb.com/docs/manual/reference/connection-string/>`_::
 
@@ -65,6 +76,10 @@ If the database requires authentication, :attr:`username`, :attr:`password`
 and :attr:`authentication_source` arguments should be provided::
 
     connect('my_db', username='my_user', password='my_password', authentication_source='admin')
+
+The asynchronous alternative is as follows::
+
+    await async_connect('my_db', username='my_user', password='my_password', authentication_source='admin')
 
 The set of attributes that :func:`~mongoengine.connect` recognizes includes but is not limited to:
 :attr:`host`, :attr:`port`, :attr:`read_preference`, :attr:`username`, :attr:`password`, :attr:`authentication_source`, :attr:`authentication_mechanism`,
@@ -153,6 +168,15 @@ connection globally::
 
         connect('another_db', alias='db1')
 
+The asynchronous alternative is :func:`~mongoengine.async_disconnect`::
+
+        from mongoengine import async_connect, async_disconnect
+        await async_connect('a_db', alias='db1')
+
+        await async_disconnect(alias='db1')
+
+        await async_connect('another_db', alias='db1')
+
 .. note:: Calling :func:`~mongoengine.disconnect` without argument
     will disconnect the "default" connection
 
@@ -186,6 +210,11 @@ access to the same User document across databases::
     with switch_db(User, 'archive-user-db') as User:
         User(name='Ross').save()  # Saves the 'archive-user-db'
 
+The asynchronous alternative is as follows::
+
+    async with switch_db(User, 'archive-user-db') as User:
+        await User(name='Ross').asave()  # Saves the 'archive-user-db'
+
 .. note:: :func:`~mongoengine.context_managers.switch_db` when used on
     a class that allow inheritance will change the database alias
     for instances of a given class only - instances of subclasses will still use
@@ -207,6 +236,10 @@ access to the same Group document across collection::
         with switch_collection(Group, 'group2000') as Group:
             Group(name='hello Group 2000 collection!').save()  # Saves in group2000 collection
 
+The asynchronous alternative is as follows::
+
+        async with switch_collection(Group, 'group2000') as Group:
+            await Group(name='hello Group 2000 collection!').asave()  # Saves in group2000 collection
 
 .. note:: Make sure any aliases have been registered with
     :func:`~mongoengine.register_connection` or :func:`~mongoengine.connect`

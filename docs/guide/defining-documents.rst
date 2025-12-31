@@ -52,6 +52,16 @@ be saved ::
     >>> Page.objects(tags='mongoengine').count()
     >>> 1
 
+    # The asynchronous alternative is as follows:
+
+    # Create a new page and add tags
+    >>> page = Page(title='Using MongoEngine')
+    >>> page.tags = ['mongodb', 'mongoengine']
+    >>> await page.asave()
+
+    >>> await Page.aobjects(tags='mongoengine').count()
+    >>> 1
+
 .. note::
 
    There is one caveat on Dynamic Documents: fields cannot start with `_`
@@ -83,7 +93,6 @@ are as follows:
 * :class:`~mongoengine.fields.FloatField`
 * :class:`~mongoengine.fields.GenericEmbeddedDocumentField`
 * :class:`~mongoengine.fields.GenericReferenceField`
-* :class:`~mongoengine.fields.GenericLazyReferenceField`
 * :class:`~mongoengine.fields.GeoPointField`
 * :class:`~mongoengine.fields.ImageField`
 * :class:`~mongoengine.fields.IntField`
@@ -91,7 +100,6 @@ are as follows:
 * :class:`~mongoengine.fields.MapField`
 * :class:`~mongoengine.fields.ObjectIdField`
 * :class:`~mongoengine.fields.ReferenceField`
-* :class:`~mongoengine.fields.LazyReferenceField`
 * :class:`~mongoengine.fields.SequenceField`
 * :class:`~mongoengine.fields.SortedListField`
 * :class:`~mongoengine.fields.StringField`
@@ -124,11 +132,25 @@ arguments can be set on all fields:
             # Create a Page and save it
             Page(page_number=1).save()
 
+            # The asynchronous alternative is as follows:
+
+            await Page(page_number=1).asave()
+
             # How 'pageNumber' is stored in MongoDB
             Page.objects.as_pymongo() # [{'_id': ObjectId('629dfc45ee4cc407b1586b1f'), 'pageNumber': 1}]
 
             # Retrieve the object
             page: Page = Page.objects.first()
+
+            print(page.page_number)  # prints 1
+
+            # The asynchronous alternative is as follows:
+
+            # How 'pageNumber' is stored in MongoDB
+            await Page.aobjects.as_pymongo().to_list() # [{'_id': ObjectId('629dfc45ee4cc407b1586b1f'), 'pageNumber': 1}]
+
+            # Retrieve the object
+            page: Page = await Page.aobjects.first()
 
             print(page.page_number)  # prints 1
 
@@ -279,6 +301,13 @@ store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate
     survey_response.answers = response_form.cleaned_data()
     survey_response.save()
 
+    # The asynchronous alternative is as follows:
+
+    survey_response = SurveyResponse(date=datetime.utcnow(), user=request.user)
+    response_form = ResponseForm(request.POST)
+    survey_response.answers = response_form.cleaned_data()
+    await survey_response.asave()
+
 Dictionaries can store complex data, other dictionaries, lists, references to
 other objects, so are the most flexible field type available.
 
@@ -302,6 +331,15 @@ field::
     post = Page(content="Test Page")
     post.author = john
     post.save()
+
+    # The asynchronous alternative is as follows:
+
+    john = User(name="John Smith")
+    await john.asave()
+
+    post = Page(content="Test Page")
+    post.author = john
+    await post.asave()
 
 The :class:`User` object is automatically turned into a reference behind the
 scenes, and dereferenced when the :class:`Page` object is retrieved.
@@ -354,6 +392,26 @@ instance of the object to the query::
 
     # Add John to the authors for a page.
     Page.objects(id='...').update_one(push__authors=john)
+
+    # The asynchronous alternative is as follows:
+
+    bob = await User(name="Bob Jones").asave()
+    john = await User(name="John Smith").asave()
+
+    await Page(content="Test Page", authors=[bob, john]).asave()
+    await Page(content="Another Page", authors=[john]).asave()
+
+    # Find all pages Bob authored
+    await Page.aobjects(authors__in=[bob]).to_list()
+
+    # Find all pages that both Bob and John have authored
+    await Page.aobjects(authors__all=[bob, john]).to_list()
+
+    # Remove Bob from the authors for a page.
+    await Page.aobjects(id='...').update_one(pull__authors=bob)
+
+    # Add John to the authors for a page.
+    await Page.aobjects(id='...').update_one(push__authors=john)
 
 
 Dealing with deletion of referred documents
@@ -434,6 +492,17 @@ kind of :class:`~mongoengine.Document`, and hence doesn't take a
 
     Bookmark(bookmark_object=link).save()
     Bookmark(bookmark_object=post).save()
+
+    # The asynchronous alternative is as follows:
+
+    link = Link(url='http://hmarr.com/mongoengine/')
+    await link.asave()
+
+    post = Post(title='Using MongoEngine')
+    await post.asave()
+
+    await Bookmark(bookmark_object=link).asave()
+    await Bookmark(bookmark_object=post).asave()
 
 .. note::
 
@@ -749,6 +818,30 @@ subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
     first_post = BlogPost.objects.order_by("+published_date").first()
     assert first_post.title == "Blog Post #1"
 
+    # The asynchronous alternative is as follows:
+
+    blog_post_1 = BlogPost(title="Blog Post #1")
+    blog_post_1.published_date = datetime(2010, 1, 5, 0, 0 ,0)
+
+    blog_post_2 = BlogPost(title="Blog Post #2")
+    blog_post_2.published_date = datetime(2010, 1, 6, 0, 0 ,0)
+
+    blog_post_3 = BlogPost(title="Blog Post #3")
+    blog_post_3.published_date = datetime(2010, 1, 7, 0, 0 ,0)
+
+    await blog_post_1.asave()
+    await blog_post_2.asave()
+    await blog_post_3.asave()
+
+    # get the "first" BlogPost using default ordering
+    # from BlogPost.meta.ordering
+    latest_post = await BlogPost.aobjects.first()
+    assert latest_post.title == "Blog Post #3"
+
+    # override default ordering, order BlogPosts by "published_date"
+    first_post = await BlogPost.aobjects.order_by("+published_date").first()
+    assert first_post.title == "Blog Post #1"
+
 Shard keys
 ==========
 
@@ -825,6 +918,19 @@ it's :attr:`_cls` attribute and use that class to construct the instance.::
     #   {'_cls': u 'Page', 'title': 'a funky title'},
     #   {'_cls': u 'Page.DatedPage', 'title': u 'another title', 'date': datetime.datetime(2019, 12, 13, 20, 16, 59, 993000)}
     # ]
+
+    # The asynchronous alternative is as follows:
+
+    await Page(title='a funky title').asave()
+    await DatedPage(title='another title', date=datetime.utcnow()).asave()
+
+    print(await Page.aobjects().count())         # 2
+    print(await DatedPage.aobjects().count())    # 1
+
+    # print documents in their native form
+    # we remove 'id' to avoid polluting the output with unnecessary detail
+    qs = Page.aobjects.exclude('id').as_pymongo()
+    print(await qs.to_list())
 
 Working with existing data
 --------------------------

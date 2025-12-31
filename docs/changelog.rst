@@ -7,6 +7,20 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.3.0
+=================
+- feat!: migrate MongoEngine to native async PyMongo (>= 4.14)
+    - Refactored the core ORM to support PyMongo’s native async API
+    - Unified sync and async code paths across documents, querysets, and transactions
+    - Replaced legacy async implementations
+    - Removed deprecated and compatibility code
+- BREAKING CHANGE: Removed legacy async behavior
+- BREAKING CHANGE: Removed LazyReferenceField
+- BREAKING CHANGE: Removed GenericLazyReferenceField
+- BREAKING CHANGE: GenericReferenceField now requires `choices`
+- BREAKING CHANGE: Dropped support for PyMongo < 4.14
+- BREAKING CHANGE: Dropped support for MongoDB < 4.2
 - Fix querying GenericReferenceField with __in operator #2886
 - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569

@@ -12,6 +12,7 @@ User Guide
    querying
    validation
    gridfs
+   async-gridfs
    signals
    text-indexes
    migration
