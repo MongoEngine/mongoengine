@@ -61,7 +61,6 @@ Context Managers
 
 .. autoclass:: mongoengine.context_managers.switch_db
 .. autoclass:: mongoengine.context_managers.switch_collection
-.. autoclass:: mongoengine.context_managers.no_dereference
 .. autoclass:: mongoengine.context_managers.no_sub_classes
 .. autoclass:: mongoengine.context_managers.query_counter
 .. autoclass:: mongoengine.context_managers.async_query_counter
