@@ -41,6 +41,13 @@ dev = [
     "ruff (>=0.14)",
     "pre-commit (>=4.5)"
 ]
+docs = [
+    "docutils==0.20.1",
+    "jinja2==3.1.4",
+    "readthedocs-sphinx-ext==2.2.5",
+    "sphinx==7.4.7",
+    "sphinx-rtd-theme==2.1.0rc2",
+]
 test = [
     "pytest (>=9.0)",
     "pytest-asyncio (>=1.3)",
