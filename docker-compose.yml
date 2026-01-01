@@ -1,7 +1,15 @@
 services:
-  mongoengine:
-    build:
-      context: .
-    image: mongoengine:latest
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    command:
+      - mongod
+      - --replSet
+      - mongoengine
+      - --bind_ip_all
+      - --setParameter
+      - maxTransactionLockRequestTimeoutMillis=1000
     ports:
-      - 27017:27017
+      - "27017:27017"
+    volumes:
+      - ./docker-compose-mongo-init.js:/docker-entrypoint-initdb.d/00-init.js
