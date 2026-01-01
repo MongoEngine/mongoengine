@@ -3,7 +3,14 @@ import os
 import pickle
 import uuid
 import weakref
-from datetime import datetime, UTC
+from datetime import datetime
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
 from unittest.mock import AsyncMock
 
 import bson
