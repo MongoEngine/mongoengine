@@ -48,6 +48,8 @@ test = [
     "coverage (>=7.13)",
     "blinker (>=1.9)",
     "pillow (>=7.0.0)",
+    "tox (>=4.32.0)",
+    "tox-uv>=1.29.0",
 ]
 
 [project.urls]
@@ -56,8 +58,13 @@ repository = "https://github.com/MongoEngine/mongoengine"
 download_url = "https://github.com/MongoEngine/mongoengine/tarball/master"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mongoengine"
+module-root = ""
+
 
 # Ruff Configurations
 [tool.ruff]
@@ -67,11 +74,11 @@ exclude = ["docs"]
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "B",   # flake8-bugbear
-    "I",   # isort
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "W", # pycodestyle warnings
+    "B", # flake8-bugbear
+    "I", # isort
 ]
 
 ignore = [
