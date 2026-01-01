@@ -28,6 +28,13 @@ Let's assume we start with the following schema and save an instance:
     # print the objects as they exist in mongodb
     print(User.objects().as_pymongo())    # [{u'_id': ObjectId('5d06b9c3d7c1f18db3e7c874'), u'name': u'John Doe'}]
 
+    # The asynchronous alternative is as follows:
+
+    await User(name="John Doe").asave()
+
+    # print the objects as they exist in mongodb
+    print(await User.aobjects().as_pymongo().to_list())
+
 On the next version of your application, let's now assume that a new field `enabled` gets added to the
 existing ``User`` model with a `default=True`. Thus you simply update the ``User`` class to the following:
 
@@ -53,6 +60,19 @@ and checks its `enabled` attribute:
     print(User.objects().as_pymongo().first())    # {u'_id': ObjectId('5d06b9c3d7c1f18db3e7c874'), u'name': u'John'}
     assert User.objects(enabled=None).count() == 1
 
+    # The asynchronous alternative is as follows:
+
+    assert await User.aobjects.count() == 1
+    user = await User.aobjects().first()
+    assert user.enabled is True
+    assert await User.aobjects(enabled=True).count() == 0    # uh?
+    assert await User.aobjects(enabled=False).count() == 0   # uh?
+
+    # this is consistent with what we have in the database
+    # in fact, 'enabled' does not exist
+    print(await User.aobjects().as_pymongo().first())    # {u'_id': ObjectId('5d06b9c3d7c1f18db3e7c874'), u'name': u'John'}
+    assert await User.aobjects(enabled=None).count() == 1
+
 As you can see, even if the document wasn't updated, mongoengine applies the default value seamlessly when it
 loads the pymongo dict into a ``User`` instance. At first sight it looks like you don't need to migrate the
 existing documents when adding new fields but this actually leads to inconsistencies when it comes to querying.
@@ -71,6 +91,14 @@ as a standalone script:
     # or use pymongo
     user_coll = User._get_collection()
     user_coll.update_many({}, {'$set': {'enabled': True}})
+
+    # The asynchronous alternative is as follows:
+
+    # Use mongoengine to set a default value for a given field
+    await User.aobjects().update(enabled=True)
+    # or use pymongo
+    user_coll = await User._aget_collection()
+    await user_coll.update_many({}, {'$set': {'enabled': True}})
 
 
 Example 2: Inheritance change
@@ -100,6 +128,17 @@ Let's consider the following example:
     #   {'_id': ObjectId('5fac4aaaf61d7fb06046e0f9'), '_cls': 'Human.Jedi', 'name': 'Darth Vader', 'dark_side': True, 'light_saber_color': 'red'},
     #   {'_id': ObjectId('5fac4ac4f61d7fb06046e0fa'), '_cls': 'Human.Jedi', 'name': 'Obi Wan Kenobi', 'dark_side': False, 'light_saber_color': 'blue'}
     # ]
+
+    # The asynchronous alternative is as follows:
+
+    await Jedi(name="Darth Vader", dark_side=True, light_saber_color="red").asave()
+    await Jedi(name="Obi Wan Kenobi", dark_side=False, light_saber_color="blue").asave()
+
+    assert await Human.aobjects.count() == 2
+    assert await Jedi.aobjects.count() == 2
+
+    # Let's check how these documents got stored in mongodb
+    print(await Jedi.aobjects.as_pymongo().to_list())
 
 As you can observe, when you use inheritance, MongoEngine stores a field named '_cls' behind the scene to keep
 track of the Document class.
@@ -153,6 +192,20 @@ empty.
     print(humans_coll.find_one())
     # {'_id': ObjectId('5fac4aaaf61d7fb06046e0f9'), '_cls': 'Human.Jedi', 'name': 'Darth Vader', 'dark_side': True, 'light_saber_color': 'red'}
 
+    # The asynchronous alternative is as follows:
+
+    assert await GoodJedi.aobjects().count() == 0
+
+    assert await Human.aobjects.count() == 0
+    assert await Human.aobjects.first() is None
+
+    # If we bypass MongoEngine and make use of underlying driver (PyMongo)
+    # we can see that the documents are there
+    humans_coll = await Human._aget_collection()
+    assert await humans_coll.count_documents({}) == 2
+    # print first document
+    print(await humans_coll.find_one())
+
 As you can see, first obvious problem is that we need to modify '_cls' values based on existing values of
 'dark_side' documents.
 
@@ -164,6 +217,16 @@ As you can see, first obvious problem is that we need to modify '_cls' values ba
     bad_sith_class = 'Human.BadSith'
     humans_coll.update_many({'_cls': old_class, 'dark_side': False}, {'$set': {'_cls': good_jedi_class}})
     humans_coll.update_many({'_cls': old_class, 'dark_side': True}, {'$set': {'_cls': bad_sith_class}})
+
+    # The asynchronous alternative is as follows:
+    # we can see that the documents are there
+
+    humans_coll = await Human._aget_collection()
+    old_class = 'Human.Jedi'
+    good_jedi_class = 'Human.GoodJedi'
+    bad_sith_class = 'Human.BadSith'
+    await humans_coll.update_many({'_cls': old_class, 'dark_side': False}, {'$set': {'_cls': good_jedi_class}})
+    await humans_coll.update_many({'_cls': old_class, 'dark_side': True}, {'$set': {'_cls': bad_sith_class}})
 
 Let's now check if querying improved in MongoEngine:
 
@@ -177,6 +240,16 @@ Let's now check if querying improved in MongoEngine:
     jedi = GoodJedi.objects().first()
     # raises FieldDoesNotExist: The fields "{'dark_side'}" do not exist on the document "Human.GoodJedi"
 
+    # The asynchronous alternative is as follows:
+
+    assert await GoodJedi.aobjects().count() == 1
+    assert await BadSith.aobjects().count() == 1
+    assert await Human.aobjects.count() == 2
+
+    # let's now check that documents load correctly
+    jedi = await GoodJedi.aobjects().first()
+    # raises FieldDoesNotExist: The fields "{'dark_side'}" do not exist on the document "Human.GoodJedi"
+
 In fact we only took care of renaming the _cls values but we havn't removed the 'dark_side' fields
 which does not exist anymore on the GoodJedi's and BadSith's models.
 Let's remove the field from the collections:
@@ -185,6 +258,11 @@ Let's remove the field from the collections:
 
     humans_coll = Human._get_collection()
     humans_coll.update_many({}, {'$unset': {'dark_side': 1}})
+
+    # The asynchronous alternative is as follows:
+
+    humans_coll = await Human._aget_collection()
+    await humans_coll.update_many({}, {'$unset': {'dark_side': 1}})
 
 .. note:: We did this migration in 2 different steps for the sake of example but it could have been combined
     with the migration of the _cls fields: ::
@@ -208,6 +286,14 @@ And verify that the documents now load correctly:
     sith = BadSith.objects().first()
     assert sith.name == "Darth Vader"
 
+    # The asynchronous alternative is as follows:
+
+    jedi = await GoodJedi.aobjects().first()
+    assert jedi.name == "Obi Wan Kenobi"
+
+    sith = await BadSith.aobjects().first()
+    assert sith.name == "Darth Vader"
+
 
 An other way of dealing with this migration is to iterate over
 the documents and update/replace them one by one. This is way slower but
@@ -220,6 +306,14 @@ it is often useful for complex migrations of Document models.
             doc['_cls'] =  'Human.BadSith' if doc['dark_side'] else 'Human.GoodJedi'
             doc.pop('dark_side')
             humans_coll.replace_one({'_id': doc['_id']}, doc)
+
+    # The asynchronous alternative is as follows:
+
+    async for doc in humans_coll.find():
+        if doc['_cls'] == 'Human.Jedi':
+            doc['_cls'] =  'Human.BadSith' if doc['dark_side'] else 'Human.GoodJedi'
+            doc.pop('dark_side')
+            await humans_coll.replace_one({'_id': doc['_id']}, doc)
 
 .. warning:: Be aware of this `flaw <https://groups.google.com/g/mongodb-user/c/AFC1ia7MHzk>`_ if you modify documents while iterating
 
@@ -243,6 +337,10 @@ Let's for instance assume that you start with the following Document class
 
     User(name="John Doe").save()
 
+    # The asynchronous alternative is as follows:
+
+    await User(name="John Doe").asave()
+
 As soon as you start interacting with the Document collection (when `.save()` is called in this case),
 it would create the following indexes:
 
@@ -254,12 +352,20 @@ it would create the following indexes:
     #  'name_1': {'background': False, 'key': [('name', 1)], 'v': 2},
     # }
 
+    # The asynchronous alternative is as follows:
+
+    print(await (await User._aget_collection()).index_information())
+
 Thus: '_id' which is the default index and 'name_1' which is our custom index.
 If you would remove the 'name' field or its index, you would have to call:
 
 .. code-block:: python
 
     User._get_collection().drop_index('name_1')
+
+    # The asynchronous alternative is as follows:
+
+    await (await User._aget_collection()).drop_index('name_1')
 
 .. note:: When adding new fields or new indexes, MongoEngine will take care of creating them
     (unless `auto_create_index` is disabled)
@@ -306,3 +412,34 @@ on the first occurrence of an error but this is something that can be adapted ba
                     raise
 
     check_documents(Human, sample_size=1000)
+
+    # The asynchronous alternative is as follows:
+
+    async def get_random_oids_async(collection, sample_size):
+        pipeline = [{"$project": {'_id': 1}}, {"$sample": {"size": sample_size}}]
+        return [s['_id'] async for s in collection.aggregate(pipeline)]
+
+    async def get_random_documents_async(DocCls, sample_size):
+        doc_collection = await DocCls._aget_collection()
+        random_oids = await get_random_oids_async(doc_collection, sample_size)
+        return DocCls.aobjects(id__in=random_oids)
+
+    async def check_documents_async(DocCls, sample_size):
+        async for doc in await get_random_documents_async(DocCls, sample_size):
+            # general validation (types and values)
+            doc.validate()
+
+            # load all subfields,
+            # this may trigger additional queries if you have ReferenceFields
+            # so it may be slow
+            for field in doc._fields:
+                try:
+                    # Note: getattr is still sync, but if it triggers a lazy load
+                    # it might fail in an async context if not handled.
+                    # For ReferenceField, you might need to await them if they are lazy.
+                    getattr(doc, field)
+                except Exception:
+                    LOG.warning(f"Could not load field {field} in Document {doc.id}")
+                    raise
+
+    await check_documents_async(Human, sample_size=1000)

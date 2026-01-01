@@ -21,6 +21,7 @@ from mongoengine import *
 from mongoengine import signals
 from mongoengine.asynchronous import async_get_db, async_disconnect, async_register_connection, async_disconnect_all
 from mongoengine.base import _DocumentRegistry
+from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from mongoengine.context_managers import switch_db, async_query_counter, switch_collection
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -2905,6 +2906,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         # select
         assert await AuthorBooks.aobjects.select_related("book").first() == ab
+        # qs = AuthorBooks.aobjects.select_related("book")
+        # pipeline = PipelineBuilder(qs).build()
         with pytest.raises(DoesNotExist):
             (await AuthorBooks.aobjects.select_related("book").first()).book
 

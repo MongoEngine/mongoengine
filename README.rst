@@ -1,155 +1,200 @@
 ===========
 MongoEngine
 ===========
-:Info: MongoEngine is an ORM-like layer on top of PyMongo.
+
+:Info: MongoEngine is an Object-Document Mapper (ODM) for MongoDB.
 :Repository: https://github.com/MongoEngine/mongoengine
 :Author: Harry Marr (http://github.com/hmarr)
 :Maintainer: Bastien Gerard (http://github.com/bagerard)
 
 .. image:: https://github.com/MongoEngine/mongoengine/actions/workflows/github-actions.yml/badge.svg?branch=master
-  :target: https://github.com/MongoEngine/mongoengine/actions
+   :target: https://github.com/MongoEngine/mongoengine/actions
 
 .. image:: https://coveralls.io/repos/github/MongoEngine/mongoengine/badge.svg?branch=master
-  :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
+   :target: https://coveralls.io/github/MongoEngine/mongoengine?branch=master
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-  :target: https://github.com/ambv/black
+   :target: https://github.com/psf/black
 
 .. image:: https://pepy.tech/badge/mongoengine/month
-  :target: https://pepy.tech/project/mongoengine
+   :target: https://pepy.tech/project/mongoengine
 
 .. image:: https://img.shields.io/pypi/v/mongoengine.svg
-  :target: https://pypi.python.org/pypi/mongoengine
-
+   :target: https://pypi.python.org/pypi/mongoengine
 
 .. image:: https://readthedocs.org/projects/mongoengine-odm/badge/?version=latest
-  :target: https://readthedocs.org/projects/mongoengine-odm/builds/
+   :target: https://mongoengine-odm.readthedocs.io/
+
 
 About
 =====
-MongoEngine is a Python Object-Document Mapper for working with MongoDB.
-Documentation is available at https://mongoengine-odm.readthedocs.io - there
-is currently a `tutorial <https://mongoengine-odm.readthedocs.io/tutorial.html>`_,
-a `user guide <https://mongoengine-odm.readthedocs.io/guide/index.html>`_, and
-an `API reference <https://mongoengine-odm.readthedocs.io/apireference.html>`_.
+
+MongoEngine is a Python Object-Document Mapper (ODM) that provides a high-level,
+Pythonic API for working with MongoDB. It builds on top of PyMongo and offers
+schema enforcement, validation, inheritance, and both synchronous and
+asynchronous query APIs.
+
+Documentation is available at:
+https://mongoengine-odm.readthedocs.io
+
+Including:
+
+- Tutorial
+- User Guide
+- API Reference
+
 
 Supported MongoDB Versions
 ==========================
-MongoEngine is currently tested against MongoDB v4.4, v5.0, v6.0, v7.0 and
-v8.0. Future versions should be supported as well, but aren't actively tested
-at the moment. Make sure to open an issue or submit a pull request if you
-experience any problems with a more recent MongoDB versions.
+
+MongoEngine is tested against the following MongoDB versions:
+
+- MongoDB 4.2
+- MongoDB 4.4
+- MongoDB 5.0
+- MongoDB 6.0
+- MongoDB 7.0
+- MongoDB 8.0
+
+Newer MongoDB versions are expected to work. Please report issues if encountered.
+
 
 Installation
 ============
-We recommend the use of `virtualenv <https://virtualenv.pypa.io/>`_ and of
-`pip <https://pip.pypa.io/>`_. You can then use ``python -m pip install -U mongoengine``.
-You may also have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
-and thus you can use ``easy_install -U mongoengine``. Another option is
-`pipenv <https://docs.pipenv.org/>`_. You can then use ``pipenv install mongoengine``
-to both create the virtual environment and install the package. Otherwise, you can
-download the source from `GitHub <https://github.com/MongoEngine/mongoengine>`_ and
-run ``python setup.py install``.
 
-The support for Python2 was dropped with MongoEngine 0.20.0
-
-Dependencies
-============
-All of the dependencies can easily be installed via `python -m pip <https://pip.pypa.io/>`_.
-At the very least, you'll need these two packages to use MongoEngine:
-
-- pymongo>=3.12
-
-If you utilize a ``DateTimeField``, you might also use a more flexible date parser:
-
-- dateutil>=2.1.0
-
-If you need to use an ``ImageField`` or ``ImageGridFsProxy``:
-
-- Pillow>=7.0.0
-
-If you need to use signals:
-
-- blinker>=1.3
-
-Examples
-========
-Some simple examples of what MongoEngine code looks like:
-
-.. code :: python
-    import datetime
-    from mongoengine import *
-
-    connect('mydb')
-
-    class BlogPost(Document):
-        title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=lambda: datetime.datetime.now(datetime.timezone.utc))
-        tags = ListField(StringField(max_length=50))
-        meta = {'allow_inheritance': True}
-
-    class TextPost(BlogPost):
-        content = StringField(required=True)
-
-    class LinkPost(BlogPost):
-        url = StringField(required=True)
-
-    # Create a text-based post
-    >>> post1 = TextPost(title='Using MongoEngine', content='See the tutorial')
-    >>> post1.tags = ['mongodb', 'mongoengine']
-    >>> post1.save()
-
-    # Create a link-based post
-    >>> post2 = LinkPost(title='MongoEngine Docs', url='hmarr.com/mongoengine')
-    >>> post2.tags = ['mongoengine', 'documentation']
-    >>> post2.save()
-
-    # Iterate over all posts using the BlogPost superclass
-    >>> for post in BlogPost.objects:
-    ...     print('===', post.title, '===')
-    ...     if isinstance(post, TextPost):
-    ...         print(post.content)
-    ...     elif isinstance(post, LinkPost):
-    ...         print('Link:', post.url)
-    ...
-
-    # Count all blog posts and its subtypes
-    >>> BlogPost.objects.count()
-    2
-    >>> TextPost.objects.count()
-    1
-    >>> LinkPost.objects.count()
-    1
-
-    # Count tagged posts
-    >>> BlogPost.objects(tags='mongoengine').count()
-    2
-    >>> BlogPost.objects(tags='mongodb').count()
-    1
-
-Tests
-=====
-To run the test suite, ensure you are running a local instance of MongoDB on
-the standard port and have ``pytest`` installed. Then, run ``pytest tests/``.
-
-To run the test suite on every supported Python and PyMongo version, you can
-use ``tox``. You'll need to make sure you have each supported Python version
-installed in your environment and then:
+We recommend using ``virtualenv`` and ``pip``:
 
 .. code-block:: shell
 
-    # Install tox
-    $ python -m pip install tox
-    # Run the test suites
-    $ tox
+    python -m pip install -U mongoengine
+
+Alternatively:
+
+.. code-block:: shell
+
+    pip install mongoengine
+
+Python 3.8+ is required. Python 2 support was dropped in MongoEngine 0.20.0.
+
+
+Dependencies
+============
+
+Core dependency:
+
+- pymongo >= 3.12
+
+Optional dependencies:
+
+- python-dateutil (for DateTimeField parsing)
+- Pillow (for ImageField / GridFS)
+- blinker (for signals)
+
+
+Synchronous Usage
+=================
+
+A simple synchronous example:
+
+.. code-block:: python
+
+    import datetime
+    from mongoengine import (
+        connect,
+        Document,
+        StringField,
+        DateTimeField,
+        ListField,
+    )
+
+    connect("mydb")
+
+    class BlogPost(Document):
+        title = StringField(required=True, max_length=200)
+        posted = DateTimeField(default=datetime.datetime.utcnow)
+        tags = ListField(StringField(max_length=50))
+
+    post = BlogPost(
+        title="Using MongoEngine",
+        tags=["mongodb", "mongoengine"],
+    )
+    post.save()
+
+    count = BlogPost.objects(tags="mongoengine").count()
+    print(count)
+
+
+Async Usage
+===========
+
+MongoEngine provides a **fully supported asyncio-native API**.
+The async API mirrors the synchronous API and uses ``.aobjects`` along with
+``await`` for all I/O operations.
+
+Async support is **first-class** and designed for modern Python applications.
+
+.. code-block:: python
+
+    import asyncio
+    from mongoengine import (
+        Document,
+        StringField,
+        async_connect,
+    )
+
+    async_connect("mydb")
+
+    class User(Document):
+        name = StringField(required=True)
+
+    async def main():
+        # Create
+        alice = await User.aobjects.create(name="Alice")
+
+        # Query
+        first = await User.aobjects.first()
+        assert first == alice
+
+        # Update
+        await User.aobjects(name="Alice").update(set__name="Alicia")
+
+        # Delete
+        await User.aobjects(name="Alicia").delete()
+
+    asyncio.run(main())
+
+
+
+Tests
+=====
+
+To run the test suite locally:
+
+.. code-block:: shell
+
+    pytest tests/
+
+To run against all supported Python and MongoDB versions:
+
+.. code-block:: shell
+
+    python -m pip install tox
+    tox
+
 
 Community
 =========
-- `MongoEngine Users mailing list
-  <http://groups.google.com/group/mongoengine-users>`_
-- `MongoEngine Developers mailing list
-  <http://groups.google.com/group/mongoengine-dev>`_
+
+- MongoEngine Users mailing list:
+  http://groups.google.com/group/mongoengine-users
+- MongoEngine Developers mailing list:
+  http://groups.google.com/group/mongoengine-dev
+
 
 Contributing
 ============
-We welcome contributions! See the `Contribution guidelines <https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst>`_
+
+Contributions are welcome!
+
+Please see:
+https://github.com/MongoEngine/mongoengine/blob/master/CONTRIBUTING.rst

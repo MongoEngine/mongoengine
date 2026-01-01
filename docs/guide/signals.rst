@@ -35,38 +35,64 @@ Available signals include:
   :class:`~mongoengine.EmbeddedDocument` instance has been completed.
 
 `pre_save`
-  Called within :meth:`~mongoengine.Document.save` prior to performing
-  any actions.
+  Called within :meth:`~mongoengine.Document.save` or :meth:`~mongoengine.Document.asave`
+  prior to performing any actions.
 
 `pre_save_post_validation`
-  Called within :meth:`~mongoengine.Document.save` after validation
-  has taken place but before saving.
+  Called within :meth:`~mongoengine.Document.save` or :meth:`~mongoengine.Document.asave`
+  after validation has taken place but before saving.
 
 `post_save`
-  Called within :meth:`~mongoengine.Document.save` after most actions
-  (validation, insert/update, and cascades, but not clearing dirty flags) have
-  completed successfully.  Passed the additional boolean keyword argument
-  `created` to indicate if the save was an insert or an update.
+  Called within :meth:`~mongoengine.Document.save` or :meth:`~mongoengine.Document.asave`
+  after most actions (validation, insert/update, and cascades, but not clearing
+  dirty flags) have completed successfully. Passed the additional boolean
+  keyword argument `created` to indicate if the save was an insert or an update.
 
 `pre_delete`
-  Called within :meth:`~mongoengine.Document.delete` prior to
-  attempting the delete operation.
+  Called within :meth:`~mongoengine.Document.delete` or :meth:`~mongoengine.Document.adelete`
+  prior to attempting the delete operation.
 
 `post_delete`
-  Called within :meth:`~mongoengine.Document.delete` upon successful
-  deletion of the record.
+  Called within :meth:`~mongoengine.Document.delete` or :meth:`~mongoengine.Document.adelete`
+  upon successful deletion of the record.
 
 `pre_bulk_insert`
   Called after validation of the documents to insert, but prior to any data
-  being written. In this case, the `document` argument is replaced by a
-  `documents` argument representing the list of documents being inserted.
+  being written (including :meth:`~mongoengine.queryset.AsyncQuerySet.insert`).
+  In this case, the `document` argument is replaced by a `documents` argument
+  representing the list of documents being inserted.
 
 `post_bulk_insert`
-  Called after a successful bulk insert operation.  As per `pre_bulk_insert`,
+  Called after a successful bulk insert operation (including
+  :meth:`~mongoengine.queryset.AsyncQuerySet.insert`). As per `pre_bulk_insert`,
   the `document` argument is omitted and replaced with a `documents` argument.
   An additional boolean argument, `loaded`, identifies the contents of
   `documents` as either :class:`~mongoengine.Document` instances when `True` or
   simply a list of primary key values for the inserted records if `False`.
+
+Asynchronous Support
+--------------------
+MongoEngine supports signals in both synchronous and asynchronous contexts.
+When using asynchronous methods like :meth:`~mongoengine.Document.asave`,
+:meth:`~mongoengine.Document.adelete`, or :meth:`~mongoengine.queryset.AsyncQuerySet.insert`,
+signals are dispatched using an asynchronous mechanism.
+
+Signal handlers can be either regular synchronous functions or asynchronous
+coroutines (`async def`). If a handler is a coroutine, it will be awaited
+during the signal dispatch.
+
+Example of an asynchronous signal handler::
+
+    import logging
+    from datetime import datetime
+    from mongoengine import signals
+
+    async def update_modified(sender, document, **kwargs):
+        document.modified = datetime.utcnow()
+        # You can also perform async operations here
+        # await some_async_log(document)
+
+    signals.pre_save.connect(update_modified)
 
 Attaching Events
 ----------------

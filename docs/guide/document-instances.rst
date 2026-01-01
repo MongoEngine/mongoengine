@@ -28,6 +28,13 @@ already exist, then any changes will be updated atomically.  For example::
     >>> page.title = "My Page"
     >>> page.save()  # Performs an atomic set on the title field.
 
+    # The asynchronous alternative is as follows:
+
+    >>> page = Page(title="Test Page")
+    >>> await page.asave()  # Performs an insert
+    >>> page.title = "My Page"
+    >>> await page.asave()  # Performs an atomic set on the title field.
+
 .. note::
 
     Changes to documents are tracked and on the whole perform ``set`` operations.
@@ -56,6 +63,10 @@ To delete a document, call the :meth:`~mongoengine.Document.delete` method.
 Note that this will only work if the document exists in the database and has a
 valid :attr:`id`.
 
+The asynchronous alternative is as follows::
+
+    >>> await page.adelete()
+
 Document IDs
 ============
 Each document in the database has a unique id. This may be accessed through the
@@ -67,6 +78,14 @@ saved::
     >>> page = Page(title="Test Page")
     >>> page.id
     >>> page.save()
+    >>> page.id
+    ObjectId('123456789abcdef000000000')
+
+    # The asynchronous alternative is as follows:
+
+    >>> page = Page(title="Test Page")
+    >>> page.id
+    >>> await page.asave()
     >>> page.id
     ObjectId('123456789abcdef000000000')
 
@@ -85,11 +104,25 @@ you may still use :attr:`id` to access the primary key if you want::
     >>> bob.id == bob.email == 'bob@example.com'
     True
 
+    # The asynchronous alternative is as follows:
+
+    >>> bob = User(email='bob@example.com', name='Bob')
+    >>> await bob.asave()
+    >>> bob.id == bob.email == 'bob@example.com'
+    True
+
 You can also access the document's "primary key" using the :attr:`pk` field,
 it's an alias to :attr:`id`::
 
     >>> page = Page(title="Another Test Page")
     >>> page.save()
+    >>> page.id == page.pk
+    True
+
+    # The asynchronous alternative is as follows:
+
+    >>> page = Page(title="Another Test Page")
+    >>> await page.asave()
     >>> page.id == page.pk
     True
 

@@ -7,24 +7,48 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+
+Changes in 0.3.0
+=================
+- feat!: migrate MongoEngine to native async PyMongo (>= 4.14)
+    - Refactored the core ODM to support PyMongo’s native async API
+    - Unified sync and async code paths across documents, querysets, and transactions
+    - Replaced legacy sync implementations
+    - Removed deprecated and compatibility code
+- BREAKING CHANGE: Removed legacy sync behavior
+- BREAKING CHANGE: Removed LazyReferenceField
+- BREAKING CHANGE: Removed GenericLazyReferenceField
+- BREAKING CHANGE: Removed CachedReferenceField
+- BREAKING CHANGE: Removed GenericCachedReferenceField
+- BREAKING CHANGE: GenericReferenceField now requires `choices`
+- BREAKING CHANGE: Dropped support for PyMongo < 4.14
+- BREAKING CHANGE: Dropped support for MongoDB < 4.2
 - Fix querying GenericReferenceField with __in operator #2886
 - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
   Some considerations:
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
-    - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
-    - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
-- BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
-- Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
+    - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically
+in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
+    - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not
+supported in transactions)
+- BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a
+singleton to access the registry
+- Log a warning in case users creates multiple Document classes with the same name as it can lead
+to unexpected behavior #1778
 - Fix use of $geoNear or $collStats in aggregate #2493
-- BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
-- BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
+- BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`,
+a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
+- BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify`
+as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
-- BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
+- BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long
+time ago (User should simply switch to IntField) #2309
 - BugFix - Calling .clear on a ListField wasn't being marked as changed (and flushed to db upon .save()) #2858
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
-- BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
+- BugFix - Take `where()` into account when using `.modify()`, as in
+MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
 
 Changes in 0.29.0
 =================
