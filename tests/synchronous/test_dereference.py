@@ -4,16 +4,17 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.context_managers import query_counter
+from tests.utils import MONGO_TEST_DB
 
 
 class FieldTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.db = connect(db="mongoenginetest")
+        cls.db = connect(db=MONGO_TEST_DB)
 
     @classmethod
     def tearDownClass(cls):
-        cls.db.drop_database("mongoenginetest")
+        cls.db.drop_database(MONGO_TEST_DB)
 
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced."""
@@ -1247,7 +1248,7 @@ class FieldTest(unittest.TestCase):
     def test_objectid_reference_across_databases(self):
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class User(Document):
             name = StringField()

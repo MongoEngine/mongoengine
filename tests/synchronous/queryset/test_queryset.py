@@ -30,6 +30,7 @@ from tests.utils import (
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
 )
+from tests.utils import MONGO_TEST_DB
 
 
 def get_key_compat(mongo_ver):
@@ -40,8 +41,8 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
-        connect(db="mongoenginetest2", alias="test2")
+        connect(db=MONGO_TEST_DB)
+        connect(db=f"{MONGO_TEST_DB}_2", alias="test2")
 
         class PersonMeta(EmbeddedDocument):
             weight = IntField()
@@ -3618,7 +3619,7 @@ class TestQueryset(unittest.TestCase):
             assert list(qs1) == list(qs2)
 
     def test_distinct_handles_references_to_alias(self):
-        register_connection("testdb", "mongoenginetest2")
+        register_connection("testdb", f"{MONGO_TEST_DB}_2")
 
         class Foo(Document):
             bar = ReferenceField("Bar")

@@ -6,6 +6,7 @@ import pytest
 from mongoengine import *
 from mongoengine.asynchronous import async_connect, connection
 from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo
+from tests.utils import MONGO_TEST_DB
 
 try:
     import dateutil
@@ -234,7 +235,7 @@ class TestDateTimeTzAware(MongoDBAsyncTestCase):
         connection._connections = {}
         connection._dbs = {}
 
-        await async_connect(db="mongoenginetest", tz_aware=True)
+        await async_connect(db=MONGO_TEST_DB, tz_aware=True)
 
         class LogEntry(Document):
             time = DateTimeField()

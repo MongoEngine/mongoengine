@@ -15,11 +15,12 @@ from mongoengine.mongodb_support import (
 )
 from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestIndexes(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.connection = await async_connect(db="mongoenginetest")
+        self.connection = await async_connect(db=MONGO_TEST_DB)
         self.db = async_get_db()
 
         class Person(Document):
@@ -981,7 +982,7 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
         tmp_alias = "test_indexes_after_database_drop"
-        connection = await async_connect(db="tempdatabase", alias=tmp_alias)
+        connection = await async_connect(db=f"{MONGO_TEST_DB}_tempdb", alias=tmp_alias)
 
         class BlogPost(Document):
             slug = StringField(unique=True)
@@ -993,7 +994,7 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
             await BlogPost(slug="test").asave()
 
         # Drop the Database
-        await connection.drop_database("tempdatabase")
+        await connection.drop_database(f"{MONGO_TEST_DB}_tempdb")
         await BlogPost(slug="test").asave()
         # No error because the index was not recreated after dropping the database.
         await BlogPost(slug="test").asave()
@@ -1012,12 +1013,12 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
             await BlogPost2(slug="test").asave()
 
         # Drop the Database
-        await connection.drop_database("tempdatabase")
+        await connection.drop_database(f"{MONGO_TEST_DB}_tempdb")
         await BlogPost2(slug="test").asave()
         # Error because ensure_indexes is run on every save().
         with pytest.raises(NotUniqueError):
             await BlogPost2(slug="test").asave()
-        await connection.drop_database("tempdatabase")
+        await connection.drop_database(f"{MONGO_TEST_DB}_tempdb")
 
     async def test_index_dont_send_cls_option(self):
         """

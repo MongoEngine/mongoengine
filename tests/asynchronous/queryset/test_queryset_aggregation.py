@@ -6,6 +6,7 @@ from mongoengine.mongodb_support import (
     async_get_mongodb_version
 )
 from tests.asynchronous.utils import async_db_ops_tracker, MongoDBAsyncTestCase
+from tests.utils import MONGO_TEST_DB
 
 
 class TestQuerysetAggregate(MongoDBAsyncTestCase):
@@ -107,7 +108,7 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await (await AggPerson.aobjects.comment(comment).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -115,7 +116,7 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await (await AggPerson.aobjects.hint(index_name).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == "name_1"
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -123,7 +124,7 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await (await AggPerson.aobjects.collation(base).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]

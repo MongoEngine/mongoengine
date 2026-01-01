@@ -4,11 +4,12 @@ from mongoengine import *
 from mongoengine.synchronous.connection import get_db
 from mongoengine.pymongo_support import list_collection_names
 from mongoengine.base.queryset import NULLIFY, PULL
+from tests.utils import MONGO_TEST_DB
 
 
 class TestClassMethods(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
         self.db = get_db()
 
         class Person(Document):

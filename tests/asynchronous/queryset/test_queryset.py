@@ -28,6 +28,7 @@ from tests.asynchronous.utils import (
     async_get_as_pymongo,
     reset_async_connections,
 )
+from tests.utils import MONGO_TEST_DB
 
 
 def get_key_compat(mongo_ver):
@@ -38,8 +39,8 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
-        await async_connect(db="mongoenginetest2", alias="test2")
+        await async_connect(db=MONGO_TEST_DB)
+        await async_connect(db=f"{MONGO_TEST_DB}_2", alias="test2")
 
         class PersonMeta(EmbeddedDocument):
             weight = IntField()
@@ -3515,7 +3516,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             assert await qs1.to_list() == await qs2.to_list()
 
     async def test_distinct_handles_references_to_alias(self):
-        await async_register_connection("testdb", "mongoenginetest2")
+        await async_register_connection("testdb", f"{MONGO_TEST_DB}_2")
 
         class Bar(Document):
             text = StringField()

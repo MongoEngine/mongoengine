@@ -109,7 +109,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = list(AggPerson.objects.comment(comment).aggregate(pipeline))
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -117,7 +117,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = list(AggPerson.objects.hint(index_name).aggregate(pipeline))
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == "name_1"
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -125,7 +125,7 @@ class TestQuerysetAggregate(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = list(AggPerson.objects.collation(base).aggregate(pipeline))
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]

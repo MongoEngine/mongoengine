@@ -23,6 +23,7 @@ from mongoengine.pymongo_support import count_documents
 from tests.synchronous.utils import MongoDBTestCase
 from tests.utils import (
     requires_mongodb_gte_44,
+    MONGO_TEST_DB
 )
 
 
@@ -99,7 +100,7 @@ class TestContextManagers(MongoDBTestCase):
         assert original_write_concern.document == collection.write_concern.document
 
     def test_switch_db_context_manager(self):
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -124,7 +125,7 @@ class TestContextManagers(MongoDBTestCase):
         assert 1 == Group.objects.count()
 
     def test_switch_collection_context_manager(self):
-        register_connection(alias="testdb-1", db="mongoenginetest2")
+        register_connection(alias="testdb-1", db=f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -296,7 +297,7 @@ class TestContextManagers(MongoDBTestCase):
     def test_query_counter_alias(self):
         """query_counter works properly with db aliases?"""
         # Register a connection with db_alias testdb-1
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             """Uses default db_alias"""
@@ -452,7 +453,7 @@ class TestContextManagers(MongoDBTestCase):
         assert A.objects.count() == 0
 
     def test_transaction_updates_across_databases(self):
-        connect("mongoenginetest")
+        connect()
         connect("test2", "test2")
 
         class A(Document):
@@ -477,7 +478,7 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_44
     def test_collection_creation_via_upserts_across_databases_in_transaction(self):
-        connect("mongoenginetest")
+        connect()
         connect("test2", "test2")
 
         class A(Document):
@@ -510,7 +511,7 @@ class TestContextManagers(MongoDBTestCase):
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
             self,
     ):
-        connect("mongoenginetest")
+        connect()
         connect("test2", "test2")
 
         class A(Document):

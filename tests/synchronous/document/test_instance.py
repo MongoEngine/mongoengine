@@ -47,6 +47,7 @@ from tests.synchronous.utils import (
     get_as_pymongo,
     requires_mongodb_gte_44, reset_connections
 )
+from tests.utils import MONGO_TEST_DB
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
@@ -490,7 +491,7 @@ class TestDocumentInstance(MongoDBTestCase):
         CMD_QUERY_KEY = "command"
         with query_counter() as q:
             doc.reload()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {
                 "_id",
                 "superphylum",
@@ -508,7 +509,7 @@ class TestDocumentInstance(MongoDBTestCase):
         CMD_QUERY_KEY = "command"
         with query_counter() as q:
             doc.reload()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.person"})[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {"_id", "country"}
 
     def test_reload_sharded_nested(self):
@@ -542,7 +543,7 @@ class TestDocumentInstance(MongoDBTestCase):
         with query_counter() as q:
             doc.name = "Cat"
             doc.save()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})[0]
             assert query_op["op"] == "update"
             assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
 
@@ -564,7 +565,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with query_counter() as q:
             doc.save()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.animal"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})[0]
             assert query_op["op"] == "command"
             assert query_op["command"]["findAndModify"] == "animal"
             assert set(query_op["command"]["query"].keys()) == {"_id", "is_mammal"}
@@ -1897,7 +1898,7 @@ class TestDocumentInstance(MongoDBTestCase):
             with db_ops_tracker() as q:
                 _ = AggPerson.objects.comment(comment).update_one(name="something")
                 query_op = q.db.system.profile.find(
-                    {"ns": "mongoenginetest.agg_person"}
+                    {"ns": f"{MONGO_TEST_DB}.agg_person"}
                 )[0]
                 CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
                 assert "hint" not in query_op[CMD_QUERY_KEY]
@@ -1906,7 +1907,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
 
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
@@ -1915,7 +1916,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.collation(base).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1952,7 +1953,7 @@ class TestDocumentInstance(MongoDBTestCase):
             with db_ops_tracker() as q:
                 _ = AggPerson.objects().comment(comment).delete()
                 query_op = q.db.system.profile.find(
-                    {"ns": "mongoenginetest.agg_person"}
+                    {"ns": f"{MONGO_TEST_DB}.agg_person"}
                 )[0]
                 CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
                 assert "hint" not in query_op[CMD_QUERY_KEY]
@@ -1961,7 +1962,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).delete()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
 
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
@@ -1970,7 +1971,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.collation(base).delete()
-            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -2878,9 +2879,9 @@ class TestDocumentInstance(MongoDBTestCase):
         """DB Alias tests."""
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        register_connection("testdb-1", "mongoenginetest2")
-        register_connection("testdb-2", "mongoenginetest3")
-        register_connection("testdb-3", "mongoenginetest4")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
+        register_connection("testdb-3", f"{MONGO_TEST_DB}_4")
 
         class User(Document):
             name = StringField()
@@ -2936,7 +2937,7 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_db_alias_overrides(self):
         """Test db_alias can be overriden."""
         # Register a connection with db_alias testdb-2
-        register_connection("testdb-2", "mongoenginetest2")
+        register_connection("testdb-2", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             """Uses default db_alias"""
@@ -2952,12 +2953,12 @@ class TestDocumentInstance(MongoDBTestCase):
         A.objects.all()
 
         assert "testdb-2" == B._meta.get("db_alias")
-        assert "mongoenginetest" == A._get_collection().database.name
-        assert "mongoenginetest2" == B._get_collection().database.name
+        assert MONGO_TEST_DB == A._get_collection().database.name
+        assert f"{MONGO_TEST_DB}_2" == B._get_collection().database.name
 
     def test_db_alias_propagates(self):
         """db_alias propagates?"""
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             name = StringField()
@@ -3057,7 +3058,7 @@ class TestDocumentInstance(MongoDBTestCase):
             assert custom_qs.count() == 2
 
     def test_switch_db_instance(self):
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3107,8 +3108,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert "hello - default" == group.name
 
     def test_switch_db_multiple_documents_same_context(self):
-        register_connection("testdb-1", "mongoenginetest2")
-        register_connection("testdb-2", "mongoenginetest3")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
 
         class Group(Document):
             name = StringField()
@@ -3164,7 +3165,7 @@ class TestDocumentInstance(MongoDBTestCase):
             assert p2.title == "post-testdb-2"
 
     def test_switch_db_and_switch_collection_instance(self):
-        register_connection("testdb-1", "mongoenginetest2")
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3227,8 +3228,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert "hello - default" == g0.name
 
     def test_switch_multiple_db_and_multiple_collection_same_time(self):
-        register_connection("testdb-a", "mongoenginetest2")
-        register_connection("testdb-b", "mongoenginetest2")
+        register_connection("testdb-a", f"{MONGO_TEST_DB}_2")
+        register_connection("testdb-b", f"{MONGO_TEST_DB}_2")
 
         class User(Document):
             name = StringField()

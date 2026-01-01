@@ -10,12 +10,13 @@ import warnings
 from mongoengine import *
 from mongoengine.base.common import _document_registry
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestAllWarnings(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
         self.warning_list = []
         self.showwarning_default = warnings.showwarning
         warnings.showwarning = self.append_to_warning_list
