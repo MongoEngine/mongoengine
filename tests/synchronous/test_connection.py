@@ -88,8 +88,8 @@ class ConnectionTest(unittest.TestCase):
             name = StringField()
             meta = {"db_alias": "db2"}
 
-        connect("db1", alias="db1")
-        connect("db2", alias="db2")
+        connect(f"{MONGO_TEST_DB}_db1", alias="db1")
+        connect(f"{MONGO_TEST_DB}_db2", alias="db2")
 
         History1.drop_collection()
         History2.drop_collection()
@@ -111,8 +111,8 @@ class ConnectionTest(unittest.TestCase):
         with pytest.raises(ConnectionFailure):
             list(History2.objects().as_pymongo())
 
-        connect("db1", alias="db1")
-        connect("db2", alias="db2")
+        connect(f"{MONGO_TEST_DB}_db1", alias="db1")
+        connect(f"{MONGO_TEST_DB}_db2", alias="db2")
 
         assert list(History1.objects().as_pymongo()) == [
             {"_id": h.id, "name": "default"}
@@ -131,9 +131,9 @@ class ConnectionTest(unittest.TestCase):
             name = StringField()
             meta = {"db_alias": "db2"}
 
-        connect()
-        connect("db1", alias="db1")
-        connect("db2", alias="db2")
+        connect(MONGO_TEST_DB)
+        connect(f"{MONGO_TEST_DB}_1", alias="db1")
+        connect(f"{MONGO_TEST_DB}_2", alias="db2")
 
         History.drop_collection()
         History1.drop_collection()
@@ -143,9 +143,9 @@ class ConnectionTest(unittest.TestCase):
         h1 = History1(name="db1").save()
         h2 = History2(name="db2").save()
 
-        assert History._get_collection().database.name == DEFAULT_DATABASE_NAME
-        assert History1._get_collection().database.name == "db1"
-        assert History2._get_collection().database.name == "db2"
+        assert History._get_collection().database.name == MONGO_TEST_DB
+        assert History1._get_collection().database.name == f"{MONGO_TEST_DB}_1"
+        assert History2._get_collection().database.name == f"{MONGO_TEST_DB}_2"
 
         assert list(History.objects().as_pymongo()) == [
             {"_id": h.id, "name": "default"}
@@ -295,8 +295,8 @@ class ConnectionTest(unittest.TestCase):
 
     def test_connect_disconnect_works_on_same_document(self):
         """Ensure that the connect/disconnect works properly with a single Document"""
-        db1 = "db1"
-        db2 = "db2"
+        db1 = f"{MONGO_TEST_DB}_db1"
+        db2 = f"{MONGO_TEST_DB}_db2"
 
         # Ensure freshness of the 2 databases through pymongo
         client = MongoClient("localhost", 27017)

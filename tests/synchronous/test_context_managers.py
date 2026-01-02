@@ -453,8 +453,8 @@ class TestContextManagers(MongoDBTestCase):
         assert A.objects.count() == 0
 
     def test_transaction_updates_across_databases(self):
-        connect()
-        connect("test2", "test2")
+        connect(MONGO_TEST_DB)
+        connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()
@@ -478,8 +478,8 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_44
     def test_collection_creation_via_upserts_across_databases_in_transaction(self):
-        connect()
-        connect("test2", "test2")
+        connect(MONGO_TEST_DB)
+        connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()
@@ -511,8 +511,8 @@ class TestContextManagers(MongoDBTestCase):
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
             self,
     ):
-        connect()
-        connect("test2", "test2")
+        connect(MONGO_TEST_DB)
+        connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()

@@ -81,8 +81,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
             meta = {"db_alias": "db2"}
 
-        await async_connect("db1", alias="db1")
-        await async_connect("db2", alias="db2")
+        await async_connect(f"{MONGO_TEST_DB}_db1", alias="db1")
+        await async_connect(f"{MONGO_TEST_DB}_db2", alias="db2")
 
         await History1.adrop_collection()
         await History2.adrop_collection()
@@ -104,8 +104,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(ConnectionFailure):
             await History2.aobjects().as_pymongo().to_list()
 
-        await async_connect("db1", alias="db1")
-        await async_connect("db2", alias="db2")
+        await async_connect(f"{MONGO_TEST_DB}_db1", alias="db1")
+        await async_connect(f"{MONGO_TEST_DB}_db2", alias="db2")
 
         assert await History1.aobjects().as_pymongo().to_list() == [
             {"_id": h.id, "name": "default"}
@@ -125,9 +125,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
             meta = {"db_alias": "db2"}
 
-        await async_connect()
-        await async_connect("db1", alias="db1")
-        await async_connect("db2", alias="db2")
+        await async_connect(MONGO_TEST_DB)
+        await async_connect(f"{MONGO_TEST_DB}_db1", alias="db1")
+        await async_connect(f"{MONGO_TEST_DB}_db2", alias="db2")
 
         await History.adrop_collection()
         await History1.adrop_collection()
@@ -137,9 +137,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         h1 = await History1(name="db1").asave()
         h2 = await History2(name="db2").asave()
 
-        assert (await History._aget_collection()).database.name == DEFAULT_DATABASE_NAME
-        assert (await History1._aget_collection()).database.name == "db1"
-        assert (await History2._aget_collection()).database.name == "db2"
+        assert (await History._aget_collection()).database.name == MONGO_TEST_DB
+        assert (await History1._aget_collection()).database.name == f"{MONGO_TEST_DB}_db1"
+        assert (await History2._aget_collection()).database.name == f"{MONGO_TEST_DB}_db2"
 
         assert await History.aobjects().as_pymongo().to_list() == [
             {"_id": h.id, "name": "default"}
@@ -276,8 +276,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_async_connect_disconnect_works_on_same_document(self):
         """Ensure that the async_connect/async_disconnect works properly with a single Document"""
-        db1 = "db1"
-        db2 = "db2"
+        db1 = f"{MONGO_TEST_DB}_db1"
+        db2 = f"{MONGO_TEST_DB}_db2"
 
         # Ensure freshness of the 2 databases through pymongo
         client = AsyncMongoClient("localhost", 27017)

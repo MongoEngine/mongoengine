@@ -30,6 +30,13 @@ from tests.asynchronous.utils import (
 )
 from tests.utils import MONGO_TEST_DB
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
 
 def get_key_compat(mongo_ver):
     ORDER_BY_KEY = "sort"
@@ -1455,7 +1462,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await BlogPost.adrop_collection()
         await BlogPost.aobjects.create(
-            title="whatever", published_date=datetime.datetime.now(datetime.UTC)
+            title="whatever", published_date=datetime.datetime.now(UTC)
         )
 
         async with async_db_ops_tracker() as q:

@@ -13,6 +13,14 @@ try:
 except ImportError:
     dateutil = None
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
+
 
 class TestDateTimeField(MongoDBAsyncTestCase):
     async def test_datetime_from_empty_string(self):
@@ -47,9 +55,9 @@ class TestDateTimeField(MongoDBAsyncTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=dt.datetime.now(datetime.UTC))
+            created = DateTimeField(default=dt.datetime.now(UTC))
 
-        utcnow = dt.datetime.now(datetime.UTC)
+        utcnow = dt.datetime.now(UTC)
         person = Person()
         person.validate()
         person_created_t0 = person.created

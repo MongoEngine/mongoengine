@@ -8,6 +8,14 @@ import pytest
 from mongoengine import *
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
+
 
 class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
     async def test_complexdatetime_storage(self):
@@ -23,7 +31,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Post UTC - microseconds are rounded (down) nearest millisecond and
         # dropped - with default datetime fields
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999,tzinfo=datetime.UTC)
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999,tzinfo=UTC)
         log = LogEntry()
         log.date = d1
         await log.asave()
@@ -32,7 +40,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Post UTC - microseconds are rounded (down) nearest millisecond - with
         # default datetime fields
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999,tzinfo=datetime.UTC)
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999,tzinfo=UTC)
         log.date = d1
         await log.asave()
         await log.areload()
@@ -40,7 +48,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Pre UTC dates microseconds below 1000 are dropped - with default
         # datetime fields
-        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999,tzinfo=datetime.UTC)
+        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999,tzinfo=UTC)
         log.date = d1
         await log.asave()
         await log.areload()
@@ -50,7 +58,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
         # log.date has an invalid microsecond value, so I can't construct
         # a date to compare.
         for i in range(1001, 3113, 33):
-            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i,tzinfo=datetime.UTC)
+            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i,tzinfo=UTC)
             log = LogEntry(
                 date=d1
             )
@@ -164,7 +172,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
         assert fetched_log.timestamp is None
 
     async def test_default_static_value(self):
-        NOW = datetime.datetime.now(datetime.UTC)
+        NOW = datetime.datetime.now(UTC)
 
         class Log(Document):
             timestamp = ComplexDateTimeField(default=NOW)
@@ -179,7 +187,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
         assert fetched_log.timestamp == NOW
 
     async def test_default_callable(self):
-        NOW = datetime.datetime.now(datetime.UTC)
+        NOW = datetime.datetime.now(UTC)
 
         class Log(Document):
             timestamp = ComplexDateTimeField(default=NOW)

@@ -417,7 +417,7 @@ class TestSignal(unittest.TestCase):
         assert self.get_signal_output(ei.save) == ["Is created"]
 
     def test_signals_with_switch_db(self):
-        connect()
+        connect(MONGO_TEST_DB)
         register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         ei = self.ExplicitId(id=123)

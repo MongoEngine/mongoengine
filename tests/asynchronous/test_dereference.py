@@ -15,7 +15,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         self.db = await async_connect(db=MONGO_TEST_DB)
 
     async def asyncTearDown(self):
-        await self.db.drop_database()
+        await self.db.drop_database(MONGO_TEST_DB)
         await async_disconnect_all()
         await reset_async_connections()
 

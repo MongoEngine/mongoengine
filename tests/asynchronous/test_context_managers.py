@@ -424,8 +424,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert await A.aobjects.count() == 0
 
     async def test_transaction_updates_across_databases(self):
-        await async_connect()
-        await async_connect("test2", "test2")
+        await async_connect(MONGO_TEST_DB)
+        await async_connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()
@@ -449,8 +449,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
 
     @requires_mongodb_gte_44
     async def test_collection_creation_via_upserts_across_databases_in_transaction(self):
-        await async_connect()
-        await async_connect("test2", "test2")
+        await async_connect(MONGO_TEST_DB)
+        await async_connect(f"{MONGO_TEST_DB}_test2", "test2")
 
         class A(Document):
             name = StringField()
@@ -482,8 +482,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
     async def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
             self,
     ):
-        await async_connect()
-        await async_connect("test2", "test2")
+        await async_connect(MONGO_TEST_DB)
+        await async_connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()

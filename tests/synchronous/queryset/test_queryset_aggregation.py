@@ -6,6 +6,7 @@ from mongoengine.mongodb_support import (
     get_mongodb_version,
 )
 from tests.synchronous.utils import MongoDBTestCase, db_ops_tracker
+from tests.utils import MONGO_TEST_DB
 
 
 class TestQuerysetAggregate(MongoDBTestCase):
