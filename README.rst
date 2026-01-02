@@ -82,7 +82,7 @@ Dependencies
 
 Core dependency:
 
-- pymongo >= 3.12
+- pymongo >= 4.14
 
 Optional dependencies:
 
