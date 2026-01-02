@@ -4,6 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.base.queryset import QueryFieldList
+from tests.utils import MONGO_TEST_DB
 
 
 class TestQueryFieldList:
@@ -68,7 +69,7 @@ class TestQueryFieldList:
 
 class TestOnlyExcludeAll(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
 
         class Person(Document):
             name = StringField()

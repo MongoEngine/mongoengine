@@ -25,7 +25,7 @@ class _CollectionRegistry:
     Key is:
         (db_alias, collection_name, collection_type, fingerprint, is_async)
     """
-    _store: Dict[Tuple[str, str, CollectionType, str, bool], MongoCollection] = {}
+    _store: dict[tuple[str, str, CollectionType, str, bool], MongoCollection] = {}
     _lock = threading.RLock()
 
     # ---------------------------------------------------------------

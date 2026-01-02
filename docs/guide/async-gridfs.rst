@@ -84,4 +84,3 @@ Files can be replaced asynchronously with the :meth:`~mongoengine.fields.GridFSP
     another_marmot = open('another_marmot.png', 'rb')
     await marmot.photo.areplace(another_marmot, content_type='image/png')  # Replaces the GridFS document
     await marmot.asave()                                                   # Replaces the GridFS reference contained in marmot instance
-

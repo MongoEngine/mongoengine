@@ -3,7 +3,14 @@ import os
 import pickle
 import uuid
 import weakref
-from datetime import datetime, UTC
+from datetime import datetime
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
 from unittest.mock import AsyncMock
 
 import bson
@@ -43,6 +50,7 @@ from tests.asynchronous.utils import (
     async_get_as_pymongo,
     requires_mongodb_gte_44, reset_async_connections,
 )
+from tests.utils import MONGO_TEST_DB
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
@@ -485,7 +493,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         CMD_QUERY_KEY = "command"
         async with async_query_counter() as q:
             await doc.areload()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.animal"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {
                 "_id",
                 "superphylum",
@@ -502,7 +510,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         CMD_QUERY_KEY = "command"
         async with async_query_counter() as q:
             await doc.areload()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.person"})).to_list())[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {"_id", "country"}
 
     async def test_reload_sharded_nested(self):
@@ -536,7 +544,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         async with async_query_counter() as q:
             doc.name = "Cat"
             await doc.asave()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.animal"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
             assert query_op["op"] == "update"
             assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
 
@@ -558,7 +566,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_query_counter() as q:
             await doc.asave()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.animal"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
             assert query_op["op"] == "command"
             assert query_op["command"]["findAndModify"] == "animal"
             assert set(query_op["command"]["query"].keys()) == {"_id", "is_mammal"}
@@ -1888,7 +1896,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.comment(comment).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -1896,7 +1904,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.hint(index_name).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1904,7 +1912,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.collation(base).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1937,7 +1945,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects().comment(comment).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -1945,7 +1953,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.hint(index_name).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1953,7 +1961,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.collation(base).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": "mongoenginetest.agg_person"})).to_list())[0]
+            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -2861,9 +2869,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         """DB Alias tests."""
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        await async_register_connection("testdb-1", "mongoenginetest2")
-        await async_register_connection("testdb-2", "mongoenginetest3")
-        await async_register_connection("testdb-3", "mongoenginetest4")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
+        await async_register_connection("testdb-3", f"{MONGO_TEST_DB}_4")
 
         class User(Document):
             name = StringField()
@@ -2927,7 +2935,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
     async def test_db_alias_overrides(self):
         """Test db_alias can be overriden."""
         # Register a connection with db_alias testdb-2
-        await async_register_connection("testdb-2", "mongoenginetest2")
+        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             """Uses default db_alias"""
@@ -2943,13 +2951,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         A.aobjects.all()
 
         assert "testdb-2" == B._meta.get("db_alias")
-        assert "mongoenginetest" == (await A._aget_collection()).database.name
-        assert "mongoenginetest2" == (await B._aget_collection()).database.name
+        assert MONGO_TEST_DB == (await A._aget_collection()).database.name
+        assert f"{MONGO_TEST_DB}_2" == (await B._aget_collection()).database.name
         await async_disconnect("testdb-2")
 
     async def test_db_alias_propagates(self):
         """db_alias propagates?"""
-        await async_register_connection("testdb-1", "mongoenginetest2")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             name = StringField()
@@ -3045,7 +3053,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert [str(b) async for b in custom_qs] == ["1", "2"]
 
     async def test_switch_db_instance(self):
-        await async_register_connection("testdb-1", "mongoenginetest2")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3094,8 +3102,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert "hello - default" == group.name
 
     async def test_switch_db_multiple_documents_same_context(self):
-        await async_register_connection("testdb-1", "mongoenginetest2")
-        await async_register_connection("testdb-2", "mongoenginetest3")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
 
         class Group(Document):
             name = StringField()
@@ -3151,7 +3159,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
             assert p2.title == "post-testdb-2"
 
     async def test_switch_db_and_switch_collection_instance(self):
-        await async_register_connection("testdb-1", "mongoenginetest2")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3214,8 +3222,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert "hello - default" == g0.name
 
     async def test_switch_multiple_db_and_multiple_collection_same_time(self):
-        await async_register_connection("tenantA", "mongoenginetest2")
-        await async_register_connection("tenantB", "mongoenginetest2")
+        await async_register_connection("tenantA", f"{MONGO_TEST_DB}_2")
+        await async_register_connection("tenantB", f"{MONGO_TEST_DB}_2")
 
         class User(Document):
             name = StringField()

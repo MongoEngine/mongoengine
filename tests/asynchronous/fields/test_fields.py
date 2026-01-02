@@ -35,6 +35,14 @@ from mongoengine.base import BaseField, EmbeddedDocumentList
 from mongoengine.errors import DeprecatedError
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
+
 
 class TestField(MongoDBAsyncTestCase):
     async def test_constructor_set_historical_behavior_is_kept(self):
@@ -200,7 +208,7 @@ class TestField(MongoDBAsyncTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.now(datetime.UTC))
+            created = DateTimeField(default=datetime.datetime.now(UTC))
 
         person = Person()
         person.name = None
@@ -369,7 +377,7 @@ class TestField(MongoDBAsyncTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.comp_dt_fld = datetime.datetime.now(datetime.UTC)
+        doc.comp_dt_fld = datetime.datetime.now(UTC)
         await doc.asave()
 
         # Unset all the fields

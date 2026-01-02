@@ -11,12 +11,12 @@ from mongoengine import (
     get_db,
 )
 from mongoengine.synchronous.connection import disconnect
-from tests.utils import requires_mongodb_gte_50
+from tests.utils import requires_mongodb_gte_50, MONGO_TEST_DB
 
 
 class TestTimeSeriesCollections(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
         self.db = get_db()
 
         class SensorData(Document):

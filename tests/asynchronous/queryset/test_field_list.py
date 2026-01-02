@@ -6,11 +6,12 @@ from mongoengine import *
 from mongoengine.asynchronous import async_connect, async_disconnect
 from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestOnlyExcludeAll(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
 
         class Person(Document):
             name = StringField()

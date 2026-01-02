@@ -10,12 +10,12 @@ class QueryNormalizer:
     - Converts $where into a $function expression (returned separately).
     """
 
-    def normalize(self, query: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+    def normalize(self, query: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
         query = self._walk_and_convert_regex(query)
         return self._convert_where_to_function(query)
 
     @staticmethod
-    def _convert_where_to_function(query: Dict[str, Any]):
+    def _convert_where_to_function(query: dict[str, Any]):
         if "$where" not in query:
             return query, None
 

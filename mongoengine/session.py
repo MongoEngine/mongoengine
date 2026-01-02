@@ -19,7 +19,7 @@ def _set_session(session: Any):
     return _SESSIONS_STACK.set(stack + (session,))
 
 
-def _get_session() -> Optional[Any]:
+def _get_session() -> Any | None:
     """Return the current (top) session, or None."""
     stack = _SESSIONS_STACK.get()
     return stack[-1] if stack else None

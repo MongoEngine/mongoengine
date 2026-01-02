@@ -3,7 +3,6 @@ import inspect
 import operator
 import unittest
 
-import pymongo
 import pytest
 
 from mongoengine.asynchronous import async_disconnect_all, async_connect, async_get_db, \
@@ -12,9 +11,7 @@ from mongoengine.context_managers import async_query_counter
 from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
 from mongoengine.registry import _CollectionRegistry
 
-PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
-
-MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
+from tests.utils import MONGO_TEST_DB, PYMONGO_VERSION
 
 
 class MongoDBAsyncTestCase(unittest.IsolatedAsyncioTestCase):

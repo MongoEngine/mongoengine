@@ -5,6 +5,7 @@ from mongoengine import *
 from mongoengine import signals
 from mongoengine.asynchronous import async_connect, async_register_connection
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 signal_output = []
 
@@ -26,7 +27,7 @@ class TestSignal(unittest.IsolatedAsyncioTestCase):
         return signal_output
 
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
 
         class Author(Document):
             # Make the id deterministic for easier testing
@@ -423,8 +424,8 @@ class TestSignal(unittest.IsolatedAsyncioTestCase):
         assert await self.get_signal_output(ei.asave) == ["Is created"]
 
     async def test_signals_with_switch_db(self):
-        await async_connect("mongoenginetest")
-        await async_register_connection("testdb-1", "mongoenginetest2")
+        await async_connect(MONGO_TEST_DB)
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         ei = self.ExplicitId(id=123)
         ei.switch_db("testdb-1")

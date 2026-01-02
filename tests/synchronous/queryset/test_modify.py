@@ -7,6 +7,7 @@ from mongoengine import (
     StringField,
     connect,
 )
+from tests.utils import MONGO_TEST_DB
 
 
 class Doc(Document):
@@ -16,7 +17,7 @@ class Doc(Document):
 
 class TestFindAndModify(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
         Doc.drop_collection()
 
     def _assert_db_equal(self, docs):

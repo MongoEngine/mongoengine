@@ -1,6 +1,7 @@
 import functools
 import inspect
 import operator
+import os
 
 import pymongo
 import pytest
@@ -9,7 +10,9 @@ from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_v
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
-MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
+# standard name for the test database.
+# Suffixed with Tox env_name for support of tox parallel runners
+MONGO_TEST_DB = "mongoenginetest" + (os.environ.get("TOX_ENV_NAME") or "").lower()
 
 
 def requires_mongodb_gte_42(func):

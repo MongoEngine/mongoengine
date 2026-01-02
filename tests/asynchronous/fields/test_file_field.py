@@ -20,6 +20,8 @@ except ImportError:
     HAS_PIL = False
 
 from tests.asynchronous.utils import MongoDBAsyncTestCase
+from tests.utils import MONGO_TEST_DB
+
 
 require_pil = pytest.mark.skipif(not HAS_PIL, reason="PIL not installed")
 
@@ -514,7 +516,7 @@ class TestFileField(MongoDBAsyncTestCase):
         await t.image.adelete()
 
     async def test_file_multidb(self):
-        await async_register_connection("test_files", "test_files")
+        await async_register_connection("test_files", f"{MONGO_TEST_DB}_test_files")
 
         class TestFile(Document):
             name = StringField()

@@ -34,9 +34,9 @@ class PipelineBuilder:
         self.stage_builder = StageBuilder()
         self.tail_builder = TailBuilder()
 
-    def build(self) -> List[Dict[str, Any]]:
-        pipeline: List[Dict[str, Any]] = []
-        mongo_query: Dict[str, Any] = self.qs._query or {}
+    def build(self) -> list[dict[str, Any]]:
+        pipeline: list[dict[str, Any]] = []
+        mongo_query: dict[str, Any] = self.qs._query or {}
 
         hydrate_tree = self.lookup_planner.plan_from_select_related(self.qs._select_related)
 

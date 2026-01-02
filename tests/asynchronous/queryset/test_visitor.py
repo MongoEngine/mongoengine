@@ -11,12 +11,13 @@ from mongoengine.errors import InvalidQueryError
 from mongoengine.base.queryset import Q
 from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestQ(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
 
         class Person(Document):
             name = StringField()

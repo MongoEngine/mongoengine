@@ -4,12 +4,13 @@ from mongoengine import *
 from mongoengine.pymongo_support import async_list_collection_names
 from mongoengine.base.queryset import NULLIFY, PULL
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestClassMethods(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
         self.db = await async_get_db()
 
         class Person(Document):

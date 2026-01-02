@@ -5,7 +5,7 @@ Frequently Asked Questions
 Does MongoEngine support asynchronous operations?
 -------------------------------------------------
 
-Yes, as of version 0.3.0, MongoEngine provides built-in support for asynchronous operations.
+Yes, as of version 0.30.0, MongoEngine provides built-in support for asynchronous operations.
 This support is based on PyMongo's native asynchronous driver (available in PyMongo 4.14+).
 
 You can use the :attr:`~mongoengine.Document.aobjects` attribute for asynchronous queries and
