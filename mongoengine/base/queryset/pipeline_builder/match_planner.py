@@ -19,12 +19,12 @@ class MatchPlanner:
       which is false when we keep refs as ObjectId/DBRef unless select_related.
     """
 
-    def bucket(self, doc_cls, query: Dict[str, Any]) -> Dict[str, Any]:
+    def bucket(self, doc_cls, query: dict[str, Any]) -> dict[str, Any]:
         return self._bucket_query_by_lookup_prefix(doc_cls, query)
 
     @staticmethod
     def _bucket_query_by_lookup_prefix(doc_cls, query: dict) -> dict:
-        buckets: Dict[str, Any] = {}
+        buckets: dict[str, Any] = {}
 
         def merge(prefix: str, frag: dict):
             if not frag:

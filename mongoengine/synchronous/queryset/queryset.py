@@ -202,4 +202,3 @@ class QuerySetNoCache(BaseQuerySet):
             queryset = self.clone()
         queryset.rewind()
         return queryset
-

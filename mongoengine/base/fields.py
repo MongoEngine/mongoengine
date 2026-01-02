@@ -223,7 +223,7 @@ class BaseField:
         # Choices which are other types of Documents
         if isinstance(value, (Document, EmbeddedDocument)):
             if not any(isinstance(value, c) for c in choice_list):
-                self.error("Value must be an instance of %s" % (choice_list,))
+                self.error(f"Value must be an instance of {choice_list}")
         # Choices which are types other than Documents
         else:
             values = value if isinstance(value, (list, tuple)) else [value]

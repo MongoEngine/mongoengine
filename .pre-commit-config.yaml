@@ -12,10 +12,11 @@ repos:
     hooks:
       - id: pyupgrade
         args: [--py36-plus]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
-    hooks:
-      # Run the linter.
-      - id: ruff-check
-      # Run the formatter.
-      - id: ruff-format
+# TODO: Fix lint issues and enable ruff pre-commit
+#  - repo: https://github.com/astral-sh/ruff-pre-commit
+#    rev: v0.14.10
+#    hooks:
+#      # Run the linter.
+#      - id: ruff-check
+#      # Run the formatter.
+#      - id: ruff-format

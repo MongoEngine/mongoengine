@@ -12,4 +12,3 @@ class TestCommon:
     def test__import_class_raise_if_not_known(self):
         with pytest.raises(ValueError):
             _import_class("UnknownClass")
-

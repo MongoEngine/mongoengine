@@ -21,7 +21,7 @@ class LookupPlanner:
         return self._tree_from_select_related(select_related)
 
     def plan(self, doc_cls, select_related, bucket_prefixes: Iterable[str]) -> dict:
-        tree: Dict[str, Any] = {}
+        tree: dict[str, Any] = {}
 
         # 1) bucket-prefix-derived tree FIRST (filter stages happen earlier)
         for prefix in bucket_prefixes or ():
@@ -63,7 +63,7 @@ class LookupPlanner:
             return {}
 
         cur_doc = doc_cls
-        root: Dict[str, Any] = {}
+        root: dict[str, Any] = {}
         node = root
 
         i = 0
@@ -184,7 +184,7 @@ class LookupPlanner:
 
     @staticmethod
     def _tree_from_paths(paths: Iterable[str]) -> dict:
-        root: Dict[str, Any] = {}
+        root: dict[str, Any] = {}
         for p in paths:
             if not p:
                 continue
