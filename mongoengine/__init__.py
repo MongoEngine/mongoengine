@@ -56,7 +56,7 @@ del _async_connection
 del _sync_queryset
 del _async_queryset
 
-VERSION = (0, 3, 0)
+VERSION = (0, 30, 0)
 
 
 def get_version():

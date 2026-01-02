@@ -2,6 +2,7 @@ import unittest
 
 from mongoengine import *
 from mongoengine import signals
+from tests.utils import MONGO_TEST_DB
 
 signal_output = []
 
@@ -20,7 +21,7 @@ class TestSignal(unittest.TestCase):
         return signal_output
 
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
 
         class Author(Document):
             # Make the id deterministic for easier testing
@@ -416,8 +417,8 @@ class TestSignal(unittest.TestCase):
         assert self.get_signal_output(ei.save) == ["Is created"]
 
     def test_signals_with_switch_db(self):
-        connect("mongoenginetest")
-        register_connection("testdb-1", "mongoenginetest2")
+        connect(MONGO_TEST_DB)
+        register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         ei = self.ExplicitId(id=123)
         ei.switch_db("testdb-1")

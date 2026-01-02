@@ -210,5 +210,3 @@ class TestValidatorError(MongoDBAsyncTestCase):
 
         # Saving the child should not raise a ValidationError
         await child.asave()
-
-

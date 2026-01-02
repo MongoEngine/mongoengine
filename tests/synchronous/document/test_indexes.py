@@ -15,11 +15,12 @@ from mongoengine.mongodb_support import (
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
 from tests.synchronous.utils import reset_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class TestIndexes(unittest.TestCase):
     def setUp(self):
-        self.connection = connect(db="mongoenginetest")
+        self.connection = connect(db=MONGO_TEST_DB)
         self.db = get_db()
 
         class Person(Document):
@@ -1010,7 +1011,7 @@ class TestIndexes(unittest.TestCase):
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
         tmp_alias = "test_indexes_after_database_drop"
-        connection = connect(db="tempdatabase", alias=tmp_alias)
+        connection = connect(db=f"{MONGO_TEST_DB}_tempdb", alias=tmp_alias)
 
         class BlogPost(Document):
             slug = StringField(unique=True)
@@ -1022,7 +1023,7 @@ class TestIndexes(unittest.TestCase):
             BlogPost(slug="test").save()
 
         # Drop the Database
-        connection.drop_database("tempdatabase")
+        connection.drop_database(f"{MONGO_TEST_DB}_tempdb")
         BlogPost(slug="test").save()
         # No error because the index was not recreated after dropping the database.
         BlogPost(slug="test").save()
@@ -1041,7 +1042,7 @@ class TestIndexes(unittest.TestCase):
             BlogPost2(slug="test").save()
 
         # Drop the Database
-        connection.drop_database("tempdatabase")
+        connection.drop_database(f"{MONGO_TEST_DB}_tempdb")
         BlogPost2(slug="test").save()
         # Error because ensure_indexes is run on every save().
         with pytest.raises(NotUniqueError):

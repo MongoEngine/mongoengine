@@ -24,7 +24,7 @@ class StageBuilder:
     """
 
     def __init__(self):
-        self._pipeline: List[dict] = []
+        self._pipeline: list[dict] = []
 
     # --------------------------------------------------------------------- #
     # Public API
@@ -35,11 +35,11 @@ class StageBuilder:
             doc_cls,
             prefix: str,
             tree: dict,
-            buckets: Optional[dict],
+            buckets: dict | None,
             interleave: bool,
             embedded_list_path=None,
-            hydrate_tree: Optional[dict] = None,
-    ) -> List[dict]:
+            hydrate_tree: dict | None = None,
+    ) -> list[dict]:
         self._pipeline = []
 
         self._walk_lookups(
@@ -62,10 +62,10 @@ class StageBuilder:
             doc_cls,
             prefix: str,
             tree: dict,
-            buckets: Optional[dict],
+            buckets: dict | None,
             embedded_list_path=None,
             interleave: bool = False,
-            hydrate_tree: Optional[dict] = None,
+            hydrate_tree: dict | None = None,
     ):
         from mongoengine.fields import (
             ReferenceField,
@@ -436,7 +436,7 @@ class StageBuilder:
     # Bucketing helpers
     # --------------------------------------------------------------------- #
 
-    def _pop_foreign_match_for_prefix(self, buckets: dict, prefix: str) -> Optional[dict]:
+    def _pop_foreign_match_for_prefix(self, buckets: dict, prefix: str) -> dict | None:
         if prefix not in buckets:
             return None
         candidate = buckets[prefix]
@@ -446,7 +446,7 @@ class StageBuilder:
         buckets.pop(prefix, None)
         return foreign
 
-    def _to_foreign_match(self, match: Any, prefix: str) -> Optional[dict]:
+    def _to_foreign_match(self, match: Any, prefix: str) -> dict | None:
         if not isinstance(match, dict):
             return None
 
@@ -454,7 +454,7 @@ class StageBuilder:
             if bad in match:
                 return None
 
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         want = prefix + "."
 
         for k, v in match.items():
@@ -702,7 +702,7 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     @staticmethod
-    def _foreign_match_to_expr(match: Any, var: str = "$$d") -> Optional[dict]:
+    def _foreign_match_to_expr(match: Any, var: str = "$$d") -> dict | None:
         if not isinstance(match, dict):
             return None
 
@@ -710,13 +710,13 @@ class StageBuilder:
             if bad in match:
                 return None
 
-        def field_expr(field_path: str, predicate: Any) -> Optional[dict]:
+        def field_expr(field_path: str, predicate: Any) -> dict | None:
             path = f"{var}.{field_path}" if field_path else var
 
             if not isinstance(predicate, dict) or not predicate:
                 return {"$eq": [path, predicate]}
 
-            parts: List[dict] = []
+            parts: list[dict] = []
             regex_pat = None
             regex_opt = None
 
@@ -760,7 +760,7 @@ class StageBuilder:
                 return None
             return parts[0] if len(parts) == 1 else {"$and": parts}
 
-        def walk(node: Any) -> Optional[dict]:
+        def walk(node: Any) -> dict | None:
             if not isinstance(node, dict):
                 return None
 
@@ -768,7 +768,7 @@ class StageBuilder:
                 if bad in node:
                     return None
 
-            exprs: List[dict] = []
+            exprs: list[dict] = []
             for k, v in node.items():
                 if not isinstance(k, str):
                     return None
@@ -776,7 +776,7 @@ class StageBuilder:
                 if k in ("$and", "$or", "$nor"):
                     if not isinstance(v, list):
                         return None
-                    sub_exprs: List[dict] = []
+                    sub_exprs: list[dict] = []
                     for clause in v:
                         ce = walk(clause)
                         if ce is None:
@@ -815,7 +815,7 @@ class StageBuilder:
             target_cls,
             field_shape,
             local_field: str,
-            foreign_match: Optional[dict] = None,
+            foreign_match: dict | None = None,
             hydrate: bool = False,
     ):
         if not target_cls:
@@ -884,7 +884,7 @@ class StageBuilder:
             field_shape,
             list_path: str,
             embedded_key: str,
-            foreign_match: Optional[dict] = None,
+            foreign_match: dict | None = None,
             hydrate: bool = True,
     ):
         if not target_cls:
@@ -995,7 +995,7 @@ class StageBuilder:
             self,
             generic_field,
             local_field: str,
-            foreign_match: Optional[dict] = None,
+            foreign_match: dict | None = None,
             hydrate: bool = False,
     ):
         doc_classes = Schema.resolve_generic_choices(generic_field)
@@ -1111,7 +1111,7 @@ class StageBuilder:
             generic_field,
             list_path: str,
             embedded_key: str,
-            foreign_match: Optional[dict] = None,
+            foreign_match: dict | None = None,
             hydrate: bool = True,
     ):
         # keep your existing implementation (db alias removed)

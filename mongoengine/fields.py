@@ -24,6 +24,14 @@ except ImportError:
 else:
     import dateutil.parser
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
+
 from mongoengine.base import (
     BaseDocument,
     BaseField,
@@ -549,15 +557,15 @@ class DateTimeField(BaseField):
         if isinstance(value, datetime.datetime):
             # If naive: assume UTC
             if value.tzinfo is None:
-                value = value.replace(tzinfo=datetime.UTC)
+                value = value.replace(tzinfo=UTC)
             else:
                 # Normalize to UTC
-                value = value.astimezone(datetime.UTC)
+                value = value.astimezone(UTC)
             return value
 
         # A date without time
         if isinstance(value, datetime.date):
-            value = datetime.datetime(value.year, value.month, value.day, tzinfo=datetime.UTC)
+            value = datetime.datetime(value.year, value.month, value.day, tzinfo=UTC)
             return value
 
         # Strings
@@ -567,9 +575,9 @@ class DateTimeField(BaseField):
                 return None
             # Force to UTC
             if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=datetime.UTC)
+                parsed = parsed.replace(tzinfo=UTC)
             else:
-                parsed = parsed.astimezone(datetime.UTC)
+                parsed = parsed.astimezone(UTC)
             return parsed
 
         return None
@@ -673,9 +681,9 @@ class ComplexDateTimeField(StringField):
         '2011,06,08,20,26,24,092284'
         """
         if val.tzinfo is None:
-            val = val.replace(tzinfo=datetime.UTC)
+            val = val.replace(tzinfo=UTC)
         else:
-            val = val.astimezone(datetime.UTC)
+            val = val.astimezone(UTC)
         return val.strftime(self.format)
 
     def _convert_from_string(self, data):
@@ -689,7 +697,7 @@ class ComplexDateTimeField(StringField):
         datetime.datetime(2011, 6, 8, 20, 26, 24, 92284)
         """
         values = [int(d) for d in data.split(self.separator)]
-        return datetime.datetime(*values, tzinfo=datetime.UTC)
+        return datetime.datetime(*values, tzinfo=UTC)
 
     def __get__(self, instance, owner):
         if instance is None:

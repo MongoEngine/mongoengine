@@ -4,6 +4,7 @@ from pymongo import MongoClient, ReadPreference
 
 import mongoengine
 from mongoengine.asynchronous.connection import ConnectionFailure, async_connect
+from tests.utils import MONGO_TEST_DB
 
 CONN_CLASS = MongoClient
 READ_PREF = ReadPreference.SECONDARY
@@ -24,8 +25,8 @@ class ConnectionTest(unittest.IsolatedAsyncioTestCase):
         """Requires a replica set called "rs" on port 27017"""
         try:
             conn = await async_connect(
-                db="mongoenginetest",
-                host="mongodb://localhost/mongoenginetest?replicaSet=rs",
+                db=MONGO_TEST_DB,
+                host=f"mongodb://localhost/{MONGO_TEST_DB}?replicaSet=rs",
                 read_preference=READ_PREF,
             )
         except ConnectionFailure:

@@ -8,7 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
-Changes in 0.3.0
+Changes in 0.30.0
 =================
 - feat!: migrate MongoEngine to native async PyMongo (>= 4.14)
     - Refactored the core ODM to support PyMongo’s native async API

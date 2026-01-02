@@ -10,11 +10,12 @@ import warnings
 from mongoengine import *
 from tests.synchronous.utils import reset_connections
 from mongoengine.base.common import _document_registry
+from tests.utils import MONGO_TEST_DB
 
 
 class TestAllWarnings(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
         self.warning_list = []
         self.showwarning_default = warnings.showwarning
         warnings.showwarning = self.append_to_warning_list

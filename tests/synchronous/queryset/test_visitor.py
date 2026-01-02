@@ -8,11 +8,12 @@ from bson import ObjectId
 from mongoengine import *
 from mongoengine.errors import InvalidQueryError
 from mongoengine.base.queryset import Q
+from tests.utils import MONGO_TEST_DB
 
 
 class TestQ(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
 
         class Person(Document):
             name = StringField()
@@ -42,7 +43,7 @@ class TestQ(unittest.TestCase):
 
     def test_q_with_dbref(self):
         """Ensure Q objects handle DBRefs correctly"""
-        connect(db="mongoenginetest")
+        connect(db=MONGO_TEST_DB)
 
         class User(Document):
             pass

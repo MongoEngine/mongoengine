@@ -6,15 +6,16 @@ from mongoengine import *
 from mongoengine.asynchronous import async_connect, async_register_connection, async_disconnect_all
 from mongoengine.context_managers import async_query_counter
 from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
 
 
 class FieldTest(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        self.db = await async_connect(db="mongoenginetest")
+        self.db = await async_connect(db=MONGO_TEST_DB)
 
     async def asyncTearDown(self):
-        await self.db.drop_database("mongoenginetest")
+        await self.db.drop_database(MONGO_TEST_DB)
         await async_disconnect_all()
         await reset_async_connections()
 
@@ -1248,7 +1249,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
     async def test_objectid_reference_across_databases(self):
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        await async_register_connection("testdb-1", "mongoenginetest2")
+        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class User(Document):
             name = StringField()

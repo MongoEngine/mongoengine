@@ -6,11 +6,20 @@ import pytest
 from mongoengine import *
 from mongoengine.asynchronous import async_connect, connection
 from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo
+from tests.utils import MONGO_TEST_DB
 
 try:
     import dateutil
 except ImportError:
     dateutil = None
+
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
 
 
 class TestDateTimeField(MongoDBAsyncTestCase):
@@ -46,9 +55,9 @@ class TestDateTimeField(MongoDBAsyncTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=dt.datetime.now(datetime.UTC))
+            created = DateTimeField(default=dt.datetime.now(UTC))
 
-        utcnow = dt.datetime.now(datetime.UTC)
+        utcnow = dt.datetime.now(UTC)
         person = Person()
         person.validate()
         person_created_t0 = person.created
@@ -234,7 +243,7 @@ class TestDateTimeTzAware(MongoDBAsyncTestCase):
         connection._connections = {}
         connection._dbs = {}
 
-        await async_connect(db="mongoenginetest", tz_aware=True)
+        await async_connect(db=MONGO_TEST_DB, tz_aware=True)
 
         class LogEntry(Document):
             time = DateTimeField()

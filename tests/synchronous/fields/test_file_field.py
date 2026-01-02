@@ -18,7 +18,7 @@ try:
 except ImportError:
     HAS_PIL = False
 
-from tests.synchronous.utils import MongoDBTestCase
+from tests.synchronous.utils import MongoDBTestCase, MONGO_TEST_DB
 
 require_pil = pytest.mark.skipif(not HAS_PIL, reason="PIL not installed")
 
@@ -483,7 +483,7 @@ class TestFileField(MongoDBTestCase):
         t.image.delete()
 
     def test_file_multidb(self):
-        register_connection("test_files", "test_files")
+        register_connection("test_files", f"{MONGO_TEST_DB}_test_files")
 
         class TestFile(Document):
             name = StringField()

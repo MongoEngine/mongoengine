@@ -1,6 +1,15 @@
 import asyncio
 import unittest
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
+from tests.utils import MONGO_TEST_DB
+
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+    UTC = timezone.utc
 
 from mongoengine import (
     DateTimeField,
@@ -15,7 +24,7 @@ from tests.asynchronous.utils import requires_mongodb_gte_50
 
 class TestTimeSeriesCollections(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await async_connect(db="mongoenginetest")
+        await async_connect(db=MONGO_TEST_DB)
         self.db = await async_get_db()
 
         class SensorData(Document):

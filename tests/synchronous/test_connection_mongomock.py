@@ -5,6 +5,7 @@ import pytest
 import mongoengine.synchronous.connection
 from mongoengine import Document, StringField, connect, disconnect_all
 from mongoengine.synchronous.connection import get_connection
+from tests.utils import MONGO_TEST_DB
 
 try:
     import mongomock
@@ -36,7 +37,7 @@ class MongoMockConnectionTest(unittest.TestCase):
     def test_connect_in_mocking(self):
         """Ensure that the connect() method works properly in mocking."""
         connect(
-            "mongoenginetest",
+            MONGO_TEST_DB,
             host="mongodb://localhost",
             mongo_client_class=mongomock.MongoClient,
         )
@@ -44,7 +45,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            "mongoenginetest2",
+            f"{MONGO_TEST_DB}_2",
             host="mongodb://localhost",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb2",
@@ -53,7 +54,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            "mongoenginetest3",
+            f"{MONGO_TEST_DB}_3",
             host="mongodb://localhost",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb3",
@@ -62,7 +63,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            "mongoenginetest4",
+            f"{MONGO_TEST_DB}_4",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb4",
         )
@@ -70,7 +71,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            host="mongodb://localhost:27017/mongoenginetest5",
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}_5",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb5",
         )
@@ -78,7 +79,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            host="mongodb://localhost:27017/mongoenginetest6",
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}_6",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb6",
         )
@@ -86,7 +87,7 @@ class MongoMockConnectionTest(unittest.TestCase):
         assert isinstance(conn, mongomock.MongoClient)
 
         connect(
-            host="mongodb://localhost:27017/mongoenginetest7",
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}_7",
             mongo_client_class=mongomock.MongoClient,
             alias="testdb7",
         )
@@ -102,22 +103,22 @@ class MongoMockConnectionTest(unittest.TestCase):
             pass
 
         conn = connect(
-            host="mongodb://localhost:27017/mongoenginetest",
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}",
             mongo_client_class=mongomock.MongoClient,
         )
         some_document = SomeDocument()
         # database won't exist until we save a document
         some_document.save()
         assert SomeDocument.objects.count() == 1
-        assert conn.get_default_database().name == "mongoenginetest"
-        assert conn.list_database_names()[0] == "mongoenginetest"
+        assert conn.get_default_database().name == MONGO_TEST_DB
+        assert conn.list_database_names()[0] == MONGO_TEST_DB
 
     @require_mongomock
     def test_basic_queries_against_mongomock(self):
         disconnect_all()
 
         connect(
-            host="mongodb://localhost:27017/mongoenginetest",
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}",
             mongo_client_class=mongomock.MongoClient,
         )
 

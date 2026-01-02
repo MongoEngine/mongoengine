@@ -93,4 +93,3 @@ the :func:`put` method so even metadata can (and should) be replaced::
 
 .. seealso::
     For asynchronous GridFS operations, see :doc:`async-gridfs`.
-
