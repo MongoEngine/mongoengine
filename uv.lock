@@ -459,7 +459,7 @@ wheels = [
 
 [[package]]
 name = "mongoengine"
-version = "0.29.0"
+version = "0.30.0"
 source = { editable = "." }
 dependencies = [
     { name = "pymongo" },
@@ -489,7 +489,7 @@ test = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pymongo", specifier = ">=4.13,<5.0" }]
+requires-dist = [{ name = "pymongo", specifier = ">=4.14,<5.0" }]
 
 [package.metadata.requires-dev]
 dev = [
