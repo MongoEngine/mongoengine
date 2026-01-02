@@ -403,21 +403,21 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_connect_uri(self):
         """Ensure that the async_connect() method works properly with URIs."""
         c = await async_connect(db=MONGO_TEST_DB, alias="admin")
-        await c.admin.system.users.delete_many({})
-        await c.mongoenginetest.system.users.delete_many({})
+        admin_username = f"admin_{uuid.uuid4().hex[:8]}"
+        user_username = f"user_{uuid.uuid4().hex[:8]}"
 
-        await c.admin.command("createUser", "admin", pwd="password", roles=["root"])
+        await c.admin.command("createUser", admin_username, pwd="password", roles=["root"])
 
         adminadmin_settings = connection._connection_settings[
             "adminadmin"
         ] = connection._connection_settings["admin"].copy()
-        adminadmin_settings["username"] = "admin"
+        adminadmin_settings["username"] = admin_username
         adminadmin_settings["password"] = "password"
         ca = await async_connect(db=MONGO_TEST_DB, alias="adminadmin")
-        await ca.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
+        await ca.admin.command("createUser", user_username, pwd="password", roles=["dbOwner"])
 
         await async_connect(
-            "testdb_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
+            f"{MONGO_TEST_DB}_testdb_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
         )
 
         conn = await async_get_connection()
@@ -427,8 +427,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert isinstance(db, AsyncDatabase)
         assert db.name == MONGO_TEST_DB
 
-        await c.admin.system.users.delete_many({})
-        await c.mongoenginetest.system.users.delete_many({})
+        await c.admin.command("dropUser", user_username)
+        await c.admin.command("dropUser", admin_username)
 
     @pytest.mark.asyncio
     async def test_async_connect_uri_without_db(self):
@@ -487,14 +487,14 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         # Create users
         c = await async_connect(MONGO_TEST_DB)
 
-        await c.admin.system.users.delete_many({})
-        await c.admin.command("createUser", "username2", pwd="password", roles=["dbOwner"])
+        username = f"user_{uuid.uuid4().hex[:8]}"
+        await c.admin.command("createUser", username, pwd="password", roles=["dbOwner"])
 
         # Authentication fails without "authSource"
         test_conn = await async_connect(
             MONGO_TEST_DB,
             alias="test1",
-            host=f"mongodb://username2:password@localhost/{MONGO_TEST_DB}",
+            host=f"mongodb://{username}:password@localhost/{MONGO_TEST_DB}",
         )
         with pytest.raises(OperationFailure):
             await test_conn.server_info()
@@ -504,7 +504,7 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             MONGO_TEST_DB,
             alias="test2",
             host=(
-                f"mongodb://username2:password@localhost/{MONGO_TEST_DB}?authSource=admin"
+                f"mongodb://{username}:password@localhost/{MONGO_TEST_DB}?authSource=admin"
             ),
         )
         db = await async_get_db("test2")
@@ -512,7 +512,7 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert db.name == MONGO_TEST_DB
 
         # Clear all users
-        await authd_conn.admin.system.users.delete_many({})
+        await authd_conn.admin.command("dropUser", username)
 
     @pytest.mark.asyncio
     async def test_register_async_connection(self):

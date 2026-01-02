@@ -417,21 +417,21 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_uri(self):
         """Ensure that the connect() method works properly with URIs."""
         c = connect(db=MONGO_TEST_DB, alias="admin")
-        c.admin.system.users.delete_many({})
-        c.mongoenginetest.system.users.delete_many({})
+        admin_username = f"admin_{uuid.uuid4().hex[:8]}"
+        user_username = f"user_{uuid.uuid4().hex[:8]}"
 
-        c.admin.command("createUser", "admin", pwd="password", roles=["root"])
+        c.admin.command("createUser", admin_username, pwd="password", roles=["root"])
 
         adminadmin_settings = mongoengine.synchronous.connection._connection_settings[
             "adminadmin"
         ] = mongoengine.synchronous.connection._connection_settings["admin"].copy()
-        adminadmin_settings["username"] = "admin"
+        adminadmin_settings["username"] = admin_username
         adminadmin_settings["password"] = "password"
         ca = connect(db=MONGO_TEST_DB, alias="adminadmin")
-        ca.admin.command("createUser", "username", pwd="password", roles=["dbOwner"])
+        ca.admin.command("createUser", user_username, pwd="password", roles=["dbOwner"])
 
         connect(
-            "testdb_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
+            f"{MONGO_TEST_DB}_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
         )
 
         conn = get_connection()
@@ -441,8 +441,8 @@ class ConnectionTest(unittest.TestCase):
         assert isinstance(db, pymongo.database.Database)
         assert db.name == MONGO_TEST_DB
 
-        c.admin.system.users.delete_many({})
-        c.mongoenginetest.system.users.delete_many({})
+        c.admin.command("dropUser", user_username)
+        c.admin.command("dropUser", admin_username)
 
     def test_connect_uri_without_db(self):
         """Ensure connect() method works properly if the URI doesn't
@@ -496,15 +496,15 @@ class ConnectionTest(unittest.TestCase):
         """
         # Create users
         c = connect(MONGO_TEST_DB)
+        username = f"user_{uuid.uuid4().hex[:8]}"
 
-        c.admin.system.users.delete_many({})
-        c.admin.command("createUser", "username2", pwd="password", roles=["dbOwner"])
+        c.admin.command("createUser", username, pwd="password", roles=["dbOwner"])
 
         # Authentication fails without "authSource"
         test_conn = connect(
             MONGO_TEST_DB,
             alias="test1",
-            host=f"mongodb://username2:password@localhost/{MONGO_TEST_DB}",
+            host=f"mongodb://{username}:password@localhost/{MONGO_TEST_DB}",
         )
         with pytest.raises(OperationFailure):
             test_conn.server_info()
@@ -514,7 +514,7 @@ class ConnectionTest(unittest.TestCase):
             MONGO_TEST_DB,
             alias="test2",
             host=(
-                f"mongodb://username2:password@localhost/{MONGO_TEST_DB}?authSource=admin"
+                f"mongodb://{username}:password@localhost/{MONGO_TEST_DB}?authSource=admin"
             ),
         )
         db = get_db("test2")
@@ -522,7 +522,7 @@ class ConnectionTest(unittest.TestCase):
         assert db.name == MONGO_TEST_DB
 
         # Clear all users
-        authd_conn.admin.system.users.delete_many({})
+        authd_conn.admin.command("dropUser", username)
 
     def test_register_connection(self):
         """Ensure that connections with different aliases may be registered."""
