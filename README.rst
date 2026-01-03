@@ -49,7 +49,6 @@ Supported MongoDB Versions
 
 MongoEngine is tested against the following MongoDB versions:
 
-- MongoDB 4.2
 - MongoDB 4.4
 - MongoDB 5.0
 - MongoDB 6.0
