@@ -4,7 +4,6 @@ __all__ = ("_CollectionRegistry",)
 
 import enum
 import threading
-from typing import Dict, Tuple
 
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.synchronous.collection import Collection
