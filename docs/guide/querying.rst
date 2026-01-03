@@ -419,7 +419,7 @@ provided (:meth:`~mongoengine.queryset.QuerySet.first`)::
     # The asynchronous alternative is as follows:
 
     >>> # Make sure there are no users
-    >>> await User.drop_collection()
+    >>> await User.adrop_collection()
     >>> await User.aobjects.first() == None
     True
     >>> await User(name='Test User').asave()

@@ -134,7 +134,7 @@ class no_sub_classes:
 
 
 class query_counter:
-    """Query_counter context manager to get the number of queries.
+    """query_counter context manager to get the number of queries.
     This works by updating the `profiling_level` of the database so that all queries get logged,
     resetting the db.system.profile collection at the beginning of the context and counting the new entries.
 
@@ -150,11 +150,11 @@ class query_counter:
 
         with query_counter() as q:
             user = User(name='Bob')
-            assert q == 0       # no query fired yet
+            assert q == 0 # no query fired yet
             user.save()
-            assert q == 1       # 1 query was fired, an 'insert'
+            assert q == 1 # 1 query was fired, an 'insert'
             user_bis = User.objects().first()
-            assert q == 2       # a 2nd query was fired, a 'find_one'
+            assert q == 2 # a 2nd query was fired, a 'find_one'
 
     Be aware that:
 
@@ -242,7 +242,7 @@ class query_counter:
 
 
 class async_query_counter:
-    """Query_counter context manager to get the number of queries.
+    """async_query_counter context manager to get the number of queries.
     This works by updating the `profiling_level` of the database so that all queries get logged,
     resetting the db.system.profile collection at the beginning of the context and counting the new entries.
 
@@ -256,13 +256,13 @@ class async_query_counter:
         class User(Document):
             name = StringField()
 
-        with query_counter() as q:
+        with async_query_counter() as q:
             user = User(name='Bob')
-            assert q == 0 # no query fired yet
-            user.save()
-            assert q == 1 # 1 query was fired, an 'insert'
+            assert await q.eq(0) # no query fired yet
+            user.asave()
+            assert await q.eq(1) # 1 query was fired, an 'insert'
             user_bis = User.objects().first()
-            assert q == 2 # a 2nd query was fired, a 'find_one'
+            assert await q.eq(2) # a 2nd query was fired, a 'find_one'
 
     Be aware that:
 
