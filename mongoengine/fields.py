@@ -30,6 +30,7 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 from mongoengine.base import (
@@ -1253,6 +1254,11 @@ class GenericReferenceField(BaseField):
     """A reference to *any* Document subclass, stored as {"_cls": ..., "_ref": DBRef(...)}."""
 
     def __init__(self, choices, *args, **kwargs):
+        """
+        :param choices: The valid choices
+        :param *args: (optional) Arguments passed to the BaseField constructor.
+        :param **kwargs: (optional) Keyword Arguments passed to the BaseField constructor.
+        """
         if choices is None:
             raise ValueError("GenericReferenceField requires a choices argument")
         super().__init__(*args, **kwargs)

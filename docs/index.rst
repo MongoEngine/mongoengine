@@ -73,7 +73,6 @@ formats for offline reading.
 
     tutorial
     guide/index
-    guide/async-gridfs
     apireference
     changelog
     faq
