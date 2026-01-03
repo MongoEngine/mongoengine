@@ -333,7 +333,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 collection = db[collection_name]
             # Ensure indexes on the collection unless auto_create_index was
             # set to False. Plus, there is no need to ensure indexes on the slave.
-            if cls._meta.get("auto_create_index", True) and db.client.is_primary:
+            if cls._meta.get("auto_create_index", True) and await db.client.is_primary:
                 await cls.aensure_indexes(collection)
             _CollectionRegistry.register(db_alias=db_alias, name=collection_name, collection=collection,
                                          type_=collection_type, fingerprint=collection_fingerprint)
