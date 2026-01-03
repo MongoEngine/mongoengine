@@ -2,6 +2,8 @@ import unittest
 
 from mongoengine import *
 from mongoengine import signals
+from mongoengine.base import _DocumentRegistry
+from mongoengine.registry import _CollectionRegistry
 from tests.utils import MONGO_TEST_DB
 
 signal_output = []
@@ -248,6 +250,8 @@ class TestSignal(unittest.TestCase):
         # some receivers (eventually created in other tests)
         # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
         assert self.pre_signals == post_signals
+        _DocumentRegistry.clear()
+        _CollectionRegistry.clear()
 
     def test_model_signals(self):
         """Model saves should throw some signals."""

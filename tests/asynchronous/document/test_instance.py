@@ -21,7 +21,6 @@ from mongoengine import *
 from mongoengine import signals
 from mongoengine.asynchronous import async_get_db, async_disconnect, async_register_connection, async_disconnect_all
 from mongoengine.base import _DocumentRegistry
-from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from mongoengine.context_managers import switch_db, async_query_counter, switch_collection
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -2729,6 +2728,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         fixtures.PickleTest = PickleTest
 
     async def test_dynamic_document_pickle(self):
+        _DocumentRegistry.register(PickleDynamicEmbedded)
         pickle_doc = PickleDynamicTest(
             name="test", number=1, string="One", lists=["1", "2"]
         )

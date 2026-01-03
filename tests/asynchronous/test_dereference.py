@@ -782,16 +782,16 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         await group.asave()
 
         async with async_query_counter() as q:
-            assert q.eq(0)
+            assert await q.eq(0)
 
             group_obj = await Group.aobjects.first()
-            assert q.eq(1)
+            assert await q.eq(1)
 
             _ = [m for m in group_obj.members]
-            assert q.eq(1)
+            assert await q.eq(1)
 
             _ = [m for m in group_obj.members]
-            assert q.eq(1)
+            assert await q.eq(1)
 
             for k, m in group_obj.members.items():
                 assert "User" in m['_cls']

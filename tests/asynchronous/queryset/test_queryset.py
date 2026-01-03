@@ -1153,7 +1153,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         o1 = await Organization(name="o1", employees=[p1]).asave()
 
         async with async_query_counter() as q:
-            assert q.eq(0)
+            assert await q.eq(0)
 
             # Fetching a document should result in a query.
             org = await Organization.aobjects.get(id=o1.id)
@@ -5097,7 +5097,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await Person.aobjects.insert(persons, load_bulk=True)
 
         async with async_query_counter() as q:
-            assert q.eq(0)
+            assert await q.eq(0)
             people = Person.aobjects
 
             [x async for x in people]
@@ -5110,13 +5110,13 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
                 # This may be a bug in PyPy (PyPy/#1802) but it does not affect
                 # the behavior of MongoEngine.
                 assert people._len is None
-            assert q.eq(1)
+            assert await q.eq(1)
 
-            assert 100 == len(await people.to_list())  # Caused by list calling len
-            assert q.eq(1)
+            assert 100 == await people.len()  # Caused by list calling len
+            assert await q.eq(1)
 
             await people.count(with_limit_and_skip=True)  # count is cached
-            assert q.eq(1)
+            assert await q.eq(1)
 
     async def test_no_cached_queryset(self):
         class Person(Document):
@@ -5128,17 +5128,17 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await Person.aobjects.insert(persons, load_bulk=True)
 
         async with async_query_counter() as q:
-            assert q.eq(0)
+            assert await q.eq(0)
             people = await Person.aobjects.no_cache()
 
             [x async for x in people]
-            assert q.eq(1)
+            assert await q.eq(1)
 
             await Person.aobjects.to_list()
-            assert q.eq(2)
+            assert await q.eq(2)
 
             await Person.aobjects.count()
-            assert q.eq(3)
+            assert await q.eq(3)
 
     async def test_no_cached_queryset__repr__(self):
         class Person(Document):
@@ -5221,12 +5221,12 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         # Another iteration over the queryset should result in another db op.
         async with async_query_counter() as q:
             await docs.to_list()
-            assert q.eq(1)
+            assert await q.eq(1)
 
         # ... and another one to double-check.
         async with async_query_counter() as q:
             await docs.to_list()
-            assert q.eq(1)
+            assert await q.eq(1)
 
     async def test_nested_queryset_iterator(self):
         # Try iterating the same queryset twice, nested.
@@ -5249,7 +5249,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         inner_total_count = 0
 
         async with async_query_counter() as q:
-            assert q.eq(0)
+            assert await q.eq(0)
 
             assert await users.count(with_limit_and_skip=True) == 7
 
@@ -5274,7 +5274,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             # inner loop should be executed fourtynine times total
             assert inner_total_count == 7 * 7
 
-            assert q.eq(2)
+            assert await q.eq(2)
 
     async def test_no_sub_classes(self):
         class A(Document):
@@ -5439,7 +5439,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             if await Person.aobjects.exists():
                 pass
 
-            assert q.eq(1)
+            assert await q.eq(1)
             cursor = (await q.db).system.profile.find(
                 {"ns": {"$ne": f"{(await q.db).name}.system.indexes"}}
             )

@@ -11,14 +11,20 @@ from mongoengine import (
     MapField,
     GenericReferenceField,
 )
+from mongoengine.base import _DocumentRegistry
 from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from mongoengine.base.queryset.pipeline_builder.schema import Schema
+from mongoengine.registry import _CollectionRegistry
 
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
-    async def test_reference_field_attribute_match(self):
+
+    def tearDown(self):
+        _DocumentRegistry.clear()
+
+    def test_reference_field_attribute_match(self):
         class Parent(Document):
             age = IntField(required=True)
 
@@ -74,7 +80,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
         ]
         assert pipeline == expected
 
-    async def test_reference_field_select_related_scalar_hydrate(self):
+    def test_reference_field_select_related_scalar_hydrate(self):
         class Book(Document):
             title = StringField()
 
@@ -184,7 +190,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
         ]
         assert pipeline == expected
 
-    async def test_listfield_reference_select_related(self):
+    def test_listfield_reference_select_related(self):
         class Book(Document):
             title = StringField()
 
@@ -333,7 +339,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
 
         assert pipeline == expected
 
-    async def test_dictfield_reference_select_related(self):
+    def test_dictfield_reference_select_related(self):
         class Book(Document):
             title = StringField()
 
@@ -467,7 +473,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
         ]
         assert pipeline == expected
 
-    async def test_mapfield_reference_select_related(self):
+    def test_mapfield_reference_select_related(self):
         class Book(Document):
             title = StringField()
 
@@ -608,7 +614,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
 
         assert pipeline == expected
 
-    async def test_generic_reference_scalar_select_related_exact(self):
+    def test_generic_reference_scalar_select_related_exact(self):
         class A(Document):
             name = StringField()
 
@@ -685,7 +691,7 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
 
         assert pipeline == expected
 
-    async def test_embedded_list_double_select_related_and_filter_via_join(self):
+    def test_embedded_list_double_select_related_and_filter_via_join(self):
         class Parent(Document):
             age = IntField(required=True)
 

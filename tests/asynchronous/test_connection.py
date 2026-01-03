@@ -24,6 +24,7 @@ from pymongo.errors import ConnectionFailure
 from mongoengine.asynchronous import async_connect, async_disconnect, async_disconnect_all, async_get_connection, \
     async_get_db, async_register_connection, connection
 from mongoengine.asynchronous.connection import DEFAULT_DATABASE_NAME
+from mongoengine.base import _DocumentRegistry
 from mongoengine.document import Document
 from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.registry import _CollectionRegistry
@@ -47,6 +48,7 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await async_disconnect_all()
         await reset_async_connections()
+        _DocumentRegistry.clear()
         _CollectionRegistry.clear()
 
     @pytest.mark.asyncio

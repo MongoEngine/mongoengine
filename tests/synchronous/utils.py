@@ -6,6 +6,7 @@ import unittest
 import pytest
 
 from mongoengine import connect
+from mongoengine.base import _DocumentRegistry
 from mongoengine.registry import _CollectionRegistry
 from mongoengine.synchronous.connection import disconnect_all, get_db
 from mongoengine.context_managers import query_counter
@@ -28,6 +29,7 @@ class MongoDBTestCase(unittest.TestCase):
     def tearDown(self):
         self._connection.drop_database(MONGO_TEST_DB)
         disconnect_all()
+        _DocumentRegistry.clear()
         _CollectionRegistry.clear()
 
 

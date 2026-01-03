@@ -21,52 +21,52 @@ jobs:
     # which runs pre-configured linter & autoformatter
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v7
-    - name: Install Dependencies for lint
-      run: uv sync --only-group dev
-    - name: Install Dependencies for lint
-      run: uv run pre-commit run -a
+      - uses: actions/checkout@v6
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install Dependencies for lint
+        run: uv sync --only-group dev
+      - name: Install Dependencies for lint
+        run: uv run pre-commit run -a
 
   test:
     # Test suite run against recent python versions
     # and against a few combination of MongoDB and pymongo
-    runs-on:  ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        mongodb-version: ["4.4", "5.0", "6.0", "7.0", "8.0"]
+        python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+        mongodb-version: [ "4.2", "4.4", "5.0", "6.0", "7.0", "8.0" ]
     steps:
-    - uses: actions/checkout@v6
-    - name: Install uv and set the Python version ${{ matrix.python-version }}
-      uses: astral-sh/setup-uv@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Start MongoDB
-      uses: supercharge/mongodb-github-action@1.12.1
-      with:
-        mongodb-version: ${{ matrix.mongodb-version }}
-        mongodb-replica-set: mongoengine
-    - name: Install Dependencies
-      run: uv sync --only-group test
-    - name: Run test suite
-      run: |
-        envs="$(uv run tox -a | grep py$(echo "${{ matrix.python-version }}" | tr -d . ) || true)"
-        if [ -z "$envs" ]; then
-          echo "Error: No matching tox envs found" >&2
-          exit 1
-        fi
-        echo "Running with: $envs"
-        uv run tox run-parallel -e "$envs" -- "--cov=mongoengine --cov-report="
-        uv run coverage combine
-        uv run coverage report
-#    - name: Send coverage to Coveralls
-#      env:
-#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        COVERALLS_SERVICE_NAME: github
-#      run: uv run coveralls
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.12.1
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-replica-set: mongoengine
+      - name: Install Dependencies
+        run: uv sync --only-group test
+      - name: Run test suite
+        run: |
+          envs="$(uv run tox -a | grep py$(echo "${{ matrix.python-version }}" | tr -d . ) || true)"
+          if [ -z "$envs" ]; then
+            echo "Error: No matching tox envs found" >&2
+            exit 1
+          fi
+          echo "Running with: $envs"
+          uv run tox run-parallel -e "$envs" -- "--cov=mongoengine --cov-report="
+          uv run coverage combine
+          uv run coverage report
+  #    - name: Send coverage to Coveralls
+  #      env:
+  #        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #        COVERALLS_SERVICE_NAME: github
+  #      run: uv run coveralls
 
   build_doc_dryrun:
     # ensures that readthedocs can be built continuously
@@ -75,45 +75,45 @@ jobs:
     # builds are visible at https://readthedocs.org/projects/mongoengine-odm/builds/
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
-      uses: astral-sh/setup-uv@v7
-      with:
-        python-version: ${{ env.MAIN_PYTHON_VERSION }}
-    - name: install python dep
-      run: uv sync --only-group docs
-    - name: build doc
-      run: |
-        cd docs
-        make html-readthedocs
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+      - name: install python dep
+        run: uv sync --only-group docs
+      - name: build doc
+        run: |
+          cd docs
+          make html-readthedocs
 
   build-dryrun:
     runs-on: ubuntu-latest
-    needs: [linting, test, build_doc_dryrun]
+    needs: [ linting, test, build_doc_dryrun ]
     steps:
-    - uses: actions/checkout@v6
-    - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
-      uses: astral-sh/setup-uv@v7
-      with:
-        python-version: ${{ env.MAIN_PYTHON_VERSION }}
-    - name: build dummy wheel for test-pypi
-      run: uv build
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+      - name: build dummy wheel for test-pypi
+        run: uv build
 
   build-n-publish:
     runs-on: ubuntu-latest
-    needs: [linting, test, build_doc_dryrun, build-dryrun]
+    needs: [ linting, test, build_doc_dryrun, build-dryrun ]
     if: github.event_name == 'create' && startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@v6
-    - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
-      uses: astral-sh/setup-uv@v7
-      with:
-        python-version: ${{ env.MAIN_PYTHON_VERSION }}
-    # todo separate build from publish
-    # https://stackoverflow.com/questions/59349905/which-properties-does-github-event-in-a-github-workflow-have
-    - name: build dummy wheel for test-pypi
-      run: uv build
-    - name: publish pypi
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.pypi_token }}
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version ${{ env.MAIN_PYTHON_VERSION }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+      # todo separate build from publish
+      # https://stackoverflow.com/questions/59349905/which-properties-does-github-event-in-a-github-workflow-have
+      - name: build dummy wheel for test-pypi
+        run: uv build
+      - name: publish pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.pypi_token }}

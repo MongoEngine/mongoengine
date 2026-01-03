@@ -24,6 +24,8 @@ from mongoengine import (
     disconnect_all,
     register_connection,
 )
+from mongoengine.base import _DocumentRegistry
+from mongoengine.registry import _CollectionRegistry
 from mongoengine.synchronous.connection import (
     DEFAULT_DATABASE_NAME,
     ConnectionFailure,
@@ -57,6 +59,8 @@ class ConnectionTest(unittest.TestCase):
         mongoengine.synchronous.connection._connection_settings = {}
         mongoengine.synchronous.connection._connections = {}
         mongoengine.synchronous.connection._dbs = {}
+        _DocumentRegistry.clear()
+        _CollectionRegistry.clear()
 
     def test_connect(self):
         """Ensure that the connect() method works properly."""

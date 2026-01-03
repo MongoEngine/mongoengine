@@ -2739,6 +2739,7 @@ class TestDocumentInstance(MongoDBTestCase):
         fixtures.PickleTest = PickleTest
 
     def test_dynamic_document_pickle(self):
+        _DocumentRegistry.register(PickleDynamicEmbedded)
         pickle_doc = PickleDynamicTest(
             name="test", number=1, string="One", lists=["1", "2"]
         )

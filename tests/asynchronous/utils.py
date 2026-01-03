@@ -7,6 +7,7 @@ import pytest
 
 from mongoengine.asynchronous import async_disconnect_all, async_connect, async_get_db, \
     async_disconnect
+from mongoengine.base import _DocumentRegistry
 from mongoengine.context_managers import async_query_counter
 from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
 from mongoengine.registry import _CollectionRegistry
@@ -29,6 +30,7 @@ class MongoDBAsyncTestCase(unittest.IsolatedAsyncioTestCase):
         await self._connection.drop_database(MONGO_TEST_DB)
         await async_disconnect()
         await reset_async_connections()
+        _DocumentRegistry.clear()
         _CollectionRegistry.clear()
 
 

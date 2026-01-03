@@ -77,6 +77,11 @@ class _DocumentRegistry:
     def unregister(doc_cls_name):
         _document_registry.pop(doc_cls_name)
 
+    @staticmethod
+    def clear():
+        _document_registry.clear()
+
+
 def _get_documents_by_db(connection_alias, default_connection_alias):
     """Get all registered Documents class attached to a given database"""
 
