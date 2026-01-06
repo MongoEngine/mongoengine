@@ -4,6 +4,7 @@ import random
 
 import pytest
 from pymongo.errors import OperationFailure, InvalidOperation
+from pymongo.read_concern import ReadConcern
 
 from mongoengine import *
 from mongoengine.asynchronous import async_register_connection, async_get_db, async_connect
@@ -407,7 +408,6 @@ class TestContextManagers(MongoDBAsyncTestCase):
         class A(Document):
             name = StringField()
 
-        await A.adrop_collection()
         # ensure a collection is created (needed for transaction with MongoDB <= 4.2)
         await A.aobjects.create(name="test")
         await A.aobjects.delete()
@@ -455,19 +455,15 @@ class TestContextManagers(MongoDBAsyncTestCase):
         class A(Document):
             name = StringField()
 
-        await A.adrop_collection()
-
         a_doc = await A.aobjects.create(name="a")
 
         class B(Document):
             meta = {"db_alias": "test2"}
             name = StringField()
 
-        await B.adrop_collection()
-
         b_doc = await B.aobjects.create(name="b")
 
-        async with run_in_transaction():
+        async with run_in_transaction(transaction_kwargs={"read_concern": ReadConcern("local")}):
             await a_doc.aupdate(name="a3")
             with switch_db(A, "test2"):
                 await a_doc.aupdate(name="a4", upsert=True)
