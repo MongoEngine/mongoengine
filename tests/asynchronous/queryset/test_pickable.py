@@ -49,15 +49,15 @@ class TestQuerysetPickable(MongoDBAsyncTestCase):
         # check
         assert (await Person.aobjects.first()).age == 23
 
-    # async def test_pickle_support_filtration(self):
-    #     await Person.aobjects.create(name="Alice", age=22)
-    #
-    #     await Person.aobjects.create(name="Bob", age=23)
-    #
-    #     qs = Person.aobjects.filter(age__gte=22)
-    #     assert await qs.count() == 2
-    #
-    #     loaded = self._get_loaded(qs)
-    #
-    #     assert await loaded.count() == 2
-    #     assert (await loaded.filter(name="Bob").first()).age == 23
+    async def test_pickle_support_filtration(self):
+        await Person.aobjects.create(name="Alice", age=22)
+
+        await Person.aobjects.create(name="Bob", age=23)
+
+        qs = Person.aobjects.filter(age__gte=22)
+        assert await qs.count() == 2
+
+        loaded = await self._get_loaded(qs)
+
+        assert await loaded.count() == 2
+        assert (await loaded.filter(name="Bob").first()).age == 23
