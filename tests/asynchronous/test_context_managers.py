@@ -368,8 +368,6 @@ class TestContextManagers(MongoDBAsyncTestCase):
         class A(Document):
             name = StringField()
 
-        await A.adrop_collection()
-
         a_doc = await A.aobjects.create(name="a")
 
         with pytest.raises(TestRollbackError):
@@ -385,8 +383,6 @@ class TestContextManagers(MongoDBAsyncTestCase):
 
         class A(Document):
             name = StringField()
-
-        await A.adrop_collection()
 
         # ensure the collection is created (needed for transaction with MongoDB <= 4.2)
         await A.aobjects.create(name="test")

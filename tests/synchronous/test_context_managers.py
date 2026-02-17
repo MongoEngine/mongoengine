@@ -397,8 +397,6 @@ class TestContextManagers(MongoDBTestCase):
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
-
         a_doc = A.objects.create(name="a")
 
         with pytest.raises(TestRollbackError):
@@ -414,8 +412,6 @@ class TestContextManagers(MongoDBTestCase):
 
         class A(Document):
             name = StringField()
-
-        A.drop_collection()
 
         # ensure collection is created (needed for transaction with MongoDB <= 4.2)
         A.objects.create(name="test")
