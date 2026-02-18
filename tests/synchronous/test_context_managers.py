@@ -6,6 +6,7 @@ from threading import Thread
 
 import pytest
 from pymongo.errors import OperationFailure
+from pymongo.read_concern import ReadConcern
 
 from mongoengine import *
 from mongoengine.session import _get_session
@@ -396,8 +397,6 @@ class TestContextManagers(MongoDBTestCase):
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
-
         a_doc = A.objects.create(name="a")
 
         with pytest.raises(TestRollbackError):
@@ -413,8 +412,6 @@ class TestContextManagers(MongoDBTestCase):
 
         class A(Document):
             name = StringField()
-
-        A.drop_collection()
 
         # ensure collection is created (needed for transaction with MongoDB <= 4.2)
         A.objects.create(name="test")
@@ -436,7 +433,6 @@ class TestContextManagers(MongoDBTestCase):
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
         # ensure a collection is created (needed for transaction with MongoDB <= 4.2)
         A.objects.create(name="test")
         A.objects.delete()
@@ -484,19 +480,15 @@ class TestContextManagers(MongoDBTestCase):
         class A(Document):
             name = StringField()
 
-        A.drop_collection()
-
         a_doc = A.objects.create(name="a")
 
         class B(Document):
             meta = {"db_alias": "test2"}
             name = StringField()
 
-        B.drop_collection()
-
         b_doc = B.objects.create(name="b")
 
-        with run_in_transaction():
+        with run_in_transaction(transaction_kwargs={"read_concern": ReadConcern("local")}):
             a_doc.update(name="a3")
             with switch_db(A, "test2"):
                 a_doc.update(name="a4", upsert=True)
