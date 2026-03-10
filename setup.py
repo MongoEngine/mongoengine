@@ -58,7 +58,7 @@ setup(
     author_email="harry.marr@gmail.com",
     maintainer="Bastien Gerard",
     maintainer_email="bast.gerard@gmail.com",
-    url="http://mongoengine.org/",
+    url="https://github.com/MongoEngine/mongoengine",
     download_url="https://github.com/MongoEngine/mongoengine/tarball/master",
     license="MIT",
     include_package_data=True,

@@ -211,7 +211,7 @@ class TestDynamicDocument(MongoDBTestCase):
         Doc.drop_collection()
         doc = Doc()
 
-        embedded_doc_1 = Embedded(content="http://mongoengine.org")
+        embedded_doc_1 = Embedded(content="http://garbage.org")
         embedded_doc_1.validate()
 
         embedded_doc_2 = Embedded(content="this is not a url")
