@@ -8,6 +8,10 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
+Changes in 0.29.1
+=================
+- Remove mentions of mongoengine[dot]org has we no longer own it #2905
+
 Changes in 0.29.0
 =================
 - Fix weakref in EmbeddedDocumentListField (causing brief mem leak in certain circumstances) #2827
