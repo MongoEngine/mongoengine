@@ -136,16 +136,22 @@ def _get_connection_settings(
                 if uri_dict.get(param):
                     conn_settings[param] = uri_dict[param]
 
-            uri_options = uri_dict[
-                "options"
-            ]  # uri_options is a _CaseInsensitiveDictionary
-            if "replicaset" in uri_options:
-                conn_settings["replicaSet"] = uri_options["replicaset"]
-            if "authsource" in uri_options:
-                conn_settings["authentication_source"] = uri_options["authsource"]
-            if "authmechanism" in uri_options:
-                conn_settings["authentication_mechanism"] = uri_options["authmechanism"]
-            if "readpreference" in uri_options:
+            uri_options = uri_dict["options"]
+            normalized_uri_options = {
+                key.lower(): value for key, value in uri_options.items()
+            }
+
+            if "replicaset" in normalized_uri_options:
+                conn_settings["replicaSet"] = normalized_uri_options["replicaset"]
+            if "authsource" in normalized_uri_options:
+                conn_settings["authentication_source"] = normalized_uri_options[
+                    "authsource"
+                ]
+            if "authmechanism" in normalized_uri_options:
+                conn_settings["authentication_mechanism"] = normalized_uri_options[
+                    "authmechanism"
+                ]
+            if "readpreference" in normalized_uri_options:
                 read_preferences = (
                     ReadPreference.NEAREST,
                     ReadPreference.PRIMARY,
@@ -159,7 +165,7 @@ def _get_connection_settings(
                 # int (e.g. 3).
                 # TODO simplify the code below once we drop support for
                 # PyMongo v3.4.
-                read_pf_mode = uri_options["readpreference"]
+                read_pf_mode = normalized_uri_options["readpreference"]
                 if isinstance(read_pf_mode, str):
                     read_pf_mode = read_pf_mode.lower()
                 for preference in read_preferences:
@@ -170,23 +176,23 @@ def _get_connection_settings(
                         ReadPrefClass = preference.__class__
                         break
 
-                if "readpreferencetags" in uri_options:
+                if "readpreferencetags" in normalized_uri_options:
                     conn_settings["read_preference"] = ReadPrefClass(
-                        tag_sets=uri_options["readpreferencetags"]
+                        tag_sets=normalized_uri_options["readpreferencetags"]
                     )
                 else:
                     conn_settings["read_preference"] = ReadPrefClass()
 
-            if "authmechanismproperties" in uri_options:
-                conn_settings["authmechanismproperties"] = uri_options[
+            if "authmechanismproperties" in normalized_uri_options:
+                conn_settings["authmechanismproperties"] = normalized_uri_options[
                     "authmechanismproperties"
                 ]
-            if "uuidrepresentation" in uri_options:
+            if "uuidrepresentation" in normalized_uri_options:
                 REV_UUID_REPRESENTATIONS = {
                     v: k for k, v in _UUID_REPRESENTATIONS.items()
                 }
                 conn_settings["uuidrepresentation"] = REV_UUID_REPRESENTATIONS[
-                    uri_options["uuidrepresentation"]
+                    normalized_uri_options["uuidrepresentation"]
                 ]
         else:
             resolved_hosts.append(entity)

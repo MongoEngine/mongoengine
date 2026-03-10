@@ -17,7 +17,6 @@ env:
   MONGODB_5_0: "5.0.31"
   MONGODB_6_0: "6.0.22"
   MONGODB_7_0: "7.0.19"
-  MONGODB_8_0: "8.0.9"
 
   PYMONGO_3_4: 3.4
   PYMONGO_3_6: 3.6
