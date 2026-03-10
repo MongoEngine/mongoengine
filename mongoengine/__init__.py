@@ -29,7 +29,7 @@ __all__ = (
 )
 
 
-VERSION = (0, 29, 1)
+VERSION = (0, 29, 2)
 
 
 def get_version():
