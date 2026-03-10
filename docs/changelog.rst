@@ -8,9 +8,13 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 
-Changes in 0.29.2
+Changes in 0.29.3
 =================
 - Remove mentions of mongoengine[dot]org has we no longer own it #2905
+
+Changes in 0.29.2
+=================
+- fixes relted with
 
 Changes in 0.29.1
 =================
