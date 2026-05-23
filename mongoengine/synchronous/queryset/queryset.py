@@ -1,5 +1,3 @@
-from typing import Union
-
 from mongoengine.errors import OperationError
 from mongoengine.synchronous.queryset.base import (
     BaseQuerySet,

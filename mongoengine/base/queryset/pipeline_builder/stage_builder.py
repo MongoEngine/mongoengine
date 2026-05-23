@@ -838,9 +838,11 @@ class StageBuilder:
             }
         )
 
+        filter_cond = None
         if foreign_match:
             cond = self._foreign_match_to_expr(foreign_match, var="$$d")
             if cond is not None:
+                filter_cond = cond
                 self._pipeline.append(
                     {
                         "$match": {
@@ -869,8 +871,39 @@ class StageBuilder:
                 self._pipeline.append({"$project": {fallback_alias: 0}})
 
         if hydrate:
-            transformed = self._build_value_expr(field_shape, f"${local_field}", f"${docs_alias}")
-            self._pipeline.append({"$addFields": {local_field: transformed}})
+            if filter_cond is not None:
+                # Hydrate with only the docs that pass the filter, not the full docs_alias.
+                # This ensures the field contains only the matched sub-documents.
+                from mongoengine.fields import ListField
+                filtered_expr = {
+                    "$filter": {
+                        "input": {"$cond": [{"$isArray": f"${docs_alias}"}, f"${docs_alias}", []]},
+                        "as": "d",
+                        "cond": filter_cond,
+                    }
+                }
+                if isinstance(field_shape, ListField):
+                    self._pipeline.append({"$addFields": {local_field: filtered_expr}})
+                else:
+                    self._pipeline.append({
+                        "$addFields": {
+                            local_field: {
+                                "$let": {
+                                    "vars": {"matches": filtered_expr},
+                                    "in": {
+                                        "$cond": [
+                                            {"$gt": [{"$size": "$$matches"}, 0]},
+                                            {"$arrayElemAt": ["$$matches", 0]},
+                                            None,
+                                        ]
+                                    },
+                                }
+                            }
+                        }
+                    })
+            else:
+                transformed = self._build_value_expr(field_shape, f"${local_field}", f"${docs_alias}")
+                self._pipeline.append({"$addFields": {local_field: transformed}})
 
         self._pipeline.append({"$project": {docs_alias: 0}})
 
