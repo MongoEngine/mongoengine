@@ -45,6 +45,7 @@ jobs:
       matrix:
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
         mongodb-version: [ "4.4", "5.0", "6.0", "7.0", "8.0", "8.3" ]
+        pymongo-version: [ "414", "415", "416", "417" ]
     steps:
       - uses: actions/checkout@v6
       - name: Install uv and set the Python version ${{ matrix.python-version }}
@@ -62,20 +63,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tox
-          key: tox-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'tox.ini') }}
+          key: tox-${{ matrix.python-version }}-mg${{ matrix.pymongo-version }}-${{ hashFiles('pyproject.toml', 'tox.ini') }}
           restore-keys: |
-            tox-${{ matrix.python-version }}-
+            tox-${{ matrix.python-version }}-mg${{ matrix.pymongo-version }}-
       - name: Install Dependencies
         run: uv sync --only-group test
       - name: Run test suite
         run: |
-          envs="$(uv run tox -a | grep py$(echo "${{ matrix.python-version }}" | tr -d . ) | tr '\n' ',' | sed 's/,$//' || true)"
-          if [ -z "$envs" ]; then
-            echo "Error: No matching tox envs found" >&2
-            exit 1
-          fi
-          echo "Running with: $envs"
-          uv run tox run-parallel -e "$envs" -- "--cov=mongoengine --cov-report="
+          env="py$(echo "${{ matrix.python-version }}" | tr -d . )-mg${{ matrix.pymongo-version }}"
+          echo "Running tox environment: $env"
+          uv run tox run -e "$env" -- "--cov=mongoengine --cov-report="
           uv run coverage combine
           uv run coverage report
   #    - name: Send coverage to Coveralls
