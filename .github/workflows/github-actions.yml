@@ -53,7 +53,7 @@ jobs:
         run: uv sync --only-group test
       - name: Run test suite
         run: |
-          envs="$(uv run tox -a | grep py$(echo "${{ matrix.python-version }}" | tr -d . ) || true)"
+          envs="$(uv run tox -a | grep py$(echo "${{ matrix.python-version }}" | tr -d . ) | tr '\n' ',' | sed 's/,$//' || true)"
           if [ -z "$envs" ]; then
             echo "Error: No matching tox envs found" >&2
             exit 1
