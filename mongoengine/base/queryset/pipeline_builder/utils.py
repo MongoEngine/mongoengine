@@ -55,7 +55,9 @@ def needs_aggregation(queryset):
                 if isinstance(leaf, GenericReferenceField):
                     return bool(getattr(leaf, "choices", None))
 
-            if isinstance(fld, EmbeddedDocumentField) or Schema.is_list_of_embedded(fld):
+            if isinstance(fld, EmbeddedDocumentField) or Schema.is_list_of_embedded(
+                fld
+            ):
                 cls = Schema.embedded_doc_type(fld)
                 continue
 
@@ -112,13 +114,17 @@ def needs_aggregation(queryset):
             if isinstance(leaf, GenericReferenceField):
                 return bool(getattr(leaf, "choices", None))
 
-        if isinstance(field, EmbeddedDocumentField) or Schema.is_list_of_embedded(field):
+        if isinstance(field, EmbeddedDocumentField) or Schema.is_list_of_embedded(
+            field
+        ):
             dt = Schema.embedded_doc_type(field)
             if not dt or dt in seen_embedded:
                 return False
             seen2 = set(seen_embedded)
             seen2.add(dt)
-            return any(needs_lookup_for_field(sub, seen2) for sub in dt._fields.values())
+            return any(
+                needs_lookup_for_field(sub, seen2) for sub in dt._fields.values()
+            )
 
         return False
 

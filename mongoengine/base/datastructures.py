@@ -437,6 +437,7 @@ class StrictDict:
         )
         allowed_keys = frozenset(allowed_keys_tuple)
         if allowed_keys not in cls._classes:
+
             class SpecificStrictDict(cls):
                 __slots__ = allowed_keys_tuple
 
@@ -474,12 +475,17 @@ class LazyReference(DBRef):
 
     @property
     def value(self):
-        return {"_ref": DBRef(self.document_type._get_collection_name(), self.id), "_cls": self.document_type.__name__}
+        return {
+            "_ref": DBRef(self.document_type._get_collection_name(), self.id),
+            "_cls": self.document_type.__name__,
+        }
 
     def to_dbref(self):
         return DBRef(self.document_type._get_collection_name(), self.id)
 
-    def __init__(self, document_type, pk, cached_doc=None, passthrough=False, _async=False):
+    def __init__(
+        self, document_type, pk, cached_doc=None, passthrough=False, _async=False
+    ):
         self.document_type = document_type
         self._cached_doc = cached_doc
         self.passthrough = passthrough

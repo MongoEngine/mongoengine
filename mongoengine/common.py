@@ -1,5 +1,11 @@
 from pymongo.database_shared import _check_name
-from pymongo.read_preferences import Secondary, Primary, PrimaryPreferred, SecondaryPreferred, Nearest
+from pymongo.read_preferences import (
+    Secondary,
+    Primary,
+    PrimaryPreferred,
+    SecondaryPreferred,
+    Nearest,
+)
 
 _class_registry_cache = {}
 _field_list_cache = []
@@ -15,7 +21,9 @@ def _check_db_name(name):
         _check_name(name)
 
 
-def convert_read_preference(value: str, tag_sets: list[str] | None = None, max_staleness: int = -1, hedge=None):
+def convert_read_preference(
+    value: str, tag_sets: list[str] | None = None, max_staleness: int = -1, hedge=None
+):
     if not value:
         return Primary()
 
@@ -23,9 +31,15 @@ def convert_read_preference(value: str, tag_sets: list[str] | None = None, max_s
 
     mapping = {
         "primary": Primary(),
-        "primarypreferred": PrimaryPreferred(tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge),
-        "secondary": Secondary(tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge),
-        "secondarypreferred": SecondaryPreferred(tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge),
+        "primarypreferred": PrimaryPreferred(
+            tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge
+        ),
+        "secondary": Secondary(
+            tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge
+        ),
+        "secondarypreferred": SecondaryPreferred(
+            tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge
+        ),
         "nearest": Nearest(tag_sets=tag_sets, max_staleness=max_staleness, hedge=hedge),
     }
 
@@ -118,6 +132,7 @@ async def _normalize_async_values_document(doc):
     """
     from mongoengine.asynchronous.queryset import AsyncQuerySet
     from mongoengine.document import BaseDocument
+
     async def normalize(value):
         # AsyncQuerySet → list
         if isinstance(value, AsyncQuerySet):

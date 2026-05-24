@@ -7,21 +7,24 @@ from pymongo.errors import OperationFailure, InvalidOperation
 from pymongo.read_concern import ReadConcern
 
 from mongoengine import *
-from mongoengine.asynchronous import async_register_connection, async_get_db, async_connect
+from mongoengine.asynchronous import (
+    async_register_connection,
+    async_get_db,
+    async_connect,
+)
 from mongoengine.session import _get_session
 from mongoengine.context_managers import (
     no_sub_classes,
     set_read_write_concern,
     set_write_concern,
     switch_collection,
-    switch_db, async_query_counter, run_in_transaction,
+    switch_db,
+    async_query_counter,
+    run_in_transaction,
 )
 from mongoengine.pymongo_support import async_count_documents
 from tests.asynchronous.utils import MongoDBAsyncTestCase
-from tests.utils import (
-    requires_mongodb_gte_44,
-    MONGO_TEST_DB
-)
+from tests.utils import requires_mongodb_gte_44, MONGO_TEST_DB
 
 
 class TestRollbackError(Exception):
@@ -37,7 +40,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
         original_write_concern = collection.write_concern
 
         with set_write_concern(
-                collection, {"w": "majority", "j": True, "wtimeout": 1234}
+            collection, {"w": "majority", "j": True, "wtimeout": 1234}
         ) as updated_collection:
             assert updated_collection.write_concern.document == {
                 "w": "majority",
@@ -57,9 +60,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
         original_write_concern = collection.write_concern
 
         with set_read_write_concern(
-                collection,
-                {"w": "majority", "j": True, "wtimeout": 1234},
-                {"level": "local"},
+            collection,
+            {"w": "majority", "j": True, "wtimeout": 1234},
+            {"level": "local"},
         ) as update_collection:
             assert update_collection.read_concern.document == {"level": "local"}
             assert update_collection.write_concern.document == {
@@ -241,7 +244,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
         counter = 0
         async with async_query_counter() as q:
             assert await q.eq(counter)
-            assert await q.eq(counter)  # Ensures previous count query did not get counted
+            assert await q.eq(
+                counter
+            )  # Ensures previous count query did not get counted
 
             for _ in range(10):
                 await issue_1_insert_query()
@@ -380,7 +385,6 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert (await A.aobjects.get(id=a_doc.id)).name == "a"
 
     async def test_creating_a_document_within_a_transaction(self):
-
         class A(Document):
             name = StringField()
 
@@ -400,7 +404,6 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert (await A.aobjects.get(id=another_doc.id)).name == "b"
 
     async def test_creating_a_document_within_a_transaction_that_fails(self):
-
         class A(Document):
             name = StringField()
 
@@ -444,7 +447,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert "b2" == (await B.aobjects.get(id=b_doc.id)).name
 
     @requires_mongodb_gte_44
-    async def test_collection_creation_via_upserts_across_databases_in_transaction(self):
+    async def test_collection_creation_via_upserts_across_databases_in_transaction(
+        self,
+    ):
         await async_connect(MONGO_TEST_DB)
         await async_connect(f"{MONGO_TEST_DB}_test2", "test2")
 
@@ -459,7 +464,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
 
         b_doc = await B.aobjects.create(name="b")
 
-        async with run_in_transaction(transaction_kwargs={"read_concern": ReadConcern("local")}):
+        async with run_in_transaction(
+            transaction_kwargs={"read_concern": ReadConcern("local")}
+        ):
             await a_doc.aupdate(name="a3")
             with switch_db(A, "test2"):
                 await a_doc.aupdate(name="a4", upsert=True)
@@ -472,7 +479,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
             assert "a4" == (await A.aobjects.get(id=a_doc.id)).name
 
     async def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
-            self,
+        self,
     ):
         await async_connect(MONGO_TEST_DB)
         await async_connect(f"{MONGO_TEST_DB}_2", "test2")
@@ -552,7 +559,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert (await B.aobjects.get(id=b_doc.id)).name == "b"
 
     async def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
-            self,
+        self,
     ):
         class A(Document):
             name = StringField()
@@ -651,7 +658,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
                     if "TransientTransactionError" in labels:
                         logging.warning(
                             "TransientTransactionError (idx=%s attempt=%s/%s) - retrying...",
-                            idx, attempt + 1, max_retries,
+                            idx,
+                            attempt + 1,
+                            max_retries,
                         )
                         await asyncio.sleep(0.01 * (attempt + 1))
                         continue
@@ -661,14 +670,16 @@ class TestContextManagers(MongoDBAsyncTestCase):
                     # MongoEngine may wrap pymongo errors (OperationError loses labels/details)
                     msg = str(err)
                     if (
-                            "TransientTransactionError" in msg
-                            or "NoSuchTransaction" in msg
-                            or "code 251" in msg
-                            or "Cannot use ended session" in msg
+                        "TransientTransactionError" in msg
+                        or "NoSuchTransaction" in msg
+                        or "code 251" in msg
+                        or "Cannot use ended session" in msg
                     ):
                         logging.warning(
                             "Transient/wrapped txn error (idx=%s attempt=%s/%s) - retrying...",
-                            idx, attempt + 1, max_retries,
+                            idx,
+                            attempt + 1,
+                            max_retries,
                         )
                         await asyncio.sleep(0.01 * (attempt + 1))
                         continue
@@ -688,7 +699,9 @@ class TestContextManagers(MongoDBAsyncTestCase):
             await asyncio.gather(*(worker(i) for i in range(task_count)))
 
             # Check the sum
-            expected_sum = sum(i if i % 2 == 0 else i * task_count for i in range(task_count))
+            expected_sum = sum(
+                i if i % 2 == 0 else i * task_count for i in range(task_count)
+            )
             assert expected_sum == 2090
 
             total = 0

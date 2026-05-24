@@ -8,7 +8,6 @@ from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestTransform(MongoDBAsyncTestCase):
-
     async def test_transform_str_datetime(self):
         data = {"date": {"$ne": "2015-12-01T00:00:00"}}
         assert transform.query(**data) == {"date": {"$ne": "2015-12-01T00:00:00"}}
@@ -53,9 +52,9 @@ class TestTransform(MongoDBAsyncTestCase):
         doc = await Doc().asave()
 
         for k, v in (
-                ("set", "$set"),
-                ("set_on_insert", "$setOnInsert"),
-                ("push", "$push"),
+            ("set", "$set"),
+            ("set_on_insert", "$setOnInsert"),
+            ("push", "$push"),
         ):
             update = transform.update(DicDoc, **{"%s__dictField__test" % k: doc})
             assert isinstance(update[v]["dictField.test"], dict)
@@ -110,7 +109,9 @@ class TestTransform(MongoDBAsyncTestCase):
         await post.asave()
 
         qs = BlogPost.aobjects(title=data["title"])
-        assert await _async_queryset_to_values(qs._query) == {"postTitle": data["title"]}
+        assert await _async_queryset_to_values(qs._query) == {
+            "postTitle": data["title"]
+        }
         assert await qs.count() == 1
 
         qs = BlogPost.aobjects(pk=post.id)
@@ -118,7 +119,9 @@ class TestTransform(MongoDBAsyncTestCase):
         assert await qs.count() == 1
 
         qs = BlogPost.aobjects(comments__content="test")
-        assert await _async_queryset_to_values(qs._query) == {"postComments.commentContent": "test"}
+        assert await _async_queryset_to_values(qs._query) == {
+            "postComments.commentContent": "test"
+        }
         assert await qs.count() == 1
 
         await BlogPost.adrop_collection()
@@ -137,8 +140,12 @@ class TestTransform(MongoDBAsyncTestCase):
         post = BlogPost(**data)
         await post.asave()
 
-        assert "_id" in await _async_queryset_to_values(BlogPost.aobjects(pk=data["title"])._query)
-        assert "_id" in await _async_queryset_to_values(BlogPost.aobjects(title=data["title"])._query)
+        assert "_id" in await _async_queryset_to_values(
+            BlogPost.aobjects(pk=data["title"])._query
+        )
+        assert "_id" in await _async_queryset_to_values(
+            BlogPost.aobjects(title=data["title"])._query
+        )
         assert await BlogPost.aobjects(pk=data["title"]).count() == 1
 
         await BlogPost.adrop_collection()
@@ -180,11 +187,15 @@ class TestTransform(MongoDBAsyncTestCase):
 
             meta = {"allow_inheritance": False}
 
-        query = await _async_queryset_to_values(Foo.aobjects(__raw__={"$nor": [{"name": "bar"}]})._query)
+        query = await _async_queryset_to_values(
+            Foo.aobjects(__raw__={"$nor": [{"name": "bar"}]})._query
+        )
         assert query == {"$nor": [{"name": "bar"}]}
 
         q1 = {"$or": [{"a": 1}, {"b": 1}]}
-        query = await _async_queryset_to_values(Foo.aobjects(Q(__raw__=q1) & Q(c=1))._query)
+        query = await _async_queryset_to_values(
+            Foo.aobjects(Q(__raw__=q1) & Q(c=1))._query
+        )
         assert query == {"$or": [{"a": 1}, {"b": 1}], "c": 1}
 
     async def test_raw_and_merging(self):
@@ -308,7 +319,9 @@ class TestTransform(MongoDBAsyncTestCase):
         await SimpleDoc.adrop_collection()
         await SimpleDoc(type="ok", size="ok").asave()
 
-        qry = await _async_queryset_to_values(transform.query(SimpleDoc, type="testtype"))
+        qry = await _async_queryset_to_values(
+            transform.query(SimpleDoc, type="testtype")
+        )
         assert qry == {"type": "testtype"}
 
         assert await SimpleDoc.aobjects(type="ok").count() == 1
@@ -419,6 +432,8 @@ class TestTransform(MongoDBAsyncTestCase):
 
         # invalid query
         with pytest.raises(match="cannot be applied to mixed queries"):
-            await transform.query(Object, field__in=[objects[6].pk, objects[7].to_dbref()])
+            await transform.query(
+                Object, field__in=[objects[6].pk, objects[7].to_dbref()]
+            )
 
         await Object.adrop_collection()

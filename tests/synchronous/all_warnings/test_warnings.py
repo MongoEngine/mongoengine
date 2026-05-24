@@ -39,4 +39,6 @@ class TestAllWarnings(unittest.TestCase):
         assert SyntaxWarning == warning["category"]
         assert "non_abstract_base" == InheritedDocumentFailTest._get_collection_name()
         _document_registry.pop(NonAbstractBase.__name__)
-        _document_registry.pop(f"{NonAbstractBase.__name__}.{InheritedDocumentFailTest.__name__}")
+        _document_registry.pop(
+            f"{NonAbstractBase.__name__}.{InheritedDocumentFailTest.__name__}"
+        )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 from .match_planner import MatchPlanner
 from .schema import Schema
@@ -80,7 +80,7 @@ class LookupPlanner:
             field_name = fld.name
             node = node.setdefault(field_name, {})
 
-            is_last = (i == len(parts) - 1)
+            is_last = i == len(parts) - 1
 
             # unwrap list wrapper for leaf checks
             leaf = fld
@@ -94,10 +94,13 @@ class LookupPlanner:
                 continue
 
             if isinstance(fld, EmbeddedDocumentListField) or (
-                    isinstance(fld, ListField) and isinstance(getattr(fld, "field", None), EmbeddedDocumentField)
+                isinstance(fld, ListField)
+                and isinstance(getattr(fld, "field", None), EmbeddedDocumentField)
             ):
                 embedded_dt = getattr(fld, "document_type", None)
-                if embedded_dt is None and isinstance(getattr(fld, "field", None), EmbeddedDocumentField):
+                if embedded_dt is None and isinstance(
+                    getattr(fld, "field", None), EmbeddedDocumentField
+                ):
                     embedded_dt = fld.field.document_type
                 cur_doc = embedded_dt
                 i += 1
@@ -111,7 +114,9 @@ class LookupPlanner:
             if isinstance(leaf, ReferenceField):
                 if is_last:
                     break
-                cur_doc = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
+                cur_doc = getattr(leaf, "document_type_obj", None) or getattr(
+                    leaf, "document_type", None
+                )
                 i += 1
                 continue
 
@@ -122,7 +127,9 @@ class LookupPlanner:
                     break
 
                 next_part = parts[i + 1]
-                common_ref_field, _common_target = MatchPlanner.generic_common_ref(leaf, next_part)
+                common_ref_field, _common_target = MatchPlanner.generic_common_ref(
+                    leaf, next_part
+                )
                 if common_ref_field is None:
                     # cannot safely traverse beyond generic
                     break

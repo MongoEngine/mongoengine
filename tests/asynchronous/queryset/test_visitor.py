@@ -15,7 +15,6 @@ from tests.utils import MONGO_TEST_DB
 
 
 class TestQ(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         await async_connect(db=MONGO_TEST_DB)
 
@@ -312,13 +311,13 @@ class TestQ(unittest.IsolatedAsyncioTestCase):
         assert repr(Q(name="test")) == "Q(**{'name': 'test'})"
 
         assert (
-                repr(Q(name="test") & Q(age__gte=18))
-                == "(Q(**{'name': 'test'}) & Q(**{'age__gte': 18}))"
+            repr(Q(name="test") & Q(age__gte=18))
+            == "(Q(**{'name': 'test'}) & Q(**{'age__gte': 18}))"
         )
 
         assert (
-                repr(Q(name="test") | Q(age__gte=18))
-                == "(Q(**{'name': 'test'}) | Q(**{'age__gte': 18}))"
+            repr(Q(name="test") | Q(age__gte=18))
+            == "(Q(**{'name': 'test'}) | Q(**{'age__gte': 18}))"
         )
 
     async def test_q_lists(self):
@@ -347,11 +346,13 @@ class TestQ(unittest.IsolatedAsyncioTestCase):
         await User(email="example@example.com", pk=pk).asave()
 
         assert (
-                1
-                == await User.aobjects.filter(Q(email="example@example.com") | Q(name="John Doe"))
-                .limit(2)
-                .filter(pk=pk)
-                .count()
+            1
+            == await User.aobjects.filter(
+                Q(email="example@example.com") | Q(name="John Doe")
+            )
+            .limit(2)
+            .filter(pk=pk)
+            .count()
         )
 
     async def test_chained_q_or_filtering(self):
@@ -368,11 +369,14 @@ class TestQ(unittest.IsolatedAsyncioTestCase):
         await Item(postables=[Post(name="a"), Post(name="b"), Post(name="c")]).asave()
 
         assert (
-                await Item.aobjects(Q(postables__name="a") & Q(postables__name="b")).count() == 2
+            await Item.aobjects(Q(postables__name="a") & Q(postables__name="b")).count()
+            == 2
         )
         assert (
-                await Item.aobjects.filter(postables__name="a").filter(postables__name="b").count()
-                == 2
+            await Item.aobjects.filter(postables__name="a")
+            .filter(postables__name="b")
+            .count()
+            == 2
         )
 
     async def test_equality(self):

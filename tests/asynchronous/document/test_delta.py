@@ -1,14 +1,17 @@
-import unittest
-
 from bson import SON
 
 from mongoengine import *
-from mongoengine.pymongo_support import list_collection_names, async_list_collection_names
-from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo, reset_async_connections
+from mongoengine.pymongo_support import (
+    async_list_collection_names,
+)
+from tests.asynchronous.utils import (
+    MongoDBAsyncTestCase,
+    async_get_as_pymongo,
+    reset_async_connections,
+)
 
 
 class TestDelta(MongoDBAsyncTestCase):
-
     async def asyncSetUp(self):
         await super().asyncSetUp()
 
@@ -784,7 +787,9 @@ class TestDelta(MongoDBAsyncTestCase):
 
         await MyDoc.adrop_collection()
 
-        await MyDoc(name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}).asave()
+        await MyDoc(
+            name="testcase1", subs={"a": {"b": EmbeddedDoc(name="foo")}}
+        ).asave()
 
         mydoc = await MyDoc.aobjects.first()
         subdoc = mydoc.subs["a"]["b"]
@@ -796,7 +801,9 @@ class TestDelta(MongoDBAsyncTestCase):
         mydoc._clear_changed_fields()
         assert mydoc._get_changed_fields() == []
 
-    async def test_nested_nested_fields_db_field_set__gets_mark_as_changed_and_cleaned(self):
+    async def test_nested_nested_fields_db_field_set__gets_mark_as_changed_and_cleaned(
+        self,
+    ):
         class EmbeddedDoc(EmbeddedDocument):
             name = StringField(db_field="db_name")
 

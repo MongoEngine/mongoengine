@@ -147,7 +147,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Make sure the "near" operator works with a PointField, which
         corresponds to a 2dsphere index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         # find all events "near" pitchfork office, chicago.
         # note that "near" will show the san francisco event, too,
@@ -164,7 +166,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Ensure the "max_distance" operator works alongside the "near"
         operator with a 2dsphere index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         # find events within 10km of san francisco
         point = [-122.415579, 37.7566023]
@@ -187,7 +191,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Ensure the "geo_within_box" operator works with a 2dsphere
         index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         # check that within_box works
         box = [(-125.0, 35.0), (-100.0, 40.0)]
@@ -199,7 +205,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Ensure the "geo_within_polygon" operator works with a
         2dsphere index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         polygon = [
             (-87.694445, 41.912114),
@@ -208,7 +216,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
             (-87.654276, 41.911731),
             (-87.656164, 41.898061),
         ]
-        events = await self.Event.aobjects(location__geo_within_polygon=polygon).to_list()
+        events = await self.Event.aobjects(
+            location__geo_within_polygon=polygon
+        ).to_list()
         assert len(events) == 1
         assert events[0].id == event1.id
 
@@ -224,7 +234,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Ensure "min_distance" and "max_distance" operators work well
         together with the "near" operator in a 2dsphere index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         # ensure min_distance and max_distance combine well
         events = self.Event.aobjects(
@@ -246,7 +258,9 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         """Make sure the "geo_within_center" operator works with a
         2dsphere index.
         """
-        event1, event2, event3 = await self._create_event_data(point_field_class=PointField)
+        event1, event2, event3 = await self._create_event_data(
+            point_field_class=PointField
+        )
 
         # find events within 5 degrees of pitchfork office, chicago
         point_and_distance = [[-87.67892, 41.9120459], 2]
@@ -275,16 +289,22 @@ class TestGeoQueries(MongoDBAsyncTestCase):
         venue1 = Venue(name="The Rock", location=[-87.677137, 41.909889])
         venue2 = Venue(name="The Bridge", location=[-122.4194155, 37.7749295])
 
-        event1 = await Event(title="Coltrane Motion @ Double Door", venue=venue1).asave()
+        event1 = await Event(
+            title="Coltrane Motion @ Double Door", venue=venue1
+        ).asave()
         event2 = await Event(
             title="Coltrane Motion @ Bottom of the Hill", venue=venue2
         ).asave()
-        event3 = await Event(title="Coltrane Motion @ Empty Bottle", venue=venue1).asave()
+        event3 = await Event(
+            title="Coltrane Motion @ Empty Bottle", venue=venue1
+        ).asave()
 
         # find all events "near" pitchfork office, Chicago.
         # note that "near" will show the San Francisco event, too,
         # although it sorts to last.
-        events = await Event.aobjects(venue__location__near=[-87.67892, 41.9120459]).to_list()
+        events = await Event.aobjects(
+            venue__location__near=[-87.67892, 41.9120459]
+        ).to_list()
         assert events == [event1, event3, event2]
 
     async def test_geo_spatial_embedded(self):

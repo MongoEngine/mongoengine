@@ -12,7 +12,10 @@ class TestStringField(MongoDBAsyncTestCase):
         await Person.adrop_collection()
         person = Person(name="test123")
         await person.asave()
-        assert await async_get_as_pymongo(person) == {"_id": person.id, "name": "test123"}
+        assert await async_get_as_pymongo(person) == {
+            "_id": person.id,
+            "name": "test123",
+        }
 
     async def test_validation(self):
         class Person(Document):

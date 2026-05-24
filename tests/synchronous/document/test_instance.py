@@ -45,7 +45,8 @@ from tests.synchronous.utils import (
     MongoDBTestCase,
     db_ops_tracker,
     get_as_pymongo,
-    requires_mongodb_gte_44, reset_connections
+    requires_mongodb_gte_44,
+    reset_connections,
 )
 from tests.utils import MONGO_TEST_DB
 
@@ -140,7 +141,7 @@ class TestDocumentInstance(MongoDBTestCase):
         options = Log.objects._collection.options()
         assert options["capped"] is True
         assert options["max"] == 10
-        assert options["size"] == 10 * 2 ** 20
+        assert options["size"] == 10 * 2**20
 
         # Check that the document with default value can be recreated
         class Log(Document):
@@ -251,7 +252,9 @@ class TestDocumentInstance(MongoDBTestCase):
         zoo.save()
         zoo.reload()
 
-        classes = [a.__class__ for a in Zoo.objects.select_related("animals").first().animals]
+        classes = [
+            a.__class__ for a in Zoo.objects.select_related("animals").first().animals
+        ]
         assert classes == [Animal, Fish, Mammal, Dog, Human]
 
         Zoo.drop_collection()
@@ -264,7 +267,9 @@ class TestDocumentInstance(MongoDBTestCase):
         zoo.save()
         zoo.reload()
 
-        classes = [a.__class__ for a in Zoo.objects.select_related("animals").first().animals]
+        classes = [
+            a.__class__ for a in Zoo.objects.select_related("animals").first().animals
+        ]
         assert classes == [Animal, Fish, Mammal, Dog, Human]
 
     def test_reference_inheritance(self):
@@ -366,6 +371,7 @@ class TestDocumentInstance(MongoDBTestCase):
             meta = {"allow_inheritance": True}
 
         with pytest.raises(ValueError, match="Cannot override primary key field"):
+
             class EmailUser(User):
                 email = StringField(primary_key=True)
 
@@ -1020,8 +1026,8 @@ class TestDocumentInstance(MongoDBTestCase):
 
         # Assert same order of the list items is maintained in the db
         assert BlogPost._get_collection().find_one({"_id": post.pk})["content"][
-                   "keywords"
-               ] == ["lorem", "ipsum"]
+            "keywords"
+        ] == ["lorem", "ipsum"]
 
     def test_save(self):
         """Ensure that a document may be saved in the database."""
@@ -1659,7 +1665,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.active is False
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
-            self,
+        self,
     ):
         # Refers to Issue #1685
         class EmbeddedChildModel(EmbeddedDocument):
@@ -1673,7 +1679,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert changed_fields == []
 
     def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
-            self,
+        self,
     ):
         # Refers to Issue #1685
         class User(Document):
@@ -1907,7 +1913,9 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[
+                0
+            ]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
 
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
@@ -1916,7 +1924,9 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.collation(base).update_one(name="something")
-            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[
+                0
+            ]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1962,7 +1972,9 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).delete()
-            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[
+                0
+            ]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
 
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
@@ -1971,7 +1983,9 @@ class TestDocumentInstance(MongoDBTestCase):
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.collation(base).delete()
-            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[0]
+            query_op = q.db.system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})[
+                0
+            ]
             CMD_QUERY_KEY = CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -2246,6 +2260,7 @@ class TestDocumentInstance(MongoDBTestCase):
         declare the same db_field.
         """
         with pytest.raises(InvalidDocumentError):
+
             class Foo(Document):
                 name = StringField()
                 name2 = StringField(db_field="name")
@@ -2531,6 +2546,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_invalid_reverse_delete_rule_raise_errors(self):
         with pytest.raises(InvalidDocumentError):
+
             class Blog(Document):
                 content = StringField()
                 authors = MapField(
@@ -2541,6 +2557,7 @@ class TestDocumentInstance(MongoDBTestCase):
                 )
 
         with pytest.raises(InvalidDocumentError):
+
             class Parents(EmbeddedDocument):
                 father = ReferenceField("Person", reverse_delete_rule=DENY)
                 mother = ReferenceField("Person", reverse_delete_rule=DENY)
@@ -2730,8 +2747,8 @@ class TestDocumentInstance(MongoDBTestCase):
         resurrected = pickle.loads(pickled_doc)
         assert resurrected.__class__ == fixtures.NewDocumentPickleTest
         assert (
-                resurrected._fields_ordered
-                == fixtures.NewDocumentPickleTest._fields_ordered
+            resurrected._fields_ordered
+            == fixtures.NewDocumentPickleTest._fields_ordered
         )
         assert resurrected._fields_ordered != pickle_doc._fields_ordered
 
@@ -2759,11 +2776,11 @@ class TestDocumentInstance(MongoDBTestCase):
 
         assert resurrected.embedded == pickle_doc.embedded
         assert (
-                resurrected.embedded._fields_ordered == pickle_doc.embedded._fields_ordered
+            resurrected.embedded._fields_ordered == pickle_doc.embedded._fields_ordered
         )
         assert (
-                resurrected.embedded._dynamic_fields.keys()
-                == pickle_doc.embedded._dynamic_fields.keys()
+            resurrected.embedded._dynamic_fields.keys()
+            == pickle_doc.embedded._dynamic_fields.keys()
         )
 
     def test_picklable_on_signals(self):
@@ -2777,6 +2794,7 @@ class TestDocumentInstance(MongoDBTestCase):
         the "validate" method.
         """
         with pytest.raises(InvalidDocumentError):
+
             class Blog(Document):
                 validate = DictField()
 
@@ -2931,8 +2949,8 @@ class TestDocumentInstance(MongoDBTestCase):
         assert User._get_collection() == get_db("testdb-1")[User._get_collection_name()]
         assert Book._get_collection() == get_db("testdb-2")[Book._get_collection_name()]
         assert (
-                AuthorBooks._get_collection()
-                == get_db("testdb-3")[AuthorBooks._get_collection_name()]
+            AuthorBooks._get_collection()
+            == get_db("testdb-3")[AuthorBooks._get_collection_name()]
         )
 
     def test_db_alias_overrides(self):
@@ -3271,8 +3289,12 @@ class TestDocumentInstance(MongoDBTestCase):
         p0.save()
 
         # Read back from switched db+collection (BOTH at same time)
-        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
-                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+        with (
+            switch_db(User, "testdb-a"),
+            switch_collection(User, "users_alt"),
+            switch_db(Post, "testdb-b"),
+            switch_collection(Post, "posts_alt"),
+        ):
             u = User.objects.first()
             p = Post.objects.first()
             assert "user - testdb-a/users_alt" == u.name
@@ -3293,8 +3315,12 @@ class TestDocumentInstance(MongoDBTestCase):
         p_def.switch_collection("posts_alt")
         p_def.update(set__title="post - update")
 
-        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
-                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+        with (
+            switch_db(User, "testdb-a"),
+            switch_collection(User, "users_alt"),
+            switch_db(Post, "testdb-b"),
+            switch_collection(Post, "posts_alt"),
+        ):
             u = User.objects.first()
             p = Post.objects.first()
             assert "user - update" == u.name
@@ -3321,8 +3347,12 @@ class TestDocumentInstance(MongoDBTestCase):
         p_def.switch_collection("posts_alt")
         p_def.delete()
 
-        with switch_db(User, "testdb-a"), switch_collection(User, "users_alt"), \
-                switch_db(Post, "testdb-b"), switch_collection(Post, "posts_alt"):
+        with (
+            switch_db(User, "testdb-a"),
+            switch_collection(User, "users_alt"),
+            switch_db(Post, "testdb-b"),
+            switch_collection(Post, "posts_alt"),
+        ):
             assert 0 == User.objects.count()
             assert 0 == Post.objects.count()
 
@@ -3653,7 +3683,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
         system = NodesSystem.objects.select_related("nodes").first()
         assert (
-                "UNDEFINED" == system.nodes["node"].parameters["param"].macros["test"].value
+            "UNDEFINED" == system.nodes["node"].parameters["param"].macros["test"].value
         )
 
     def test_embedded_document_equality(self):
@@ -4068,11 +4098,11 @@ class TestDocumentInstance(MongoDBTestCase):
             assert copied_u is not u
             assert copied_u._fields["name"] is u._fields["name"]
             assert (
-                    copied_u._fields["name"].regex is u._fields["name"].regex
+                copied_u._fields["name"].regex is u._fields["name"].regex
             )  # Compiled regex objects are atomic
 
     def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
-            self,
+        self,
     ):
         class LightSaber(EmbeddedDocument):
             color = StringField()
@@ -4091,10 +4121,10 @@ class TestDocumentInstance(MongoDBTestCase):
         with pytest.raises(InvalidDocumentError) as exc_info:
             list(Jedi.objects)
 
-        assert str(
-            exc_info.value
-        ) == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found" % type(
-            value
+        assert (
+            str(exc_info.value)
+            == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
+            % type(value)
         )
 
 
@@ -4191,7 +4221,7 @@ class DBFieldMappingTest(MongoDBTestCase):
         assert doc.z2 is False
 
     def test_setting_unknown_field_in_constructor_of_dyn_doc_does_not_overwrite_model_fields(
-            self,
+        self,
     ):
         doc = self.DynDoc(w2=True)
         assert doc.w1 is None
@@ -4218,13 +4248,13 @@ class DBFieldMappingTest(MongoDBTestCase):
         doc.save()
         reloaded = self.Doc.objects.get(id=doc.id)
         assert (
-                   reloaded.x1,
-                   reloaded.x2,
-                   reloaded.y1,
-                   reloaded.y2,
-                   reloaded.z1,
-                   reloaded.z2,
-               ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
 
     def test_dbfields_are_loaded_to_the_right_modelfield_for_dyn_doc_2(self):
         doc = self.DynDoc()
@@ -4234,13 +4264,13 @@ class DBFieldMappingTest(MongoDBTestCase):
         doc.save()
         reloaded = self.DynDoc.objects.get(id=doc.id)
         assert (
-                   reloaded.x1,
-                   reloaded.x2,
-                   reloaded.y1,
-                   reloaded.y2,
-                   reloaded.z1,
-                   reloaded.z2,
-               ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
 
 
 if __name__ == "__main__":

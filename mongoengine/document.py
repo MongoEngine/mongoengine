@@ -31,15 +31,21 @@ from mongoengine.session import _get_session
 from mongoengine.asynchronous import async_get_db
 from mongoengine.context_managers import (
     set_write_concern,
-    switch_collection,
-    CURRENT_DB_ALIAS, CURRENT_COLLECTION,
+    CURRENT_DB_ALIAS,
+    CURRENT_COLLECTION,
 )
 from mongoengine.errors import (
     InvalidDocumentError,
     InvalidQueryError,
-    SaveConditionError, DoesNotExist, OperationError, NotUniqueError,
+    SaveConditionError,
+    DoesNotExist,
+    OperationError,
+    NotUniqueError,
 )
-from mongoengine.pymongo_support import list_collection_names, async_list_collection_names
+from mongoengine.pymongo_support import (
+    list_collection_names,
+    async_list_collection_names,
+)
 from mongoengine.base.queryset import (
     transform,
 )
@@ -183,7 +189,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
     # my_metaclass is defined so that metaclass can be queried in Python 2 & 3
     my_metaclass = TopLevelDocumentMetaclass
 
-    __slots__ = ("__objects")
+    __slots__ = "__objects"
 
     @property
     def pk(self):
@@ -256,8 +262,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name(collection_name=collection_name)
         collection_type = cls._collection_type()
         collection_fingerprint = cls._collection_fingerprint()
-        collection = _CollectionRegistry.get(db_alias=db_alias, name=collection_name, is_async=False,
-                                             type_=collection_type, fingerprint=collection_fingerprint)
+        collection = _CollectionRegistry.get(
+            db_alias=db_alias,
+            name=collection_name,
+            is_async=False,
+            type_=collection_type,
+            fingerprint=collection_fingerprint,
+        )
         if collection is not None:
             return collection
         else:
@@ -273,8 +284,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             # set to False. Plus, there is no need to ensure indexes on the slave.
             if cls._meta.get("auto_create_index", True) and db.client.is_primary:
                 cls.ensure_indexes(collection)
-            _CollectionRegistry.register(db_alias=db_alias, name=collection_name, collection=collection,
-                                         type_=collection_type, fingerprint=collection_fingerprint)
+            _CollectionRegistry.register(
+                db_alias=db_alias,
+                name=collection_name,
+                collection=collection,
+                type_=collection_type,
+                fingerprint=collection_fingerprint,
+            )
             return collection
 
     @classmethod
@@ -305,7 +321,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return json.dumps(opts, sort_keys=True, separators=(",", ":"))
 
     @classmethod
-    async def _aget_collection(cls, db_alias: str | None = None, collection_name: str | None = None) -> AsyncCollection:
+    async def _aget_collection(
+        cls, db_alias: str | None = None, collection_name: str | None = None
+    ) -> AsyncCollection:
         """Return the PyMongo collection corresponding to this document.
 
         Upon the first call, this method:
@@ -318,8 +336,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name(collection_name=collection_name)
         collection_type = cls._collection_type()
         collection_fingerprint = cls._collection_fingerprint()
-        collection = _CollectionRegistry.get(db_alias=db_alias, name=collection_name, is_async=True,
-                                             type_=collection_type, fingerprint=collection_fingerprint)
+        collection = _CollectionRegistry.get(
+            db_alias=db_alias,
+            name=collection_name,
+            is_async=True,
+            type_=collection_type,
+            fingerprint=collection_fingerprint,
+        )
         if collection is not None:
             return collection
         else:
@@ -335,8 +358,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             # set to False. Plus, there is no need to ensure indexes on the slave.
             if cls._meta.get("auto_create_index", True) and await db.client.is_primary:
                 await cls.aensure_indexes(collection)
-            _CollectionRegistry.register(db_alias=db_alias, name=collection_name, collection=collection,
-                                         type_=collection_type, fingerprint=collection_fingerprint)
+            _CollectionRegistry.register(
+                db_alias=db_alias,
+                name=collection_name,
+                collection=collection,
+                type_=collection_type,
+                fingerprint=collection_fingerprint,
+            )
             return collection
 
     @classmethod
@@ -346,7 +374,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name()
 
         # Get max document limit and max byte size from meta.
-        max_size = cls._meta.get("max_size") or 10 * 2 ** 20  # 10MB default
+        max_size = cls._meta.get("max_size") or 10 * 2**20  # 10MB default
         max_documents = cls._meta.get("max_documents")
 
         # MongoDB will automatically raise the size to make it a multiple of
@@ -358,7 +386,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # If the collection already exists and has different options
         # (i.e. isn't capped or has different max/size), raise an error.
         if collection_name in list_collection_names(
-                db, include_system_collections=True
+            db, include_system_collections=True
         ):
             collection = db[collection_name]
             options = collection.options()
@@ -384,7 +412,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         collection_name = cls._get_collection_name()
 
         # Get max document limit and max byte size from meta.
-        max_size = cls._meta.get("max_size") or 10 * 2 ** 20  # 10MB default
+        max_size = cls._meta.get("max_size") or 10 * 2**20  # 10MB default
         max_documents = cls._meta.get("max_documents")
 
         # MongoDB will automatically raise the size to make it a multiple of
@@ -396,7 +424,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # If the collection already exists and has different options
         # (i.e. isn't capped or has different max/size), raise an error.
         if collection_name in await async_list_collection_names(
-                db, include_system_collections=True
+            db, include_system_collections=True
         ):
             collection = db[collection_name]
             options = await collection.options()
@@ -413,7 +441,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if max_documents:
             opts["max"] = max_documents
 
-        return await db.create_collection(collection_name, session=_get_session(), **opts)
+        return await db.create_collection(
+            collection_name, session=_get_session(), **opts
+        )
 
     @classmethod
     def _get_timeseries_collection(cls):
@@ -423,7 +453,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         timeseries_opts = cls._meta.get("timeseries")
 
         if collection_name in list_collection_names(
-                db, include_system_collections=True
+            db, include_system_collections=True
         ):
             collection = db[collection_name]
             collection.options()
@@ -444,7 +474,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         timeseries_opts = cls._meta.get("timeseries")
 
         if collection_name in await async_list_collection_names(
-                db, include_system_collections=True
+            db, include_system_collections=True
         ):
             collection = db[collection_name]
             collection.options()
@@ -462,7 +492,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         # If '_id' is None, try and set it from self._data. If that
         # doesn't exist either, remove '_id' from the SON completely.
-        if '_id' in data and data['_id'] is None:
+        if "_id" in data and data["_id"] is None:
             if self._data.get("id") is None:
                 data.pop("_id")
             else:
@@ -561,18 +591,18 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return True
 
     def save(
-            self,
-            force_insert=False,
-            validate=True,
-            clean=True,
-            write_concern=None,
-            cascade=None,
-            cascade_kwargs=None,
-            _refs=None,
-            save_condition=None,
-            signal_kwargs=None,
-            **kwargs,
-    ) -> 'Document':
+        self,
+        force_insert=False,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        cascade=None,
+        cascade_kwargs=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs,
+    ) -> "Document":
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created. Returns the saved object instance.
@@ -715,8 +745,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # ListField
         if isinstance(field, ListField) and isinstance(value, list):
             return [
-                self._generate_auto_fields_sync(item, field.field)
-                for item in value
+                self._generate_auto_fields_sync(item, field.field) for item in value
             ]
 
         # DictField
@@ -740,7 +769,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if isinstance(value, BaseDocument) and not value._is_document:
             for name, sub_field in value._fields.items():
                 sub_val = value._data.get(name)
-                value._data[name] = await self._generate_auto_fields_async(sub_val, sub_field)
+                value._data[name] = await self._generate_auto_fields_async(
+                    sub_val, sub_field
+                )
             return value
 
         # ListField
@@ -764,18 +795,18 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         return value
 
     async def asave(
-            self,
-            force_insert=False,
-            validate=True,
-            clean=True,
-            write_concern=None,
-            cascade=None,
-            cascade_kwargs=None,
-            _refs=None,
-            save_condition=None,
-            signal_kwargs=None,
-            **kwargs,
-    ) -> 'Document':
+        self,
+        force_insert=False,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        cascade=None,
+        cascade_kwargs=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs,
+    ) -> "Document":
         """Save the :class:`~mongoengine.Document` to the database. If the
         document already exists, it will be updated, otherwise it will be
         created. Returns the saved object instance.
@@ -828,7 +859,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if self._meta.get("abstract"):
             raise InvalidDocumentError("Cannot save an abstract document.")
 
-        await signals.pre_save.send_async(self.__class__, document=self, **signal_kwargs)
+        await signals.pre_save.send_async(
+            self.__class__, document=self, **signal_kwargs
+        )
 
         if validate:
             self.validate(clean=clean)
@@ -920,7 +953,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             collection = None
             collection_name = None
         if collection is None:
-            collection = self._get_collection(db_alias=db_alias, collection_name=collection_name)
+            collection = self._get_collection(
+                db_alias=db_alias, collection_name=collection_name
+            )
         if self._meta.get("auto_create_index_on_save", False):
             # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             self.ensure_indexes(collection)
@@ -959,13 +994,17 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             collection = None
             collection_name = None
         if collection is None:
-            collection = await self._aget_collection(db_alias=db_alias, collection_name=collection_name)
+            collection = await self._aget_collection(
+                db_alias=db_alias, collection_name=collection_name
+            )
         if self._meta.get("auto_create_index_on_save", False):
             # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             await self.aensure_indexes(collection)
         with set_write_concern(collection, write_concern) as wc_collection:
             if force_insert:
-                return (await wc_collection.insert_one(doc, session=_get_session())).inserted_id
+                return (
+                    await wc_collection.insert_one(doc, session=_get_session())
+                ).inserted_id
             # insert_one will provoke UniqueError alongside save does not
             # therefore, it need to catch and call replace_one.
             if "_id" in doc:
@@ -977,9 +1016,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 if raw_object:
                     return doc["_id"]
 
-            object_id = (await wc_collection.insert_one(
-                doc, session=_get_session()
-            )).inserted_id
+            object_id = (
+                await wc_collection.insert_one(doc, session=_get_session())
+            ).inserted_id
 
         return object_id
 
@@ -1030,7 +1069,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             collection = None
             collection_name = None
         if collection is None:
-            collection = self._get_collection(db_alias=db_alias, collection_name=collection_name)
+            collection = self._get_collection(
+                db_alias=db_alias, collection_name=collection_name
+            )
         if self._meta.get("auto_create_index_on_save", False):
             # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             self.ensure_indexes(collection)
@@ -1082,7 +1123,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             collection = None
             collection_name = None
         if collection is None:
-            collection = await self._aget_collection(db_alias=db_alias, collection_name=collection_name)
+            collection = await self._aget_collection(
+                db_alias=db_alias, collection_name=collection_name
+            )
         if self._meta.get("auto_create_index_on_save", False):
             # ensure_indexes is called as part of _get_collection so no need to re-call it again here
             await self.aensure_indexes(collection)
@@ -1101,9 +1144,11 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         if update_doc:
             upsert = save_condition is None
             with set_write_concern(collection, write_concern) as wc_collection:
-                last_error = (await wc_collection.update_one(
-                    select_dict, update_doc, upsert=upsert, session=_get_session()
-                )).raw_result
+                last_error = (
+                    await wc_collection.update_one(
+                        select_dict, update_doc, upsert=upsert, session=_get_session()
+                    )
+                ).raw_result
             if not upsert and last_error["n"] == 0:
                 raise SaveConditionError(
                     "Race condition preventing document update detected"
@@ -1230,12 +1275,20 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 query = self.to_mongo()
                 if "_cls" in query:
                     del query["_cls"]
-                return self._qs.using(db_alias, collection_name).filter(**query).update_one(**kwargs)
+                return (
+                    self._qs.using(db_alias, collection_name)
+                    .filter(**query)
+                    .update_one(**kwargs)
+                )
             else:
                 raise OperationError("attempt to update a document not yet saved")
 
         # Need to add shard key to query, or you get an error
-        return self._qs.using(db_alias, collection_name).filter(**self._object_key).update_one(**kwargs)
+        return (
+            self._qs.using(db_alias, collection_name)
+            .filter(**self._object_key)
+            .update_one(**kwargs)
+        )
 
     async def aupdate(self, **kwargs):
         """Performs an update on the :class:`~mongoengine.Document`
@@ -1257,12 +1310,20 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 query = self.to_mongo()
                 if "_cls" in query:
                     del query["_cls"]
-                return await self._aqs.using(db_alias, collection_name).filter(**query).update_one(**kwargs)
+                return (
+                    await self._aqs.using(db_alias, collection_name)
+                    .filter(**query)
+                    .update_one(**kwargs)
+                )
             else:
                 raise OperationError("attempt to update a document not yet saved")
 
         # Need to add shard key to query, or you get an error
-        return await self._aqs.using(db_alias, collection_name).filter(**self._object_key).update_one(**kwargs)
+        return (
+            await self._aqs.using(db_alias, collection_name)
+            .filter(**self._object_key)
+            .update_one(**kwargs)
+        )
 
     def delete(self, signal_kwargs=None, **write_concern):
         """Delete the :class:`~mongoengine.Document` from the database. This
@@ -1322,7 +1383,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             db_alias = None
             collection_name = None
         signal_kwargs = signal_kwargs or {}
-        await signals.pre_delete.send_async(self.__class__, document=self, **signal_kwargs)
+        await signals.pre_delete.send_async(
+            self.__class__, document=self, **signal_kwargs
+        )
 
         # Delete FileFields separately
         FileField = _import_class("FileField")
@@ -1331,13 +1394,17 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 await getattr(self, name).adelete()
 
         try:
-            await self._aqs.using(db_alias, collection_name).filter(**self._object_key).delete(
-                write_concern=write_concern, _from_doc_delete=True
+            await (
+                self._aqs.using(db_alias, collection_name)
+                .filter(**self._object_key)
+                .delete(write_concern=write_concern, _from_doc_delete=True)
             )
         except OperationFailure as err:
             message = "Could not delete document (%s)" % err.args
             raise OperationError(message)
-        await signals.post_delete.send_async(self.__class__, document=self, **signal_kwargs)
+        await signals.post_delete.send_async(
+            self.__class__, document=self, **signal_kwargs
+        )
 
     def switch_db(self, db_alias: str = DEFAULT_CONNECTION_NAME, keep_created=True):
         """
@@ -1414,16 +1481,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # -------------------------
         if self._select_related:
             qs = (
-                self.__class__.objects
-                .read_preference(ReadPreference.PRIMARY)
+                self.__class__.objects.read_preference(ReadPreference.PRIMARY)
                 .filter(pk=self.pk)
                 .select_related(*self._select_related)
                 .limit(1)
             )
         else:
             qs = (
-                self.__class__.objects
-                .read_preference(ReadPreference.PRIMARY)
+                self.__class__.objects.read_preference(ReadPreference.PRIMARY)
                 .filter(pk=self.pk)
                 .limit(1)
             )
@@ -1461,7 +1526,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # Update change tracking
         self._changed_fields = (
             list(set(self._changed_fields) - set(fields))
-            if fields else fresh._changed_fields
+            if fields
+            else fresh._changed_fields
         )
 
         self._created = False
@@ -1538,16 +1604,14 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # -------------------------
         if self._select_related:
             qs = (
-                self.__class__.aobjects
-                .read_preference(ReadPreference.PRIMARY)
+                self.__class__.aobjects.read_preference(ReadPreference.PRIMARY)
                 .filter(pk=self.pk)
                 .select_related(*self._select_related)
                 .limit(1)
             )
         else:
             qs = (
-                self.__class__.aobjects
-                .read_preference(ReadPreference.PRIMARY)
+                self.__class__.aobjects.read_preference(ReadPreference.PRIMARY)
                 .filter(pk=self.pk)
                 .limit(1)
             )
@@ -1585,7 +1649,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         # Update change tracking
         self._changed_fields = (
             list(set(self._changed_fields) - set(fields))
-            if fields else fresh._changed_fields
+            if fields
+            else fresh._changed_fields
         )
 
         self._created = False
@@ -1623,15 +1688,15 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         object.
         """
         classes = [
-                      _DocumentRegistry.get(class_name)
-                      for class_name in cls._subclasses
-                      if class_name != cls.__name__
-                  ] + [cls]
+            _DocumentRegistry.get(class_name)
+            for class_name in cls._subclasses
+            if class_name != cls.__name__
+        ] + [cls]
         documents = [
-                        _DocumentRegistry.get(class_name)
-                        for class_name in document_cls._subclasses
-                        if class_name != document_cls.__name__
-                    ] + [document_cls]
+            _DocumentRegistry.get(class_name)
+            for class_name in document_cls._subclasses
+            if class_name != document_cls.__name__
+        ] + [document_cls]
 
         for klass in classes:
             for document_cls in documents:
@@ -1657,8 +1722,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         db_alias = cls._db_alias(db_alias=None)
         db = cls._get_db()
         db.drop_collection(coll_name, session=_get_session())
-        _CollectionRegistry.unregister(db_alias=db_alias, name=coll_name, is_async=False, type_=coll_type,
-                                       fingerprint=coll_fingerprint)
+        _CollectionRegistry.unregister(
+            db_alias=db_alias,
+            name=coll_name,
+            is_async=False,
+            type_=coll_type,
+            fingerprint=coll_fingerprint,
+        )
 
     @classmethod
     async def adrop_collection(cls):
@@ -1678,8 +1748,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         db_alias = cls._db_alias(db_alias=None)
         db = await cls._async_get_db(db_alias=None)
         await db.drop_collection(coll_name, session=_get_session())
-        _CollectionRegistry.unregister(db_alias=db_alias, name=coll_name, is_async=True, type_=coll_type,
-                                       fingerprint=coll_fingerprint)
+        _CollectionRegistry.unregister(
+            db_alias=db_alias,
+            name=coll_name,
+            is_async=True,
+            type_=coll_type,
+            fingerprint=coll_fingerprint,
+        )
 
     @classmethod
     def create_index(cls, keys, background=False, **kwargs):
@@ -1859,21 +1934,21 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
             for base_cls in cls.__bases__:
                 if (
-                        isinstance(base_cls, TopLevelDocumentMetaclass)
-                        and base_cls != Document
-                        and not base_cls._meta.get("abstract")
-                        and base_cls._get_collection().full_name
-                        == cls._get_collection().full_name
-                        and base_cls not in classes
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and base_cls != Document
+                    and not base_cls._meta.get("abstract")
+                    and base_cls._get_collection().full_name
+                    == cls._get_collection().full_name
+                    and base_cls not in classes
                 ):
                     classes.append(base_cls)
                     get_classes(base_cls)
             for subclass in cls.__subclasses__():
                 if (
-                        isinstance(base_cls, TopLevelDocumentMetaclass)
-                        and subclass._get_collection().full_name
-                        == cls._get_collection().full_name
-                        and subclass not in classes
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and subclass._get_collection().full_name
+                    == cls._get_collection().full_name
+                    and subclass not in classes
                 ):
                     classes.append(subclass)
                     get_classes(subclass)
@@ -1925,21 +2000,21 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
             for base_cls in cls.__bases__:
                 if (
-                        isinstance(base_cls, TopLevelDocumentMetaclass)
-                        and base_cls != Document
-                        and not base_cls._meta.get("abstract")
-                        and (await base_cls._aget_collection()).full_name
-                        == (await cls._aget_collection()).full_name
-                        and base_cls not in classes
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and base_cls != Document
+                    and not base_cls._meta.get("abstract")
+                    and (await base_cls._aget_collection()).full_name
+                    == (await cls._aget_collection()).full_name
+                    and base_cls not in classes
                 ):
                     classes.append(base_cls)
                     await get_classes(base_cls)
             for subclass in cls.__subclasses__():
                 if (
-                        isinstance(base_cls, TopLevelDocumentMetaclass)
-                        and (await subclass._aget_collection()).full_name
-                        == (await cls._aget_collection()).full_name
-                        and subclass not in classes
+                    isinstance(base_cls, TopLevelDocumentMetaclass)
+                    and (await subclass._aget_collection()).full_name
+                    == (await cls._aget_collection()).full_name
+                    and subclass not in classes
                 ):
                     classes.append(subclass)
                     await get_classes(subclass)
@@ -2019,7 +2094,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         existing = []
         collection = await cls._aget_collection()
-        for info in (await collection.index_information(session=_get_session())).values():
+        for info in (
+            await collection.index_information(session=_get_session())
+        ).values():
             if "_fts" in info["key"][0]:
                 # Useful for text indexes (but not only)
                 index_type = info["key"][0][1]

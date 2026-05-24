@@ -2,15 +2,12 @@ import pytest
 from pymongo.read_preferences import ReadPreference
 
 from mongoengine import Document, IntField, PointField, StringField
-from mongoengine.mongodb_support import (
-    async_get_mongodb_version
-)
+from mongoengine.mongodb_support import async_get_mongodb_version
 from tests.asynchronous.utils import async_db_ops_tracker, MongoDBAsyncTestCase
 from tests.utils import MONGO_TEST_DB
 
 
 class TestQuerysetAggregate(MongoDBAsyncTestCase):
-
     async def test_read_preference_aggregation_framework(self):
         class Bar(Document):
             txt = StringField()
@@ -38,7 +35,7 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = (await (await Person.aobjects(age__lte=22).aggregate(pipeline)).to_list())
+        data = await (await Person.aobjects(age__lte=22).aggregate(pipeline)).to_list()
 
         assert data == [
             {"_id": p1.pk, "name": "ISABELLA LUANNA"},
@@ -46,7 +43,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         ]
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects(age__lte=22).order_by("-name").aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects(age__lte=22).order_by("-name").aggregate(pipeline)
+        ).to_list()
 
         assert data == [
             {"_id": p2.pk, "name": "WILSON JUNIOR"},
@@ -107,24 +106,48 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         comment = "test_comment"
 
         async with async_db_ops_tracker() as q:
-            _ = await (await AggPerson.aobjects.comment(comment).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            _ = await (
+                await AggPerson.aobjects.comment(comment).aggregate(pipeline)
+            ).to_list()
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
             assert "collation" not in query_op[CMD_QUERY_KEY]
 
         async with async_db_ops_tracker() as q:
-            _ = await (await AggPerson.aobjects.hint(index_name).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            _ = await (
+                await AggPerson.aobjects.hint(index_name).aggregate(pipeline)
+            ).to_list()
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == "name_1"
             assert "comment" not in query_op[CMD_QUERY_KEY]
             assert "collation" not in query_op[CMD_QUERY_KEY]
 
         async with async_db_ops_tracker() as q:
-            _ = await (await AggPerson.aobjects.collation(base).aggregate(pipeline)).to_list()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            _ = await (
+                await AggPerson.aobjects.collation(base).aggregate(pipeline)
+            ).to_list()
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -160,7 +183,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects.order_by("name").aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").aggregate(pipeline)
+        ).to_list()
 
         assert data == [
             {"_id": p1.pk, "name": "ISABELLA LUANNA"},
@@ -181,12 +206,16 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects.skip(1).limit(1).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.skip(1).limit(1).aggregate(pipeline)
+        ).to_list()
 
         assert data == [{"_id": p2.pk, "name": "WILSON JUNIOR"}]
 
         # Make sure limit/skip chaining order has no impact
-        data2 = await (await Person.aobjects.limit(1).skip(1).aggregate(pipeline)).to_list()
+        data2 = await (
+            await Person.aobjects.limit(1).skip(1).aggregate(pipeline)
+        ).to_list()
 
         assert data == data2
 
@@ -203,7 +232,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)
+        ).to_list()
 
         assert data == [
             {"_id": p1.pk, "name": "ISABELLA LUANNA"},
@@ -212,7 +243,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
 
         # Verify adding limit/skip steps works as expected
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}, {"$limit": 1}]
-        data = await (await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)
+        ).to_list()
 
         assert data == [{"_id": p1.pk, "name": "ISABELLA LUANNA"}]
 
@@ -221,7 +254,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
             {"$skip": 1},
             {"$limit": 1},
         ]
-        data = await (await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").limit(2).aggregate(pipeline)
+        ).to_list()
 
         assert data == [{"_id": p3.pk, "name": "SANDRA MARA"}]
 
@@ -238,7 +273,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects.order_by("name").skip(2).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").skip(2).aggregate(pipeline)
+        ).to_list()
 
         assert data == [{"_id": p2.pk, "name": "WILSON JUNIOR"}]
 
@@ -255,7 +292,9 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects.order_by("name").skip(1).limit(1).aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects.order_by("name").skip(1).limit(1).aggregate(pipeline)
+        ).to_list()
 
         assert data == [{"_id": p3.pk, "name": "SANDRA MARA"}]
 
@@ -274,16 +313,24 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
 
         # Make sure the old interface raises an error as we changed it >= 1.0
         with pytest.raises(TypeError, match="pipeline must be a list/tuple"):
-            await (await Person.aobjects.order_by("name").limit(2).aggregate(*_1_step_pipeline)).to_list()
+            await (
+                await Person.aobjects.order_by("name")
+                .limit(2)
+                .aggregate(*_1_step_pipeline)
+            ).to_list()
 
         _2_step_pipeline = [
             {"$project": {"name": {"$toUpper": "$name"}}},
             {"$limit": 1},
         ]
         with pytest.raises(
-                TypeError, match="takes 2 positional arguments but 3 were given"
+            TypeError, match="takes 2 positional arguments but 3 were given"
         ):
-            await (await Person.aobjects.order_by("name").limit(2).aggregate(*_2_step_pipeline)).to_list()
+            await (
+                await Person.aobjects.order_by("name")
+                .limit(2)
+                .aggregate(*_2_step_pipeline)
+            ).to_list()
 
     async def test_queryset_aggregation_geonear_aggregation_on_pointfield(self):
         """test ensures that $geonear can be used as a 1-stage pipeline and that
@@ -326,11 +373,15 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await Person.aobjects.insert([p1, p2, p3])
 
         pipeline = [{"$project": {"name": {"$toUpper": "$name"}}}]
-        data = await (await Person.aobjects().none().order_by("name").aggregate(pipeline)).to_list()
+        data = await (
+            await Person.aobjects().none().order_by("name").aggregate(pipeline)
+        ).to_list()
 
         assert data == []
 
-    async def test_aggregate_geo_near_used_as_initial_step_before_cls_implicit_step(self):
+    async def test_aggregate_geo_near_used_as_initial_step_before_cls_implicit_step(
+        self,
+    ):
         class BaseClass(Document):
             meta = {"allow_inheritance": True}
 
@@ -352,13 +403,15 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
                 }
             }
         ]
-        res = await(await Aggr.aobjects.aggregate(pipeline)).to_list()
+        res = await (await Aggr.aobjects.aggregate(pipeline)).to_list()
         assert res == [
             {"_cls": "BaseClass.Aggr", "_id": x.id, "c": 0.0, "name": "X"},
             {"_cls": "BaseClass.Aggr", "_id": y.id, "c": 0.0, "name": "Y"},
         ]
 
-    async def test_aggregate_collstats_used_as_initial_step_before_cls_implicit_step(self):
+    async def test_aggregate_collstats_used_as_initial_step_before_cls_implicit_step(
+        self,
+    ):
         class SomeDoc(Document):
             name = StringField()
 
@@ -368,6 +421,6 @@ class TestQuerysetAggregate(MongoDBAsyncTestCase):
         await SomeDoc(name="Y").asave()
 
         pipeline = [{"$collStats": {"count": {}}}]
-        res = await(await SomeDoc.aobjects.aggregate(pipeline)).to_list()
+        res = await (await SomeDoc.aobjects.aggregate(pipeline)).to_list()
         assert len(res) == 1
         assert res[0]["count"] == 2

@@ -296,8 +296,8 @@ class TestClassMethods(unittest.TestCase):
             pass
 
         assert (
-                "oldmixinnamingconvention"
-                == OldMixinNamingConvention._get_collection_name()
+            "oldmixinnamingconvention"
+            == OldMixinNamingConvention._get_collection_name()
         )
 
         class BaseMixin:

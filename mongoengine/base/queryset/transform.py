@@ -58,7 +58,7 @@ STRING_OPERATORS = (
 )
 CUSTOM_OPERATORS = ("match",)
 MATCH_OPERATORS = (
-        COMPARISON_OPERATORS + GEO_OPERATORS + STRING_OPERATORS + CUSTOM_OPERATORS
+    COMPARISON_OPERATORS + GEO_OPERATORS + STRING_OPERATORS + CUSTOM_OPERATORS
 )
 
 
@@ -134,6 +134,7 @@ def query(_doc_cls=None, **kwargs):
                 # Detect async queryset safely, but DO NOT EVALUATE here
                 from mongoengine.synchronous import QuerySet
                 from mongoengine.asynchronous import AsyncQuerySet
+
                 if isinstance(value, QuerySet):
                     value = _prepare_query_for_iterable(field, op, value)
                 elif isinstance(value, AsyncQuerySet):
@@ -147,17 +148,17 @@ def query(_doc_cls=None, **kwargs):
             # * If the value is an ObjectId, the key should be "field_name._ref.$id".
             if isinstance(field, GenericReferenceField):
                 if isinstance(value, DBRef) or (
-                        is_iterable and all(isinstance(v, DBRef) for v in value)
+                    is_iterable and all(isinstance(v, DBRef) for v in value)
                 ):
                     parts[-1] += "._ref"
                 elif isinstance(value, ObjectId) or (
-                        is_iterable and all(isinstance(v, ObjectId) for v in value)
+                    is_iterable and all(isinstance(v, ObjectId) for v in value)
                 ):
                     parts[-1] += "._ref.$id"
                 elif (
-                        is_iterable
-                        and any(isinstance(v, DBRef) for v in value)
-                        and any(isinstance(v, ObjectId) for v in value)
+                    is_iterable
+                    and any(isinstance(v, DBRef) for v in value)
+                    and any(isinstance(v, ObjectId) for v in value)
                 ):
                     raise ValueError(
                         "The `in`, `nin`, `all`, or `near`-operators cannot "
@@ -173,18 +174,16 @@ def query(_doc_cls=None, **kwargs):
                 ListField = _import_class("ListField")
                 EmbeddedDocumentField = _import_class("EmbeddedDocumentField")
                 if (
-                        isinstance(value, dict)
-                        and isinstance(field, ListField)
-                        and isinstance(field.field, EmbeddedDocumentField)
+                    isinstance(value, dict)
+                    and isinstance(field, ListField)
+                    and isinstance(field.field, EmbeddedDocumentField)
                 ):
                     value = query(field.field.document_type, **value)
                 else:
                     value = field.prepare_query_value(op, value)
                 value = {"$elemMatch": value}
             elif op in CUSTOM_OPERATORS:
-                NotImplementedError(
-                    'Custom method "%s" has not ' "been implemented" % op
-                )
+                NotImplementedError('Custom method "%s" has not been implemented' % op)
             elif op not in STRING_OPERATORS:
                 value = {"$" + op: value}
 
@@ -204,7 +203,7 @@ def query(_doc_cls=None, **kwargs):
                 # $max/minDistance needs to come last - convert to SON
                 value_dict = mongo_query[key]
                 if ("$maxDistance" in value_dict or "$minDistance" in value_dict) and (
-                        "$near" in value_dict or "$nearSphere" in value_dict
+                    "$near" in value_dict or "$nearSphere" in value_dict
                 ):
                     value_son = SON()
                     for k, v in value_dict.items():
@@ -257,6 +256,7 @@ def update(_doc_cls=None, **update):
     """
     mongo_update = {}
     from mongoengine.synchronous import QuerySet
+
     for key, value in update.items():
         if key == "__raw__":
             handle_raw_query(value, mongo_update)
@@ -346,6 +346,7 @@ def update(_doc_cls=None, **update):
             if isinstance(field, GeoJsonBaseField):
                 value = field.to_mongo(value)
             from mongoengine.asynchronous import AsyncQuerySet
+
             if op == "pull":
                 if field.required or value is not None:
                     if match in ("in", "nin") and not isinstance(value, dict):
@@ -479,7 +480,7 @@ def _geo_operator(field, op, value):
             value = {"$within": {"$box": value}}
         else:
             raise NotImplementedError(
-                'Geo method "%s" has not been ' "implemented for a GeoPointField" % op
+                'Geo method "%s" has not been implemented for a GeoPointField' % op
             )
     else:
         if op == "geo_within":

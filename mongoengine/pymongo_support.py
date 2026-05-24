@@ -21,7 +21,7 @@ else:
 
 
 def count_documents(
-        collection, filter, skip=None, limit=None, hint=None, collation=None
+    collection, filter, skip=None, limit=None, hint=None, collation=None
 ):
     """Pymongo>3.7 deprecates count in favour of count_documents"""
     if limit == 0:
@@ -58,9 +58,9 @@ def count_documents(
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
             if (
-                    "$geoNear, $near, and $nearSphere are not allowed in this context"
-                    not in str(err)
-                    and "$where is not allowed in this context" not in str(err)
+                "$geoNear, $near, and $nearSphere are not allowed in this context"
+                not in str(err)
+                and "$where is not allowed in this context" not in str(err)
             ):
                 raise
 
@@ -73,7 +73,7 @@ def count_documents(
 
 
 async def async_count_documents(
-        collection, filter, skip=None, limit=None, hint=None, collation=None
+    collection, filter, skip=None, limit=None, hint=None, collation=None
 ):
     """Pymongo>3.7 deprecates count in favour of count_documents"""
     if limit == 0:
@@ -110,9 +110,9 @@ async def async_count_documents(
             # fallback to deprecated Cursor.count
             # Keeping this should be reevaluated the day pymongo removes .count entirely
             if (
-                    "$geoNear, $near, and $nearSphere are not allowed in this context"
-                    not in str(err)
-                    and "$where is not allowed in this context" not in str(err)
+                "$geoNear, $near, and $nearSphere are not allowed in this context"
+                not in str(err)
+                and "$where is not allowed in this context" not in str(err)
             ):
                 raise
 

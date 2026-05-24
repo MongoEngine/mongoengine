@@ -14,13 +14,11 @@ from mongoengine import (
 from mongoengine.base import _DocumentRegistry
 from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from mongoengine.base.queryset.pipeline_builder.schema import Schema
-from mongoengine.registry import _CollectionRegistry
 
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
-
     def tearDown(self):
         _DocumentRegistry.clear()
 
@@ -99,7 +97,13 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                             "$cond": [
                                 {"$isArray": "$book"},
                                 "$book",
-                                {"$cond": [{"$ifNull": ["$book", False]}, ["$book"], []]},
+                                {
+                                    "$cond": [
+                                        {"$ifNull": ["$book", False]},
+                                        ["$book"],
+                                        [],
+                                    ]
+                                },
                             ]
                         }
                     },
@@ -120,7 +124,12 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                             "vars": {
                                                 "rid": {
                                                     "$cond": [
-                                                        {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                        {
+                                                            "$eq": [
+                                                                {"$type": "$$orig"},
+                                                                "object",
+                                                            ]
+                                                        },
                                                         "$$orig.$id",
                                                         "$$orig",
                                                     ]
@@ -131,7 +140,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                     "vars": {
                                                         "docs": {
                                                             "$cond": [
-                                                                {"$isArray": "$book__docs"},
+                                                                {
+                                                                    "$isArray": "$book__docs"
+                                                                },
                                                                 "$book__docs",
                                                                 [],
                                                             ]
@@ -142,7 +153,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     "$map": {
                                                                         "input": {
                                                                             "$cond": [
-                                                                                {"$isArray": "$book__docs"},
+                                                                                {
+                                                                                    "$isArray": "$book__docs"
+                                                                                },
                                                                                 "$book__docs",
                                                                                 [],
                                                                             ]
@@ -158,8 +171,16 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                     "in": {
                                                         "$cond": [
                                                             {"$gte": ["$$idx", 0]},
-                                                            {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                            {"_missing_reference": True, "_ref": "$$rid"},
+                                                            {
+                                                                "$arrayElemAt": [
+                                                                    "$$docs",
+                                                                    "$$idx",
+                                                                ]
+                                                            },
+                                                            {
+                                                                "_missing_reference": True,
+                                                                "_ref": "$$rid",
+                                                            },
                                                         ]
                                                     },
                                                 }
@@ -208,7 +229,12 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                         "$$this",
                                                         {
                                                             "$cond": [
-                                                                {"$ifNull": ["$$this", False]},
+                                                                {
+                                                                    "$ifNull": [
+                                                                        "$$this",
+                                                                        False,
+                                                                    ]
+                                                                },
                                                                 ["$$this"],
                                                                 [],
                                                             ]
@@ -248,7 +274,14 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                             "vars": {
                                                                 "rid": {
                                                                     "$cond": [
-                                                                        {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                                        {
+                                                                            "$eq": [
+                                                                                {
+                                                                                    "$type": "$$orig"
+                                                                                },
+                                                                                "object",
+                                                                            ]
+                                                                        },
                                                                         "$$orig.$id",
                                                                         "$$orig",
                                                                     ]
@@ -259,7 +292,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     "vars": {
                                                                         "docs": {
                                                                             "$cond": [
-                                                                                {"$isArray": "$books__docs"},
+                                                                                {
+                                                                                    "$isArray": "$books__docs"
+                                                                                },
                                                                                 "$books__docs",
                                                                                 [],
                                                                             ]
@@ -271,7 +306,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                         "input": {
                                                                                             "$cond": [
                                                                                                 {
-                                                                                                    "$isArray": "$books__docs"},
+                                                                                                    "$isArray": "$books__docs"
+                                                                                                },
                                                                                                 "$books__docs",
                                                                                                 [],
                                                                                             ]
@@ -286,10 +322,22 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     },
                                                                     "in": {
                                                                         "$cond": [
-                                                                            {"$gte": ["$$idx", 0]},
-                                                                            {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                                            {"_missing_reference": True,
-                                                                             "_ref": "$$rid"},
+                                                                            {
+                                                                                "$gte": [
+                                                                                    "$$idx",
+                                                                                    0,
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "$arrayElemAt": [
+                                                                                    "$$docs",
+                                                                                    "$$idx",
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "_missing_reference": True,
+                                                                                "_ref": "$$rid",
+                                                                            },
                                                                         ]
                                                                     },
                                                                 }
@@ -339,7 +387,18 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                             "$cond": [
                                                 {"$isArray": "$$this.v"},
                                                 "$$this.v",
-                                                {"$cond": [{"$ifNull": ["$$this.v", False]}, ["$$this.v"], []]},
+                                                {
+                                                    "$cond": [
+                                                        {
+                                                            "$ifNull": [
+                                                                "$$this.v",
+                                                                False,
+                                                            ]
+                                                        },
+                                                        ["$$this.v"],
+                                                        [],
+                                                    ]
+                                                },
                                             ]
                                         },
                                     ]
@@ -371,7 +430,14 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                             "vars": {
                                                                 "rid": {
                                                                     "$cond": [
-                                                                        {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                                        {
+                                                                            "$eq": [
+                                                                                {
+                                                                                    "$type": "$$orig"
+                                                                                },
+                                                                                "object",
+                                                                            ]
+                                                                        },
                                                                         "$$orig.$id",
                                                                         "$$orig",
                                                                     ]
@@ -382,7 +448,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     "vars": {
                                                                         "docs": {
                                                                             "$cond": [
-                                                                                {"$isArray": "$by_key__docs"},
+                                                                                {
+                                                                                    "$isArray": "$by_key__docs"
+                                                                                },
                                                                                 "$by_key__docs",
                                                                                 [],
                                                                             ]
@@ -394,7 +462,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                         "input": {
                                                                                             "$cond": [
                                                                                                 {
-                                                                                                    "$isArray": "$by_key__docs"},
+                                                                                                    "$isArray": "$by_key__docs"
+                                                                                                },
                                                                                                 "$by_key__docs",
                                                                                                 [],
                                                                                             ]
@@ -409,10 +478,22 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     },
                                                                     "in": {
                                                                         "$cond": [
-                                                                            {"$gte": ["$$idx", 0]},
-                                                                            {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                                            {"_missing_reference": True,
-                                                                             "_ref": "$$rid"},
+                                                                            {
+                                                                                "$gte": [
+                                                                                    "$$idx",
+                                                                                    0,
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "$arrayElemAt": [
+                                                                                    "$$docs",
+                                                                                    "$$idx",
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "_missing_reference": True,
+                                                                                "_ref": "$$rid",
+                                                                            },
                                                                         ]
                                                                     },
                                                                 }
@@ -462,7 +543,12 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                 "$$this.v",
                                                 {
                                                     "$cond": [
-                                                        {"$ifNull": ["$$this.v", False]},
+                                                        {
+                                                            "$ifNull": [
+                                                                "$$this.v",
+                                                                False,
+                                                            ]
+                                                        },
                                                         ["$$this.v"],
                                                         [],
                                                     ]
@@ -498,7 +584,14 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                             "vars": {
                                                                 "rid": {
                                                                     "$cond": [
-                                                                        {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                                        {
+                                                                            "$eq": [
+                                                                                {
+                                                                                    "$type": "$$orig"
+                                                                                },
+                                                                                "object",
+                                                                            ]
+                                                                        },
                                                                         "$$orig.$id",
                                                                         "$$orig",
                                                                     ]
@@ -509,7 +602,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     "vars": {
                                                                         "docs": {
                                                                             "$cond": [
-                                                                                {"$isArray": "$by_key__docs"},
+                                                                                {
+                                                                                    "$isArray": "$by_key__docs"
+                                                                                },
                                                                                 "$by_key__docs",
                                                                                 [],
                                                                             ]
@@ -521,7 +616,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                         "input": {
                                                                                             "$cond": [
                                                                                                 {
-                                                                                                    "$isArray": "$by_key__docs"},
+                                                                                                    "$isArray": "$by_key__docs"
+                                                                                                },
                                                                                                 "$by_key__docs",
                                                                                                 [],
                                                                                             ]
@@ -536,10 +632,22 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                     },
                                                                     "in": {
                                                                         "$cond": [
-                                                                            {"$gte": ["$$idx", 0]},
-                                                                            {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                                            {"_missing_reference": True,
-                                                                             "_ref": "$$rid"},
+                                                                            {
+                                                                                "$gte": [
+                                                                                    "$$idx",
+                                                                                    0,
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "$arrayElemAt": [
+                                                                                    "$$docs",
+                                                                                    "$$idx",
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "_missing_reference": True,
+                                                                                "_ref": "$$rid",
+                                                                            },
                                                                         ]
                                                                     },
                                                                 }
@@ -598,9 +706,17 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                     "in": {
                         "$cond": [
                             {"$gt": [{"$size": "$$matches"}, 0]},
-                            {"$mergeObjects": [{"$first": "$$matches"},
-                                               {"_ref": "$$orig._ref", "_cls": "$$orig._cls"}]},
-                            {"_missing_reference": True, "_ref": "$$orig._ref", "_cls": "$$orig._cls"},
+                            {
+                                "$mergeObjects": [
+                                    {"$first": "$$matches"},
+                                    {"_ref": "$$orig._ref", "_cls": "$$orig._cls"},
+                                ]
+                            },
+                            {
+                                "_missing_reference": True,
+                                "_ref": "$$orig._ref",
+                                "_cls": "$$orig._cls",
+                            },
                         ]
                     },
                 }
@@ -656,9 +772,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
         class Child(Document):
             outer = EmbeddedDocumentField(Outer)
 
-        qs = (
-            Child.aobjects(outer__inners__parent__age__gt=50)
-            .select_related("outer__inners__target", "outer__inners__parent")
+        qs = Child.aobjects(outer__inners__parent__age__gt=50).select_related(
+            "outer__inners__target", "outer__inners__parent"
         )
         pipeline = PipelineBuilder(qs).build()
 
@@ -682,7 +797,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                 {"$isArray": "$outer.inners"},
                                 {
                                     "$reduce": {
-                                        "input": {"$ifNull": ["$outer.inners.parent", []]},
+                                        "input": {
+                                            "$ifNull": ["$outer.inners.parent", []]
+                                        },
                                         "initialValue": [],
                                         "in": {
                                             "$concatArrays": [
@@ -691,7 +808,18 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                     "$cond": [
                                                         {"$isArray": "$$this"},
                                                         "$$this",
-                                                        {"$cond": [{"$ifNull": ["$$this", False]}, ["$$this"], []]},
+                                                        {
+                                                            "$cond": [
+                                                                {
+                                                                    "$ifNull": [
+                                                                        "$$this",
+                                                                        False,
+                                                                    ]
+                                                                },
+                                                                ["$$this"],
+                                                                [],
+                                                            ]
+                                                        },
                                                     ]
                                                 },
                                             ]
@@ -744,14 +872,25 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                         "vars": {"orig": "$$it.parent"},
                                                         "in": {
                                                             "$cond": [
-                                                                {"$ifNull": ["$$orig", False]},
+                                                                {
+                                                                    "$ifNull": [
+                                                                        "$$orig",
+                                                                        False,
+                                                                    ]
+                                                                },
                                                                 {
                                                                     "$let": {
                                                                         "vars": {
                                                                             "rid": {
                                                                                 "$cond": [
-                                                                                    {"$eq": [{"$type": "$$orig"},
-                                                                                             "object"]},
+                                                                                    {
+                                                                                        "$eq": [
+                                                                                            {
+                                                                                                "$type": "$$orig"
+                                                                                            },
+                                                                                            "object",
+                                                                                        ]
+                                                                                    },
                                                                                     "$$orig.$id",
                                                                                     "$$orig",
                                                                                 ]
@@ -763,7 +902,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                     "docs": {
                                                                                         "$cond": [
                                                                                             {
-                                                                                                "$isArray": f"${parent_docs}"},
+                                                                                                "$isArray": f"${parent_docs}"
+                                                                                            },
                                                                                             f"${parent_docs}",
                                                                                             [],
                                                                                         ]
@@ -775,7 +915,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                                     "input": {
                                                                                                         "$cond": [
                                                                                                             {
-                                                                                                                "$isArray": f"${parent_docs}"},
+                                                                                                                "$isArray": f"${parent_docs}"
+                                                                                                            },
                                                                                                             f"${parent_docs}",
                                                                                                             [],
                                                                                                         ]
@@ -790,11 +931,22 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                 },
                                                                                 "in": {
                                                                                     "$cond": [
-                                                                                        {"$gte": ["$$idx", 0]},
-                                                                                        {"$arrayElemAt": ["$$docs",
-                                                                                                          "$$idx"]},
-                                                                                        {"_missing_reference": True,
-                                                                                         "_ref": "$$rid"},
+                                                                                        {
+                                                                                            "$gte": [
+                                                                                                "$$idx",
+                                                                                                0,
+                                                                                            ]
+                                                                                        },
+                                                                                        {
+                                                                                            "$arrayElemAt": [
+                                                                                                "$$docs",
+                                                                                                "$$idx",
+                                                                                            ]
+                                                                                        },
+                                                                                        {
+                                                                                            "_missing_reference": True,
+                                                                                            "_ref": "$$rid",
+                                                                                        },
                                                                                     ]
                                                                                 },
                                                                             }
@@ -827,7 +979,9 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                 {"$isArray": "$outer.inners"},
                                 {
                                     "$reduce": {
-                                        "input": {"$ifNull": ["$outer.inners.target", []]},
+                                        "input": {
+                                            "$ifNull": ["$outer.inners.target", []]
+                                        },
                                         "initialValue": [],
                                         "in": {
                                             "$concatArrays": [
@@ -836,7 +990,18 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                     "$cond": [
                                                         {"$isArray": "$$this"},
                                                         "$$this",
-                                                        {"$cond": [{"$ifNull": ["$$this", False]}, ["$$this"], []]},
+                                                        {
+                                                            "$cond": [
+                                                                {
+                                                                    "$ifNull": [
+                                                                        "$$this",
+                                                                        False,
+                                                                    ]
+                                                                },
+                                                                ["$$this"],
+                                                                [],
+                                                            ]
+                                                        },
                                                     ]
                                                 },
                                             ]
@@ -870,14 +1035,25 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                         "vars": {"orig": "$$it.target"},
                                                         "in": {
                                                             "$cond": [
-                                                                {"$ifNull": ["$$orig", False]},
+                                                                {
+                                                                    "$ifNull": [
+                                                                        "$$orig",
+                                                                        False,
+                                                                    ]
+                                                                },
                                                                 {
                                                                     "$let": {
                                                                         "vars": {
                                                                             "rid": {
                                                                                 "$cond": [
-                                                                                    {"$eq": [{"$type": "$$orig"},
-                                                                                             "object"]},
+                                                                                    {
+                                                                                        "$eq": [
+                                                                                            {
+                                                                                                "$type": "$$orig"
+                                                                                            },
+                                                                                            "object",
+                                                                                        ]
+                                                                                    },
                                                                                     "$$orig.$id",
                                                                                     "$$orig",
                                                                                 ]
@@ -889,7 +1065,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                     "docs": {
                                                                                         "$cond": [
                                                                                             {
-                                                                                                "$isArray": f"${target_docs}"},
+                                                                                                "$isArray": f"${target_docs}"
+                                                                                            },
                                                                                             f"${target_docs}",
                                                                                             [],
                                                                                         ]
@@ -901,7 +1078,8 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                                     "input": {
                                                                                                         "$cond": [
                                                                                                             {
-                                                                                                                "$isArray": f"${target_docs}"},
+                                                                                                                "$isArray": f"${target_docs}"
+                                                                                                            },
                                                                                                             f"${target_docs}",
                                                                                                             [],
                                                                                                         ]
@@ -916,11 +1094,22 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                 },
                                                                                 "in": {
                                                                                     "$cond": [
-                                                                                        {"$gte": ["$$idx", 0]},
-                                                                                        {"$arrayElemAt": ["$$docs",
-                                                                                                          "$$idx"]},
-                                                                                        {"_missing_reference": True,
-                                                                                         "_ref": "$$rid"},
+                                                                                        {
+                                                                                            "$gte": [
+                                                                                                "$$idx",
+                                                                                                0,
+                                                                                            ]
+                                                                                        },
+                                                                                        {
+                                                                                            "$arrayElemAt": [
+                                                                                                "$$docs",
+                                                                                                "$$idx",
+                                                                                            ]
+                                                                                        },
+                                                                                        {
+                                                                                            "_missing_reference": True,
+                                                                                            "_ref": "$$rid",
+                                                                                        },
                                                                                     ]
                                                                                 },
                                                                             }

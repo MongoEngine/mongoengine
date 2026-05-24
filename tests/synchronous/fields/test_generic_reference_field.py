@@ -14,7 +14,6 @@ from tests.synchronous.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestField(MongoDBTestCase):
-
     def test_generic_reference_field_basics(self):
         """Ensure that a GenericReferenceField properly dereferences items."""
 
@@ -26,7 +25,12 @@ class TestField(MongoDBTestCase):
             title = StringField()
 
         class Bookmark(Document):
-            bookmark_object = GenericReferenceField(choices=(Link, Post,))
+            bookmark_object = GenericReferenceField(
+                choices=(
+                    Link,
+                    Post,
+                )
+            )
 
         Link.drop_collection()
         Post.drop_collection()
@@ -41,7 +45,11 @@ class TestField(MongoDBTestCase):
         bm = Bookmark(bookmark_object=post_1)
         bm.save()
 
-        bm = Bookmark.objects(bookmark_object=post_1).select_related("bookmark_object").first()
+        bm = (
+            Bookmark.objects(bookmark_object=post_1)
+            .select_related("bookmark_object")
+            .first()
+        )
         assert get_as_pymongo(bm) == {
             "_id": bm.id,
             "bookmark_object": {
@@ -55,12 +63,19 @@ class TestField(MongoDBTestCase):
         bm.bookmark_object = link_1
         bm.save()
 
-        bm = Bookmark.objects(bookmark_object=link_1).select_related("bookmark_object").first()
+        bm = (
+            Bookmark.objects(bookmark_object=link_1)
+            .select_related("bookmark_object")
+            .first()
+        )
         assert get_as_pymongo(bm, select_related="bookmark_object") == {
             "_id": bm.id,
-            "bookmark_object": {'_cls': 'Link', '_id': link_1.pk,
-                                '_ref': link_1.to_dbref(),
-                                'title': 'Pitchfork'}
+            "bookmark_object": {
+                "_cls": "Link",
+                "_id": link_1.pk,
+                "_ref": link_1.to_dbref(),
+                "title": "Pitchfork",
+            },
         }
 
         assert bm.bookmark_object == link_1
@@ -98,7 +113,14 @@ class TestField(MongoDBTestCase):
             title = StringField()
 
         class User(Document):
-            bookmarks = ListField(GenericReferenceField(choices=(Post, Link,)))
+            bookmarks = ListField(
+                GenericReferenceField(
+                    choices=(
+                        Post,
+                        Link,
+                    )
+                )
+            )
 
         Link.drop_collection()
         Post.drop_collection()
@@ -113,7 +135,11 @@ class TestField(MongoDBTestCase):
         user = User(bookmarks=[post_1, link_1])
         user.save()
 
-        user = User.objects(bookmarks__all=[post_1, link_1]).select_related("bookmarks__all").first()
+        user = (
+            User.objects(bookmarks__all=[post_1, link_1])
+            .select_related("bookmarks__all")
+            .first()
+        )
 
         assert user.bookmarks[0] == post_1
         assert user.bookmarks[1] == link_1
@@ -308,7 +334,11 @@ class TestField(MongoDBTestCase):
         user.username = "New username"
         user.save()
 
-        user = User.objects(bookmarks__all=[post_1]).select_related("bookmarks__all").first()
+        user = (
+            User.objects(bookmarks__all=[post_1])
+            .select_related("bookmarks__all")
+            .first()
+        )
 
         assert user is not None
         assert user.bookmarks[0] == post_1
@@ -319,7 +349,7 @@ class TestField(MongoDBTestCase):
         """
 
         class Doc(Document):
-            ref = GenericReferenceField(choices=('Doc',))
+            ref = GenericReferenceField(choices=("Doc",))
 
         Doc.drop_collection()
 
@@ -361,7 +391,7 @@ class TestField(MongoDBTestCase):
         """
 
         class Doc(Document):
-            ref = GenericReferenceField(choices=('Doc',))
+            ref = GenericReferenceField(choices=("Doc",))
 
         Doc.drop_collection()
 

@@ -114,7 +114,7 @@ class TestField(MongoDBTestCase):
         assert data_to_be_saved == ["age", "created", "day", "name", "userid"]
 
     def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(
-            self,
+        self,
     ):
         # Covers introduction of a breaking change in the validation parameter (0.18)
         def _not_empty(z):
@@ -229,7 +229,7 @@ class TestField(MongoDBTestCase):
         assert data_to_be_saved == ["age", "created", "userid"]
 
     def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(
-            self,
+        self,
     ):
         """List field with default can be set to the empty list (strict)"""
 
@@ -244,7 +244,7 @@ class TestField(MongoDBTestCase):
         assert reloaded.x == []
 
     def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(
-            self,
+        self,
     ):
         """List field with default can be set to the empty list (dynamic)"""
 
@@ -417,16 +417,19 @@ class TestField(MongoDBTestCase):
 
         # dot in the name
         with pytest.raises(ValueError):
+
             class User(Document):
                 name = StringField(db_field="user.name")
 
         # name starting with $
         with pytest.raises(ValueError):
+
             class UserX1(Document):
                 name = StringField(db_field="$name")
 
         # name containing a null character
         with pytest.raises(ValueError):
+
             class UserX2(Document):
                 name = StringField(db_field="name\0")
 
@@ -635,7 +638,7 @@ class TestField(MongoDBTestCase):
         post.info *= 2
         post.save()
         assert (
-                BlogPost.objects(info=["1", "2", "3", "4", "1", "2", "3", "4"]).count() == 1
+            BlogPost.objects(info=["1", "2", "3", "4", "1", "2", "3", "4"]).count() == 1
         )
 
     def test_list_field_manipulative_operators(self):
@@ -1215,9 +1218,10 @@ class TestField(MongoDBTestCase):
         assert a.b.c.txt == "hi"
 
     def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(
-            self,
+        self,
     ):
         with pytest.raises(NotRegistered):
+
             class MyDoc2(Document):
                 emb = EmbeddedDocumentField("MyFunkyDoc123")
 
@@ -1874,7 +1878,7 @@ class TestField(MongoDBTestCase):
         Fish().save()
         Human().save()
         assert (
-                Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count() == 2
+            Animal.objects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count() == 2
         )
         assert Animal.objects(_cls__in=["Animal.Fish.Guppy"]).count() == 0
 

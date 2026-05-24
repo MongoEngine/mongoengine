@@ -8,7 +8,8 @@ from bson import SON, DBRef, ObjectId
 from mongoengine.base.common import UPDATE_OPERATORS, _DocumentRegistry
 from mongoengine.base.datastructures import (
     BaseDict,
-    BaseList, EmbeddedDocumentList,
+    BaseList,
+    EmbeddedDocumentList,
 )
 from mongoengine.common import _import_class
 from mongoengine.errors import DeprecatedError, ValidationError, NotRegistered
@@ -33,18 +34,18 @@ class BaseField:
     auto_creation_counter = -1
 
     def __init__(
-            self,
-            db_field=None,
-            required=False,
-            default=None,
-            unique=False,
-            unique_with=None,
-            primary_key=False,
-            validation=None,
-            choices=None,
-            null=False,
-            sparse=False,
-            **kwargs,
+        self,
+        db_field=None,
+        required=False,
+        default=None,
+        unique=False,
+        unique_with=None,
+        primary_key=False,
+        validation=None,
+        choices=None,
+        null=False,
+        sparse=False,
+        **kwargs,
     ):
         """
         :param db_field: The database field to store this field in
@@ -91,9 +92,9 @@ class BaseField:
 
         # Make sure db_field doesn't contain any forbidden characters.
         if isinstance(self.db_field, str) and (
-                "." in self.db_field
-                or "\0" in self.db_field
-                or self.db_field.startswith("$")
+            "." in self.db_field
+            or "\0" in self.db_field
+            or self.db_field.startswith("$")
         ):
             raise ValueError(
                 'field names cannot contain dots (".") or null characters '
@@ -144,8 +145,8 @@ class BaseField:
         if instance._initialised:
             try:
                 value_has_changed = (
-                        self.name not in instance._data
-                        or instance._data[self.name] != value
+                    self.name not in instance._data
+                    or instance._data[self.name] != value
                 )
                 if value_has_changed:
                     instance._mark_as_changed(self.name)
@@ -211,7 +212,9 @@ class BaseField:
                 try:
                     choice_list.append(_DocumentRegistry.get(choice))
                 except NotRegistered:
-                    self.error(f"{choice} has not been registered in the document registry.")
+                    self.error(
+                        f"{choice} has not been registered in the document registry."
+                    )
             else:
                 choice_list.append(choice)
         choice_list = tuple(choice_list)
@@ -228,7 +231,12 @@ class BaseField:
         else:
             values = value if isinstance(value, (list, tuple)) else [value]
             if len(set(values) - set(choice_list)):
-                self.error("Value must be one of %s" % str(choice_list, ))
+                self.error(
+                    "Value must be one of %s"
+                    % str(
+                        choice_list,
+                    )
+                )
 
     def _validate(self, value, **kwargs):
         # Check the Choices Constraint
@@ -253,7 +261,7 @@ class BaseField:
                     self.error(str(ex))
             else:
                 raise ValueError(
-                    'validation argument for `"%s"` must be a ' "callable." % self.name
+                    'validation argument for `"%s"` must be a callable.' % self.name
                 )
 
         self.validate(value, **kwargs)
@@ -315,8 +323,8 @@ class ComplexBaseField(BaseField):
                 result = BaseList(result, instance, self.name)
                 instance._data[self.name] = result
         elif isinstance(result, dict):
-            if '_cls' in result:
-                cls_ = _DocumentRegistry.get(result['_cls'].split(".")[-1])
+            if "_cls" in result:
+                cls_ = _DocumentRegistry.get(result["_cls"].split(".")[-1])
                 result = cls_._from_son(result)
                 instance._data[self.name] = result
             elif not isinstance(result, BaseDict):
@@ -365,9 +373,9 @@ class ComplexBaseField(BaseField):
                     value_dict[k] = DBRef(collection, v.pk)
                 elif hasattr(v, "to_python"):
                     value_dict[k] = v.to_python()
-                elif isinstance(v, dict) and v.get('_cls') and not '_ref' in v:
+                elif isinstance(v, dict) and v.get("_cls") and not "_ref" in v:
                     try:
-                        cls_ = _DocumentRegistry.get(v.get('_cls').split(".")[-1])
+                        cls_ = _DocumentRegistry.get(v.get("_cls").split(".")[-1])
                         value_dict[k] = cls_._from_son(v)
                     except NotRegistered:
                         value_dict[k] = self.to_python(v)
@@ -429,7 +437,9 @@ class ComplexBaseField(BaseField):
                     meta = getattr(v, "_meta", {})
                     allow_inheritance = meta.get("allow_inheritance")
                     if not allow_inheritance:
-                        value_dict[k] = GenericReferenceField(choices=(type(v),)).to_mongo(v)
+                        value_dict[k] = GenericReferenceField(
+                            choices=(type(v),)
+                        ).to_mongo(v)
                     else:
                         collection = v._get_collection_name()
                         value_dict[k] = DBRef(collection, v.pk)
@@ -608,7 +618,7 @@ class GeoJsonBaseField(BaseField):
         elif not len(value) == 2:
             return "Value (%s) must be a two-dimensional point" % repr(value)
         elif not isinstance(value[0], (float, int)) or not isinstance(
-                value[1], (float, int)
+            value[1], (float, int)
         ):
             return "Both values (%s) in point must be float or int" % repr(value)
 

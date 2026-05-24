@@ -59,8 +59,8 @@ class _DocumentRegistry:
     def register(DocCls):
         ExistingDocCls = _document_registry.get(DocCls._class_name)
         if (
-                ExistingDocCls is not None
-                and ExistingDocCls.__module__ != DocCls.__module__
+            ExistingDocCls is not None
+            and ExistingDocCls.__module__ != DocCls.__module__
         ):
             # A sign that a codebase may have named two different classes with the same name accidentally,
             # this could cause issues with dereferencing because MongoEngine makes the assumption that a Document

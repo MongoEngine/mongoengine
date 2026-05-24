@@ -20,7 +20,11 @@ from mongoengine.mongodb_support import (
 from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.base.queryset import (
     QuerySetManager,
-    queryset_manager, CASCADE, NULLIFY, DENY, PULL,
+    queryset_manager,
+    CASCADE,
+    NULLIFY,
+    DENY,
+    PULL,
 )
 from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import (
@@ -36,7 +40,9 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
+
 
 def get_key_compat(mongo_ver):
     ORDER_BY_KEY = "sort"
@@ -75,11 +81,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         """Ensure that a QuerySet is correctly initialised by AsyncQuerySetManager."""
         assert isinstance(self.Person.aobjects, AsyncQuerySet)
         assert (
-                (await self.Person.aobjects._collection).name == self.Person._get_collection_name()
-        )
-        assert isinstance(
-            await self.Person.aobjects._collection, AsyncCollection
-        )
+            await self.Person.aobjects._collection
+        ).name == self.Person._get_collection_name()
+        assert isinstance(await self.Person.aobjects._collection, AsyncCollection)
 
     async def test_can_perform_joins_references(self):
         class BlogPost(Document):
@@ -448,10 +452,14 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         author = self.Person(name="Test User2")
         await author.asave(write_concern=None)  # will default to {w: 1}
 
-        result = await self.Person.aobjects.update(set__name="Ross", write_concern={"w": 1})
+        result = await self.Person.aobjects.update(
+            set__name="Ross", write_concern={"w": 1}
+        )
 
         assert result == 2
-        result = await self.Person.aobjects.update(set__name="Ross", write_concern={"w": 0})
+        result = await self.Person.aobjects.update(
+            set__name="Ross", write_concern={"w": 0}
+        )
         assert result is None
 
         result = await self.Person.aobjects.update_one(
@@ -793,7 +801,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
     async def test_update_results(self):
         await self.Person.adrop_collection()
 
-        result = await self.Person(name="Bob", age=25).aupdate(upsert=True, full_result=True)
+        result = await self.Person(name="Bob", age=25).aupdate(
+            upsert=True, full_result=True
+        )
         assert isinstance(result, UpdateResult)
         assert "upserted" in result.raw_result
         assert not result.raw_result["updatedExisting"]
@@ -804,7 +814,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert result.raw_result["updatedExisting"]
 
         await self.Person(name="Bob", age=20).asave()
-        result = await self.Person.aobjects(name="Bob").update(set__name="bobby", multi=True)
+        result = await self.Person.aobjects(name="Bob").update(
+            set__name="bobby", multi=True
+        )
         assert result == 2
 
     async def test_update_validate(self):
@@ -861,7 +873,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
     async def test_upsert(self):
         await self.Person.adrop_collection()
 
-        await self.Person.aobjects(pk=ObjectId(), name="Bob", age=30).update(upsert=True)
+        await self.Person.aobjects(pk=ObjectId(), name="Bob", age=30).update(
+            upsert=True
+        )
 
         bob = await self.Person.aobjects.first()
         assert "Bob" == bob.name
@@ -1009,8 +1023,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             blog = await Blog.aobjects.first()
             await Blog.aobjects.insert(blog)
         assert (
-                str(exc_info.value)
-                == "Some documents have ObjectIds, use doc.aupdate() instead"
+            str(exc_info.value)
+            == "Some documents have ObjectIds, use doc.aupdate() instead"
         )
 
         # test inserting a query set
@@ -1018,8 +1032,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             blogs_qs = Blog.aobjects
             await Blog.aobjects.insert(blogs_qs)
         assert (
-                str(exc_info.value)
-                == "Some documents have ObjectIds, use doc.aupdate() instead"
+            str(exc_info.value)
+            == "Some documents have ObjectIds, use doc.aupdate() instead"
         )
 
         # insert 1 new doc
@@ -1429,7 +1443,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         async with async_db_ops_tracker() as q:
             await BlogPost.aobjects.filter(title="whatever").first()
             assert len(await q.get_ops()) == 1
-            assert (await q.get_ops())[0][CMD_QUERY_KEY][ORDER_BY_KEY] == {"published_date": -1}
+            assert (await q.get_ops())[0][CMD_QUERY_KEY][ORDER_BY_KEY] == {
+                "published_date": -1
+            }
 
         # calling order_by() should clear the default ordering
         async with async_db_ops_tracker() as q:
@@ -1439,9 +1455,15 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         # calling an explicit order_by should use a specified sort
         async with async_db_ops_tracker() as q:
-            await BlogPost.aobjects.filter(title="whatever").order_by("published_date").first()
+            await (
+                BlogPost.aobjects.filter(title="whatever")
+                .order_by("published_date")
+                .first()
+            )
             assert len(await q.get_ops()) == 1
-            assert (await q.get_ops())[0][CMD_QUERY_KEY][ORDER_BY_KEY] == {"published_date": 1}
+            assert (await q.get_ops())[0][CMD_QUERY_KEY][ORDER_BY_KEY] == {
+                "published_date": 1
+            }
 
         # calling order_by() after an explicit sort should clear it
         async with async_db_ops_tracker() as q:
@@ -1491,7 +1513,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await BlogPost.adrop_collection()
 
         user = User(name="Test User")
-        await BlogPost.aobjects.create(author=user, content="Had a good coffee today...")
+        await BlogPost.aobjects.create(
+            author=user, content="Had a good coffee today..."
+        )
 
         result = await BlogPost.aobjects.first()
         assert isinstance(result.author, User)
@@ -1713,7 +1737,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert (blog.category).name == "Lameness"
         await Category.aobjects.delete()
         assert await BlogPost.aobjects.count() == 1
-        assert (await BlogPost.aobjects.select_related("category").first()).category is None
+        assert (
+            await BlogPost.aobjects.select_related("category").first()
+        ).category is None
 
     async def test_reverse_delete_rule_nullify_on_abstract_document(self):
         """Ensure nullification of references to deleted documents when
@@ -1978,7 +2004,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await post.areload()
         assert float(post.review) == 3.5
 
-        await BlogPost.aobjects.update_one(inc__review=Decimal(0.12))  # test with Decimal
+        await BlogPost.aobjects.update_one(
+            inc__review=Decimal(0.12)
+        )  # test with Decimal
         await post.areload()
         assert float(post.review) == 3.62
 
@@ -2058,7 +2086,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         post = await BlogPost.aobjects.create(slug="test")
 
         await BlogPost.aobjects.filter(id=post.id).update(push__tags="code")
-        await BlogPost.aobjects.filter(id=post.id).update(push__tags__0=["mongodb", "python"])
+        await BlogPost.aobjects.filter(id=post.id).update(
+            push__tags__0=["mongodb", "python"]
+        )
         await post.areload()
         assert post.tags == ["mongodb", "python", "code"]
 
@@ -2102,7 +2132,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await post.areload()
         assert post.tags == ["code"]
 
-        await BlogPost.aobjects.filter(id=post.id).update(push_all__tags=["mongodb", "code"])
+        await BlogPost.aobjects.filter(id=post.id).update(
+            push_all__tags=["mongodb", "code"]
+        )
         await post.areload()
         assert post.tags == ["code", "mongodb", "code"]
 
@@ -2170,23 +2202,33 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert post.slug == "test test"
         assert post.foo == "baz"
 
-        assert await BlogPost.aobjects(foo="baz", __raw__={"slug": "test test"}).count() == 1
         assert (
-                await BlogPost.aobjects(foo__ne="bar", __raw__={"slug": {"$ne": "test"}}).count()
-                == 1
+            await BlogPost.aobjects(foo="baz", __raw__={"slug": "test test"}).count()
+            == 1
         )
         assert (
-                await BlogPost.aobjects(foo="baz", __raw__={"slug": {"$ne": "test test"}}).count()
-                == 0
+            await BlogPost.aobjects(
+                foo__ne="bar", __raw__={"slug": {"$ne": "test"}}
+            ).count()
+            == 1
         )
         assert (
-                await BlogPost.aobjects(foo__ne="baz", __raw__={"slug": "test test"}).count() == 0
+            await BlogPost.aobjects(
+                foo="baz", __raw__={"slug": {"$ne": "test test"}}
+            ).count()
+            == 0
         )
         assert (
-                await BlogPost.aobjects(
-                    foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
-                ).count()
-                == 0
+            await BlogPost.aobjects(
+                foo__ne="baz", __raw__={"slug": "test test"}
+            ).count()
+            == 0
+        )
+        assert (
+            await BlogPost.aobjects(
+                foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
+            ).count()
+            == 0
         )
 
     async def test_add_to_set_each(self):
@@ -2226,7 +2268,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert (await Site.aobjects.first()).collaborators == []
 
         with pytest.raises(InvalidQueryError):
-            await Site.aobjects(id=s.id).update_one(pull_all__collaborators__user=["Ross"])
+            await Site.aobjects(id=s.id).update_one(
+                pull_all__collaborators__user=["Ross"]
+            )
 
     async def test_pull_from_nested_embedded(self):
         class User(EmbeddedDocument):
@@ -2320,7 +2364,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         s = Site(name="test", collaborators={"helpful": [c], "unhelpful": [f]})
         await s.asave()
 
-        await Site.aobjects(id=s.id).update_one(pull__collaborators__helpful__user="Esteban")
+        await Site.aobjects(id=s.id).update_one(
+            pull__collaborators__helpful__user="Esteban"
+        )
         assert (await Site.aobjects.first()).collaborators["helpful"] == []
 
         await Site.aobjects(id=s.id).update_one(
@@ -2358,7 +2404,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         default_update = await BlogTag.aobjects.update_one(name="new")
         assert default_update == 1
 
-        full_result_update = await BlogTag.aobjects.update_one(name="new", full_result=True)
+        full_result_update = await BlogTag.aobjects.update_one(
+            name="new", full_result=True
+        )
         assert isinstance(full_result_update, UpdateResult)
 
     async def test_update_one_pop_generic_reference(self):
@@ -2466,7 +2514,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await User.adrop_collection()
 
         await User(username="abc").asave()
-        await User.aobjects(username="abc").update(set__bar=Bar(name="test"), upsert=True)
+        await User.aobjects(username="abc").update(
+            set__bar=Bar(name="test"), upsert=True
+        )
 
         user = await User.aobjects(username="abc").first()
         assert user.bar.name == "test"
@@ -2535,13 +2585,21 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         blog_post_4 = await BlogPost.aobjects.create(
             title="Blog Post #4", published_date=datetime.datetime(2010, 1, 7, 0, 0, 0)
         )
-        blog_post_1 = await BlogPost.aobjects.create(title="Blog Post #1", published_date=None)
+        blog_post_1 = await BlogPost.aobjects.create(
+            title="Blog Post #1", published_date=None
+        )
 
         expected = [blog_post_1, blog_post_2, blog_post_3, blog_post_4]
-        await self.assertSequence(BlogPost.aobjects.order_by("published_date"), expected)
-        await self.assertSequence(BlogPost.aobjects.order_by("+published_date"), expected)
+        await self.assertSequence(
+            BlogPost.aobjects.order_by("published_date"), expected
+        )
+        await self.assertSequence(
+            BlogPost.aobjects.order_by("+published_date"), expected
+        )
         expected.reverse()
-        await self.assertSequence(BlogPost.aobjects.order_by("-published_date"), expected)
+        await self.assertSequence(
+            BlogPost.aobjects.order_by("-published_date"), expected
+        )
 
     async def test_order_by_list(self):
         class BlogPost(Document):
@@ -2616,7 +2674,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         names = [
             (p.name, p.age)
-            async for p in self.Person.aobjects.order_by(__raw__=[("name", pymongo.ASCENDING)])
+            async for p in self.Person.aobjects.order_by(
+                __raw__=[("name", pymongo.ASCENDING)]
+            )
         ]
         assert names == [("User A", 20), ("User B", 30), ("User B", 25), ("User C", 40)]
 
@@ -2657,7 +2717,12 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await Author(author=person_b).asave()
         await Author(author=person_c).asave()
 
-        names = [a.author.name async for a in Author.aobjects.select_related("author").order_by("-author__age")]
+        names = [
+            a.author.name
+            async for a in Author.aobjects.select_related("author").order_by(
+                "-author__age"
+            )
+        ]
         assert names == ["User B", "User C", "User A"]
 
     async def test_comment(self):
@@ -2671,8 +2736,16 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             age = IntField()
 
         async with async_db_ops_tracker() as q:
-            await User.aobjects.filter(age__gte=18).comment("looking for an adult").first()
-            await User.aobjects.comment("looking for an adult").filter(age__gte=18).first()
+            await (
+                User.aobjects.filter(age__gte=18)
+                .comment("looking for an adult")
+                .first()
+            )
+            await (
+                User.aobjects.comment("looking for an adult")
+                .filter(age__gte=18)
+                .first()
+            )
 
             ops = await q.get_ops()
             assert len(ops) == 2
@@ -3130,7 +3203,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             assert f["62-3332-1656"] == 1
 
         exec_js = await Person.aobjects.item_frequencies("phone.number")
-        map_reduce = await Person.aobjects.item_frequencies("phone.number", map_reduce=True)
+        map_reduce = await Person.aobjects.item_frequencies(
+            "phone.number", map_reduce=True
+        )
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
@@ -3143,9 +3218,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         exec_js = await Person.aobjects(phone__number="62-3331-1656").item_frequencies(
             "phone.number"
         )
-        map_reduce = await Person.aobjects(phone__number="62-3331-1656").item_frequencies(
-            "phone.number", map_reduce=True
-        )
+        map_reduce = await Person.aobjects(
+            phone__number="62-3331-1656"
+        ).item_frequencies("phone.number", map_reduce=True)
         test_assertions(exec_js)
         test_assertions(map_reduce)
 
@@ -3178,7 +3253,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         freq = await Person.aobjects.item_frequencies("city", map_reduce=True)
         assert freq == {"CRB": 1.0, None: 1.0}
-        freq = await Person.aobjects.item_frequencies("city", normalize=True, map_reduce=True)
+        freq = await Person.aobjects.item_frequencies(
+            "city", normalize=True, map_reduce=True
+        )
         assert freq == {"CRB": 0.5, None: 0.5}
 
     async def test_average(self):
@@ -3197,10 +3274,15 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert int(await self.Person.aobjects.average("age")) == avg
 
         # dot notation
-        await self.Person(name="person meta", person_meta=self.PersonMeta(weight=0)).asave()
+        await self.Person(
+            name="person meta", person_meta=self.PersonMeta(weight=0)
+        ).asave()
         assert (
-                round(abs(int(await self.Person.aobjects.average("person_meta.weight")) - 0), 7)
-                == 0
+            round(
+                abs(int(await self.Person.aobjects.average("person_meta.weight")) - 0),
+                7,
+            )
+            == 0
         )
 
         for i, weight in enumerate(ages):
@@ -3209,8 +3291,13 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             ).asave()
 
         assert (
-                round(abs(int(await self.Person.aobjects.average("person_meta.weight")) - avg), 7)
-                == 0
+            round(
+                abs(
+                    int(await self.Person.aobjects.average("person_meta.weight")) - avg
+                ),
+                7,
+            )
+            == 0
         )
 
         await self.Person(name="test meta none").asave()
@@ -3456,7 +3543,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await News(
             title="Brasil passa para as quartas de finais",
             content="Com o brasil nas quartas de finais teremos um "
-                    "jogo complicado com a alemanha",
+            "jogo complicado com a alemanha",
         ).asave()
 
         count = await News.aobjects.search_text("neymar", language="portuguese").count()
@@ -3473,9 +3560,15 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             is_active=False,
         ).asave()
 
-        new = await News.aobjects(is_active=False).search_text("dilma", language="pt").first()
+        new = (
+            await News.aobjects(is_active=False)
+            .search_text("dilma", language="pt")
+            .first()
+        )
 
-        query = News.aobjects(is_active=False).search_text("dilma", language="pt")._query
+        query = (
+            News.aobjects(is_active=False).search_text("dilma", language="pt")._query
+        )
 
         assert query == {
             "$text": {"$search": "dilma", "$language": "pt"},
@@ -3576,8 +3669,12 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         john_tolkien = Author(name="John Ronald Reuel Tolkien")
 
         await Book.aobjects.create(title="Tom Sawyer", authors=[mark_twain])
-        await Book.aobjects.create(title="The Lord of the Rings", authors=[john_tolkien])
-        await Book.aobjects.create(title="The Stories", authors=[mark_twain, john_tolkien])
+        await Book.aobjects.create(
+            title="The Lord of the Rings", authors=[john_tolkien]
+        )
+        await Book.aobjects.create(
+            title="The Stories", authors=[mark_twain, john_tolkien]
+        )
 
         authors = await Book.aobjects.distinct("authors")
         authors_names = {author.name for author in authors}
@@ -3611,8 +3708,12 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         john_tolkien = Author(name="John Ronald Reuel Tolkien", country=tibet)
 
         await Book.aobjects.create(title="Tom Sawyer", authors=[mark_twain])
-        await Book.aobjects.create(title="The Lord of the Rings", authors=[john_tolkien])
-        await Book.aobjects.create(title="The Stories", authors=[mark_twain, john_tolkien])
+        await Book.aobjects.create(
+            title="The Lord of the Rings", authors=[john_tolkien]
+        )
+        await Book.aobjects.create(
+            title="The Stories", authors=[mark_twain, john_tolkien]
+        )
 
         country_list = await Book.aobjects.distinct("authors.country")
         assert country_list == [scotland, tibet]
@@ -3641,7 +3742,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         foo = Foo(bar=bar_1, bar_lst=[bar_1, bar_2])
         await foo.asave()
 
-        assert set(await Foo.aobjects.select_related("bar_lst").distinct("bar_lst")) == {bar_1, bar_2}
+        assert set(
+            await Foo.aobjects.select_related("bar_lst").distinct("bar_lst")
+        ) == {bar_1, bar_2}
         assert set(await Foo.aobjects.distinct("bar_lst")) == {bar_1.pk, bar_2.pk}
 
     async def test_custom_manager(self):
@@ -3673,7 +3776,11 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         post3 = await BlogPost(tags=["film", "actors"]).asave()
         post4 = await BlogPost(tags=["film", "actors", "music"], deleted=True).asave()
 
-        assert [p.id async for p in BlogPost.objects()] == [post1.id, post2.id, post3.id]
+        assert [p.id async for p in BlogPost.objects()] == [
+            post1.id,
+            post2.id,
+            post3.id,
+        ]
         assert [p.id async for p in BlogPost.objects_1_arg()] == [
             post1.id,
             post2.id,
@@ -3723,7 +3830,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             pass
 
         await Bar.adrop_collection()
-        await  Bar.objects.create(active=False)
+        await Bar.objects.create(active=False)
         assert 0 == await Bar.objects.count()
 
     async def test_inherit_objects_override(self):
@@ -3788,7 +3895,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await group.asave()
         await group.asave()
 
-        await Group.aobjects(id=group.id).update(set__members=[user1, user2], )
+        await Group.aobjects(id=group.id).update(
+            set__members=[user1, user2],
+        )
         await group.aselect_related("members")
         members = group.members
         assert len(members) == 2
@@ -3989,7 +4098,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         assert 5 == await Post.aobjects.limit(5).skip(5).count(with_limit_and_skip=True)
 
-        assert 10 == await Post.aobjects.limit(5).skip(5).count(with_limit_and_skip=False)
+        assert 10 == await Post.aobjects.limit(5).skip(5).count(
+            with_limit_and_skip=False
+        )
 
     async def test_count_and_none(self):
         """Test count works with None()"""
@@ -4219,8 +4330,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             "function() { return this[~fielda] >= this[~fieldb] }"
         )
         assert (
-                'function() { return this["fielda"] >= this["fieldb"] }'
-                == query._where_clause
+            'function() { return this["fielda"] >= this["fieldb"] }'
+            == query._where_clause
         )
         results = await query.to_list()
         assert 2 == len(results)
@@ -4263,7 +4374,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         )
         assert not qs
 
-        qs = await DomainObj.aobjects.where("this[~field] == 'test'").modify(field="new")
+        qs = await DomainObj.aobjects.where("this[~field] == 'test'").modify(
+            field="new"
+        )
         assert qs
 
     async def test_where_modify_field_name_subs(self):
@@ -4279,7 +4392,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         )
         assert not obj
 
-        obj = await DomainObj.aobjects.where("this[~field_1] == 'test'").modify(field_1="new")
+        obj = await DomainObj.aobjects.where("this[~field_1] == 'test'").modify(
+            field_1="new"
+        )
         assert obj
 
         assert await async_get_as_pymongo(obj) == {"_id": obj.id, "field_2": "new"}
@@ -4388,15 +4503,19 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             locale=Locale(city="Brasilia", country="Brazil"),
         ).asave()
 
-        assert await Person.aobjects.order_by("profile__age").scalar("profile__name").to_list() == ["Wilson Jr",
-                                                                                                    "Gabriel Falcao",
-                                                                                                    "Lincoln de souza",
-                                                                                                    "Walter cruz"]
+        assert await Person.aobjects.order_by("profile__age").scalar(
+            "profile__name"
+        ).to_list() == [
+            "Wilson Jr",
+            "Gabriel Falcao",
+            "Lincoln de souza",
+            "Walter cruz",
+        ]
 
         ulist = await (
-            Person.aobjects.order_by("locale.city").scalar(
-                "profile__name", "profile__age", "locale__city"
-            ).to_list()
+            Person.aobjects.order_by("locale.city")
+            .scalar("profile__name", "profile__age", "locale__city")
+            .to_list()
         )
         assert ulist == [
             ("Lincoln de souza", 28, "Belo Horizonte"),
@@ -4453,7 +4572,11 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await Person(name="Wilson JR", state=s1).asave()
 
-        plist = await Person.aobjects.select_related("state").scalar("name", "state").to_list()
+        plist = (
+            await Person.aobjects.select_related("state")
+            .scalar("name", "state")
+            .to_list()
+        )
         assert [(plist[0][0], plist[0][1])] == [("Wilson JR", s1)]
 
     async def test_generic_reference_field_with_only_and_as_pymongo(self):
@@ -4474,14 +4597,20 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         await a1.asave()
 
         activity = await (
-            TestActivity.aobjects(owner=person).select_related("owner")
+            TestActivity.aobjects(owner=person)
+            .select_related("owner")
             .scalar("id", "owner")
             .first()
         )
         assert activity[0] == a1.pk
         assert activity[1] == person
 
-        activity = await TestActivity.aobjects(owner=person).select_related("owner").only("id", "owner").first()
+        activity = (
+            await TestActivity.aobjects(owner=person)
+            .select_related("owner")
+            .only("id", "owner")
+            .first()
+        )
         assert activity.pk == a1.pk
         assert activity.owner == person
 
@@ -4564,7 +4693,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         assert all(o.y is None for o in foos_without_y)
 
-        foos_with_sliced_items = await Foo.aobjects.order_by("y").fields(slice__items=1).to_list()
+        foos_with_sliced_items = (
+            await Foo.aobjects.order_by("y").fields(slice__items=1).to_list()
+        )
 
         assert foos_with_sliced_items[0].items == []
         assert foos_with_sliced_items[1].items == []
@@ -4575,7 +4706,11 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert len(foos_with_sliced_items[4].items) == 1
         assert foos_with_sliced_items[4].items[0].z == "b"
 
-        foos_with_elem_match_items = await Foo.aobjects.order_by("y").fields(elemMatch__items={"z": "b"}).to_list()
+        foos_with_elem_match_items = (
+            await Foo.aobjects.order_by("y")
+            .fields(elemMatch__items={"z": "b"})
+            .to_list()
+        )
 
         assert foos_with_elem_match_items[0].items == []
         assert foos_with_elem_match_items[1].items == []
@@ -4623,27 +4758,41 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         )
         await b3.asave()
 
-        ak = await Bar.aobjects(foo__match={"shape": "square", "color": "purple"}).to_list()
+        ak = await Bar.aobjects(
+            foo__match={"shape": "square", "color": "purple"}
+        ).to_list()
         assert [b1] == ak
 
-        ak = await Bar.aobjects(foo__elemMatch={"shape": "square", "color": "purple"}).to_list()
+        ak = await Bar.aobjects(
+            foo__elemMatch={"shape": "square", "color": "purple"}
+        ).to_list()
         assert [b1] == ak
 
-        ak = await Bar.aobjects(foo__match=Foo(shape="square", color="purple")).to_list()
+        ak = await Bar.aobjects(
+            foo__match=Foo(shape="square", color="purple")
+        ).to_list()
         assert [b1] == ak
 
-        ak = await Bar.aobjects(foo__elemMatch={"shape": "square", "color__exists": True}).to_list()
+        ak = await Bar.aobjects(
+            foo__elemMatch={"shape": "square", "color__exists": True}
+        ).to_list()
 
         assert [b1, b2] == ak
 
-        ak = await Bar.aobjects(foo__match={"shape": "square", "color__exists": True}).to_list()
+        ak = await Bar.aobjects(
+            foo__match={"shape": "square", "color__exists": True}
+        ).to_list()
         assert [b1, b2] == ak
 
-        ak = await Bar.aobjects(foo__elemMatch={"shape": "square", "color__exists": False}).to_list()
+        ak = await Bar.aobjects(
+            foo__elemMatch={"shape": "square", "color__exists": False}
+        ).to_list()
 
         assert [b3] == ak
 
-        ak = await Bar.aobjects(foo__match={"shape": "square", "color__exists": False}).to_list()
+        ak = await Bar.aobjects(
+            foo__match={"shape": "square", "color__exists": False}
+        ).to_list()
         assert [b3] == ak
 
     async def test_upsert_includes_cls(self):
@@ -4733,9 +4882,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         bars = Bar.aobjects.read_preference(ReadPreference.SECONDARY_PREFERRED)
         assert bars._read_preference == ReadPreference.SECONDARY_PREFERRED
         assert (
-                (await bars._cursor).collection.read_preference
-                == ReadPreference.SECONDARY_PREFERRED
-        )
+            await bars._cursor
+        ).collection.read_preference == ReadPreference.SECONDARY_PREFERRED
 
         # Make sure that `.read_preference(...)` does accept string values.
         with pytest.raises(TypeError):
@@ -4779,7 +4927,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         bars = Bar.aobjects.read_concern({"level": "local"})
         assert bars._read_concern.document == {"level": "local"}
-        assert (await bars._cursor).collection.read_concern.document == {"level": "local"}
+        assert (await bars._cursor).collection.read_concern.document == {
+            "level": "local"
+        }
 
         # Make sure that `.read_concern(...)` does not accept string values.
         with pytest.raises(TypeError):
@@ -4787,7 +4937,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         async def assert_read_concern(qs, expected_read_concern):
             assert qs._read_concern.document == expected_read_concern
-            assert (await qs._cursor).collection.read_concern.document == expected_read_concern
+            assert (
+                await qs._cursor
+            ).collection.read_concern.document == expected_read_concern
 
         # Make sure read concern is respected after a `.skip(...)`.
         bars = Bar.aobjects.skip(1).read_concern({"level": "local"})
@@ -4851,9 +5003,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
-                default=default_, choices=(
-                    Simple,
-                )
+                default=default_, choices=(Simple,)
             )
             sorted_list_field = SortedListField(IntField(), default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
@@ -4887,7 +5037,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await User.adrop_collection()
 
-        await User.aobjects.create(id="Bob", name="Bob Dole", age=89, price=Decimal("1.11"))
+        await User.aobjects.create(
+            id="Bob", name="Bob Dole", age=89, price=Decimal("1.11")
+        )
         await User.aobjects.create(
             id="Barak",
             name="Barak Obama",
@@ -4962,8 +5114,11 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         # assert {"_id", "email"} == set(serialized_user.keys())
 
         serialized_user = (
-            (await User.aobjects.exclude("password_salt", "id").only("email").as_pymongo().to_list())[0]
-        )
+            await User.aobjects.exclude("password_salt", "id")
+            .only("email")
+            .as_pymongo()
+            .to_list()
+        )[0]
         assert {"email"} == set(serialized_user.keys())
 
         serialized_user = (
@@ -5016,7 +5171,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert isinstance(user.organization, DBRef)
 
         assert isinstance(qs_user.organization, DBRef)
-        assert isinstance((await qs.select_related("organization").first()).organization, Organization)
+        assert isinstance(
+            (await qs.select_related("organization").first()).organization, Organization
+        )
 
     async def test_no_dereference_no_side_effect_on_existing_instance(self):
         # Relates to issue #1677 - ensures no regression of the bug
@@ -5146,7 +5303,9 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await Person.adrop_collection()
         qs = await Person.aobjects.no_cache()
-        assert repr(qs) == '<AsyncQuerySetNoCache (repr not supported; use async methods)>'
+        assert (
+            repr(qs) == "<AsyncQuerySetNoCache (repr not supported; use async methods)>"
+        )
 
     async def test_no_cached_on_a_cached_queryset_raise_error(self):
         class Person(Document):
@@ -5512,28 +5671,30 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             docs = await cursor.to_list(length=1)
             op = docs[0] if docs else None
 
-            assert (
-                    "$orderby" not in op[CMD_QUERY_KEY]
-            ), "BaseQuerySet must remove orderby from meta in boolen test"
+            assert "$orderby" not in op[CMD_QUERY_KEY], (
+                "BaseQuerySet must remove orderby from meta in boolen test"
+            )
 
             assert (await Person.aobjects.first()).name == "A"
-            assert await Person.aobjects._has_data(), "Cursor has data and returned False"
+            assert await Person.aobjects._has_data(), (
+                "Cursor has data and returned False"
+            )
 
     async def test_delete_count(self):
         [await self.Person(name=f"User {i}", age=i * 10).asave() for i in range(1, 4)]
         assert (
-                await self.Person.aobjects().delete() == 3
+            await self.Person.aobjects().delete() == 3
         )  # test ordinary QuerySey delete count
 
         [await self.Person(name=f"User {i}", age=i * 10).asave() for i in range(1, 4)]
 
         assert (
-                await self.Person.aobjects().skip(1).delete() == 2
+            await self.Person.aobjects().skip(1).delete() == 2
         )  # test Document delete with existing documents
 
         await self.Person.aobjects().delete()
         assert (
-                await self.Person.aobjects().skip(1).delete() == 0
+            await self.Person.aobjects().skip(1).delete() == 0
         )  # test Document delete without existing documents
 
     async def test_max_time_ms(self):

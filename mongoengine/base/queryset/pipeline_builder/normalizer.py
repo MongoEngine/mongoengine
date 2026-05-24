@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Tuple, Optional
+from typing import Any
 
 
 class QueryNormalizer:
@@ -10,7 +10,9 @@ class QueryNormalizer:
     - Converts $where into a $function expression (returned separately).
     """
 
-    def normalize(self, query: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    def normalize(
+        self, query: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
         query = self._walk_and_convert_regex(query)
         return self._convert_where_to_function(query)
 
@@ -47,7 +49,9 @@ class QueryNormalizer:
                 opts += "m"
             if value.flags & re.DOTALL:
                 opts += "s"
-            return {"$regex": pattern, "$options": opts} if opts else {"$regex": pattern}
+            return (
+                {"$regex": pattern, "$options": opts} if opts else {"$regex": pattern}
+            )
         return value
 
     def _walk_and_convert_regex(self, obj: Any):

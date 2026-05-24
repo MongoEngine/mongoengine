@@ -295,8 +295,8 @@ class TestIndexes(unittest.TestCase):
             meta = {"indexes": [{"fields": ["-date"], "unique": True, "sparse": True}]}
 
         assert [
-                   {"fields": [("addDate", -1)], "unique": True, "sparse": True}
-               ] == BlogPost._meta["index_specs"]
+            {"fields": [("addDate", -1)], "unique": True, "sparse": True}
+        ] == BlogPost._meta["index_specs"]
 
         BlogPost.drop_collection()
 
@@ -439,51 +439,51 @@ class TestIndexes(unittest.TestCase):
         if mongo_db >= MONGODB_80:
             query_plan = Test.objects(id=obj.id).exclude("a").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
             )
 
             query_plan = Test.objects(id=obj.id).only("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
             )
 
             query_plan = Test.objects(a=1).only("a").exclude("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"]
-                    == "PROJECTION_COVERED"
+                query_plan["queryPlanner"]["winningPlan"]["stage"]
+                == "PROJECTION_COVERED"
             )
 
             query_plan = Test.objects(a=1).explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             assert (
-                    query_plan.get("queryPlanner").get("winningPlan").get("stage")
-                    == "FETCH"
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
             )
         elif mongo_db < MONGODB_80:
             query_plan = Test.objects(id=obj.id).exclude("a").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = Test.objects(id=obj.id).only("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = Test.objects(a=1).only("a").exclude("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             PROJECTION_STR = (
@@ -493,13 +493,13 @@ class TestIndexes(unittest.TestCase):
 
             query_plan = Test.objects(a=1).explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             assert (
-                    query_plan.get("queryPlanner").get("winningPlan").get("stage")
-                    == "FETCH"
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
             )
 
     def test_index_on_id(self):
@@ -1084,7 +1084,9 @@ class TestIndexes(unittest.TestCase):
                 "v"
             ]  # drop the index version - we don't care about that here
             if "ns" in index_info[key]:
-                del index_info[key][
+                del index_info[
+                    key
+                ][
                     "ns"
                 ]  # drop the index namespace - we don't care about that here, MongoDB 3+
 

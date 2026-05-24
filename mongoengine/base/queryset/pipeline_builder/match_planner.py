@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any
 
 from .schema import Schema
 
@@ -51,7 +51,9 @@ class MatchPlanner:
                     clauses = q.get(op) or []
                     per_prefix = defaultdict(list)
                     for clause in clauses:
-                        sub = MatchPlanner._bucket_query_by_lookup_prefix(cur_doc, clause)
+                        sub = MatchPlanner._bucket_query_by_lookup_prefix(
+                            cur_doc, clause
+                        )
                         for pfx, frag in sub.items():
                             per_prefix[pfx].append(frag)
                     for pfx, frags in per_prefix.items():
@@ -116,7 +118,7 @@ class MatchPlanner:
             db_part = getattr(fld, "db_field", part)
             db_path.append(db_part)
 
-            is_terminal = (i == len(parts) - 1)
+            is_terminal = i == len(parts) - 1
 
             # ---- unwrap list leaf for type checks
             leaf = fld
@@ -131,7 +133,10 @@ class MatchPlanner:
                 inner_leaf = inner
                 while isinstance(inner_leaf, ListField):
                     inner_leaf = inner_leaf.field
-                if isinstance(inner_leaf, (ReferenceField, GenericReferenceField)) and not is_terminal:
+                if (
+                    isinstance(inner_leaf, (ReferenceField, GenericReferenceField))
+                    and not is_terminal
+                ):
                     last_deref_prefix = ".".join(db_path)
                     return last_deref_prefix
 
@@ -140,7 +145,10 @@ class MatchPlanner:
                 inner_leaf = inner
                 while isinstance(inner_leaf, ListField):
                     inner_leaf = inner_leaf.field
-                if isinstance(inner_leaf, (ReferenceField, GenericReferenceField)) and not is_terminal:
+                if (
+                    isinstance(inner_leaf, (ReferenceField, GenericReferenceField))
+                    and not is_terminal
+                ):
                     last_deref_prefix = ".".join(db_path)
                     return last_deref_prefix
 
@@ -148,7 +156,9 @@ class MatchPlanner:
             if isinstance(leaf, ReferenceField):
                 if not is_terminal:
                     last_deref_prefix = ".".join(db_path)
-                    cur = getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None)
+                    cur = getattr(leaf, "document_type_obj", None) or getattr(
+                        leaf, "document_type", None
+                    )
                     continue
                 return last_deref_prefix
 
@@ -156,13 +166,18 @@ class MatchPlanner:
             if isinstance(leaf, GenericReferenceField):
                 if not is_terminal:
                     next_part = parts[i + 1]
-                    common_ref_field, _common_target = MatchPlanner.generic_common_ref(leaf, next_part)
+                    common_ref_field, _common_target = MatchPlanner.generic_common_ref(
+                        leaf, next_part
+                    )
 
                     if common_ref_field is not None:
                         last_deref_prefix = ".".join(db_path)
                         from mongoengine.document import _DocumentRegistry
+
                         ch0 = (leaf.choices or ())[0]
-                        cur = _DocumentRegistry.get(ch0 if isinstance(ch0, str) else ch0.__name__)
+                        cur = _DocumentRegistry.get(
+                            ch0 if isinstance(ch0, str) else ch0.__name__
+                        )
                         continue
 
                     last_deref_prefix = ".".join(db_path)
@@ -170,9 +185,12 @@ class MatchPlanner:
                 return last_deref_prefix
 
             # ---- embedded doc descend
-            if isinstance(fld, (EmbeddedDocumentField, EmbeddedDocumentListField)) or getattr(leaf, "document_type",
-                                                                                              None):
-                cur = getattr(leaf, "document_type", None) or getattr(leaf, "document_type_obj", None)
+            if isinstance(
+                fld, (EmbeddedDocumentField, EmbeddedDocumentListField)
+            ) or getattr(leaf, "document_type", None):
+                cur = getattr(leaf, "document_type", None) or getattr(
+                    leaf, "document_type_obj", None
+                )
                 continue
 
             cur = None
@@ -211,7 +229,10 @@ class MatchPlanner:
             if not isinstance(leaf, ReferenceField):
                 return None, None
 
-            targets.append(getattr(leaf, "document_type_obj", None) or getattr(leaf, "document_type", None))
+            targets.append(
+                getattr(leaf, "document_type_obj", None)
+                or getattr(leaf, "document_type", None)
+            )
 
         if any(t is None for t in targets):
             return None, None
@@ -223,6 +244,7 @@ class MatchPlanner:
     @staticmethod
     def _safe_resolve_generic_choices(generic_field):
         from .schema import Schema
+
         try:
             return Schema.resolve_generic_choices(generic_field) or []
         except Exception:

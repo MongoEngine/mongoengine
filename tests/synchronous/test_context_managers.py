@@ -22,10 +22,7 @@ from mongoengine.context_managers import (
 )
 from mongoengine.pymongo_support import count_documents
 from tests.synchronous.utils import MongoDBTestCase
-from tests.utils import (
-    requires_mongodb_gte_44,
-    MONGO_TEST_DB
-)
+from tests.utils import requires_mongodb_gte_44, MONGO_TEST_DB
 
 
 class TestRollbackError(Exception):
@@ -66,7 +63,7 @@ class TestContextManagers(MongoDBTestCase):
         original_write_concern = collection.write_concern
 
         with set_write_concern(
-                collection, {"w": "majority", "j": True, "wtimeout": 1234}
+            collection, {"w": "majority", "j": True, "wtimeout": 1234}
         ) as updated_collection:
             assert updated_collection.write_concern.document == {
                 "w": "majority",
@@ -86,9 +83,9 @@ class TestContextManagers(MongoDBTestCase):
         original_write_concern = collection.write_concern
 
         with set_read_write_concern(
-                collection,
-                {"w": "majority", "j": True, "wtimeout": 1234},
-                {"level": "local"},
+            collection,
+            {"w": "majority", "j": True, "wtimeout": 1234},
+            {"level": "local"},
         ) as update_collection:
             assert update_collection.read_concern.document == {"level": "local"}
             assert update_collection.write_concern.document == {
@@ -409,7 +406,6 @@ class TestContextManagers(MongoDBTestCase):
         assert A.objects.get(id=a_doc.id).name == "a"
 
     def test_creating_a_document_within_a_transaction(self):
-
         class A(Document):
             name = StringField()
 
@@ -429,7 +425,6 @@ class TestContextManagers(MongoDBTestCase):
         assert A.objects.get(id=another_doc.id).name == "b"
 
     def test_creating_a_document_within_a_transaction_that_fails(self):
-
         class A(Document):
             name = StringField()
 
@@ -488,7 +483,9 @@ class TestContextManagers(MongoDBTestCase):
 
         b_doc = B.objects.create(name="b")
 
-        with run_in_transaction(transaction_kwargs={"read_concern": ReadConcern("local")}):
+        with run_in_transaction(
+            transaction_kwargs={"read_concern": ReadConcern("local")}
+        ):
             a_doc.update(name="a3")
             with switch_db(A, "test2"):
                 a_doc.update(name="a4", upsert=True)
@@ -501,7 +498,7 @@ class TestContextManagers(MongoDBTestCase):
             assert "a4" == A.objects.get(id=a_doc.id).name
 
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
-            self,
+        self,
     ):
         connect(MONGO_TEST_DB)
         connect(f"{MONGO_TEST_DB}_2", "test2")
@@ -581,7 +578,7 @@ class TestContextManagers(MongoDBTestCase):
         assert B.objects.get(id=b_doc.id).name == "b"
 
     def test_exception_in_parent_of_nested_transaction_after_child_completed_only_rolls_parent_back(
-            self,
+        self,
     ):
         class A(Document):
             name = StringField()

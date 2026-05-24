@@ -1,4 +1,3 @@
-import datetime
 import datetime as dt
 
 import pytest
@@ -19,6 +18,7 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 
@@ -78,7 +78,10 @@ class TestDateTimeField(MongoDBAsyncTestCase):
         await person.asave()
 
         assert callable(person.created)
-        assert await async_get_as_pymongo(person) == {"_id": person.id, "created": frozen_dt}
+        assert await async_get_as_pymongo(person) == {
+            "_id": person.id,
+            "created": frozen_dt,
+        }
 
     async def test_handling_microseconds(self):
         """Tests showing pymongo datetime fields handling of microseconds.

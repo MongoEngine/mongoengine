@@ -30,7 +30,9 @@ class PipelineBuilder:
         pipeline: list[dict[str, Any]] = []
         mongo_query: dict[str, Any] = self.qs._query or {}
 
-        hydrate_tree = self.lookup_planner.plan_from_select_related(self.qs._select_related)
+        hydrate_tree = self.lookup_planner.plan_from_select_related(
+            self.qs._select_related
+        )
 
         if not mongo_query:
             if self.qs._select_related:
@@ -77,7 +79,13 @@ class PipelineBuilder:
         if buckets:
             leftovers = [q for q in buckets.values() if q]
             if leftovers:
-                pipeline.append({"$match": leftovers[0] if len(leftovers) == 1 else {"$and": leftovers}})
+                pipeline.append(
+                    {
+                        "$match": leftovers[0]
+                        if len(leftovers) == 1
+                        else {"$and": leftovers}
+                    }
+                )
 
         if function_expr:
             pipeline.append({"$match": function_expr})

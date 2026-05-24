@@ -360,7 +360,10 @@ class FieldTest(unittest.TestCase):
         assert SimpleList.objects.all().select_related("users")[0].users == [u1, u2, u3]
 
         Post.objects.create(user_lists=[[u1, u2], [u3]])
-        assert Post.objects.all().select_related("user_lists")[0].user_lists == [[u1, u2], [u3]]
+        assert Post.objects.all().select_related("user_lists")[0].user_lists == [
+            [u1, u2],
+            [u3],
+        ]
 
     def test_circular_reference(self):
         """Ensure you can handle circular references"""
@@ -459,8 +462,8 @@ class FieldTest(unittest.TestCase):
         anna.save()
 
         assert (
-                "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]"
-                == "%s" % Person.objects()
+            "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]"
+            == "%s" % Person.objects()
         )
 
     def test_generic_reference(self):
@@ -474,7 +477,15 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -510,7 +521,7 @@ class FieldTest(unittest.TestCase):
             assert q == 1
 
             for m in group_obj.members:
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         with query_counter() as q:
@@ -552,7 +563,15 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -586,9 +605,19 @@ class FieldTest(unittest.TestCase):
             assert q == 1
 
             for m in group_obj.members:
-                if not isinstance(m, (UserA, UserB, UserC,)):
-                    assert m == {'_cls': 'UserA', '_missing_reference': True,
-                                 '_ref': DBRef('user_a', user.pk)}
+                if not isinstance(
+                    m,
+                    (
+                        UserA,
+                        UserB,
+                        UserC,
+                    ),
+                ):
+                    assert m == {
+                        "_cls": "UserA",
+                        "_missing_reference": True,
+                        "_ref": DBRef("user_a", user.pk),
+                    }
             assert q == 1
             assert group_obj._data["members"]
 
@@ -608,7 +637,15 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -644,7 +681,7 @@ class FieldTest(unittest.TestCase):
             assert q == 1
 
             for m in group_obj.members:
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         with query_counter() as q:
@@ -753,7 +790,15 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class Group(Document):
-            members = DictField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = DictField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -788,7 +833,7 @@ class FieldTest(unittest.TestCase):
             assert q == 1
 
             for k, m in group_obj.members.items():
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         with query_counter() as q:
@@ -876,7 +921,7 @@ class FieldTest(unittest.TestCase):
             group_obj = Group.objects.first()
 
             for k, m in group_obj.members.items():
-                assert 'User' in m.document_type.__name__
+                assert "User" in m.document_type.__name__
 
         # Document select_related
         with query_counter() as q:
@@ -925,7 +970,15 @@ class FieldTest(unittest.TestCase):
             name = StringField()
 
         class Group(Document):
-            members = MapField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = MapField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()
@@ -1011,9 +1064,9 @@ class FieldTest(unittest.TestCase):
             name = StringField(max_length=250, required=True)
             path = StringField()
             title = StringField()
-            parent = GenericReferenceField(default=None, choices=('Self',))
-            parents = ListField(GenericReferenceField(choices=('Self',)))
-            children = ListField(GenericReferenceField(choices=('Self',)))
+            parent = GenericReferenceField(default=None, choices=("Self",))
+            parents = ListField(GenericReferenceField(choices=("Self",)))
+            children = ListField(GenericReferenceField(choices=("Self",)))
 
         Asset.drop_collection()
 
@@ -1054,7 +1107,7 @@ class FieldTest(unittest.TestCase):
         room_101.save()
 
         room = Room.objects.first()
-        assert room.staffs_with_position[0]["staff"]['_ref'].id == sarah.pk
+        assert room.staffs_with_position[0]["staff"]["_ref"].id == sarah.pk
         assert room.staffs_with_position[1]["staff"].id == bob.pk
 
     def test_document_reload_no_inheritance(self):
@@ -1217,7 +1270,15 @@ class FieldTest(unittest.TestCase):
 
         class Group(Document):
             name = StringField()
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         UserA.drop_collection()
         UserB.drop_collection()

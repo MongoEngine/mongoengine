@@ -1,11 +1,7 @@
 import pytest
-from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
-from mongoengine.mongodb_support import (
-    get_mongodb_version,
-)
 from tests.synchronous.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -212,14 +208,14 @@ class TestDictField(MongoDBTestCase):
         assert Simple.objects.filter(mapping__someint__value=42).count() == 1
         assert Simple.objects.filter(mapping__nested_dict__number=1).count() == 1
         assert (
-                Simple.objects.filter(mapping__nested_dict__complex__value=42).count() == 1
+            Simple.objects.filter(mapping__nested_dict__complex__value=42).count() == 1
         )
         assert (
-                Simple.objects.filter(mapping__nested_dict__list__0__value=42).count() == 1
+            Simple.objects.filter(mapping__nested_dict__list__0__value=42).count() == 1
         )
         assert (
-                Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
-                == 1
+            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
+            == 1
         )
 
         # Confirm can update
@@ -228,12 +224,12 @@ class TestDictField(MongoDBTestCase):
             set__mapping__nested_dict__list__1=StringSetting(value="Boo")
         )
         assert (
-                Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
-                == 0
+            Simple.objects.filter(mapping__nested_dict__list__1__value="foo").count()
+            == 0
         )
         assert (
-                Simple.objects.filter(mapping__nested_dict__list__1__value="Boo").count()
-                == 1
+            Simple.objects.filter(mapping__nested_dict__list__1__value="Boo").count()
+            == 1
         )
 
     def test_push_dict(self):
@@ -353,8 +349,18 @@ class TestDictField(MongoDBTestCase):
         e.mapping8["someint"] = e.mapping9["someint"] = [{"d": [d]}]
         e.save()
 
-        s = Simple.objects.select_related("mapping0", "mapping1", "mapping2", "mapping3", "mapping4", "mapping5",
-                                          "mapping6", "mapping7", "mapping8", "mapping9").first()
+        s = Simple.objects.select_related(
+            "mapping0",
+            "mapping1",
+            "mapping2",
+            "mapping3",
+            "mapping4",
+            "mapping5",
+            "mapping6",
+            "mapping7",
+            "mapping8",
+            "mapping9",
+        ).first()
         assert isinstance(s.mapping0["someint"], Doc)
         assert isinstance(s.mapping1["someint"], Doc)
         assert isinstance(s.mapping2["someint"][0], Doc)

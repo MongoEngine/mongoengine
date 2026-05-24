@@ -20,6 +20,7 @@ class Schema:
     def unwrap_list_leaf(field):
         """If the field is ListField(...ListField(x)...), return the deepest leaf."""
         from mongoengine.fields import ListField
+
         leaf = field
         while isinstance(leaf, ListField):
             leaf = leaf.field
@@ -28,6 +29,7 @@ class Schema:
     @staticmethod
     def unwrap_list_field(field):
         from mongoengine.fields import ListField
+
         if not isinstance(field, ListField):
             return None, 0
         depth = 0
@@ -64,7 +66,12 @@ class Schema:
 
     @staticmethod
     def is_list_of_embedded(field) -> bool:
-        from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
+        from mongoengine.fields import (
+            EmbeddedDocumentListField,
+            ListField,
+            EmbeddedDocumentField,
+        )
+
         return isinstance(field, EmbeddedDocumentListField) or (
             isinstance(field, ListField)
             and isinstance(getattr(field, "field", None), EmbeddedDocumentField)

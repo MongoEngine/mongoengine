@@ -5,14 +5,18 @@ import unittest
 
 import pytest
 
-from mongoengine.asynchronous import async_disconnect_all, async_connect, async_get_db, \
-    async_disconnect
+from mongoengine.asynchronous import (
+    async_disconnect_all,
+    async_connect,
+    async_get_db,
+    async_disconnect,
+)
 from mongoengine.base import _DocumentRegistry
 from mongoengine.context_managers import async_query_counter
 from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
 from mongoengine.registry import _CollectionRegistry
 
-from tests.utils import MONGO_TEST_DB, PYMONGO_VERSION
+from tests.utils import MONGO_TEST_DB
 
 
 class MongoDBAsyncTestCase(unittest.IsolatedAsyncioTestCase):
@@ -37,7 +41,11 @@ class MongoDBAsyncTestCase(unittest.IsolatedAsyncioTestCase):
 async def async_get_as_pymongo(doc, select_related=None, no_dereference=False):
     """Fetch the pymongo version of a certain Document"""
     if select_related:
-        return await doc.__class__.aobjects.as_pymongo().select_related(select_related).get(id=doc.id)
+        return (
+            await doc.__class__.aobjects.as_pymongo()
+            .select_related(select_related)
+            .get(id=doc.id)
+        )
     else:
         return await doc.__class__.aobjects.as_pymongo().get(id=doc.id)
 
@@ -80,7 +88,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     async def _inner_async(*args, **kwargs):
-
         mongodb_v = await async_get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)
@@ -90,7 +97,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     def _inner_sync(*args, **kwargs):
-
         mongodb_v = get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)
@@ -114,7 +120,12 @@ class async_db_ops_tracker(async_query_counter):
 
 
 async def reset_async_connections():
-    from mongoengine.asynchronous.connection import _connections, _connection_settings, _dbs
+    from mongoengine.asynchronous.connection import (
+        _connections,
+        _connection_settings,
+        _dbs,
+    )
+
     for alias, client in list(_connections.items()):
         try:
             await client.close()

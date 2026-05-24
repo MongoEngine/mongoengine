@@ -11,13 +11,14 @@ class Person(Document):
 
 
 class TestUUIDField(MongoDBAsyncTestCase):
-
-
     async def test_storage(self):
         uid = uuid.uuid4()
         await Person.adrop_collection()
         person = await Person(api_key=uid).asave()
-        assert await async_get_as_pymongo(person) == {"_id": person.id, "api_key": str(uid)}
+        assert await async_get_as_pymongo(person) == {
+            "_id": person.id,
+            "api_key": str(uid),
+        }
 
     async def test_field_string(self):
         """Test UUID fields storing as String"""

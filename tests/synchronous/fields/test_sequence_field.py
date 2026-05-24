@@ -238,8 +238,8 @@ class TestSequenceField(MongoDBTestCase):
 
         assert "base.counter" in self.db["mongoengine.counters"].find().distinct("_id")
         assert not (
-                ("foo.counter" or "bar.counter")
-                in self.db["mongoengine.counters"].find().distinct("_id")
+            ("foo.counter" or "bar.counter")
+            in self.db["mongoengine.counters"].find().distinct("_id")
         )
         assert foo.counter != bar.counter
         assert foo._fields["counter"].owner_document == Base

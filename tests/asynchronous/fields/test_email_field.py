@@ -5,7 +5,6 @@ from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestEmailField(MongoDBAsyncTestCase):
-
     async def test_generic_behavior(self):
         class User(Document):
             email = EmailField()

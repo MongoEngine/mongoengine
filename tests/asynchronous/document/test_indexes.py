@@ -4,8 +4,19 @@ from datetime import datetime
 import pytest
 from pymongo.collation import Collation
 
-from mongoengine import Document, StringField, IntField, EmbeddedDocument, EmbeddedDocumentField, ListField, \
-    SortedListField, DictField, DynamicDocument, DateTimeField, EmbeddedDocumentListField
+from mongoengine import (
+    Document,
+    StringField,
+    IntField,
+    EmbeddedDocument,
+    EmbeddedDocumentField,
+    ListField,
+    SortedListField,
+    DictField,
+    DynamicDocument,
+    DateTimeField,
+    EmbeddedDocumentListField,
+)
 from mongoengine.asynchronous import async_connect, async_get_db, async_disconnect_all
 from mongoengine.errors import OperationError, NotUniqueError
 from mongoengine.mongodb_support import (
@@ -52,7 +63,6 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
         await self._index_test(DynamicDocument)
 
     async def _index_test(self, InheritFrom):
-
         class BlogPost(InheritFrom):
             date = DateTimeField(db_field="addDate", default=datetime.now)
             category = StringField()
@@ -269,8 +279,8 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
             meta = {"indexes": [{"fields": ["-date"], "unique": True, "sparse": True}]}
 
         assert [
-                   {"fields": [("addDate", -1)], "unique": True, "sparse": True}
-               ] == BlogPost._meta["index_specs"]
+            {"fields": [("addDate", -1)], "unique": True, "sparse": True}
+        ] == BlogPost._meta["index_specs"]
 
         await BlogPost.adrop_collection()
 
@@ -413,51 +423,51 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
         if mongo_db >= MONGODB_80:
             query_plan = await Test.aobjects(id=obj.id).exclude("a").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
             )
 
             query_plan = await Test.aobjects(id=obj.id).only("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["stage"] == "EXPRESS_IXSCAN"
             )
 
             query_plan = await Test.aobjects(a=1).only("a").exclude("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["stage"]
-                    == "PROJECTION_COVERED"
+                query_plan["queryPlanner"]["winningPlan"]["stage"]
+                == "PROJECTION_COVERED"
             )
 
             query_plan = await Test.aobjects(a=1).explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             assert (
-                    query_plan.get("queryPlanner").get("winningPlan").get("stage")
-                    == "FETCH"
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
             )
         elif mongo_db < MONGODB_80:
-            query_plan = await  Test.aobjects(id=obj.id).exclude("a").explain()
+            query_plan = await Test.aobjects(id=obj.id).exclude("a").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = await Test.aobjects(id=obj.id).only("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IDHACK"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IDHACK"
             )
 
             query_plan = await Test.aobjects(a=1).only("a").exclude("id").explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             PROJECTION_STR = (
@@ -467,13 +477,13 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
 
             query_plan = await Test.aobjects(a=1).explain()
             assert (
-                    query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
-                    == "IXSCAN"
+                query_plan["queryPlanner"]["winningPlan"]["inputStage"]["stage"]
+                == "IXSCAN"
             )
 
             assert (
-                    query_plan.get("queryPlanner").get("winningPlan").get("stage")
-                    == "FETCH"
+                query_plan.get("queryPlanner").get("winningPlan").get("stage")
+                == "FETCH"
             )
 
     async def test_index_on_id(self):
@@ -541,11 +551,15 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
             await BlogPost(name=name).asave()
 
         query_result = BlogPost.aobjects.collation(base).order_by("name")
-        assert [x.name async for x in query_result] == sorted(names, key=lambda x: x.lower())
+        assert [x.name async for x in query_result] == sorted(
+            names, key=lambda x: x.lower()
+        )
         assert 5 == await query_result.count()
 
         query_result = BlogPost.aobjects.collation(Collation(**base)).order_by("name")
-        assert [x.name async for x in query_result] == sorted(names, key=lambda x: x.lower())
+        assert [x.name async for x in query_result] == sorted(
+            names, key=lambda x: x.lower()
+        )
         assert 5 == await query_result.count()
 
         incorrect_collation = {"arndom": "wrdo"}
@@ -1050,13 +1064,15 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
 
         assert await TestDoc.acompare_indexes() == {"missing": [], "extra": []}
 
-        index_info = await(await TestDoc._aget_collection()).index_information()
+        index_info = await (await TestDoc._aget_collection()).index_information()
         for key in index_info:
             del index_info[key][
                 "v"
             ]  # drop the index version - we don't care about that here
             if "ns" in index_info[key]:
-                del index_info[key][
+                del index_info[
+                    key
+                ][
                     "ns"
                 ]  # drop the index namespace - we don't care about that here, MongoDB 3+
 

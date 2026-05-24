@@ -12,7 +12,7 @@ from mongoengine.synchronous.connection import disconnect_all, get_db
 from mongoengine.context_managers import query_counter
 from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
 
-from tests.utils import MONGO_TEST_DB, PYMONGO_VERSION
+from tests.utils import MONGO_TEST_DB
 
 
 class MongoDBTestCase(unittest.TestCase):
@@ -36,7 +36,11 @@ class MongoDBTestCase(unittest.TestCase):
 def get_as_pymongo(doc, select_related=None, no_dereference=False):
     """Fetch the pymongo version of a certain Document"""
     if select_related:
-        return doc.__class__.objects.as_pymongo().select_related(select_related).get(id=doc.id)
+        return (
+            doc.__class__.objects.as_pymongo()
+            .select_related(select_related)
+            .get(id=doc.id)
+        )
     else:
         return doc.__class__.objects.as_pymongo().get(id=doc.id)
 
@@ -71,7 +75,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     async def _inner_async(*args, **kwargs):
-
         mongodb_v = await async_get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)
@@ -81,7 +84,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     def _inner_sync(*args, **kwargs):
-
         mongodb_v = get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)
@@ -105,7 +107,12 @@ class db_ops_tracker(query_counter):
 
 
 def reset_connections():
-    from mongoengine.synchronous.connection import _connections, _connection_settings, _dbs
+    from mongoengine.synchronous.connection import (
+        _connections,
+        _connection_settings,
+        _dbs,
+    )
+
     for alias, client in list(_connections.items()):
         try:
             client.close()

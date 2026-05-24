@@ -44,8 +44,8 @@ class TestJson(MongoDBTestCase):
 
             def __eq__(self, other):
                 return (
-                        self.string == other.string
-                        and self.embedded_field == other.embedded_field
+                    self.string == other.string
+                    and self.embedded_field == other.embedded_field
                 )
 
         doc = Doc(string="Hi", embedded_field=Embedded(string="Hi"))

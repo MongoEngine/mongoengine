@@ -44,20 +44,24 @@ class TestEmbeddedDocumentField(MongoDBAsyncTestCase):
         with pytest.raises(ValidationError) as exc_info:
             emb.document_type
         assert (
-                "Invalid embedded document class provided to an EmbeddedDocumentField"
-                in str(exc_info.value)
+            "Invalid embedded document class provided to an EmbeddedDocumentField"
+            in str(exc_info.value)
         )
 
-    async def test_embedded_document_field_only_allow_subclasses_of_embedded_document(self):
+    async def test_embedded_document_field_only_allow_subclasses_of_embedded_document(
+        self,
+    ):
         # Relates to #1661
         class MyDoc(Document):
             name = StringField()
 
         with pytest.raises(ValidationError):
+
             class MyFailingDoc(Document):
                 emb = EmbeddedDocumentField(MyDoc)
 
         with pytest.raises(ValidationError):
+
             class MyFailingdoc2(Document):
                 emb = EmbeddedDocumentField("MyDoc")
 
@@ -144,7 +148,9 @@ class TestEmbeddedDocumentField(MongoDBAsyncTestCase):
 
         await Person.adrop_collection()
 
-        p = await Person(settings=AdminSettings(foo1="bar1", foo2="bar2"), name="John").asave()
+        p = await Person(
+            settings=AdminSettings(foo1="bar1", foo2="bar2"), name="John"
+        ).asave()
 
         # Test non exiting attribute
         with pytest.raises(InvalidQueryError) as exc_info:
@@ -191,7 +197,9 @@ class TestEmbeddedDocumentField(MongoDBAsyncTestCase):
         assert (await Person.aobjects(settings__base_foo="basefoo").first()).id == p.id
         assert (await Person.aobjects(settings__sub_foo="subfoo").first()).id == p.id
 
-        only_p = await Person.aobjects.only("settings.base_foo", "settings._cls").first()
+        only_p = await Person.aobjects.only(
+            "settings.base_foo", "settings._cls"
+        ).first()
         assert only_p.settings.base_foo == "basefoo"
         assert only_p.settings.sub_foo is None
 
@@ -209,14 +217,20 @@ class TestEmbeddedDocumentField(MongoDBAsyncTestCase):
         class Record(Document):
             posts = ListField(EmbeddedDocumentField(Post))
 
-        record_movie = await Record(posts=[MoviePost(author="John", title="foo")]).asave()
+        record_movie = await Record(
+            posts=[MoviePost(author="John", title="foo")]
+        ).asave()
         record_text = await Record(posts=[TextPost(content="a", title="foo")]).asave()
 
-        records = await Record.aobjects(posts__author=record_movie.posts[0].author).to_list()
+        records = await Record.aobjects(
+            posts__author=record_movie.posts[0].author
+        ).to_list()
         assert len(records) == 1
         assert records[0].id == record_movie.id
 
-        records = await Record.aobjects(posts__content=record_text.posts[0].content).to_list()
+        records = await Record.aobjects(
+            posts__content=record_text.posts[0].content
+        ).to_list()
         assert len(records) == 1
         assert records[0].id == record_text.id
 
@@ -320,7 +334,9 @@ class TestGenericEmbeddedDocumentField(MongoDBAsyncTestCase):
             comments = ListField(GenericEmbeddedDocumentField(choices=(UserComments,)))
 
         # Ensure Validation Passes
-        await BlogPost(comments=[UserComments(author="user2", message="message2")]).asave()
+        await BlogPost(
+            comments=[UserComments(author="user2", message="message2")]
+        ).asave()
 
     async def test_choices_validation_documents_invalid(self):
         """
@@ -371,7 +387,9 @@ class TestGenericEmbeddedDocumentField(MongoDBAsyncTestCase):
             comments = ListField(GenericEmbeddedDocumentField(choices=(Comments,)))
 
         # Save Valid EmbeddedDocument Type
-        await BlogPost(comments=[UserComments(author="user2", message="message2")]).asave()
+        await BlogPost(
+            comments=[UserComments(author="user2", message="message2")]
+        ).asave()
 
     async def test_query_generic_embedded_document_attribute(self):
         class AdminSettings(EmbeddedDocument):

@@ -3,14 +3,17 @@ import unittest
 from bson import DBRef, ObjectId
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_register_connection, async_disconnect_all
+from mongoengine.asynchronous import (
+    async_connect,
+    async_register_connection,
+    async_disconnect_all,
+)
 from mongoengine.context_managers import async_query_counter
 from tests.asynchronous.utils import reset_async_connections
 from tests.utils import MONGO_TEST_DB
 
 
 class FieldTest(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         self.db = await async_connect(db=MONGO_TEST_DB)
 
@@ -305,7 +308,9 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         async with async_query_counter() as q:
             assert await q.eq(0)
 
-            peter = await Employee.aobjects.select_related("boss", "friends").with_id(peter.id)
+            peter = await Employee.aobjects.select_related("boss", "friends").with_id(
+                peter.id
+            )
             assert await q.eq(1)
 
             peter.boss
@@ -318,7 +323,9 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         async with async_query_counter() as q:
             assert await q.eq(0)
 
-            peter = await (await Employee.aobjects.with_id(peter.id)).aselect_related("boss", "friends")
+            peter = await (await Employee.aobjects.with_id(peter.id)).aselect_related(
+                "boss", "friends"
+            )
             assert await q.eq(2)
 
             assert peter.boss == bill
@@ -360,10 +367,14 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         u3 = await User.aobjects.create(name="u3")
 
         await SimpleList.aobjects.create(users=[u1, u2, u3])
-        assert (await SimpleList.aobjects.all().select_related("users").first()).users == [u1, u2, u3]
+        assert (
+            await SimpleList.aobjects.all().select_related("users").first()
+        ).users == [u1, u2, u3]
 
         await Post.aobjects.create(user_lists=[[u1, u2], [u3]])
-        assert (await Post.aobjects.all().select_related("user_lists").first()).user_lists == [[u1, u2], [u3]]
+        assert (
+            await Post.aobjects.all().select_related("user_lists").first()
+        ).user_lists == [[u1, u2], [u3]]
 
     async def test_circular_reference(self):
         """Ensure you can handle circular references"""
@@ -396,7 +407,10 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         daughter.relations.append(self_rel)
         await daughter.asave()
 
-        assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % await Person.aobjects().to_list()
+        assert (
+            "[<Person: Mother>, <Person: Daughter>]"
+            == "%s" % await Person.aobjects().to_list()
+        )
 
     async def test_circular_reference_on_self(self):
         """Ensure you can handle circular references"""
@@ -423,7 +437,10 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         assert daughter._get_changed_fields() == ["relations"]
         await daughter.asave()
 
-        assert "[<Person: Mother>, <Person: Daughter>]" == "%s" % await Person.aobjects().to_list()
+        assert (
+            "[<Person: Mother>, <Person: Daughter>]"
+            == "%s" % await Person.aobjects().to_list()
+        )
 
     async def test_circular_tree_reference(self):
         """Ensure you can handle circular references with more than one level"""
@@ -462,8 +479,8 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         await anna.asave()
 
         assert (
-                "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]"
-                == "%s" % await Person.aobjects().to_list()
+            "[<Person: Paul>, <Person: Maria>, <Person: Julia>, <Person: Anna>]"
+            == "%s" % await Person.aobjects().to_list()
         )
 
     async def test_generic_reference(self):
@@ -477,7 +494,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()
@@ -513,7 +538,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             assert await q.eq(1)
 
             for m in group_obj.members:
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         async with async_query_counter() as q:
@@ -555,7 +580,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()
@@ -589,9 +622,19 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             assert await q.eq(1)
 
             for m in group_obj.members:
-                if not isinstance(m, (UserA, UserB, UserC,)):
-                    assert m == {'_cls': 'UserA', '_missing_reference': True,
-                                 '_ref': DBRef('user_a', user.pk)}
+                if not isinstance(
+                    m,
+                    (
+                        UserA,
+                        UserB,
+                        UserC,
+                    ),
+                ):
+                    assert m == {
+                        "_cls": "UserA",
+                        "_missing_reference": True,
+                        "_ref": DBRef("user_a", user.pk),
+                    }
             assert await q.eq(1)
             assert group_obj._data["members"]
 
@@ -611,7 +654,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
 
         class Group(Document):
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()
@@ -647,7 +698,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             assert await q.eq(1)
 
             for m in group_obj.members:
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         async with async_query_counter() as q:
@@ -756,7 +807,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
 
         class Group(Document):
-            members = DictField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = DictField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()
@@ -794,7 +853,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             assert await q.eq(1)
 
             for k, m in group_obj.members.items():
-                assert "User" in m['_cls']
+                assert "User" in m["_cls"]
 
         # Document select_related
         async with async_query_counter() as q:
@@ -882,7 +941,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             group_obj = await Group.aobjects.first()
 
             for k, m in group_obj.members.items():
-                assert 'User' in m.document_type.__name__
+                assert "User" in m.document_type.__name__
 
         # Document select_related
         async with async_query_counter() as q:
@@ -925,7 +984,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
 
         class Group(Document):
-            members = MapField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = MapField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()
@@ -1011,9 +1078,9 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
             name = StringField(max_length=250, required=True)
             path = StringField()
             title = StringField()
-            parent = GenericReferenceField(default=None, choices=('Self',))
-            parents = ListField(GenericReferenceField(choices=('Self',)))
-            children = ListField(GenericReferenceField(choices=('Self',)))
+            parent = GenericReferenceField(default=None, choices=("Self",))
+            parents = ListField(GenericReferenceField(choices=("Self",)))
+            children = ListField(GenericReferenceField(choices=("Self",)))
 
         await Asset.adrop_collection()
 
@@ -1054,7 +1121,7 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         await room_101.asave()
 
         room = await Room.aobjects.first()
-        assert room.staffs_with_position[0]["staff"]['_ref'].id == sarah.pk
+        assert room.staffs_with_position[0]["staff"]["_ref"].id == sarah.pk
         assert room.staffs_with_position[1]["staff"].id == bob.pk
 
     async def test_document_reload_no_inheritance(self):
@@ -1148,7 +1215,9 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
         assert 0 == msg.comments[0].id
         assert 1 == msg.comments[1].id
 
-    async def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(self):
+    async def test_list_item_dereference_dref_false_save_doesnt_cause_extra_queries(
+        self,
+    ):
         """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
@@ -1177,7 +1246,9 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
 
             assert await q.eq(2)
 
-    async def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(self):
+    async def test_list_item_dereference_dref_true_save_doesnt_cause_extra_queries(
+        self,
+    ):
         """Ensure that DBRef items in ListFields are dereferenced."""
 
         class User(Document):
@@ -1218,7 +1289,15 @@ class FieldTest(unittest.IsolatedAsyncioTestCase):
 
         class Group(Document):
             name = StringField()
-            members = ListField(GenericReferenceField(choices=(UserA, UserB, UserC,)))
+            members = ListField(
+                GenericReferenceField(
+                    choices=(
+                        UserA,
+                        UserB,
+                        UserC,
+                    )
+                )
+            )
 
         await UserA.adrop_collection()
         await UserB.adrop_collection()

@@ -139,7 +139,6 @@ class TestMapField(MongoDBAsyncTestCase):
 
         await tree.asave()
 
-        assert (
-                (await BlogPost.aobjects.get(id=tree.id)).info_dict["éééé"].description
-            == "VALUE: éééé"
-        )
+        assert (await BlogPost.aobjects.get(id=tree.id)).info_dict[
+            "éééé"
+        ].description == "VALUE: éééé"

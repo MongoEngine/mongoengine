@@ -1,6 +1,7 @@
 """
 Helper functions, constants, and types to aid with MongoDB version support
 """
+
 from mongoengine.asynchronous import async_get_connection
 from mongoengine.synchronous.connection import DEFAULT_CONNECTION_NAME, get_connection
 

@@ -5,12 +5,10 @@ from io import BytesIO
 
 import gridfs
 import pytest
-from gridfs import AsyncGridOut
 
 from mongoengine import *
 from mongoengine.asynchronous import async_register_connection, async_get_db
 from mongoengine.base.queryset import Q
-from mongoengine.synchronous.connection import get_db
 
 try:
     from PIL import Image  # noqa: F401
@@ -40,7 +38,6 @@ def get_file(path):
 
 
 class TestFileField(MongoDBAsyncTestCase):
-
     async def asyncTearDown(self):
         await self.db.drop_collection("fs.files")
         await self.db.drop_collection("fs.chunks")
@@ -71,8 +68,8 @@ class TestFileField(MongoDBAsyncTestCase):
         result: PutFile = await PutFile.aobjects.first()
         assert putfile == result
         assert (
-                await result.the_file.astr()
-                == "<GridFSProxy: hello (%s)>" % result.the_file.grid_id
+            await result.the_file.astr()
+            == "<GridFSProxy: hello (%s)>" % result.the_file.grid_id
         )
         assert await result.the_file.aread() == text
         the_file = await result.the_file.aget()
@@ -271,7 +268,9 @@ class TestFileField(MongoDBAsyncTestCase):
         marmot = Animal(genus="Marmota", family="Sciuridae")
 
         marmot_photo_content = get_file(TEST_IMAGE_PATH)  # Retrieve a photo from disk
-        await marmot.photo.aput(marmot_photo_content, content_type="image/jpeg", foo="bar")
+        await marmot.photo.aput(
+            marmot_photo_content, content_type="image/jpeg", foo="bar"
+        )
         await marmot.photo.aclose()
         await marmot.asave()
 
@@ -384,7 +383,9 @@ class TestFileField(MongoDBAsyncTestCase):
         await testfile.asave()
 
         text = b"Bonjour, World!"
-        await testfile.the_file.areplace(text, content_type=content_type, filename="hello")
+        await testfile.the_file.areplace(
+            text, content_type=content_type, filename="hello"
+        )
         await testfile.asave()
 
         files = db.fs.files.find()
@@ -582,7 +583,10 @@ class TestFileField(MongoDBAsyncTestCase):
         test = await TestImage.aobjects.first()
         grid_id = test.image1.grid_id
 
-        assert 1 == await TestImage.aobjects(Q(image1=grid_id) or Q(image2=grid_id)).count()
+        assert (
+            1
+            == await TestImage.aobjects(Q(image1=grid_id) or Q(image2=grid_id)).count()
+        )
 
     async def test_complex_field_filefield(self):
         """Ensure you can add meta data to file"""

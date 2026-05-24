@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any
 
 # Immutable tuple stack for copy-on-write behavior
 _SESSIONS_STACK: ContextVar[tuple[Any, ...]] = ContextVar(

@@ -1,4 +1,3 @@
-import pickle
 from datetime import datetime
 
 try:
@@ -7,10 +6,10 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 from mongoengine import *
-from mongoengine import signals
 
 
 class PickleEmbedded(EmbeddedDocument):

@@ -32,17 +32,17 @@ _dbs = {}
 
 
 async def _async_get_connection_settings(
-        db=None,
-        name=None,
-        host=None,
-        port=None,
-        read_preference=READ_PREFERENCE,
-        username=None,
-        password=None,
-        authentication_source=None,
-        authentication_mechanism=None,
-        authmechanismproperties=None,
-        **kwargs,
+    db=None,
+    name=None,
+    host=None,
+    port=None,
+    read_preference=READ_PREFERENCE,
+    username=None,
+    password=None,
+    authentication_source=None,
+    authentication_mechanism=None,
+    authmechanismproperties=None,
+    **kwargs,
 ):
     """Build clean connection settings (PyMongo >= 4.13)."""
 
@@ -90,8 +90,9 @@ async def _async_get_connection_settings(
         opts = uri_info["options"]
 
         if "readPreference" in opts:
-            conn_settings["read_preference"] = convert_read_preference(value=opts["readPreference"],
-                                                                       tag_sets=opts.get("readPreferenceTags"))
+            conn_settings["read_preference"] = convert_read_preference(
+                value=opts["readPreference"], tag_sets=opts.get("readPreferenceTags")
+            )
 
         if "replicaSet" in opts:
             conn_settings["replicaset"] = opts["replicaSet"]
@@ -105,7 +106,9 @@ async def _async_get_connection_settings(
         if "uuidrepresentation" in opts:
             # Map from pymongo enum → driver string
             reverse_uuid = {v: k for k, v in _UUID_REPRESENTATIONS.items()}
-            conn_settings["uuidrepresentation"] = reverse_uuid[opts["uuidrepresentation"]]
+            conn_settings["uuidrepresentation"] = reverse_uuid[
+                opts["uuidrepresentation"]
+            ]
 
     conn_settings["host"] = resolved_hosts
 
@@ -120,18 +123,18 @@ async def _async_get_connection_settings(
 
 
 async def async_register_connection(
-        alias,
-        db=None,
-        name=None,
-        host=None,
-        port=None,
-        read_preference=READ_PREFERENCE,
-        username=None,
-        password=None,
-        authentication_source=None,
-        authentication_mechanism=None,
-        authmechanismproperties=None,
-        **kwargs,
+    alias,
+    db=None,
+    name=None,
+    host=None,
+    port=None,
+    read_preference=READ_PREFERENCE,
+    username=None,
+    password=None,
+    authentication_source=None,
+    authentication_mechanism=None,
+    authmechanismproperties=None,
+    **kwargs,
 ):
     """Register the connection settings.
 

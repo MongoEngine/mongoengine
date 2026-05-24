@@ -14,7 +14,6 @@ from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo
 
 
 class TestField(MongoDBAsyncTestCase):
-
     async def test_generic_reference_field_basics(self):
         """Ensure that a GenericReferenceField properly dereferences items."""
 
@@ -26,7 +25,12 @@ class TestField(MongoDBAsyncTestCase):
             title = StringField()
 
         class Bookmark(Document):
-            bookmark_object = GenericReferenceField(choices=(Post, Link,))
+            bookmark_object = GenericReferenceField(
+                choices=(
+                    Post,
+                    Link,
+                )
+            )
 
         await Link.adrop_collection()
         await Post.adrop_collection()
@@ -41,7 +45,11 @@ class TestField(MongoDBAsyncTestCase):
         bm = Bookmark(bookmark_object=post_1)
         await bm.asave()
 
-        bm = await Bookmark.aobjects(bookmark_object=post_1).select_related("bookmark_object").first()
+        bm = (
+            await Bookmark.aobjects(bookmark_object=post_1)
+            .select_related("bookmark_object")
+            .first()
+        )
         assert await async_get_as_pymongo(bm) == {
             "_id": bm.id,
             "bookmark_object": {
@@ -55,12 +63,19 @@ class TestField(MongoDBAsyncTestCase):
         bm.bookmark_object = link_1
         await bm.asave()
 
-        bm = await Bookmark.aobjects(bookmark_object=link_1).select_related("bookmark_object").first()
+        bm = (
+            await Bookmark.aobjects(bookmark_object=link_1)
+            .select_related("bookmark_object")
+            .first()
+        )
         assert await async_get_as_pymongo(bm, select_related="bookmark_object") == {
             "_id": bm.id,
-            "bookmark_object": {'_cls': 'Link', '_id': link_1.pk,
-                                '_ref': link_1.to_dbref(),
-                                'title': 'Pitchfork'}
+            "bookmark_object": {
+                "_cls": "Link",
+                "_id": link_1.pk,
+                "_ref": link_1.to_dbref(),
+                "title": "Pitchfork",
+            },
         }
 
         assert bm.bookmark_object == link_1
@@ -98,7 +113,14 @@ class TestField(MongoDBAsyncTestCase):
             title = StringField()
 
         class User(Document):
-            bookmarks = ListField(GenericReferenceField(choices=(Post, Link,)))
+            bookmarks = ListField(
+                GenericReferenceField(
+                    choices=(
+                        Post,
+                        Link,
+                    )
+                )
+            )
 
         await Link.adrop_collection()
         await Post.adrop_collection()
@@ -113,7 +135,11 @@ class TestField(MongoDBAsyncTestCase):
         user = User(bookmarks=[post_1, link_1])
         await user.asave()
 
-        user = await User.aobjects(bookmarks__all=[post_1, link_1]).select_related("bookmarks").first()
+        user = (
+            await User.aobjects(bookmarks__all=[post_1, link_1])
+            .select_related("bookmarks")
+            .first()
+        )
 
         assert user.bookmarks[0] == post_1
         assert user.bookmarks[1] == link_1
@@ -149,7 +175,6 @@ class TestField(MongoDBAsyncTestCase):
             pass
 
     async def test_generic_reference_is_none(self):
-
         class City(Document):
             name = StringField()
 
@@ -248,7 +273,10 @@ class TestField(MongoDBAsyncTestCase):
         await bm_.asave()
 
         bm = await Bookmark.aobjects.get(id=bm_.id)
-        assert bm.bookmark_object.value == {"_ref": DBRef("post", post_1.id), "_cls": "Post"}
+        assert bm.bookmark_object.value == {
+            "_ref": DBRef("post", post_1.id),
+            "_cls": "Post",
+        }
         bm.other_field = "dummy_change"
         await bm.asave()
 
@@ -309,7 +337,11 @@ class TestField(MongoDBAsyncTestCase):
         user.username = "New username"
         await user.asave()
 
-        user = await User.aobjects(bookmarks__all=[post_1]).select_related("bookmarks").first()
+        user = (
+            await User.aobjects(bookmarks__all=[post_1])
+            .select_related("bookmarks")
+            .first()
+        )
 
         assert user is not None
         assert user.bookmarks[0] == post_1
@@ -320,7 +352,7 @@ class TestField(MongoDBAsyncTestCase):
         """
 
         class Doc(Document):
-            ref = GenericReferenceField(choices=('Doc',))
+            ref = GenericReferenceField(choices=("Doc",))
 
         await Doc.adrop_collection()
 
@@ -362,7 +394,7 @@ class TestField(MongoDBAsyncTestCase):
         """
 
         class Doc(Document):
-            ref = GenericReferenceField(choices=('Doc',))
+            ref = GenericReferenceField(choices=("Doc",))
 
         await Doc.adrop_collection()
 

@@ -130,7 +130,12 @@ class BaseDocument:
             if field or key in ("id", "pk", "_cls"):
                 if __auto_convert and value is not None:
                     from mongoengine.asynchronous import AsyncQuerySet
-                    if field and not isinstance(value, AsyncQuerySet) and not isinstance(field, FileField):
+
+                    if (
+                        field
+                        and not isinstance(value, AsyncQuerySet)
+                        and not isinstance(field, FileField)
+                    ):
                         value = field.to_python(value)
                 setattr(self, key, value)
             else:
@@ -189,10 +194,10 @@ class BaseDocument:
             self__created = True
 
         if (
-                self._is_document
-                and not self__created
-                and name in self._meta.get("shard_key", tuple())
-                and self._data.get(name) != value
+            self._is_document
+            and not self__created
+            and name in self._meta.get("shard_key", tuple())
+            and self._data.get(name) != value
         ):
             msg = "Shard Keys are immutable. Tried to update %s" % name
             raise OperationError(msg)
@@ -204,10 +209,10 @@ class BaseDocument:
 
         # Check if the user has created a new instance of a class
         if (
-                self._is_document
-                and self__initialised
-                and self__created
-                and name == self._meta.get("id_field")
+            self._is_document
+            and self__initialised
+            and self__created
+            and name == self._meta.get("id_field")
         ):
             # When setting the ID field of an instance already instantiated and that was user-created (i.e not saved in db yet)
             # Typically this is when calling .save()
@@ -218,11 +223,11 @@ class BaseDocument:
     def __getstate__(self):
         data = {}
         for k in (
-                "_changed_fields",
-                "_initialised",
-                "_created",
-                "_dynamic_fields",
-                "_fields_ordered",
+            "_changed_fields",
+            "_initialised",
+            "_created",
+            "_dynamic_fields",
+            "_fields_ordered",
         ):
             if hasattr(self, k):
                 data[k] = getattr(self, k)
@@ -233,11 +238,11 @@ class BaseDocument:
         if isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in (
-                "_changed_fields",
-                "_initialised",
-                "_created",
-                "_data",
-                "_dynamic_fields",
+            "_changed_fields",
+            "_initialised",
+            "_created",
+            "_data",
+            "_dynamic_fields",
         ):
             if k in data:
                 setattr(self, k, data[k])
@@ -297,14 +302,14 @@ class BaseDocument:
 
     def __eq__(self, other):
         if (
-                isinstance(other, self.__class__)
-                and hasattr(other, "id")
-                and other.id is not None
+            isinstance(other, self.__class__)
+            and hasattr(other, "id")
+            and other.id is not None
         ):
             return self.id == other.id
         if isinstance(other, DBRef):
             return (
-                    self._get_collection_name() == other.collection and self.id == other.id
+                self._get_collection_name() == other.collection and self.id == other.id
             )
         if self.id is None:
             return self is other
@@ -440,7 +445,7 @@ class BaseDocument:
             if value is not None:
                 try:
                     if isinstance(
-                            field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)
+                        field, (EmbeddedDocumentField, GenericEmbeddedDocumentField)
                     ):
                         field._validate(value, clean=clean)
                     else:
@@ -594,7 +599,7 @@ class BaseDocument:
                     data = getattr(data, field_name, None)
 
                 if not isinstance(data, LazyReference) and hasattr(
-                        data, "_changed_fields"
+                    data, "_changed_fields"
                 ):
                     if getattr(data, "_is_document", False):
                         continue
@@ -602,7 +607,7 @@ class BaseDocument:
                     data._changed_fields = []
                 elif isinstance(data, (list, tuple, dict)):
                     if hasattr(data, "field") and isinstance(
-                            data.field, (ReferenceField, GenericReferenceField)
+                        data.field, (ReferenceField, GenericReferenceField)
                     ):
                         continue
                     BaseDocument._nestable_types_clear_changed_fields(data)
@@ -626,7 +631,7 @@ class BaseDocument:
 
         for _index_or_key, value in iterator:
             if hasattr(value, "_get_changed_fields") and not isinstance(
-                    value, Document
+                value, Document
             ):  # don't follow references
                 value._clear_changed_fields()
             elif isinstance(value, (list, tuple, dict)):
@@ -691,11 +696,11 @@ class BaseDocument:
                 changed_fields += [f"{key}{k}" for k in changed if k]
             elif isinstance(data, (list, tuple, dict)):
                 if hasattr(field, "field") and isinstance(
-                        field.field,
-                        (
-                                ReferenceField,
-                                GenericReferenceField,
-                        ),
+                    field.field,
+                    (
+                        ReferenceField,
+                        GenericReferenceField,
+                    ),
                 ):
                     continue
                 elif isinstance(field, SortedListField) and field._ordering:
@@ -744,7 +749,7 @@ class BaseDocument:
         # Determine if any changed items were actually unset.
         for path, value in list(set_data.items()):
             if value or isinstance(
-                    value, (numbers.Number, bool)
+                value, (numbers.Number, bool)
             ):  # Account for 0 and True that are truthy
                 continue
 
@@ -902,15 +907,15 @@ class BaseDocument:
         # Check to see if we need to include _cls
         allow_inheritance = cls._meta.get("allow_inheritance")
         include_cls = (
-                allow_inheritance
-                and not spec.get("sparse", False)
-                and spec.get("cls", True)
-                and "_cls" not in spec["fields"]
+            allow_inheritance
+            and not spec.get("sparse", False)
+            and spec.get("cls", True)
+            and "_cls" not in spec["fields"]
         )
 
         # 733: don't include cls if index_cls is False unless there is an explicit cls with the index
         include_cls = include_cls and (
-                spec.get("cls", False) or cls._meta.get("index_cls", True)
+            spec.get("cls", False) or cls._meta.get("index_cls", True)
         )
         if "cls" in spec:
             spec.pop("cls")
@@ -965,9 +970,9 @@ class BaseDocument:
 
         # Don't add cls to a geo index
         if (
-                include_cls
-                and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
-                and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
+            include_cls
+            and direction not in (pymongo.GEO2D, pymongo.GEOSPHERE)
+            and (GEOHAYSTACK is None or direction != GEOHAYSTACK)
         ):
             index_list.insert(0, ("_cls", 1))
 
@@ -1022,8 +1027,8 @@ class BaseDocument:
 
             # Grab any embedded document field unique indexes
             if (
-                    field.__class__.__name__ == "EmbeddedDocumentField"
-                    and field.document_type != cls
+                field.__class__.__name__ == "EmbeddedDocumentField"
+                and field.document_type != cls
             ):
                 field_namespace = "%s." % field_name
                 doc_cls = field.document_type
@@ -1129,7 +1134,9 @@ class BaseDocument:
                     field = cls._fields[field_name]
                 elif cls._dynamic:
                     field = DynamicField(db_field=field_name)
-                elif cls._meta.get("allow_inheritance") or cls._meta.get("abstract", False):
+                elif cls._meta.get("allow_inheritance") or cls._meta.get(
+                    "abstract", False
+                ):
                     # 744: in case the field is defined in a subclass
                     for subcls in cls.__subclasses__():
                         try:
@@ -1156,13 +1163,19 @@ class BaseDocument:
                 join_field = field
             elif isinstance(field, GenericReferenceField):
                 join_field = field
-            elif isinstance(field, ListField) and isinstance(field.field, (ReferenceField, GenericReferenceField)):
+            elif isinstance(field, ListField) and isinstance(
+                field.field, (ReferenceField, GenericReferenceField)
+            ):
                 join_field = field.field
 
             if isinstance(join_field, ReferenceField):
-                target = getattr(join_field, "document_type", None) or getattr(join_field, "document_type_obj", None)
+                target = getattr(join_field, "document_type", None) or getattr(
+                    join_field, "document_type_obj", None
+                )
                 if target is None:
-                    raise LookUpError('Cannot resolve reference target for "%s"' % join_field.name)
+                    raise LookUpError(
+                        'Cannot resolve reference target for "%s"' % join_field.name
+                    )
 
                 # Delegate resolution to referenced document. This does NOT perform a join;
                 # it only resolves the field definition so the aggregation/query layer can.
@@ -1176,7 +1189,8 @@ class BaseDocument:
                 choice_classes = _resolve_generic_choices(join_field)
                 if not choice_classes:
                     raise LookUpError(
-                        'Cannot resolve GenericReferenceField choices for "%s"' % "__".join(parts)
+                        'Cannot resolve GenericReferenceField choices for "%s"'
+                        % "__".join(parts)
                     )
 
                 resolved_fields = []
@@ -1230,8 +1244,8 @@ class BaseDocument:
             # If the parent field is a DynamicField or if it's part of
             # a DynamicDocument, mark current field as a DynamicField
             elif cls._dynamic and (
-                    isinstance(field, DynamicField)
-                    or getattr(getattr(field, "document_type", None), "_dynamic", None)
+                isinstance(field, DynamicField)
+                or getattr(getattr(field, "document_type", None), "_dynamic", None)
             ):
                 new_field = DynamicField(db_field=field_name)
 
@@ -1241,8 +1255,9 @@ class BaseDocument:
 
             else:
                 raise LookUpError(
-                    "Cannot resolve subfield or operator {} "
-                    "on the field {}".format(field_name, field.name)
+                    "Cannot resolve subfield or operator {} on the field {}".format(
+                        field_name, field.name
+                    )
                 )
 
             # If current field still wasn't found and the parent field
@@ -1275,7 +1290,9 @@ class BaseDocument:
             field = current._fields.get(part)
 
             if not field:
-                raise LookUpError(f'Cannot resolve field "{part}" on {current.__name__}')
+                raise LookUpError(
+                    f'Cannot resolve field "{part}" on {current.__name__}'
+                )
 
             # ---- Reference field end — VALID but cannot expand further unless select_related handles it --
             from mongoengine import ReferenceField
@@ -1297,6 +1314,7 @@ class BaseDocument:
 
             # ---- List of references ----
             from mongoengine import ListField
+
             if isinstance(field, ListField):
                 sub = field.field
                 while isinstance(sub, ListField):
@@ -1331,7 +1349,9 @@ class BaseDocument:
                     return True
 
             # No further navigation allowed
-            raise LookUpError(f'Cannot dereference through "{part}" ({type(field).__name__})')
+            raise LookUpError(
+                f'Cannot dereference through "{part}" ({type(field).__name__})'
+            )
 
         return True
 

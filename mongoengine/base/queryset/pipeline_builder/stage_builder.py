@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, List
+from typing import Any
 
 from .schema import Schema
 from .match_planner import MatchPlanner
@@ -34,14 +34,14 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     def emit(
-            self,
-            doc_cls,
-            prefix: str,
-            tree: dict,
-            buckets: dict | None,
-            interleave: bool,
-            embedded_list_path=None,
-            hydrate_tree: dict | None = None,
+        self,
+        doc_cls,
+        prefix: str,
+        tree: dict,
+        buckets: dict | None,
+        interleave: bool,
+        embedded_list_path=None,
+        hydrate_tree: dict | None = None,
     ) -> list[dict]:
         self._pipeline = []
 
@@ -61,14 +61,14 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     def _walk_lookups(
-            self,
-            doc_cls,
-            prefix: str,
-            tree: dict,
-            buckets: dict | None,
-            embedded_list_path=None,
-            interleave: bool = False,
-            hydrate_tree: dict | None = None,
+        self,
+        doc_cls,
+        prefix: str,
+        tree: dict,
+        buckets: dict | None,
+        embedded_list_path=None,
+        interleave: bool = False,
+        hydrate_tree: dict | None = None,
     ):
         from mongoengine.fields import (
             ReferenceField,
@@ -100,12 +100,16 @@ class StageBuilder:
             full_path = f"{prefix}{field.db_field}" if prefix else field.db_field
 
             requested_hydrate = field_name in hydrate_tree
-            subtree_hydrate_tree = hydrate_tree.get(field_name, {}) if requested_hydrate else {}
+            subtree_hydrate_tree = (
+                hydrate_tree.get(field_name, {}) if requested_hydrate else {}
+            )
 
             needs_traversal = bool(subtree) and not embedded_list_path
             hydrate_effective = requested_hydrate or needs_traversal
             preserve_orig = needs_traversal and not requested_hydrate
-            orig_alias = f"__orig__{full_path.replace('.', '_')}" if preserve_orig else None
+            orig_alias = (
+                f"__orig__{full_path.replace('.', '_')}" if preserve_orig else None
+            )
 
             # ---------------- ReferenceField ----------------
             if isinstance(field, ReferenceField):
@@ -114,7 +118,9 @@ class StageBuilder:
                 if embedded_list_path:
                     foreign_match = None
                     if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                        foreign_match = self._pop_foreign_match_for_prefix(
+                            buckets, full_path
+                        )
 
                     self._add_embedded_list_structured_ref_lookup(
                         target_cls=target,
@@ -130,11 +136,15 @@ class StageBuilder:
 
                 else:
                     if preserve_orig:
-                        self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
+                        self._pipeline.append(
+                            {"$addFields": {orig_alias: f"${full_path}"}}
+                        )
 
                     foreign_match = None
                     if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                        foreign_match = self._pop_foreign_match_for_prefix(
+                            buckets, full_path
+                        )
 
                     if target and target._meta.get("abstract", False):
                         self._add_abstract_dbref_lookup(target, full_path)
@@ -194,7 +204,9 @@ class StageBuilder:
                     if embedded_list_path:
                         foreign_match = None
                         if interleave and buckets is not None:
-                            foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                            foreign_match = self._pop_foreign_match_for_prefix(
+                                buckets, full_path
+                            )
 
                         self._add_embedded_list_structured_ref_lookup(
                             target_cls=target,
@@ -210,11 +222,15 @@ class StageBuilder:
 
                     else:
                         if preserve_orig:
-                            self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
+                            self._pipeline.append(
+                                {"$addFields": {orig_alias: f"${full_path}"}}
+                            )
 
                         foreign_match = None
                         if interleave and buckets is not None:
-                            foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                            foreign_match = self._pop_foreign_match_for_prefix(
+                                buckets, full_path
+                            )
 
                         self._add_structured_ref_lookup(
                             target_cls=target,
@@ -239,17 +255,25 @@ class StageBuilder:
                         )
 
                     if preserve_orig:
-                        self._pipeline.append({"$addFields": {full_path: f"${orig_alias}"}})
+                        self._pipeline.append(
+                            {"$addFields": {full_path: f"${orig_alias}"}}
+                        )
                         self._pipeline.append(self._project_remove(orig_alias))
 
                     continue
 
                 # List[GenericReferenceField]
-                if leaf is not None and isinstance(leaf, GenericReferenceField) and leaf.choices:
+                if (
+                    leaf is not None
+                    and isinstance(leaf, GenericReferenceField)
+                    and leaf.choices
+                ):
                     if embedded_list_path:
                         foreign_match = None
                         if interleave and buckets is not None:
-                            foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                            foreign_match = self._pop_foreign_match_for_prefix(
+                                buckets, full_path
+                            )
 
                         self._add_embedded_list_generic_lookup(
                             generic_field=leaf,
@@ -287,7 +311,9 @@ class StageBuilder:
 
                 foreign_match = None
                 if interleave and buckets is not None:
-                    foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                    foreign_match = self._pop_foreign_match_for_prefix(
+                        buckets, full_path
+                    )
 
                 target = field.field.document_type_obj or field.field.document_type
 
@@ -309,10 +335,14 @@ class StageBuilder:
                     apply_bucket(full_path)
                     continue
 
-                if isinstance(field.field, GenericReferenceField) and getattr(field.field, "choices", None):
+                if isinstance(field.field, GenericReferenceField) and getattr(
+                    field.field, "choices", None
+                ):
                     foreign_match = None
                     if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                        foreign_match = self._pop_foreign_match_for_prefix(
+                            buckets, full_path
+                        )
 
                     self._add_object_generic_lookup(
                         generic_field=field.field,
@@ -329,7 +359,9 @@ class StageBuilder:
                 if target is not None:
                     foreign_match = None
                     if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                        foreign_match = self._pop_foreign_match_for_prefix(
+                            buckets, full_path
+                        )
 
                     self._add_structured_ref_lookup(
                         target_cls=target,
@@ -348,7 +380,9 @@ class StageBuilder:
                 if embedded_list_path:
                     foreign_match = None
                     if interleave and buckets is not None:
-                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+                        foreign_match = self._pop_foreign_match_for_prefix(
+                            buckets, full_path
+                        )
 
                     self._add_embedded_list_generic_lookup(
                         generic_field=field,
@@ -362,7 +396,9 @@ class StageBuilder:
 
                 else:
                     if preserve_orig:
-                        self._pipeline.append({"$addFields": {orig_alias: f"${full_path}"}})
+                        self._pipeline.append(
+                            {"$addFields": {orig_alias: f"${full_path}"}}
+                        )
 
                     self._add_generic_lookup(field, full_path)
                     apply_bucket(full_path)
@@ -372,7 +408,9 @@ class StageBuilder:
                             if not sub_name or sub_name == "":
                                 continue
 
-                            common_ref_field, common_target = MatchPlanner.generic_common_ref(field, sub_name)
+                            common_ref_field, common_target = (
+                                MatchPlanner.generic_common_ref(field, sub_name)
+                            )
                             if common_ref_field is None or common_target is None:
                                 continue
 
@@ -380,7 +418,9 @@ class StageBuilder:
 
                             foreign_match = None
                             if interleave and buckets is not None:
-                                foreign_match = self._pop_foreign_match_for_prefix(buckets, gp_path)
+                                foreign_match = self._pop_foreign_match_for_prefix(
+                                    buckets, gp_path
+                                )
 
                             hydrate_gp = bool(subtree_hydrate_tree.get(sub_name))
                             hydrate_gp_effective = hydrate_gp or bool(sub_tree)
@@ -388,7 +428,9 @@ class StageBuilder:
                             orig_gp_alias = None
                             if bool(sub_tree) and not hydrate_gp:
                                 orig_gp_alias = f"__orig__{gp_path.replace('.', '_')}"
-                                self._pipeline.append({"$addFields": {orig_gp_alias: f"${gp_path}"}})
+                                self._pipeline.append(
+                                    {"$addFields": {orig_gp_alias: f"${gp_path}"}}
+                                )
 
                             self._add_structured_ref_lookup(
                                 target_cls=common_target,
@@ -413,11 +455,17 @@ class StageBuilder:
                                 )
 
                             if orig_gp_alias:
-                                self._pipeline.append({"$addFields": {gp_path: f"${orig_gp_alias}"}})
-                                self._pipeline.append(self._project_remove(orig_gp_alias))
+                                self._pipeline.append(
+                                    {"$addFields": {gp_path: f"${orig_gp_alias}"}}
+                                )
+                                self._pipeline.append(
+                                    self._project_remove(orig_gp_alias)
+                                )
 
                     if preserve_orig:
-                        self._pipeline.append({"$addFields": {full_path: f"${orig_alias}"}})
+                        self._pipeline.append(
+                            {"$addFields": {full_path: f"${orig_alias}"}}
+                        )
                         self._pipeline.append(self._project_remove(orig_alias))
 
                 continue
@@ -473,7 +521,7 @@ class StageBuilder:
             if not k.startswith(want):
                 return None
 
-            out[k[len(want):]] = v
+            out[k[len(want) :]] = v
 
         return out or None
 
@@ -493,7 +541,9 @@ class StageBuilder:
 
         def walk(f):
             if isinstance(f, ReferenceField):
-                t = getattr(f, "document_type_obj", None) or getattr(f, "document_type", None)
+                t = getattr(f, "document_type_obj", None) or getattr(
+                    f, "document_type", None
+                )
                 if t is not None:
                     targets.add(t)
                 return
@@ -515,7 +565,13 @@ class StageBuilder:
 
     @staticmethod
     def _build_ref_ids_expr(field, source_expr):
-        from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField, MapField
+        from mongoengine.fields import (
+            ReferenceField,
+            ListField,
+            DictField,
+            GenericReferenceField,
+            MapField,
+        )
 
         if isinstance(field, ReferenceField):
             if field.dbref:
@@ -545,7 +601,13 @@ class StageBuilder:
                             "input": source_expr,
                             "initialValue": [],
                             "in": {
-                                "$concatArrays": ["$$value", StageBuilder._build_ref_ids_expr(field.field, "$$this")]},
+                                "$concatArrays": [
+                                    "$$value",
+                                    StageBuilder._build_ref_ids_expr(
+                                        field.field, "$$this"
+                                    ),
+                                ]
+                            },
                         }
                     },
                     [],
@@ -558,7 +620,12 @@ class StageBuilder:
                 "$reduce": {
                     "input": obj_array,
                     "initialValue": [],
-                    "in": {"$concatArrays": ["$$value", StageBuilder._build_ref_ids_expr(field.field, "$$this.v")]},
+                    "in": {
+                        "$concatArrays": [
+                            "$$value",
+                            StageBuilder._build_ref_ids_expr(field.field, "$$this.v"),
+                        ]
+                    },
                 }
             }
 
@@ -594,10 +661,14 @@ class StageBuilder:
             return {
                 "$let": {
                     "vars": {"docsHash": self._build_docs_hash_expr(docs_expr)},
-                    "in": self._build_value_expr_inner(field, source_expr, "$$docsHash", use_hash=True),
+                    "in": self._build_value_expr_inner(
+                        field, source_expr, "$$docsHash", use_hash=True
+                    ),
                 }
             }
-        return self._build_value_expr_inner(field, source_expr, docs_expr, use_hash=False)
+        return self._build_value_expr_inner(
+            field, source_expr, docs_expr, use_hash=False
+        )
 
     @staticmethod
     def _build_docs_hash_expr(docs_expr):
@@ -619,7 +690,13 @@ class StageBuilder:
           - When use_hash=True: lookup_expr is a docs hash {id_str: doc}; leaf uses $getField.
           - When use_hash=False: lookup_expr is the raw docs array; leaf uses $indexOfArray.
         """
-        from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField, MapField
+        from mongoengine.fields import (
+            ReferenceField,
+            ListField,
+            DictField,
+            GenericReferenceField,
+            MapField,
+        )
 
         # ---- ReferenceField (leaf) ----
         if isinstance(field, ReferenceField):
@@ -638,7 +715,9 @@ class StageBuilder:
                         "$map": {
                             "input": source_expr,
                             "as": "item",
-                            "in": self._build_value_expr_inner(field.field, "$$item", lookup_expr, use_hash),
+                            "in": self._build_value_expr_inner(
+                                field.field, "$$item", lookup_expr, use_hash
+                            ),
                         }
                     },
                     source_expr,
@@ -654,7 +733,9 @@ class StageBuilder:
                         "as": "kv",
                         "in": {
                             "k": "$$kv.k",
-                            "v": self._build_value_expr_inner(field.field, "$$kv.v", lookup_expr, use_hash),
+                            "v": self._build_value_expr_inner(
+                                field.field, "$$kv.v", lookup_expr, use_hash
+                            ),
                         },
                     }
                 }
@@ -677,7 +758,12 @@ class StageBuilder:
                                     "vars": {
                                         "rid": {
                                             "$cond": [
-                                                {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                {
+                                                    "$eq": [
+                                                        {"$type": "$$orig"},
+                                                        "object",
+                                                    ]
+                                                },
                                                 "$$orig.$id",
                                                 "$$orig",
                                             ]
@@ -696,7 +782,10 @@ class StageBuilder:
                                             "in": {
                                                 "$ifNull": [
                                                     "$$found",
-                                                    {"_missing_reference": True, "_ref": "$$rid"},
+                                                    {
+                                                        "_missing_reference": True,
+                                                        "_ref": "$$rid",
+                                                    },
                                                 ]
                                             },
                                         }
@@ -734,7 +823,13 @@ class StageBuilder:
                                             "docs": docs_arr,
                                             "idx": {
                                                 "$indexOfArray": [
-                                                    {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}},
+                                                    {
+                                                        "$map": {
+                                                            "input": docs_arr,
+                                                            "as": "d",
+                                                            "in": "$$d._id",
+                                                        }
+                                                    },
                                                     "$$rid",
                                                 ]
                                             },
@@ -743,7 +838,10 @@ class StageBuilder:
                                             "$cond": [
                                                 {"$gte": ["$$idx", 0]},
                                                 {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                {"_missing_reference": True, "_ref": "$$rid"},
+                                                {
+                                                    "_missing_reference": True,
+                                                    "_ref": "$$rid",
+                                                },
                                             ]
                                         },
                                     }
@@ -843,11 +941,17 @@ class StageBuilder:
                         sub_exprs.append(ce)
 
                     if k == "$and":
-                        exprs.append(sub_exprs[0] if len(sub_exprs) == 1 else {"$and": sub_exprs})
+                        exprs.append(
+                            sub_exprs[0] if len(sub_exprs) == 1 else {"$and": sub_exprs}
+                        )
                     elif k == "$or":
-                        exprs.append(sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs})
+                        exprs.append(
+                            sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs}
+                        )
                     else:
-                        inner = sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs}
+                        inner = (
+                            sub_exprs[0] if len(sub_exprs) == 1 else {"$or": sub_exprs}
+                        )
                         exprs.append({"$not": [inner]})
                     continue
 
@@ -870,12 +974,12 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     def _add_structured_ref_lookup(
-            self,
-            target_cls,
-            field_shape,
-            local_field: str,
-            foreign_match: dict | None = None,
-            hydrate: bool = False,
+        self,
+        target_cls,
+        field_shape,
+        local_field: str,
+        foreign_match: dict | None = None,
+        hydrate: bool = False,
     ):
         if not target_cls:
             return
@@ -907,7 +1011,15 @@ class StageBuilder:
                         "$match": {
                             "$expr": {
                                 "$gt": [
-                                    {"$size": {"$filter": {"input": f"${docs_alias}", "as": "d", "cond": cond}}},
+                                    {
+                                        "$size": {
+                                            "$filter": {
+                                                "input": f"${docs_alias}",
+                                                "as": "d",
+                                                "cond": cond,
+                                            }
+                                        }
+                                    },
                                     0,
                                 ]
                             }
@@ -934,9 +1046,16 @@ class StageBuilder:
                 # Hydrate with only the docs that pass the filter, not the full docs_alias.
                 # This ensures the field contains only the matched sub-documents.
                 from mongoengine.fields import ListField
+
                 filtered_expr = {
                     "$filter": {
-                        "input": {"$cond": [{"$isArray": f"${docs_alias}"}, f"${docs_alias}", []]},
+                        "input": {
+                            "$cond": [
+                                {"$isArray": f"${docs_alias}"},
+                                f"${docs_alias}",
+                                [],
+                            ]
+                        },
                         "as": "d",
                         "cond": filter_cond,
                     }
@@ -944,24 +1063,28 @@ class StageBuilder:
                 if isinstance(field_shape, ListField):
                     self._pipeline.append({"$addFields": {local_field: filtered_expr}})
                 else:
-                    self._pipeline.append({
-                        "$addFields": {
-                            local_field: {
-                                "$let": {
-                                    "vars": {"matches": filtered_expr},
-                                    "in": {
-                                        "$cond": [
-                                            {"$gt": [{"$size": "$$matches"}, 0]},
-                                            {"$arrayElemAt": ["$$matches", 0]},
-                                            None,
-                                        ]
-                                    },
+                    self._pipeline.append(
+                        {
+                            "$addFields": {
+                                local_field: {
+                                    "$let": {
+                                        "vars": {"matches": filtered_expr},
+                                        "in": {
+                                            "$cond": [
+                                                {"$gt": [{"$size": "$$matches"}, 0]},
+                                                {"$arrayElemAt": ["$$matches", 0]},
+                                                None,
+                                            ]
+                                        },
+                                    }
                                 }
                             }
                         }
-                    })
+                    )
             else:
-                transformed = self._build_value_expr(field_shape, f"${local_field}", f"${docs_alias}")
+                transformed = self._build_value_expr(
+                    field_shape, f"${local_field}", f"${docs_alias}"
+                )
                 self._pipeline.append({"$addFields": {local_field: transformed}})
 
         self._pipeline.append({"$project": {docs_alias: 0}})
@@ -971,13 +1094,13 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     def _add_embedded_list_structured_ref_lookup(
-            self,
-            target_cls,
-            field_shape,
-            list_path: str,
-            embedded_key: str,
-            foreign_match: dict | None = None,
-            hydrate: bool = True,
+        self,
+        target_cls,
+        field_shape,
+        list_path: str,
+        embedded_key: str,
+        foreign_match: dict | None = None,
+        hydrate: bool = True,
     ):
         if not target_cls:
             return
@@ -995,7 +1118,12 @@ class StageBuilder:
                     "$reduce": {
                         "input": raw_values_expr,
                         "initialValue": [],
-                        "in": {"$concatArrays": ["$$value", self._build_ref_ids_expr(field_shape, "$$this")]},
+                        "in": {
+                            "$concatArrays": [
+                                "$$value",
+                                self._build_ref_ids_expr(field_shape, "$$this"),
+                            ]
+                        },
                     }
                 },
                 [],
@@ -1023,7 +1151,15 @@ class StageBuilder:
                         "$match": {
                             "$expr": {
                                 "$gt": [
-                                    {"$size": {"$filter": {"input": f"${docs_alias}", "as": "d", "cond": cond}}},
+                                    {
+                                        "$size": {
+                                            "$filter": {
+                                                "input": f"${docs_alias}",
+                                                "as": "d",
+                                                "cond": cond,
+                                            }
+                                        }
+                                    },
                                     0,
                                 ]
                             }
@@ -1084,11 +1220,11 @@ class StageBuilder:
     # --------------------------------------------------------------------- #
 
     def _add_object_generic_lookup(
-            self,
-            generic_field,
-            local_field: str,
-            foreign_match: dict | None = None,
-            hydrate: bool = False,
+        self,
+        generic_field,
+        local_field: str,
+        foreign_match: dict | None = None,
+        hydrate: bool = False,
     ):
         doc_classes = Schema.resolve_generic_choices(generic_field)
         if not doc_classes:
@@ -1129,15 +1265,25 @@ class StageBuilder:
                 pipeline.append({"$match": foreign_match})
 
             self._pipeline.append(
-                {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr}, "pipeline": pipeline,
-                             "as": alias}}
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr},
+                        "pipeline": pipeline,
+                        "as": alias,
+                    }
+                }
             )
 
         if foreign_match:
-            self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in aliases]}})
+            self._pipeline.append(
+                {"$match": {"$or": [{a: {"$ne": []}} for a in aliases]}}
+            )
 
         if hydrate:
-            value_expr = self._generic_value_transform_expr(doc_classes, alias_for_cls=alias_for, val_var="$$kv.v")
+            value_expr = self._generic_value_transform_expr(
+                doc_classes, alias_for_cls=alias_for, val_var="$$kv.v"
+            )
             self._pipeline.append(
                 {
                     "$addFields": {
@@ -1147,7 +1293,9 @@ class StageBuilder:
                                 {
                                     "$arrayToObject": {
                                         "$map": {
-                                            "input": {"$objectToArray": f"${local_field}"},
+                                            "input": {
+                                                "$objectToArray": f"${local_field}"
+                                            },
                                             "as": "kv",
                                             "in": {"k": "$$kv.k", "v": value_expr},
                                         }
@@ -1187,9 +1335,18 @@ class StageBuilder:
                     "in": {
                         "$cond": [
                             {"$gt": [{"$size": "$$matches"}, 0]},
-                            {"$mergeObjects": [{"$first": "$$matches"},
-                                               {"_ref": f"{val_var}._ref", "_cls": f"{val_var}._cls"}]},
-                            StageBuilder._missing_generic_expr(f"{val_var}._ref", f"{val_var}._cls"),
+                            {
+                                "$mergeObjects": [
+                                    {"$first": "$$matches"},
+                                    {
+                                        "_ref": f"{val_var}._ref",
+                                        "_cls": f"{val_var}._cls",
+                                    },
+                                ]
+                            },
+                            StageBuilder._missing_generic_expr(
+                                f"{val_var}._ref", f"{val_var}._cls"
+                            ),
                         ]
                     },
                 }
@@ -1199,12 +1356,12 @@ class StageBuilder:
         return expr
 
     def _add_embedded_list_generic_lookup(
-            self,
-            generic_field,
-            list_path: str,
-            embedded_key: str,
-            foreign_match: dict | None = None,
-            hydrate: bool = True,
+        self,
+        generic_field,
+        list_path: str,
+        embedded_key: str,
+        foreign_match: dict | None = None,
+        hydrate: bool = True,
     ):
         # keep your existing implementation (db alias removed)
         doc_classes = Schema.resolve_generic_choices(generic_field)
@@ -1243,13 +1400,24 @@ class StageBuilder:
                                             {"$isArray": "$$this"},
                                             {
                                                 "$map": {
-                                                    "input": {"$filter": {"input": "$$this", "as": "m",
-                                                                          "cond": class_test_m}},
+                                                    "input": {
+                                                        "$filter": {
+                                                            "input": "$$this",
+                                                            "as": "m",
+                                                            "cond": class_test_m,
+                                                        }
+                                                    },
                                                     "as": "m",
                                                     "in": "$$m._ref.$id",
                                                 }
                                             },
-                                            {"$cond": [class_test_this, ["$$this._ref.$id"], []]},
+                                            {
+                                                "$cond": [
+                                                    class_test_this,
+                                                    ["$$this._ref.$id"],
+                                                    [],
+                                                ]
+                                            },
                                         ]
                                     },
                                 ]
@@ -1267,8 +1435,14 @@ class StageBuilder:
             a_docs = alias_docs(cls)
             docs_aliases.append(a_docs)
             self._pipeline.append(
-                {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                             "pipeline": list(base), "as": a_docs}}
+                {
+                    "$lookup": {
+                        "from": cls._get_collection_name(),
+                        "let": {"refIds": ref_ids_expr_for(cls)},
+                        "pipeline": list(base),
+                        "as": a_docs,
+                    }
+                }
             )
 
         match_aliases = []
@@ -1280,8 +1454,20 @@ class StageBuilder:
                         "$match": {
                             "$expr": {
                                 "$or": [
-                                    {"$gt": [{"$size": {
-                                        "$filter": {"input": f"${alias_docs(cls)}", "as": "d", "cond": cond}}}, 0]}
+                                    {
+                                        "$gt": [
+                                            {
+                                                "$size": {
+                                                    "$filter": {
+                                                        "input": f"${alias_docs(cls)}",
+                                                        "as": "d",
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                            0,
+                                        ]
+                                    }
                                     for cls in doc_classes
                                 ]
                             }
@@ -1293,26 +1479,45 @@ class StageBuilder:
                     a_match = alias_match(cls)
                     match_aliases.append(a_match)
                     self._pipeline.append(
-                        {"$lookup": {"from": cls._get_collection_name(), "let": {"refIds": ref_ids_expr_for(cls)},
-                                     "pipeline": base + [{"$match": foreign_match}], "as": a_match}}
+                        {
+                            "$lookup": {
+                                "from": cls._get_collection_name(),
+                                "let": {"refIds": ref_ids_expr_for(cls)},
+                                "pipeline": base + [{"$match": foreign_match}],
+                                "as": a_match,
+                            }
+                        }
                     )
-                self._pipeline.append({"$match": {"$or": [{a: {"$ne": []}} for a in match_aliases]}})
+                self._pipeline.append(
+                    {"$match": {"$or": [{a: {"$ne": []}} for a in match_aliases]}}
+                )
 
                 if not hydrate:
-                    self._pipeline.append(self._project_remove(*(match_aliases + docs_aliases)))
+                    self._pipeline.append(
+                        self._project_remove(*(match_aliases + docs_aliases))
+                    )
                     return
 
         if hydrate:
+
             def vbase(cls):
                 n = cls.__name__
                 return n[:1].lower() + n[1:]
 
             docs_vars = {
-                f"{vbase(cls)}Docs": {"$cond": [{"$isArray": f"${alias_docs(cls)}"}, f"${alias_docs(cls)}", []]}
+                f"{vbase(cls)}Docs": {
+                    "$cond": [
+                        {"$isArray": f"${alias_docs(cls)}"},
+                        f"${alias_docs(cls)}",
+                        [],
+                    ]
+                }
                 for cls in doc_classes
             }
             ids_vars = {
-                f"{vbase(cls)}Ids": {"$map": {"input": f"$${vbase(cls)}Docs", "as": "d", "in": "$$d._id"}}
+                f"{vbase(cls)}Ids": {
+                    "$map": {"input": f"$${vbase(cls)}Docs", "as": "d", "in": "$$d._id"}
+                }
                 for cls in doc_classes
             }
 
@@ -1326,14 +1531,29 @@ class StageBuilder:
 
                     branch = {
                         "$let": {
-                            "vars": {"ref": f"{val_expr}._ref",
-                                     "idx": {"$indexOfArray": [ids_var, f"{val_expr}._ref.$id"]}},
+                            "vars": {
+                                "ref": f"{val_expr}._ref",
+                                "idx": {
+                                    "$indexOfArray": [ids_var, f"{val_expr}._ref.$id"]
+                                },
+                            },
                             "in": {
                                 "$cond": [
                                     {"$gte": ["$$idx", 0]},
-                                    {"$mergeObjects": [{"$arrayElemAt": [docs_var, "$$idx"]},
-                                                       {"_ref": f"{val_expr}._ref", "_cls": f"{val_expr}._cls"}]},
-                                    {"_missing_reference": True, "_ref": "$$ref", "_cls": f"{val_expr}._cls"},
+                                    {
+                                        "$mergeObjects": [
+                                            {"$arrayElemAt": [docs_var, "$$idx"]},
+                                            {
+                                                "_ref": f"{val_expr}._ref",
+                                                "_cls": f"{val_expr}._cls",
+                                            },
+                                        ]
+                                    },
+                                    {
+                                        "_missing_reference": True,
+                                        "_ref": "$$ref",
+                                        "_cls": f"{val_expr}._cls",
+                                    },
                                 ]
                             },
                         }
@@ -1363,12 +1583,21 @@ class StageBuilder:
                                                                 {
                                                                     embedded_key: {
                                                                         "$cond": [
-                                                                            {"$isArray": f"$$it.{embedded_key}"},
-                                                                            {"$map": {"input": f"$$it.{embedded_key}",
-                                                                                      "as": "val",
-                                                                                      "in": hydrate_one_value(
-                                                                                          "$$val")}},
-                                                                            hydrate_one_value(f"$$it.{embedded_key}"),
+                                                                            {
+                                                                                "$isArray": f"$$it.{embedded_key}"
+                                                                            },
+                                                                            {
+                                                                                "$map": {
+                                                                                    "input": f"$$it.{embedded_key}",
+                                                                                    "as": "val",
+                                                                                    "in": hydrate_one_value(
+                                                                                        "$$val"
+                                                                                    ),
+                                                                                }
+                                                                            },
+                                                                            hydrate_one_value(
+                                                                                f"$$it.{embedded_key}"
+                                                                            ),
                                                                         ]
                                                                     }
                                                                 },
@@ -1430,7 +1659,9 @@ class StageBuilder:
                 }
             )
 
-            self._pipeline.append(self._project_remove(*[alias_for(cls) for cls in doc_classes]))
+            self._pipeline.append(
+                self._project_remove(*[alias_for(cls) for cls in doc_classes])
+            )
             return
 
         # ---------------- list GenericReferenceField ----------------
@@ -1446,17 +1677,25 @@ class StageBuilder:
                 }
             )
 
-        item_expr = self._generic_value_transform_expr(doc_classes, alias_for_cls=alias_for, val_var="$$item")
+        item_expr = self._generic_value_transform_expr(
+            doc_classes, alias_for_cls=alias_for, val_var="$$item"
+        )
         self._pipeline.append(
             {
                 "$addFields": {
                     local_field: {
-                        "$map": {"input": f"${local_field}", "as": "item", "in": item_expr}
+                        "$map": {
+                            "input": f"${local_field}",
+                            "as": "item",
+                            "in": item_expr,
+                        }
                     }
                 }
             }
         )
-        self._pipeline.append(self._project_remove(*[alias_for(cls) for cls in doc_classes]))
+        self._pipeline.append(
+            self._project_remove(*[alias_for(cls) for cls in doc_classes])
+        )
 
     # --------------------------------------------------------------------- #
     # Abstract DBRef lookup
@@ -1522,7 +1761,12 @@ class StageBuilder:
                                 "in": {
                                     "$cond": [
                                         {"$gt": [{"$size": "$$m"}, 0]},
-                                        {"$mergeObjects": [{"$first": "$$m"}, {"_cls": cls_name}]},
+                                        {
+                                            "$mergeObjects": [
+                                                {"$first": "$$m"},
+                                                {"_cls": cls_name},
+                                            ]
+                                        },
                                         "$$v",
                                     ]
                                 },

@@ -18,7 +18,6 @@ from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestInheritance(MongoDBAsyncTestCase):
-
     async def asyncTearDown(self):
         for collection in await async_list_collection_names(self.db):
             await self.db.drop_collection(collection)
@@ -285,7 +284,8 @@ class TestInheritance(MongoDBAsyncTestCase):
         await C.aensure_indexes()
 
         assert sorted(
-            idx["key"] for idx in (await (await C._aget_collection()).index_information()).values()
+            idx["key"]
+            for idx in (await (await C._aget_collection()).index_information()).values()
         ) == sorted([[("_cls", 1), ("b", 1)], [("_id", 1)], [("_cls", 1), ("a", 1)]])
 
     async def test_polymorphic_queries(self):
@@ -333,6 +333,7 @@ class TestInheritance(MongoDBAsyncTestCase):
 
         # can't inherit because Animal didn't explicitly allow inheritance
         with pytest.raises(ValueError, match="Document Animal may not be subclassed"):
+
             class Dog(Animal):
                 pass
 
@@ -352,12 +353,13 @@ class TestInheritance(MongoDBAsyncTestCase):
             meta = {"allow_inheritance": True}
 
         with pytest.raises(ValueError) as exc_info:
+
             class Mammal(Animal):
                 meta = {"allow_inheritance": False}
 
         assert (
-                str(exc_info.value)
-                == 'Only direct subclasses of Document may set "allow_inheritance" to False'
+            str(exc_info.value)
+            == 'Only direct subclasses of Document may set "allow_inheritance" to False'
         )
 
     async def test_allow_inheritance_abstract_document(self):
@@ -372,6 +374,7 @@ class TestInheritance(MongoDBAsyncTestCase):
             name = StringField()
 
         with pytest.raises(ValueError):
+
             class Mammal(Animal):
                 pass
 
@@ -478,6 +481,7 @@ class TestInheritance(MongoDBAsyncTestCase):
             content = StringField()
 
         with pytest.raises(ValueError):
+
             class SpecialComment(Comment):
                 pass
 

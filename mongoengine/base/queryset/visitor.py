@@ -157,9 +157,9 @@ class QCombination(QNode):
 
     def __eq__(self, other):
         return (
-                self.__class__ == other.__class__
-                and self.operation == other.operation
-                and self.children == other.children
+            self.__class__ == other.__class__
+            and self.operation == other.operation
+            and self.children == other.children
         )
 
 

@@ -4,11 +4,16 @@ import warnings
 from mongoengine.base.common import _DocumentRegistry
 from mongoengine.base.fields import (
     BaseField,
-    ObjectIdField, ComplexBaseField,
+    ObjectIdField,
+    ComplexBaseField,
 )
 from mongoengine.base.queryset import QuerySetManager, DO_NOTHING
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidDocumentError, DoesNotExist, MultipleObjectsReturned
+from mongoengine.errors import (
+    InvalidDocumentError,
+    DoesNotExist,
+    MultipleObjectsReturned,
+)
 
 __all__ = ("DocumentMetaclass", "TopLevelDocumentMetaclass")
 
@@ -43,9 +48,9 @@ class DocumentMetaclass(type):
                 elif hasattr(base, "_meta"):
                     meta.merge(base._meta)
             attrs["_meta"] = meta
-            attrs["_meta"][
-                "abstract"
-            ] = False  # 789: EmbeddedDocument shouldn't inherit abstract
+            attrs["_meta"]["abstract"] = (
+                False  # 789: EmbeddedDocument shouldn't inherit abstract
+            )
 
         # If allow_inheritance is True, add a "_cls" string field to the attrs
         if attrs["_meta"].get("allow_inheritance"):
@@ -85,7 +90,7 @@ class DocumentMetaclass(type):
 
             # Count names to ensure no db_field redefinitions
             field_names[attr_value.db_field] = (
-                    field_names.get(attr_value.db_field, 0) + 1
+                field_names.get(attr_value.db_field, 0) + 1
             )
 
         # Ensure no duplicate db_fields
@@ -115,7 +120,7 @@ class DocumentMetaclass(type):
         class_name = [name]
         for base in flattened_bases:
             if not getattr(base, "_is_base_cls", True) and not getattr(
-                    base, "_meta", {}
+                base, "_meta", {}
             ).get("abstract", True):
                 # Collate hierarchy for _cls and _subclasses
                 class_name.append(base.__name__)
@@ -174,8 +179,8 @@ class DocumentMetaclass(type):
                 delete_rule = getattr(f.field, "reverse_delete_rule", DO_NOTHING)
                 if isinstance(f, DictField) and delete_rule != DO_NOTHING:
                     msg = (
-                            "Reverse delete rules are not supported "
-                            "for %s (field: %s)" % (field.__class__.__name__, field.name)
+                        "Reverse delete rules are not supported "
+                        "for %s (field: %s)" % (field.__class__.__name__, field.name)
                     )
                     raise InvalidDocumentError(msg)
 
@@ -184,16 +189,16 @@ class DocumentMetaclass(type):
             if delete_rule != DO_NOTHING:
                 if issubclass(new_class, EmbeddedDocument):
                     msg = (
-                            "Reverse delete rules are not supported for "
-                            "EmbeddedDocuments (field: %s)" % field.name
+                        "Reverse delete rules are not supported for "
+                        "EmbeddedDocuments (field: %s)" % field.name
                     )
                     raise InvalidDocumentError(msg)
                 f.document_type.register_delete_rule(new_class, field.name, delete_rule)
 
             if (
-                    field.name
-                    and hasattr(Document, field.name)
-                    and EmbeddedDocument not in new_class.mro()
+                field.name
+                and hasattr(Document, field.name)
+                and EmbeddedDocument not in new_class.mro()
             ):
                 msg = "%s is a document method and not a valid field name" % field.name
                 raise InvalidDocumentError(msg)
@@ -283,9 +288,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Prevent classes setting collection different to their parents
         # If parent wasn't an abstract class
         if (
-                parent_doc_cls
-                and "collection" in attrs.get("_meta", {})
-                and not parent_doc_cls._meta.get("abstract", True)
+            parent_doc_cls
+            and "collection" in attrs.get("_meta", {})
+            and not parent_doc_cls._meta.get("abstract", True)
         ):
             msg = "Trying to set a collection on a subclass (%s)" % name
             warnings.warn(msg, SyntaxWarning, stacklevel=2)
@@ -323,9 +328,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             b._meta.get("abstract") for b in flattened_bases if hasattr(b, "_meta")
         )
         if (
-                not simple_class
-                and meta["allow_inheritance"] is False
-                and not meta["abstract"]
+            not simple_class
+            and meta["allow_inheritance"] is False
+            and not meta["abstract"]
         ):
             raise ValueError(
                 "Only direct subclasses of Document may set "
@@ -359,6 +364,7 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
             new_class.objects = QuerySetManager()
         if "aobjects" not in dir(new_class):
             from mongoengine.asynchronous import AsyncQuerySet
+
             new_class.aobjects = QuerySetManager(default=AsyncQuerySet)
 
         # Validate the fields and set primary key if needed
@@ -384,7 +390,9 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                     else:
                         resolved.append(ch)
                 field.choices = tuple(resolved)
-            if isinstance(field, ListField) and isinstance(field.field, GenericReferenceField):
+            if isinstance(field, ListField) and isinstance(
+                field.field, GenericReferenceField
+            ):
                 resolved = []
                 for ch in field.field.choices:
                     if isinstance(ch, str) and ch.lower() == "self":

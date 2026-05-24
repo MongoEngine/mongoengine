@@ -4,12 +4,14 @@ import pickle
 import uuid
 import weakref
 from datetime import datetime
+
 try:
     # Python 3.11+
     from datetime import UTC
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 from unittest.mock import AsyncMock
 
@@ -19,9 +21,17 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine import signals
-from mongoengine.asynchronous import async_get_db, async_disconnect, async_register_connection, async_disconnect_all
+from mongoengine.asynchronous import (
+    async_get_db,
+    async_disconnect,
+    async_register_connection,
+)
 from mongoengine.base import _DocumentRegistry
-from mongoengine.context_managers import switch_db, async_query_counter, switch_collection
+from mongoengine.context_managers import (
+    switch_db,
+    async_query_counter,
+    switch_collection,
+)
 from mongoengine.errors import (
     FieldDoesNotExist,
     InvalidDocumentError,
@@ -47,7 +57,8 @@ from tests.asynchronous.utils import (
     MongoDBAsyncTestCase,
     async_db_ops_tracker,
     async_get_as_pymongo,
-    requires_mongodb_gte_44, reset_async_connections,
+    requires_mongodb_gte_44,
+    reset_async_connections,
 )
 from tests.utils import MONGO_TEST_DB
 
@@ -82,9 +93,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         _CollectionRegistry.clear()
 
     async def _assert_db_equal(self, docs):
-        assert await (await self.Person._aget_collection()).find().sort("id").to_list() == sorted(
-            docs, key=lambda doc: doc["_id"]
-        )
+        assert await (await self.Person._aget_collection()).find().sort(
+            "id"
+        ).to_list() == sorted(docs, key=lambda doc: doc["_id"])
 
     def _assert_has_instance(self, field, instance):
         assert hasattr(field, "_instance")
@@ -142,7 +153,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         options = await (await Log.aobjects._collection).options()
         assert options["capped"] is True
         assert options["max"] == 10
-        assert options["size"] == 10 * 2 ** 20
+        assert options["size"] == 10 * 2**20
 
         # Check that the document with default value can be recreated
         class Log(Document):
@@ -253,7 +264,10 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         await zoo.asave()
         await zoo.areload()
 
-        classes = [a.__class__ for a in (await Zoo.aobjects.select_related("animals").first()).animals]
+        classes = [
+            a.__class__
+            for a in (await Zoo.aobjects.select_related("animals").first()).animals
+        ]
         assert classes == [Animal, Fish, Mammal, Dog, Human]
 
         await Zoo.adrop_collection()
@@ -266,7 +280,10 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         await zoo.asave()
         await zoo.areload()
 
-        classes = [a.__class__ for a in (await Zoo.aobjects.select_related("animals").first()).animals]
+        classes = [
+            a.__class__
+            for a in (await Zoo.aobjects.select_related("animals").first()).animals
+        ]
         assert classes == [Animal, Fish, Mammal, Dog, Human]
 
     async def test_reference_inheritance(self):
@@ -368,6 +385,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
             meta = {"allow_inheritance": True}
 
         with pytest.raises(ValueError, match="Cannot override primary key field"):
+
             class EmailUser(User):
                 email = StringField(primary_key=True)
 
@@ -492,7 +510,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         CMD_QUERY_KEY = "command"
         async with async_query_counter() as q:
             await doc.areload()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})
+                ).to_list()
+            )[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {
                 "_id",
                 "superphylum",
@@ -509,7 +531,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         CMD_QUERY_KEY = "command"
         async with async_query_counter() as q:
             await doc.areload()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.person"})
+                ).to_list()
+            )[0]
             assert set(query_op[CMD_QUERY_KEY]["filter"].keys()) == {"_id", "country"}
 
     async def test_reload_sharded_nested(self):
@@ -543,7 +569,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         async with async_query_counter() as q:
             doc.name = "Cat"
             await doc.asave()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})
+                ).to_list()
+            )[0]
             assert query_op["op"] == "update"
             assert set(query_op["command"]["q"].keys()) == {"_id", "is_mammal"}
 
@@ -565,7 +595,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_query_counter() as q:
             await doc.asave()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.animal"})
+                ).to_list()
+            )[0]
             assert query_op["op"] == "command"
             assert query_op["command"]["findAndModify"] == "animal"
             assert set(query_op["command"]["query"].keys()) == {"_id", "is_mammal"}
@@ -1008,7 +1042,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert post.tags == ["code", "mongo", "python"]
 
         # Assert same order of the list items is maintained in the db
-        assert (await (await BlogPost._aget_collection()).find_one({"_id": post.pk}))["tags"] == [
+        assert (await (await BlogPost._aget_collection()).find_one({"_id": post.pk}))[
+            "tags"
+        ] == [
             "code",
             "mongo",
             "python",
@@ -1019,9 +1055,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert post.content.keywords == ["lorem", "ipsum"]
 
         # Assert same order of the list items is maintained in the db
-        assert (await (await BlogPost._aget_collection()).find_one({"_id": post.pk}))["content"][
-                   "keywords"
-               ] == ["lorem", "ipsum"]
+        assert (await (await BlogPost._aget_collection()).find_one({"_id": post.pk}))[
+            "content"
+        ]["keywords"] == ["lorem", "ipsum"]
 
     async def test_save(self):
         """Ensure that a document may be saved in the database."""
@@ -1662,7 +1698,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert person.active is False
 
     async def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
-            self,
+        self,
     ):
         # Refers to Issue #1685
         class EmbeddedChildModel(EmbeddedDocument):
@@ -1676,7 +1712,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert changed_fields == []
 
     async def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
-            self,
+        self,
     ):
         # Refers to Issue #1685
         class User(Document):
@@ -1895,7 +1931,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.comment(comment).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -1903,7 +1945,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.hint(index_name).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1911,7 +1959,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.collation(base).update_one(name="something")
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1944,7 +1998,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects().comment(comment).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert query_op[CMD_QUERY_KEY]["comment"] == comment
@@ -1952,7 +2012,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.hint(index_name).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert query_op[CMD_QUERY_KEY]["hint"] == {"$hint": index_name}
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -1960,7 +2026,13 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         async with async_db_ops_tracker() as q:
             _ = await AggPerson.aobjects.collation(base).delete()
-            query_op = (await ((await q.db).system.profile.find({"ns": f"{MONGO_TEST_DB}.agg_person"})).to_list())[0]
+            query_op = (
+                await (
+                    (await q.db).system.profile.find(
+                        {"ns": f"{MONGO_TEST_DB}.agg_person"}
+                    )
+                ).to_list()
+            )[0]
             CMD_QUERY_KEY = "command"
             assert "hint" not in query_op[CMD_QUERY_KEY]
             assert "comment" not in query_op[CMD_QUERY_KEY]
@@ -2235,6 +2307,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         declare the same db_field.
         """
         with pytest.raises(InvalidDocumentError):
+
             class Foo(Document):
                 name = StringField()
                 name2 = StringField(db_field="name")
@@ -2520,6 +2593,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
     async def test_invalid_reverse_delete_rule_raise_errors(self):
         with pytest.raises(InvalidDocumentError):
+
             class Blog(Document):
                 content = StringField()
                 authors = MapField(
@@ -2530,6 +2604,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
                 )
 
         with pytest.raises(InvalidDocumentError):
+
             class Parents(EmbeddedDocument):
                 father = ReferenceField("Person", reverse_delete_rule=DENY)
                 mother = ReferenceField("Person", reverse_delete_rule=DENY)
@@ -2719,8 +2794,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         resurrected = pickle.loads(pickled_doc)
         assert resurrected.__class__ == fixtures.NewDocumentPickleTest
         assert (
-                resurrected._fields_ordered
-                == fixtures.NewDocumentPickleTest._fields_ordered
+            resurrected._fields_ordered
+            == fixtures.NewDocumentPickleTest._fields_ordered
         )
         assert resurrected._fields_ordered != pickle_doc._fields_ordered
 
@@ -2748,11 +2823,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         assert resurrected.embedded == pickle_doc.embedded
         assert (
-                resurrected.embedded._fields_ordered == pickle_doc.embedded._fields_ordered
+            resurrected.embedded._fields_ordered == pickle_doc.embedded._fields_ordered
         )
         assert (
-                resurrected.embedded._dynamic_fields.keys()
-                == pickle_doc.embedded._dynamic_fields.keys()
+            resurrected.embedded._dynamic_fields.keys()
+            == pickle_doc.embedded._dynamic_fields.keys()
         )
 
     async def test_picklable_on_signals(self):
@@ -2766,6 +2841,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         the "validate" method.
         """
         with pytest.raises(InvalidDocumentError):
+
             class Blog(Document):
                 validate = DictField()
 
@@ -2922,11 +2998,17 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert await AuthorBooks._async_get_db() == await async_get_db("testdb-3")
 
         # Collections
-        assert await User._aget_collection() == (await async_get_db("testdb-1"))[User._get_collection_name()]
-        assert await Book._aget_collection() == (await async_get_db("testdb-2"))[Book._get_collection_name()]
         assert (
-                await AuthorBooks._aget_collection()
-                == (await async_get_db("testdb-3"))[AuthorBooks._get_collection_name()]
+            await User._aget_collection()
+            == (await async_get_db("testdb-1"))[User._get_collection_name()]
+        )
+        assert (
+            await Book._aget_collection()
+            == (await async_get_db("testdb-2"))[Book._get_collection_name()]
+        )
+        assert (
+            await AuthorBooks._aget_collection()
+            == (await async_get_db("testdb-3"))[AuthorBooks._get_collection_name()]
         )
         await async_disconnect("testdb-1")
         await async_disconnect("testdb-2")
@@ -3024,7 +3106,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         await Book.aobjects.create(name="9", author=jon, extra={"a": peter.to_dbref()})
 
         # Checks
-        assert ",".join([str(b) async for b in Book.aobjects.all()]) == "1,2,3,4,5,6,7,8,9"
+        assert (
+            ",".join([str(b) async for b in Book.aobjects.all()]) == "1,2,3,4,5,6,7,8,9"
+        )
         # bob related books
         bob_books_qs = Book.aobjects.filter(
             Q(extra__a=bob) | Q(author=bob) | Q(extra__b=bob)
@@ -3250,8 +3334,12 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert 1 == await Post.aobjects.count()
 
         # Write to BOTH overrides in the SAME context block
-        async with switch_db(User, "tenantA"), switch_collection(User, "users_A"), \
-                switch_db(Post, "tenantB"), switch_collection(Post, "posts_B"):
+        async with (
+            switch_db(User, "tenantA"),
+            switch_collection(User, "users_A"),
+            switch_db(Post, "tenantB"),
+            switch_collection(Post, "posts_B"),
+        ):
             await User(name="user-A").asave()
             await Post(title="post-B").asave()
 
@@ -3347,7 +3435,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         with pytest.raises(FieldDoesNotExist):
             await User.aobjects.first()
 
-    async def test_load_undefined_fields_on_embedded_document_with_strict_false_on_doc(self):
+    async def test_load_undefined_fields_on_embedded_document_with_strict_false_on_doc(
+        self,
+    ):
         class Thing(EmbeddedDocument):
             name = StringField()
 
@@ -3616,7 +3706,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         system = await NodesSystem.aobjects.select_related("nodes").first()
         assert (
-                "UNDEFINED" == system.nodes["node"].parameters["param"].macros["test"].value
+            "UNDEFINED" == system.nodes["node"].parameters["param"].macros["test"].value
         )
 
     async def test_embedded_document_equality(self):
@@ -3704,7 +3794,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         p = Person(name="alon")
         await p.asave()
-        orig_created_on = (await Person.aobjects().only("created_on").first()).created_on
+        orig_created_on = (
+            await Person.aobjects().only("created_on").first()
+        ).created_on
 
         p2 = await Person.aobjects().only("name").first()
         p2.name = "alon2"
@@ -3992,7 +4084,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
             [{"name": "Foo"}, {"name": "Foo"}]
         )  # Force 2 doc with the same name
         REF_OID = insert_result.inserted_ids[0]
-        await self.db.user.insert_one({"company": REF_OID})  # Force 2 doc with same name
+        await self.db.user.insert_one(
+            {"company": REF_OID}
+        )  # Force 2 doc with same name
 
         class Company(Document):
             name = StringField(unique=True)
@@ -4031,11 +4125,11 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
             assert copied_u is not u
             assert copied_u._fields["name"] is u._fields["name"]
             assert (
-                    copied_u._fields["name"].regex is u._fields["name"].regex
+                copied_u._fields["name"].regex is u._fields["name"].regex
             )  # Compiled regex objects are atomic
 
     async def test_embedded_document_failed_while_loading_instance_when_it_is_not_a_dict(
-            self,
+        self,
     ):
         class LightSaber(EmbeddedDocument):
             color = StringField()
@@ -4045,7 +4139,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
         coll = await Jedi._aget_collection()
         await Jedi(light_saber=LightSaber(color="red")).asave()
-        _ = await Jedi.aobjects.to_list()  # Ensure a proper document loads without errors
+        _ = (
+            await Jedi.aobjects.to_list()
+        )  # Ensure a proper document loads without errors
 
         # Forces a document with a wrong shape (may occur in case of migration)
         value = "I_should_be_a_dict"
@@ -4054,10 +4150,10 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         with pytest.raises(InvalidDocumentError) as exc_info:
             await Jedi.aobjects.to_list()
 
-        assert str(
-            exc_info.value
-        ) == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found" % type(
-            value
+        assert (
+            str(exc_info.value)
+            == "Invalid data to create a `Jedi` instance.\nField 'light_saber' - The source SON object needs to be of type 'dict' but a '%s' was found"
+            % type(value)
         )
 
 
@@ -4154,7 +4250,7 @@ class DBFieldMappingTest(MongoDBAsyncTestCase):
         assert doc.z2 is False
 
     async def test_setting_unknown_field_in_constructor_of_dyn_doc_does_not_overwrite_model_fields(
-            self,
+        self,
     ):
         doc = self.DynDoc(w2=True)
         assert doc.w1 is None
@@ -4181,13 +4277,13 @@ class DBFieldMappingTest(MongoDBAsyncTestCase):
         await doc.asave()
         reloaded = await self.Doc.aobjects.get(id=doc.id)
         assert (
-                   reloaded.x1,
-                   reloaded.x2,
-                   reloaded.y1,
-                   reloaded.y2,
-                   reloaded.z1,
-                   reloaded.z2,
-               ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
 
     async def test_dbfields_are_loaded_to_the_right_modelfield_for_dyn_doc_2(self):
         doc = self.DynDoc()
@@ -4197,10 +4293,10 @@ class DBFieldMappingTest(MongoDBAsyncTestCase):
         await doc.asave()
         reloaded = await self.DynDoc.aobjects.get(id=doc.id)
         assert (
-                   reloaded.x1,
-                   reloaded.x2,
-                   reloaded.y1,
-                   reloaded.y2,
-                   reloaded.z1,
-                   reloaded.z2,
-               ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)
+            reloaded.x1,
+            reloaded.x2,
+            reloaded.y1,
+            reloaded.y2,
+            reloaded.z1,
+            reloaded.z2,
+        ) == (doc.x1, doc.x2, doc.y1, doc.y2, doc.z1, doc.z2)

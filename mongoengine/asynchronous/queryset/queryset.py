@@ -61,9 +61,7 @@ class AsyncQuerySet(AsyncBaseQuerySet):
             return self._get_scalar(raw)
 
         # ---- Normal document creation ----
-        return self._document._from_son(
-            raw
-        )
+        return self._document._from_son(raw)
 
     # -------------------------------------------------------------
     # Async internal helpers
@@ -139,9 +137,7 @@ class AsyncQuerySet(AsyncBaseQuerySet):
         if self._result_cache is not None:
             raise OperationError("QuerySet already cached")
 
-        return self._clone_into(
-            AsyncQuerySetNoCache(self._document)
-        )
+        return self._clone_into(AsyncQuerySetNoCache(self._document))
 
     async def to_list(self):
         """Return all results as a list asynchronously, respecting cache."""

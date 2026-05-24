@@ -1,11 +1,7 @@
 import pytest
-from bson import InvalidDocument
 
 from mongoengine import *
 from mongoengine.base import BaseDict
-from mongoengine.mongodb_support import (
-    async_get_mongodb_version,
-)
 from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo
 
 
@@ -82,14 +78,20 @@ class TestDictField(MongoDBAsyncTestCase):
 
         assert await BlogPost.aobjects.count() == 4
         assert await BlogPost.aobjects.filter(info__title__exact="test").count() == 1
-        assert await BlogPost.aobjects.filter(info__details__test__exact="test").count() == 1
+        assert (
+            await BlogPost.aobjects.filter(info__details__test__exact="test").count()
+            == 1
+        )
 
         post = await BlogPost.aobjects.filter(info__title__exact="dollar_sign").first()
         assert "te$t" in post["info"]["details"]
 
         # Confirm handles non strings or non existing keys
         assert await BlogPost.aobjects.filter(info__details__test__exact=5).count() == 0
-        assert await BlogPost.aobjects.filter(info__made_up__test__exact="test").count() == 0
+        assert (
+            await BlogPost.aobjects.filter(info__made_up__test__exact="test").count()
+            == 0
+        )
 
         post = await BlogPost.aobjects.create(info={"title": "original"})
         post.info.update({"title": "updated"})
@@ -207,28 +209,42 @@ class TestDictField(MongoDBAsyncTestCase):
         assert await Simple.aobjects.filter(mapping__someint__value=42).count() == 1
         assert await Simple.aobjects.filter(mapping__nested_dict__number=1).count() == 1
         assert (
-                await Simple.aobjects.filter(mapping__nested_dict__complex__value=42).count() == 1
+            await Simple.aobjects.filter(
+                mapping__nested_dict__complex__value=42
+            ).count()
+            == 1
         )
         assert (
-                await Simple.aobjects.filter(mapping__nested_dict__list__0__value=42).count() == 1
+            await Simple.aobjects.filter(
+                mapping__nested_dict__list__0__value=42
+            ).count()
+            == 1
         )
         assert (
-                await Simple.aobjects.filter(mapping__nested_dict__list__1__value="foo").count()
-                == 1
+            await Simple.aobjects.filter(
+                mapping__nested_dict__list__1__value="foo"
+            ).count()
+            == 1
         )
 
         # Confirm can update
-        await Simple.aobjects().update(set__mapping={"someint": IntegerSetting(value=10)})
+        await Simple.aobjects().update(
+            set__mapping={"someint": IntegerSetting(value=10)}
+        )
         await Simple.aobjects().update(
             set__mapping__nested_dict__list__1=StringSetting(value="Boo")
         )
         assert (
-                await Simple.aobjects.filter(mapping__nested_dict__list__1__value="foo").count()
-                == 0
+            await Simple.aobjects.filter(
+                mapping__nested_dict__list__1__value="foo"
+            ).count()
+            == 0
         )
         assert (
-                await Simple.aobjects.filter(mapping__nested_dict__list__1__value="Boo").count()
-                == 1
+            await Simple.aobjects.filter(
+                mapping__nested_dict__list__1__value="Boo"
+            ).count()
+            == 1
         )
 
     async def test_push_dict(self):
@@ -275,7 +291,9 @@ class TestDictField(MongoDBAsyncTestCase):
         with pytest.raises(ValidationError):
             test.validate()
 
-    async def test_dict_field_raises_validation_error_if_wrongly_assign_embedded_doc(self):
+    async def test_dict_field_raises_validation_error_if_wrongly_assign_embedded_doc(
+        self,
+    ):
         class DictFieldTest(Document):
             dictionary = DictField(required=True)
 
@@ -348,8 +366,18 @@ class TestDictField(MongoDBAsyncTestCase):
         e.mapping8["someint"] = e.mapping9["someint"] = [{"d": [d]}]
         await e.asave()
 
-        s = await Simple.aobjects.select_related("mapping0", "mapping1", "mapping2", "mapping3", "mapping4", "mapping5",
-                                                 "mapping6", "mapping7", "mapping8", "mapping9").first()
+        s = await Simple.aobjects.select_related(
+            "mapping0",
+            "mapping1",
+            "mapping2",
+            "mapping3",
+            "mapping4",
+            "mapping5",
+            "mapping6",
+            "mapping7",
+            "mapping8",
+            "mapping9",
+        ).first()
         assert isinstance(s.mapping0["someint"], Doc)
         assert isinstance(s.mapping1["someint"], Doc)
         assert isinstance(s.mapping2["someint"][0], Doc)

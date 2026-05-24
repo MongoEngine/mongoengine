@@ -1,4 +1,4 @@
-__all__ = ('DO_NOTHING', 'NULLIFY', 'CASCADE', 'DENY', 'PULL')
+__all__ = ("DO_NOTHING", "NULLIFY", "CASCADE", "DENY", "PULL")
 
 # Delete rules
 DO_NOTHING = 0

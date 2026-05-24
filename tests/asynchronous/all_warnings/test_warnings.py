@@ -14,7 +14,6 @@ from tests.utils import MONGO_TEST_DB
 
 
 class TestAllWarnings(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         await async_connect(db=MONGO_TEST_DB)
         self.warning_list = []
@@ -40,4 +39,6 @@ class TestAllWarnings(unittest.IsolatedAsyncioTestCase):
         assert SyntaxWarning == warning["category"]
         assert "non_abstract_base" == InheritedDocumentFailTest._get_collection_name()
         _document_registry.pop(NonAbstractBase.__name__)
-        _document_registry.pop(f"{NonAbstractBase.__name__}.{InheritedDocumentFailTest.__name__}")
+        _document_registry.pop(
+            f"{NonAbstractBase.__name__}.{InheritedDocumentFailTest.__name__}"
+        )

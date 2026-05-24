@@ -41,6 +41,7 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 
@@ -122,7 +123,7 @@ class TestField(MongoDBAsyncTestCase):
         assert data_to_be_saved == ["age", "created", "day", "name", "userid"]
 
     async def test_custom_field_validation_raise_deprecated_error_when_validation_return_something(
-            self,
+        self,
     ):
         # Covers introduction of a breaking change in the validation parameter (0.18)
         def _not_empty(z):
@@ -237,7 +238,7 @@ class TestField(MongoDBAsyncTestCase):
         assert data_to_be_saved == ["age", "created", "userid"]
 
     async def test_default_value_is_not_used_when_changing_value_to_empty_list_for_strict_doc(
-            self,
+        self,
     ):
         """List field with default can be set to the empty list (strict)"""
 
@@ -252,7 +253,7 @@ class TestField(MongoDBAsyncTestCase):
         assert reloaded.x == []
 
     async def test_default_value_is_not_used_when_changing_value_to_empty_list_for_dyn_doc(
-            self,
+        self,
     ):
         """List field with default can be set to the empty list (dynamic)"""
 
@@ -425,16 +426,19 @@ class TestField(MongoDBAsyncTestCase):
 
         # dot in the name
         with pytest.raises(ValueError):
+
             class User(Document):
                 name = StringField(db_field="user.name")
 
         # name starting with $
         with pytest.raises(ValueError):
+
             class UserX1(Document):
                 name = StringField(db_field="$name")
 
         # name containing a null character
         with pytest.raises(ValueError):
+
             class UserX2(Document):
                 name = StringField(db_field="name\0")
 
@@ -629,7 +633,9 @@ class TestField(MongoDBAsyncTestCase):
 
         # Confirm handles non strings or non existing keys
         assert await BlogPost.aobjects.filter(info__0__test__exact="5").count() == 0
-        assert await BlogPost.aobjects.filter(info__100__test__exact="test").count() == 0
+        assert (
+            await BlogPost.aobjects.filter(info__100__test__exact="test").count() == 0
+        )
 
         # test queries by list
         post = BlogPost()
@@ -643,7 +649,10 @@ class TestField(MongoDBAsyncTestCase):
         post.info *= 2
         await post.asave()
         assert (
-                await BlogPost.aobjects(info=["1", "2", "3", "4", "1", "2", "3", "4"]).count() == 1
+            await BlogPost.aobjects(
+                info=["1", "2", "3", "4", "1", "2", "3", "4"]
+            ).count()
+            == 1
         )
 
     async def test_list_field_manipulative_operators(self):
@@ -1155,15 +1164,23 @@ class TestField(MongoDBAsyncTestCase):
         assert await Simple.aobjects.filter(mapping__2__number=1).count() == 1
         assert await Simple.aobjects.filter(mapping__2__complex__value=42).count() == 1
         assert await Simple.aobjects.filter(mapping__2__list__0__value=42).count() == 1
-        assert await Simple.aobjects.filter(mapping__2__list__1__value="foo").count() == 1
+        assert (
+            await Simple.aobjects.filter(mapping__2__list__1__value="foo").count() == 1
+        )
 
         # Confirm can update
         await Simple.aobjects().update(set__mapping__1=IntegerSetting(value=10))
         assert await Simple.aobjects.filter(mapping__1__value=10).count() == 1
 
-        await Simple.aobjects().update(set__mapping__2__list__1=StringSetting(value="Boo"))
-        assert await Simple.aobjects.filter(mapping__2__list__1__value="foo").count() == 0
-        assert await Simple.aobjects.filter(mapping__2__list__1__value="Boo").count() == 1
+        await Simple.aobjects().update(
+            set__mapping__2__list__1=StringSetting(value="Boo")
+        )
+        assert (
+            await Simple.aobjects.filter(mapping__2__list__1__value="foo").count() == 0
+        )
+        assert (
+            await Simple.aobjects.filter(mapping__2__list__1__value="Boo").count() == 1
+        )
 
     async def test_embedded_db_field(self):
         class Embedded(EmbeddedDocument):
@@ -1223,9 +1240,10 @@ class TestField(MongoDBAsyncTestCase):
         assert a.b.c.txt == "hi"
 
     async def test_embedded_document_field_cant_reference_using_a_str_if_it_does_not_exist_yet(
-            self,
+        self,
     ):
         with pytest.raises(NotRegistered):
+
             class MyDoc2(Document):
                 emb = EmbeddedDocumentField("MyFunkyDoc123")
 
@@ -1502,7 +1520,9 @@ class TestField(MongoDBAsyncTestCase):
         await sister.asave()
         brother = Brother(name="Bob", sibling=sister)
         await brother.asave()
-        assert (await Brother.aobjects.select_related("sibling").to_list())[0].sibling.name == sister.name
+        assert (await Brother.aobjects.select_related("sibling").to_list())[
+            0
+        ].sibling.name == sister.name
 
     async def test_reference_abstract_class(self):
         """Ensure that an abstract class instance cannot be used in the
@@ -1883,7 +1903,8 @@ class TestField(MongoDBAsyncTestCase):
         await Fish().asave()
         await Human().asave()
         assert (
-                await Animal.aobjects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count() == 2
+            await Animal.aobjects(_cls__in=["Animal.Mammal.Dog", "Animal.Fish"]).count()
+            == 2
         )
         assert await Animal.aobjects(_cls__in=["Animal.Fish.Guppy"]).count() == 0
 
@@ -1929,11 +1950,10 @@ class TestField(MongoDBAsyncTestCase):
 
 
 class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
-
     async def asyncSetUp(self):
         """
-           Create two BlogPost entries in the database, each with
-           several EmbeddedDocuments.
+        Create two BlogPost entries in the database, each with
+        several EmbeddedDocuments.
         """
         await super().asyncSetUp()
 
@@ -2208,7 +2228,10 @@ class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
         assert comment.message == "message1"
 
         # Ensure the new comment was actually saved to the database.
-        assert comment in (await self.BlogPost.aobjects(comments__author="user4").first()).comments
+        assert (
+            comment
+            in (await self.BlogPost.aobjects(comments__author="user4").first()).comments
+        )
 
     async def test_filtered_create(self):
         """
@@ -2227,7 +2250,10 @@ class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
         assert comment.message == "message1"
 
         # Ensure the new comment was actually saved to the database.
-        assert comment in (await self.BlogPost.aobjects(comments__author="user4").first()).comments
+        assert (
+            comment
+            in (await self.BlogPost.aobjects(comments__author="user4").first()).comments
+        )
 
     async def test_no_keyword_update(self):
         """
@@ -2239,9 +2265,15 @@ class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
         await self.post1.asave()
 
         # Ensure that nothing was altered.
-        assert original[0] in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        assert (
+            original[0]
+            in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        )
 
-        assert original[1] in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        assert (
+            original[1]
+            in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        )
 
         # Ensure the method returned 0 as the number of entries
         # modified
@@ -2287,7 +2319,10 @@ class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
         await comments.asave()
 
         # Ensure that the new comment has been added to the database.
-        assert new_comment in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        assert (
+            new_comment
+            in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        )
 
     async def test_delete(self):
         """
@@ -2349,8 +2384,13 @@ class TestEmbeddedDocumentListField(MongoDBAsyncTestCase):
         await self.post1.asave()
 
         # Ensure that only the user2 comment was deleted.
-        assert comment not in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
-        assert len((await self.BlogPost.aobjects(id=self.post1.id).first()).comments) == 1
+        assert (
+            comment
+            not in (await self.BlogPost.aobjects(id=self.post1.id).first()).comments
+        )
+        assert (
+            len((await self.BlogPost.aobjects(id=self.post1.id).first()).comments) == 1
+        )
 
         # Ensure that the user2 comment no longer exists in the list.
         assert comment not in self.post1.comments

@@ -8,7 +8,6 @@ from tests.utils import MONGO_TEST_DB
 
 
 class TestClassMethods(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         await async_connect(db=MONGO_TEST_DB)
         self.db = await async_get_db()
@@ -140,10 +139,14 @@ class TestClassMethods(unittest.IsolatedAsyncioTestCase):
             "extra": [[("_cls", 1), ("author", 1), ("tag_list", 1)]],
         }
 
-        await (await BlogPostWithTags._aget_collection()).drop_index("_cls_1_author_1_tag_list_1")
+        await (await BlogPostWithTags._aget_collection()).drop_index(
+            "_cls_1_author_1_tag_list_1"
+        )
         assert await BlogPost.acompare_indexes() == {"missing": [], "extra": []}
 
-        await (await BlogPostWithTags._aget_collection()).drop_index("_cls_1_author_1_tags_1")
+        await (await BlogPostWithTags._aget_collection()).drop_index(
+            "_cls_1_author_1_tags_1"
+        )
         assert await BlogPost.acompare_indexes() == {
             "missing": [[("_cls", 1), ("author", 1), ("tags", 1)]],
             "extra": [],
@@ -178,7 +181,10 @@ class TestClassMethods(unittest.IsolatedAsyncioTestCase):
 
         assert await BlogPost.acompare_indexes() == {"missing": [], "extra": []}
         assert await BlogPostWithTags.acompare_indexes() == {"missing": [], "extra": []}
-        assert await BlogPostWithCustomField.acompare_indexes() == {"missing": [], "extra": []}
+        assert await BlogPostWithCustomField.acompare_indexes() == {
+            "missing": [],
+            "extra": [],
+        }
 
     async def test_compare_indexes_for_text_indexes(self):
         """Ensure that compare_indexes behaves correctly for text indexes"""
@@ -231,7 +237,10 @@ class TestClassMethods(unittest.IsolatedAsyncioTestCase):
         await BlogPostWithTagsAndExtraText.aensure_indexes()
 
         assert await BlogPost.alist_indexes() == await BlogPostWithTags.alist_indexes()
-        assert await BlogPost.alist_indexes() == await BlogPostWithTagsAndExtraText.alist_indexes()
+        assert (
+            await BlogPost.alist_indexes()
+            == await BlogPostWithTagsAndExtraText.alist_indexes()
+        )
         assert await BlogPost.alist_indexes() == [
             [("_cls", 1), ("author", 1), ("tags", 1)],
             [("_cls", 1), ("author", 1), ("tags", 1), ("extra_text", 1)],
@@ -299,8 +308,8 @@ class TestClassMethods(unittest.IsolatedAsyncioTestCase):
             pass
 
         assert (
-                "oldmixinnamingconvention"
-                == OldMixinNamingConvention._get_collection_name()
+            "oldmixinnamingconvention"
+            == OldMixinNamingConvention._get_collection_name()
         )
 
         class BaseMixin:

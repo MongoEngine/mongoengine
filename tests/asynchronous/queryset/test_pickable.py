@@ -27,7 +27,6 @@ class TestQuerysetPickable(MongoDBAsyncTestCase):
         await reset_async_connections()
         _CollectionRegistry.clear()
 
-
     async def test_picke_simple_qs(self):
         qs = Person.aobjects.all()
         pickle.dumps(qs)

@@ -27,7 +27,6 @@ from mongoengine import (
 from mongoengine.base import _DocumentRegistry
 from mongoengine.registry import _CollectionRegistry
 from mongoengine.synchronous.connection import (
-    DEFAULT_DATABASE_NAME,
     ConnectionFailure,
     _get_connection_settings,
     disconnect,
@@ -78,7 +77,9 @@ class ConnectionTest(unittest.TestCase):
         assert isinstance(conn, pymongo.MongoClient)
 
         connect(
-            f"{MONGO_TEST_DB}_2", alias="testdb3", mongo_client_class=pymongo.MongoClient
+            f"{MONGO_TEST_DB}_2",
+            alias="testdb3",
+            mongo_client_class=pymongo.MongoClient,
         )
         conn = get_connection("testdb")
         assert isinstance(conn, pymongo.MongoClient)
@@ -163,8 +164,8 @@ class ConnectionTest(unittest.TestCase):
         with pytest.raises(ConnectionFailure) as exc_info:
             connect(f"{MONGO_TEST_DB}_2")
         assert (
-                "A different connection with alias `default` was already registered. Use disconnect() first"
-                == str(exc_info.value)
+            "A different connection with alias `default` was already registered. Use disconnect() first"
+            == str(exc_info.value)
         )
 
     def test_connect_fails_if_connect_2_times_with_custom_alias(self):
@@ -174,12 +175,12 @@ class ConnectionTest(unittest.TestCase):
             connect(f"{MONGO_TEST_DB}_2", alias="alias1")
 
         assert (
-                "A different connection with alias `alias1` was already registered. Use disconnect() first"
-                == str(exc_info.value)
+            "A different connection with alias `alias1` was already registered. Use disconnect() first"
+            == str(exc_info.value)
         )
 
     def test_connect_fails_if_similar_connection_settings_arent_defined_the_same_way(
-            self,
+        self,
     ):
         """Intended to keep the detecton function simple but robust"""
         db_name = MONGO_TEST_DB
@@ -435,7 +436,8 @@ class ConnectionTest(unittest.TestCase):
         ca.admin.command("createUser", user_username, pwd="password", roles=["dbOwner"])
 
         connect(
-            f"{MONGO_TEST_DB}_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
+            f"{MONGO_TEST_DB}_uri",
+            host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}",
         )
 
         conn = get_connection()
@@ -479,7 +481,9 @@ class ConnectionTest(unittest.TestCase):
         doesn't explicitly specify them.
         """
         connect(
-            host=f"mongodb://localhost/{MONGO_TEST_DB}", username="user", password="pass"
+            host=f"mongodb://localhost/{MONGO_TEST_DB}",
+            username="user",
+            password="pass",
         )
 
         # OperationFailure means that mongoengine attempted authentication
@@ -670,7 +674,7 @@ class ConnectionTest(unittest.TestCase):
         )  # weird but there is a discrepancy in the address in replicaset setup
         assert mongo_connections["t1"].read_preference == ReadPreference.PRIMARY
         assert (
-                mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED
+            mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED
         )
         assert mongo_connections["t1"] is not mongo_connections["t2"]
 
@@ -691,8 +695,8 @@ class ConnectionTest(unittest.TestCase):
             host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
         )
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
         )
         disconnect(rand)
 
@@ -700,8 +704,8 @@ class ConnectionTest(unittest.TestCase):
         rand = random_str()
         tmp_conn = connect(alias=rand, db=rand, uuidRepresentation="javaLegacy")
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         disconnect(rand)
 
@@ -713,8 +717,8 @@ class ConnectionTest(unittest.TestCase):
             uuidRepresentation="javaLegacy",
         )
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         disconnect(rand)
 

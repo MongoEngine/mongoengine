@@ -9,7 +9,6 @@ from tests.synchronous.utils import MongoDBTestCase
 
 
 class TestTransform(MongoDBTestCase):
-
     def test_transform_str_datetime(self):
         data = {"date": {"$ne": "2015-12-01T00:00:00"}}
         assert transform.query(**data) == {"date": {"$ne": "2015-12-01T00:00:00"}}

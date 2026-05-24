@@ -232,8 +232,8 @@ class query_counter:
         issued so we need to balance that
         """
         count = (
-                count_documents(self.db.system.profile, self._ignored_query)
-                - self._ctx_query_counter
+            count_documents(self.db.system.profile, self._ignored_query)
+            - self._ctx_query_counter
         )
         self._ctx_query_counter += (
             1  # Account for the query we just issued to gather the information
@@ -292,7 +292,9 @@ class async_query_counter:
         return self._db
 
     async def _turn_on_profiling(self):
-        profile_update_res = await (await self.db).command({"profile": 0}, session=_get_session())
+        profile_update_res = await (await self.db).command(
+            {"profile": 0}, session=_get_session()
+        )
         self.initial_profiling_level = profile_update_res["was"]
 
         await (await self.db).system.profile.drop()
@@ -371,8 +373,10 @@ class async_query_counter:
         issued so we need to balance that
         """
         count = (
-                await async_count_documents((await self.db).system.profile, self._ignored_query)
-                - self._ctx_query_counter
+            await async_count_documents(
+                (await self.db).system.profile, self._ignored_query
+            )
+            - self._ctx_query_counter
         )
         self._ctx_query_counter += (
             1  # Account for the query we just issued to gather the information
@@ -419,10 +423,10 @@ class run_in_transaction:
     """
 
     def __init__(
-            self,
-            alias=DEFAULT_CONNECTION_NAME,
-            session_kwargs=None,
-            transaction_kwargs=None,
+        self,
+        alias=DEFAULT_CONNECTION_NAME,
+        session_kwargs=None,
+        transaction_kwargs=None,
     ):
         self.alias = alias
         self.session_kwargs = session_kwargs or {}

@@ -49,7 +49,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     async def _inner_async(*args, **kwargs):
-
         mongodb_v = await async_get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)
@@ -59,7 +58,6 @@ def _decorated_with_ver_requirement(func, mongo_version_req, oper):
 
     @functools.wraps(func)
     def _inner_sync(*args, **kwargs):
-
         mongodb_v = get_mongodb_version()
         if not oper(mongodb_v, mongo_version_req):
             pretty_version = ".".join(str(n) for n in mongo_version_req)

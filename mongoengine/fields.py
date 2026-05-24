@@ -43,17 +43,15 @@ from mongoengine.base import (
     _DocumentRegistry,
 )
 from mongoengine.base.utils import LazyRegexCompiler
-from mongoengine.synchronous.connection import (
-    DEFAULT_CONNECTION_NAME,
-    get_db
-)
+from mongoengine.synchronous.connection import DEFAULT_CONNECTION_NAME, get_db
 from mongoengine.session import _get_session
 from mongoengine.asynchronous import async_get_db
 from mongoengine.document import Document, EmbeddedDocument
 from mongoengine.errors import (
     DoesNotExist,
     InvalidQueryError,
-    ValidationError, OperationError,
+    ValidationError,
+    OperationError,
 )
 from mongoengine.base.queryset import DO_NOTHING
 from mongoengine.synchronous.queryset.base import BaseQuerySet
@@ -262,12 +260,12 @@ class EmailField(StringField):
     error_msg = "Invalid email address: %s"
 
     def __init__(
-            self,
-            domain_whitelist=None,
-            allow_utf8_user=False,
-            allow_ip_domain=False,
-            *args,
-            **kwargs,
+        self,
+        domain_whitelist=None,
+        allow_utf8_user=False,
+        allow_ip_domain=False,
+        *args,
+        **kwargs,
     ):
         """
         :param domain_whitelist: (optional) list of valid domain names applied during validation
@@ -430,13 +428,13 @@ class DecimalField(BaseField):
     """
 
     def __init__(
-            self,
-            min_value=None,
-            max_value=None,
-            force_string=False,
-            precision=2,
-            rounding=decimal.ROUND_HALF_UP,
-            **kwargs,
+        self,
+        min_value=None,
+        max_value=None,
+        force_string=False,
+        precision=2,
+        rounding=decimal.ROUND_HALF_UP,
+        **kwargs,
     ):
         """
         :param min_value: (optional) A min value that will be applied during validation
@@ -748,12 +746,11 @@ class EmbeddedDocumentField(BaseField):
 
     def __init__(self, document_type, **kwargs):
         if not (
-                isinstance(document_type, str)
-                or issubclass(document_type, EmbeddedDocument)
+            isinstance(document_type, str)
+            or issubclass(document_type, EmbeddedDocument)
         ):
             self.error(
-                "Invalid embedded document class provided to an "
-                "EmbeddedDocumentField"
+                "Invalid embedded document class provided to an EmbeddedDocumentField"
             )
 
         self.document_type_obj = document_type
@@ -780,9 +777,7 @@ class EmbeddedDocumentField(BaseField):
 
     def to_python(self, value):
         if not isinstance(value, self.document_type):
-            return self.document_type._from_son(
-                value
-            )
+            return self.document_type._from_son(value)
         return value
 
     def to_mongo(self, value, use_db_field=True, fields=None):
@@ -922,7 +917,9 @@ class DynamicField(BaseField):
         if isinstance(value, dict) and "_cls" in value:
             doc_cls = _DocumentRegistry.get(value["_cls"])
             if doc_cls._is_document:
-                return LazyReference(document_type=doc_cls, pk=value["_ref"].id, passthrough=True)
+                return LazyReference(
+                    document_type=doc_cls, pk=value["_ref"].id, passthrough=True
+                )
             else:
                 return doc_cls._from_son(value)
         return super().to_python(value)
@@ -962,10 +959,12 @@ class ListField(ComplexBaseField):
         value = instance._data.get(self.name)
         if value:
             for index, val in enumerate(value):
-                if isinstance(val, dict) and "_cls" in val and '_ref' in val:
-                    if 'missing_reference' in val:
-                        value[index] = LazyReference(document_type=_DocumentRegistry.get(val['_cls']),
-                                                     pk=val['_ref'].id)
+                if isinstance(val, dict) and "_cls" in val and "_ref" in val:
+                    if "missing_reference" in val:
+                        value[index] = LazyReference(
+                            document_type=_DocumentRegistry.get(val["_cls"]),
+                            pk=val["_ref"].id,
+                        )
         return super().__get__(instance, owner)
 
     def validate(self, value, clean=True):
@@ -993,8 +992,8 @@ class ListField(ComplexBaseField):
             is_iter = hasattr(value, "__iter__")
             eligible_iter = is_iter and not isinstance(value, (str, BaseDocument))
             if (
-                    op in ("set", "unset", "gt", "gte", "lt", "lte", "ne", None)
-                    and eligible_iter
+                op in ("set", "unset", "gt", "gte", "lt", "lte", "ne", None)
+                and eligible_iter
             ):
                 return [self.field.prepare_query_value(op, v) for v in value]
 
@@ -1109,7 +1108,7 @@ class DictField(ComplexBaseField):
             return StringField().prepare_query_value(op, value)
 
         if hasattr(
-                self.field, "field"
+            self.field, "field"
         ):  # Used for instance when using DictField(ListField(IntField()))
             if op in ("set", "unset") and isinstance(value, dict):
                 return {
@@ -1138,12 +1137,12 @@ class MapField(DictField):
 
         result = super().__get__(instance, owner)
         if isinstance(self.field, GenericReferenceField) or isinstance(
-                self.field, ReferenceField
+            self.field, ReferenceField
         ):
             for k, v in result.items():
-                if isinstance(v, dict) and '_cls' in v:
-                    cls_ = _DocumentRegistry.get(v['_cls'])
-                    result[k] = LazyReference(document_type=cls_, pk=v['_ref'].id)
+                if isinstance(v, dict) and "_cls" in v:
+                    cls_ = _DocumentRegistry.get(v["_cls"])
+                    result[k] = LazyReference(document_type=cls_, pk=v["_ref"].id)
             instance._data[self.name] = result
         return result
 
@@ -1151,10 +1150,12 @@ class MapField(DictField):
 class ReferenceField(BaseField):
     """A reference to a document that will be automatically dereferenced on access (lazily)."""
 
-    def __init__(self, document_type, dbref=False, reverse_delete_rule=DO_NOTHING, **kwargs):
+    def __init__(
+        self, document_type, dbref=False, reverse_delete_rule=DO_NOTHING, **kwargs
+    ):
         if not (
-                isinstance(document_type, str)
-                or (inspect.isclass(document_type) and issubclass(document_type, Document))
+            isinstance(document_type, str)
+            or (inspect.isclass(document_type) and issubclass(document_type, Document))
         ):
             self.error(
                 "Argument to ReferenceField constructor must be a "
@@ -1181,11 +1182,16 @@ class ReferenceField(BaseField):
 
         value = instance._data.get(self.name)
         if isinstance(value, dict) and value.get("_missing_reference", False):
-            dbref = DBRef(collection=self.owner_document._get_collection_name(), id=value.get("_ref"))
+            dbref = DBRef(
+                collection=self.owner_document._get_collection_name(),
+                id=value.get("_ref"),
+            )
             raise DoesNotExist(f"Trying to dereference unknown document {dbref}")
 
         if isinstance(value, DBRef):
-            return LazyReference(document_type=self.document_type, pk=value.id, passthrough=True)
+            return LazyReference(
+                document_type=self.document_type, pk=value.id, passthrough=True
+            )
         return super().__get__(instance, owner)
 
     def to_mongo(self, document):
@@ -1217,16 +1223,18 @@ class ReferenceField(BaseField):
         return id_
 
     def to_python(self, value):
-        if isinstance(value, dict) and value.get('_missing_reference'):
+        if isinstance(value, dict) and value.get("_missing_reference"):
             pass
-        elif isinstance(value, dict) and ('_id' in value or '_cls' in value):
-            if '_ref' in value:
+        elif isinstance(value, dict) and ("_id" in value or "_cls" in value):
+            if "_ref" in value:
                 document_type = _DocumentRegistry.get(value["_ref"].cls)
-                del value['_ref']
+                del value["_ref"]
                 value = document_type._from_son(value)
             else:
                 value = self.document_type._from_son(value)
-        elif not self.dbref and not isinstance(value, (DBRef, Document, EmbeddedDocument)):
+        elif not self.dbref and not isinstance(
+            value, (DBRef, Document, EmbeddedDocument)
+        ):
             value = LazyReference(document_type=self.document_type, pk=value)
         return value
 
@@ -1237,11 +1245,8 @@ class ReferenceField(BaseField):
         return self.to_mongo(value)
 
     def validate(self, value, clean=True):
-
         if not isinstance(value, (self.document_type, DBRef, ObjectId)):
-            self.error(
-                "A ReferenceField only accepts DBRef, ObjectId or documents"
-            )
+            self.error("A ReferenceField only accepts DBRef, ObjectId or documents")
 
         if isinstance(value, Document) and value.id is None:
             self.error(_unsaved_object_error(value.__class__.__name__))
@@ -1279,7 +1284,7 @@ class GenericReferenceField(BaseField):
 
     def _validate_choices(self, value):
         if isinstance(value, dict):
-            value = _DocumentRegistry.get(value.get("_cls"))(pk=value['_ref'].id)
+            value = _DocumentRegistry.get(value.get("_cls"))(pk=value["_ref"].id)
         super()._validate_choices(value)
 
     def __get__(self, instance, owner):
@@ -1288,8 +1293,12 @@ class GenericReferenceField(BaseField):
         val = instance._data.get(self.name)
         if isinstance(val, dict) and val.get("_missing_reference", False):
             raise DoesNotExist(f"Trying to dereference unknown document {val}")
-        elif isinstance(val, dict) and '_cls' in val:
-            return LazyReference(document_type=_DocumentRegistry.get(val['_cls']), pk=val['_ref'].id, passthrough=True)
+        elif isinstance(val, dict) and "_cls" in val:
+            return LazyReference(
+                document_type=_DocumentRegistry.get(val["_cls"]),
+                pk=val["_ref"].id,
+                passthrough=True,
+            )
         return super().__get__(instance, owner)
 
     def validate(self, value, clean=True):
@@ -1333,11 +1342,11 @@ class GenericReferenceField(BaseField):
     def to_python(self, value):
         if isinstance(value, Document):
             return value
-        elif isinstance(value, dict) and value.get('_missing_reference'):
+        elif isinstance(value, dict) and value.get("_missing_reference"):
             return value
-        elif isinstance(value, dict) and ('_id' in value and '_cls' in value):
+        elif isinstance(value, dict) and ("_id" in value and "_cls" in value):
             document_type = _DocumentRegistry.get(value["_cls"])
-            del value['_ref']
+            del value["_ref"]
             value = document_type._from_son(value)
         return value
 
@@ -1464,13 +1473,13 @@ class GridFSProxy:
     _afs = None
 
     def __init__(
-            self,
-            grid_id=None,
-            key=None,
-            instance=None,
-            db_alias=DEFAULT_CONNECTION_NAME,
-            collection_name="fs",
-            _async=False,
+        self,
+        grid_id=None,
+        key=None,
+        instance=None,
+        db_alias=DEFAULT_CONNECTION_NAME,
+        collection_name="fs",
+        _async=False,
     ):
         self.grid_id = grid_id  # Store GridFS id for file
         self.key = key
@@ -1537,9 +1546,9 @@ class GridFSProxy:
     def __eq__(self, other):
         if isinstance(other, GridFSProxy):
             return (
-                    (self.grid_id == other.grid_id)
-                    and (self.collection_name == other.collection_name)
-                    and (self.db_alias == other.db_alias)
+                (self.grid_id == other.grid_id)
+                and (self.collection_name == other.collection_name)
+                and (self.db_alias == other.db_alias)
             )
         else:
             return False
@@ -1556,7 +1565,9 @@ class GridFSProxy:
     @property
     async def afs(self) -> gridfs.AsyncGridFS:
         if not self._afs:
-            self._afs = gridfs.AsyncGridFS(await async_get_db(self.db_alias), self.collection_name)
+            self._afs = gridfs.AsyncGridFS(
+                await async_get_db(self.db_alias), self.collection_name
+            )
         return self._afs
 
     def get(self, grid_id=None) -> GridOut | None:
@@ -1581,7 +1592,9 @@ class GridFSProxy:
             return None
         try:
             if self.gridout_async is None:
-                self.gridout_async = await (await self.afs).get(self.grid_id, session=_get_session())
+                self.gridout_async = await (await self.afs).get(
+                    self.grid_id, session=_get_session()
+                )
             return self.gridout_async
         except Exception:
             # File has been deleted
@@ -1715,7 +1728,7 @@ class FileField(BaseField):
     proxy_class = GridFSProxy
 
     def __init__(
-            self, db_alias=DEFAULT_CONNECTION_NAME, collection_name="fs", **kwargs
+        self, db_alias=DEFAULT_CONNECTION_NAME, collection_name="fs", **kwargs
     ):
         super().__init__(**kwargs)
         self.collection_name = collection_name
@@ -1739,7 +1752,7 @@ class FileField(BaseField):
     def __set__(self, instance, value):
         key = self.name
         if (
-                hasattr(value, "read") and not isinstance(value, GridFSProxy)
+            hasattr(value, "read") and not isinstance(value, GridFSProxy)
         ) or isinstance(value, (bytes, str)):
             # using "FileField() = file/string" notation
             grid_file = instance._data.get(self.name)
@@ -1815,16 +1828,16 @@ class ImageGridFsProxy(GridFSProxy):
         progressive = img.info.get("progressive") or False
 
         if (
-                kwargs.get("progressive")
-                and isinstance(kwargs.get("progressive"), bool)
-                and img_format == "JPEG"
+            kwargs.get("progressive")
+            and isinstance(kwargs.get("progressive"), bool)
+            and img_format == "JPEG"
         ):
             progressive = True
         else:
             progressive = False
 
         if field.size and (
-                img.size[0] > field.size["width"] or img.size[1] > field.size["height"]
+            img.size[0] > field.size["width"] or img.size[1] > field.size["height"]
         ):
             size = field.size
 
@@ -1879,16 +1892,16 @@ class ImageGridFsProxy(GridFSProxy):
         progressive = img.info.get("progressive") or False
 
         if (
-                kwargs.get("progressive")
-                and isinstance(kwargs.get("progressive"), bool)
-                and img_format == "JPEG"
+            kwargs.get("progressive")
+            and isinstance(kwargs.get("progressive"), bool)
+            and img_format == "JPEG"
         ):
             progressive = True
         else:
             progressive = False
 
         if field.size and (
-                img.size[0] > field.size["width"] or img.size[1] > field.size["height"]
+            img.size[0] > field.size["width"] or img.size[1] > field.size["height"]
         ):
             size = field.size
 
@@ -1946,7 +1959,9 @@ class ImageGridFsProxy(GridFSProxy):
         thumbnail.save(io, format, progressive=progressive)
         io.seek(0)
 
-        return await (await self.afs).put(io, width=w, height=h, format=format, **kwargs)
+        return await (await self.afs).put(
+            io, width=w, height=h, format=format, **kwargs
+        )
 
     @property
     def size(self):
@@ -2035,7 +2050,7 @@ class ImageField(FileField):
     proxy_class = ImageGridFsProxy
 
     def __init__(
-            self, size=None, thumbnail_size=None, collection_name="images", **kwargs
+        self, size=None, thumbnail_size=None, collection_name="images", **kwargs
     ):
         if not Image:
             raise ImproperlyConfigured("PIL library was not found")
@@ -2084,13 +2099,13 @@ class SequenceField(BaseField):
     VALUE_DECORATOR = int
 
     def __init__(
-            self,
-            collection_name=None,
-            db_alias=None,
-            sequence_name=None,
-            value_decorator=None,
-            *args,
-            **kwargs,
+        self,
+        collection_name=None,
+        db_alias=None,
+        sequence_name=None,
+        value_decorator=None,
+        *args,
+        **kwargs,
     ):
         self.collection_name = collection_name or self.COLLECTION_NAME
         self.db_alias = db_alias or DEFAULT_CONNECTION_NAME
@@ -2370,7 +2385,7 @@ class GeoPointField(BaseField):
         if not len(value) == 2:
             self.error("Value (%s) must be a two-dimensional point" % repr(value))
         elif not isinstance(value[0], (float, int)) or not isinstance(
-                value[1], (float, int)
+            value[1], (float, int)
         ):
             self.error("Both values (%s) in point must be float or int" % repr(value))
 

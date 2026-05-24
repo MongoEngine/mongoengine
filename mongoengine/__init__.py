@@ -40,14 +40,14 @@ from mongoengine.signals import *  # noqa: F401,F403
 
 # ---- public API surface ----
 __all__ = (
-        list(document.__all__)
-        + list(fields.__all__)
-        + list(_sync_connection.__all__)
-        + list(_async_connection.__all__)
-        + list(_sync_queryset.__all__)
-        + list(_async_queryset.__all__)
-        + list(signals.__all__)
-        + list(errors.__all__)
+    list(document.__all__)
+    + list(fields.__all__)
+    + list(_sync_connection.__all__)
+    + list(_async_connection.__all__)
+    + list(_sync_queryset.__all__)
+    + list(_async_queryset.__all__)
+    + list(signals.__all__)
+    + list(errors.__all__)
 )
 
 # ---- hide internals ----

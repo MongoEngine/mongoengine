@@ -9,6 +9,7 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 from mongoengine import (
@@ -158,8 +159,12 @@ class TestTimeSeriesCollections(unittest.IsolatedAsyncioTestCase):
         # Insert documents out of order
         now = datetime.now(UTC)
         await self.SensorData(timestamp=now, temperature=23.4).asave()
-        await self.SensorData(timestamp=now - timedelta(seconds=5), temperature=22.0).asave()
-        await self.SensorData(timestamp=now + timedelta(seconds=5), temperature=24.0).asave()
+        await self.SensorData(
+            timestamp=now - timedelta(seconds=5), temperature=22.0
+        ).asave()
+        await self.SensorData(
+            timestamp=now + timedelta(seconds=5), temperature=24.0
+        ).asave()
 
         documents = await self.SensorData.aobjects.order_by("timestamp").to_list()
 
@@ -177,8 +182,12 @@ class TestTimeSeriesCollections(unittest.IsolatedAsyncioTestCase):
         await self.SensorData._aget_collection()
 
         now = datetime.now(UTC)
-        await self.SensorData(timestamp=now - timedelta(seconds=10), temperature=22.0).asave()
-        await self.SensorData(timestamp=now - timedelta(seconds=5), temperature=23.0).asave()
+        await self.SensorData(
+            timestamp=now - timedelta(seconds=10), temperature=22.0
+        ).asave()
+        await self.SensorData(
+            timestamp=now - timedelta(seconds=5), temperature=23.0
+        ).asave()
         await self.SensorData(timestamp=now, temperature=24.0).asave()
 
         # Query documents within the last 6 seconds

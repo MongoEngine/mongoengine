@@ -332,6 +332,7 @@ class TestInheritance(MongoDBTestCase):
 
         # can't inherit because Animal didn't explicitly allow inheritance
         with pytest.raises(ValueError, match="Document Animal may not be subclassed"):
+
             class Dog(Animal):
                 pass
 
@@ -351,12 +352,13 @@ class TestInheritance(MongoDBTestCase):
             meta = {"allow_inheritance": True}
 
         with pytest.raises(ValueError) as exc_info:
+
             class Mammal(Animal):
                 meta = {"allow_inheritance": False}
 
         assert (
-                str(exc_info.value)
-                == 'Only direct subclasses of Document may set "allow_inheritance" to False'
+            str(exc_info.value)
+            == 'Only direct subclasses of Document may set "allow_inheritance" to False'
         )
 
     def test_allow_inheritance_abstract_document(self):
@@ -371,6 +373,7 @@ class TestInheritance(MongoDBTestCase):
             name = StringField()
 
         with pytest.raises(ValueError):
+
             class Mammal(Animal):
                 pass
 
@@ -477,6 +480,7 @@ class TestInheritance(MongoDBTestCase):
             content = StringField()
 
         with pytest.raises(ValueError):
+
             class SpecialComment(Comment):
                 pass
 

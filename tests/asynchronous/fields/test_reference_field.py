@@ -13,6 +13,7 @@ class TestReferenceField(MongoDBAsyncTestCase):
         ERROR_MSG = "Argument to ReferenceField constructor must be a document class or a string"
         # fails if given an instance
         with pytest.raises(ValidationError, match=ERROR_MSG):
+
             class Test(Document):
                 author = ReferenceField(User())
 
@@ -21,6 +22,7 @@ class TestReferenceField(MongoDBAsyncTestCase):
 
         # fails if given a non Document subclass
         with pytest.raises(ValidationError, match=ERROR_MSG):
+
             class Test(Document):  # noqa: F811
                 author = ReferenceField(NonDocumentSubClass)
 
@@ -93,9 +95,9 @@ class TestReferenceField(MongoDBAsyncTestCase):
         p1 = await Person(name="John").asave()
         await Person(name="Ross", parent=p1).asave()
 
-        assert (await (await Person._aget_collection()).find_one({"name": "Ross"}))["parent"] == DBRef(
-            "person", p1.pk
-        )
+        assert (await (await Person._aget_collection()).find_one({"name": "Ross"}))[
+            "parent"
+        ] == DBRef("person", p1.pk)
 
         p = await Person.aobjects.get(name="Ross")
         assert p.parent == p1

@@ -24,6 +24,7 @@ class _CollectionRegistry:
     Key is:
         (db_alias, collection_name, collection_type, fingerprint, is_async)
     """
+
     _store: dict[tuple[str, str, CollectionType, str, bool], MongoCollection] = {}
     _lock = threading.RLock()
 
@@ -32,13 +33,13 @@ class _CollectionRegistry:
     # ---------------------------------------------------------------
     @classmethod
     def get(
-            cls,
-            db_alias: str,
-            name: str,
-            *,
-            type_: CollectionType,
-            fingerprint: str,
-            is_async: bool,
+        cls,
+        db_alias: str,
+        name: str,
+        *,
+        type_: CollectionType,
+        fingerprint: str,
+        is_async: bool,
     ) -> MongoCollection | None:
         key = (db_alias, name, type_, fingerprint, is_async)
         with cls._lock:
@@ -49,13 +50,13 @@ class _CollectionRegistry:
     # ---------------------------------------------------------------
     @classmethod
     def register(
-            cls,
-            db_alias: str,
-            name: str,
-            collection: MongoCollection,
-            *,
-            type_: CollectionType,
-            fingerprint: str,
+        cls,
+        db_alias: str,
+        name: str,
+        collection: MongoCollection,
+        *,
+        type_: CollectionType,
+        fingerprint: str,
     ) -> tuple[MongoCollection, bool]:
         """
         Registers and returns the collection + flag: was_created?
@@ -78,13 +79,13 @@ class _CollectionRegistry:
     # ---------------------------------------------------------------
     @classmethod
     def unregister(
-            cls,
-            db_alias: str,
-            name: str,
-            *,
-            type_: CollectionType,
-            fingerprint: str,
-            is_async: bool,
+        cls,
+        db_alias: str,
+        name: str,
+        *,
+        type_: CollectionType,
+        fingerprint: str,
+        is_async: bool,
     ) -> bool:
         key = (db_alias, name, type_, fingerprint, is_async)
 

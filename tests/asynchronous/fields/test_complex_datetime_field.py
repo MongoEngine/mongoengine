@@ -14,6 +14,7 @@ try:
 except ImportError:
     # Python ≤ 3.10
     from datetime import timezone
+
     UTC = timezone.utc
 
 
@@ -31,7 +32,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Post UTC - microseconds are rounded (down) nearest millisecond and
         # dropped - with default datetime fields
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999,tzinfo=UTC)
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 999, tzinfo=UTC)
         log = LogEntry()
         log.date = d1
         await log.asave()
@@ -40,7 +41,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Post UTC - microseconds are rounded (down) nearest millisecond - with
         # default datetime fields
-        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999,tzinfo=UTC)
+        d1 = datetime.datetime(1970, 1, 1, 0, 0, 1, 9999, tzinfo=UTC)
         log.date = d1
         await log.asave()
         await log.areload()
@@ -48,7 +49,7 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Pre UTC dates microseconds below 1000 are dropped - with default
         # datetime fields
-        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999,tzinfo=UTC)
+        d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, 999, tzinfo=UTC)
         log.date = d1
         await log.asave()
         await log.areload()
@@ -58,10 +59,8 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
         # log.date has an invalid microsecond value, so I can't construct
         # a date to compare.
         for i in range(1001, 3113, 33):
-            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i,tzinfo=UTC)
-            log = LogEntry(
-                date=d1
-            )
+            d1 = datetime.datetime(1969, 12, 31, 23, 59, 59, i, tzinfo=UTC)
+            log = LogEntry(date=d1)
             log.date = d1
             await log.asave()
             await log.areload()
@@ -141,7 +140,9 @@ class ComplexDateTimeFieldTest(MongoDBAsyncTestCase):
 
         # Test microsecond-level ordering/filtering
         for microsecond in (99, 999, 9999, 10000):
-            await LogEntry(date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)).asave()
+            await LogEntry(
+                date=datetime.datetime(2015, 1, 1, 0, 0, 0, microsecond)
+            ).asave()
 
         logs = await LogEntry.aobjects.order_by("date").to_list()
         for next_idx, log in enumerate(logs[:-1], start=1):

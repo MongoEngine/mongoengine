@@ -14,7 +14,7 @@ from mongoengine.base import LazyReference
 from mongoengine.registry import _CollectionRegistry
 from mongoengine.synchronous import QuerySet, QuerySetNoCache
 from mongoengine.synchronous.connection import get_db
-from mongoengine.context_managers import query_counter, switch_db, switch_collection
+from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import (
     get_mongodb_version,
@@ -22,7 +22,11 @@ from mongoengine.mongodb_support import (
 from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.base.queryset import (
     QuerySetManager,
-    queryset_manager, NULLIFY, CASCADE, DENY, PULL,
+    queryset_manager,
+    NULLIFY,
+    CASCADE,
+    DENY,
+    PULL,
 )
 from mongoengine.synchronous.queryset.base import BaseQuerySet
 from tests.synchronous.utils import db_ops_tracker, get_as_pymongo, reset_connections
@@ -69,7 +73,7 @@ class TestQueryset(unittest.TestCase):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager."""
         assert isinstance(self.Person.objects, QuerySet)
         assert (
-                self.Person.objects._collection.name == self.Person._get_collection_name()
+            self.Person.objects._collection.name == self.Person._get_collection_name()
         )
         assert isinstance(
             self.Person.objects._collection, pymongo.collection.Collection
@@ -273,12 +277,12 @@ class TestQueryset(unittest.TestCase):
         assert self.Person.objects.count() == 55
         assert "Person object" == "%s" % self.Person.objects[0]
         assert (
-                "[<Person: Person object>, <Person: Person object>]"
-                == "%s" % self.Person.objects[1:3]
+            "[<Person: Person object>, <Person: Person object>]"
+            == "%s" % self.Person.objects[1:3]
         )
         assert (
-                "[<Person: Person object>, <Person: Person object>]"
-                == "%s" % self.Person.objects[51:53]
+            "[<Person: Person object>, <Person: Person object>]"
+            == "%s" % self.Person.objects[51:53]
         )
 
     def test_find_one(self):
@@ -1073,8 +1077,8 @@ class TestQueryset(unittest.TestCase):
             blog = Blog.objects.first()
             Blog.objects.insert(blog)
         assert (
-                str(exc_info.value)
-                == "Some documents have ObjectIds, use doc.update() instead"
+            str(exc_info.value)
+            == "Some documents have ObjectIds, use doc.update() instead"
         )
 
         # test inserting a query set
@@ -1082,8 +1086,8 @@ class TestQueryset(unittest.TestCase):
             blogs_qs = Blog.objects
             Blog.objects.insert(blogs_qs)
         assert (
-                str(exc_info.value)
-                == "Some documents have ObjectIds, use doc.update() instead"
+            str(exc_info.value)
+            == "Some documents have ObjectIds, use doc.update() instead"
         )
 
         # insert 1 new doc
@@ -2265,21 +2269,21 @@ class TestQueryset(unittest.TestCase):
 
         assert BlogPost.objects(foo="baz", __raw__={"slug": "test test"}).count() == 1
         assert (
-                BlogPost.objects(foo__ne="bar", __raw__={"slug": {"$ne": "test"}}).count()
-                == 1
+            BlogPost.objects(foo__ne="bar", __raw__={"slug": {"$ne": "test"}}).count()
+            == 1
         )
         assert (
-                BlogPost.objects(foo="baz", __raw__={"slug": {"$ne": "test test"}}).count()
-                == 0
+            BlogPost.objects(foo="baz", __raw__={"slug": {"$ne": "test test"}}).count()
+            == 0
         )
         assert (
-                BlogPost.objects(foo__ne="baz", __raw__={"slug": "test test"}).count() == 0
+            BlogPost.objects(foo__ne="baz", __raw__={"slug": "test test"}).count() == 0
         )
         assert (
-                BlogPost.objects(
-                    foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
-                ).count()
-                == 0
+            BlogPost.objects(
+                foo__ne="baz", __raw__={"slug": {"$ne": "test test"}}
+            ).count()
+            == 0
         )
 
     def test_add_to_set_each(self):
@@ -2751,7 +2755,10 @@ class TestQueryset(unittest.TestCase):
         Author(author=person_b).save()
         Author(author=person_c).save()
 
-        names = [a.author.name for a in Author.objects.select_related("author").order_by("-author__age")]
+        names = [
+            a.author.name
+            for a in Author.objects.select_related("author").order_by("-author__age")
+        ]
         assert names == ["User B", "User C", "User A"]
 
     def test_comment(self):
@@ -3296,8 +3303,8 @@ class TestQueryset(unittest.TestCase):
         # dot notation
         self.Person(name="person meta", person_meta=self.PersonMeta(weight=0)).save()
         assert (
-                round(abs(int(self.Person.objects.average("person_meta.weight")) - 0), 7)
-                == 0
+            round(abs(int(self.Person.objects.average("person_meta.weight")) - 0), 7)
+            == 0
         )
 
         for i, weight in enumerate(ages):
@@ -3306,8 +3313,8 @@ class TestQueryset(unittest.TestCase):
             ).save()
 
         assert (
-                round(abs(int(self.Person.objects.average("person_meta.weight")) - avg), 7)
-                == 0
+            round(abs(int(self.Person.objects.average("person_meta.weight")) - avg), 7)
+            == 0
         )
 
         self.Person(name="test meta none").save()
@@ -3552,7 +3559,7 @@ class TestQueryset(unittest.TestCase):
         News(
             title="Brasil passa para as quartas de finais",
             content="Com o brasil nas quartas de finais teremos um "
-                    "jogo complicado com a alemanha",
+            "jogo complicado com a alemanha",
         ).save()
 
         count = News.objects.search_text("neymar", language="portuguese").count()
@@ -3736,7 +3743,10 @@ class TestQueryset(unittest.TestCase):
 
         foo = Foo(bar=bar_1, bar_lst=[bar_1, bar_2])
         foo.save()
-        assert set(Foo.objects.select_related("bar_lst").distinct("bar_lst")) == {bar_1, bar_2}
+        assert set(Foo.objects.select_related("bar_lst").distinct("bar_lst")) == {
+            bar_1,
+            bar_2,
+        }
         assert set(Foo.objects.distinct("bar_lst")) == {bar_1.pk, bar_2.pk}
 
     def test_custom_manager(self):
@@ -3882,7 +3892,9 @@ class TestQueryset(unittest.TestCase):
         group = Group()
         group.save()
 
-        Group.objects(id=group.id).select_related("members").update(set__members=[user1, user2])
+        Group.objects(id=group.id).select_related("members").update(
+            set__members=[user1, user2]
+        )
         group.select_related("members").reload()
         members = group.members
         assert len(members) == 2
@@ -4313,8 +4325,8 @@ class TestQueryset(unittest.TestCase):
             "function() { return this[~fielda] >= this[~fieldb] }"
         )
         assert (
-                'function() { return this["fielda"] >= this["fieldb"] }'
-                == query._where_clause
+            'function() { return this["fielda"] >= this["fieldb"] }'
+            == query._where_clause
         )
         results = list(query)
         assert 2 == len(results)
@@ -4566,15 +4578,27 @@ class TestQueryset(unittest.TestCase):
         a1 = TestActivity(name="a1", owner=person)
         a1.save()
 
-        activity = TestActivity.objects(owner=person).select_related("owner").scalar("id", "owner").first()
+        activity = (
+            TestActivity.objects(owner=person)
+            .select_related("owner")
+            .scalar("id", "owner")
+            .first()
+        )
         assert activity[0] == a1.pk
         assert activity[1] == person
 
-        activity = TestActivity.objects(owner=person).select_related("owner").only("id", "owner").first()
+        activity = (
+            TestActivity.objects(owner=person)
+            .select_related("owner")
+            .only("id", "owner")
+            .first()
+        )
         assert activity.pk == a1.pk
         assert activity.owner == person
 
-        activity = TestActivity.objects(owner=person).only("id", "owner").as_pymongo().first()
+        activity = (
+            TestActivity.objects(owner=person).only("id", "owner").as_pymongo().first()
+        )
         assert activity["_id"] == a1.pk
         assert activity["owner"]["_ref"], DBRef("test_person", person.pk)
 
@@ -4673,16 +4697,16 @@ class TestQueryset(unittest.TestCase):
 
         assert self.Person.objects.scalar("name").count() == 55
         assert (
-                "A0" == "%s" % self.Person.objects.order_by("name").scalar("name").first()
+            "A0" == "%s" % self.Person.objects.order_by("name").scalar("name").first()
         )
         assert "A0" == "%s" % self.Person.objects.scalar("name").order_by("name")[0]
         assert (
-                "['A1', 'A2']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
+            "['A1', 'A2']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[1:3]
         )
         assert (
-                "['A51', 'A52']"
-                == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
+            "['A51', 'A52']"
+            == "%s" % self.Person.objects.order_by("age").scalar("name")[51:53]
         )
 
         # with_id and in_bulk
@@ -4911,8 +4935,8 @@ class TestQueryset(unittest.TestCase):
         bars = Bar.objects.read_preference(ReadPreference.SECONDARY_PREFERRED)
         assert bars._read_preference == ReadPreference.SECONDARY_PREFERRED
         assert (
-                bars._cursor.collection.read_preference
-                == ReadPreference.SECONDARY_PREFERRED
+            bars._cursor.collection.read_preference
+            == ReadPreference.SECONDARY_PREFERRED
         )
 
         # Make sure that `.read_preference(...)` does accept string values.
@@ -5029,9 +5053,7 @@ class TestQueryset(unittest.TestCase):
             url_field = URLField(default="http://mongoengine.org")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
-                default=default_, choices=(
-                    Simple,
-                )
+                default=default_, choices=(Simple,)
             )
             sorted_list_field = SortedListField(IntField(), default=lambda: [1, 2, 3])
             email_field = EmailField(default="ross@example.com")
@@ -5196,7 +5218,9 @@ class TestQueryset(unittest.TestCase):
         assert isinstance(user.organization, DBRef)
 
         assert isinstance(qs_user.organization, DBRef)
-        assert isinstance(qs.select_related("organization").first().organization, Organization)
+        assert isinstance(
+            qs.select_related("organization").first().organization, Organization
+        )
 
     def test_no_dereference_no_side_effect_on_existing_instance(self):
         # Relates to issue #1677 - ensures no regression of the bug
@@ -5675,9 +5699,9 @@ class TestQueryset(unittest.TestCase):
                 {"ns": {"$ne": "%s.system.indexes" % q.db.name}}
             )[0]
 
-            assert (
-                    "$orderby" not in op[CMD_QUERY_KEY]
-            ), "BaseQuerySet must remove orderby from meta in boolen test"
+            assert "$orderby" not in op[CMD_QUERY_KEY], (
+                "BaseQuerySet must remove orderby from meta in boolen test"
+            )
 
             assert Person.objects.first().name == "A"
             assert Person.objects._has_data(), "Cursor has data and returned False"
@@ -5685,18 +5709,18 @@ class TestQueryset(unittest.TestCase):
     def test_delete_count(self):
         [self.Person(name=f"User {i}", age=i * 10).save() for i in range(1, 4)]
         assert (
-                self.Person.objects().delete() == 3
+            self.Person.objects().delete() == 3
         )  # test ordinary QuerySey delete count
 
         [self.Person(name=f"User {i}", age=i * 10).save() for i in range(1, 4)]
 
         assert (
-                self.Person.objects().skip(1).delete() == 2
+            self.Person.objects().skip(1).delete() == 2
         )  # test Document delete with existing documents
 
         self.Person.objects().delete()
         assert (
-                self.Person.objects().skip(1).delete() == 0
+            self.Person.objects().skip(1).delete() == 0
         )  # test Document delete without existing documents
 
     def test_max_time_ms(self):

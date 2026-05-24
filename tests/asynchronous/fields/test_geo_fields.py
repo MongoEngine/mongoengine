@@ -381,7 +381,7 @@ class TestGeoField(MongoDBAsyncTestCase):
         await Log.adrop_collection()
         await Log.aensure_indexes()
 
-        info = await  (await Log._aget_collection()).index_information()
+        info = await (await Log._aget_collection()).index_information()
         assert info["location_2dsphere_datetime_1"]["key"] == [
             ("location", "2dsphere"),
             ("datetime", 1),

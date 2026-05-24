@@ -21,9 +21,15 @@ from mongoengine import (
     StringField,
 )
 from pymongo.errors import ConnectionFailure
-from mongoengine.asynchronous import async_connect, async_disconnect, async_disconnect_all, async_get_connection, \
-    async_get_db, async_register_connection, connection
-from mongoengine.asynchronous.connection import DEFAULT_DATABASE_NAME
+from mongoengine.asynchronous import (
+    async_connect,
+    async_disconnect,
+    async_disconnect_all,
+    async_get_connection,
+    async_get_db,
+    async_register_connection,
+    connection,
+)
 from mongoengine.base import _DocumentRegistry
 from mongoengine.document import Document
 from mongoengine.pymongo_support import PYMONGO_VERSION
@@ -41,7 +47,6 @@ def get_tz_awareness(connection_):
 
 
 class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
-
     async def asyncSetUp(self):
         await async_disconnect_all()
 
@@ -68,7 +73,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert isinstance(conn, pymongo.AsyncMongoClient)
 
         await async_connect(
-            f"{MONGO_TEST_DB}_2", alias="testdb3", mongo_client_class=pymongo.AsyncMongoClient
+            f"{MONGO_TEST_DB}_2",
+            alias="testdb3",
+            mongo_client_class=pymongo.AsyncMongoClient,
         )
         conn = await async_get_connection("testdb")
         assert isinstance(conn, pymongo.AsyncMongoClient)
@@ -95,7 +102,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert await History1.aobjects().as_pymongo().to_list() == [
             {"_id": h.id, "name": "default"}
         ]
-        assert await History2.aobjects().as_pymongo().to_list() == [{"_id": h1.id, "name": "db1"}]
+        assert await History2.aobjects().as_pymongo().to_list() == [
+            {"_id": h1.id, "name": "db1"}
+        ]
 
         await async_disconnect("db1")
         await async_disconnect("db2")
@@ -112,7 +121,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert await History1.aobjects().as_pymongo().to_list() == [
             {"_id": h.id, "name": "default"}
         ]
-        assert await History2.aobjects().as_pymongo().to_list() == [{"_id": h1.id, "name": "db1"}]
+        assert await History2.aobjects().as_pymongo().to_list() == [
+            {"_id": h1.id, "name": "db1"}
+        ]
 
     @pytest.mark.asyncio
     async def test_async_connect_different_documents_to_different_database(self):
@@ -140,14 +151,22 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         h2 = await History2(name="db2").asave()
 
         assert (await History._aget_collection()).database.name == MONGO_TEST_DB
-        assert (await History1._aget_collection()).database.name == f"{MONGO_TEST_DB}_db1"
-        assert (await History2._aget_collection()).database.name == f"{MONGO_TEST_DB}_db2"
+        assert (
+            await History1._aget_collection()
+        ).database.name == f"{MONGO_TEST_DB}_db1"
+        assert (
+            await History2._aget_collection()
+        ).database.name == f"{MONGO_TEST_DB}_db2"
 
         assert await History.aobjects().as_pymongo().to_list() == [
             {"_id": h.id, "name": "default"}
         ]
-        assert await History1.aobjects().as_pymongo().to_list() == [{"_id": h1.id, "name": "db1"}]
-        assert await History2.aobjects().as_pymongo().to_list() == [{"_id": h2.id, "name": "db2"}]
+        assert await History1.aobjects().as_pymongo().to_list() == [
+            {"_id": h1.id, "name": "db1"}
+        ]
+        assert await History2.aobjects().as_pymongo().to_list() == [
+            {"_id": h2.id, "name": "db2"}
+        ]
 
     @pytest.mark.asyncio
     async def test_async_connect_fails_if_connect_2_times_with_default_alias(self):
@@ -156,8 +175,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(ConnectionFailure) as exc_info:
             await async_connect(f"{MONGO_TEST_DB}_2")
         assert (
-                "A different connection with alias `default` was already registered. Use async_disconnect() first"
-                == str(exc_info.value)
+            "A different connection with alias `default` was already registered. Use async_disconnect() first"
+            == str(exc_info.value)
         )
 
     @pytest.mark.asyncio
@@ -168,14 +187,13 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             await async_connect(f"{MONGO_TEST_DB}_2", alias="alias1")
 
             assert (
-                    "A different connection with alias `alias1` was already registered. Use async_disconnect() first"
-                    == str(exc_info.value)
-
+                "A different connection with alias `alias1` was already registered. Use async_disconnect() first"
+                == str(exc_info.value)
             )
 
     @pytest.mark.asyncio
     async def test_async_connect_fails_if_similar_connection_settings_arent_defined_the_same_way(
-            self,
+        self,
     ):
         """Intended to keep the detection function simple but robust"""
         db_name = MONGO_TEST_DB
@@ -183,10 +201,14 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         await async_connect(db=db_name, alias=db_alias, host="localhost", port=27017)
 
         with pytest.raises(ConnectionFailure):
-            await async_connect(host="mongodb://localhost:27017/%s" % db_name, alias=db_alias)
+            await async_connect(
+                host="mongodb://localhost:27017/%s" % db_name, alias=db_alias
+            )
 
     @pytest.mark.asyncio
-    async def test_async_connect_passes_silently_connect_multiple_times_with_same_config(self):
+    async def test_async_connect_passes_silently_connect_multiple_times_with_same_config(
+        self,
+    ):
         # test default async connection to `test`
         await async_connect()
         await async_connect()
@@ -194,8 +216,12 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         await async_connect(f"{MONGO_TEST_DB}01", alias="test01")
         await async_connect(f"{MONGO_TEST_DB}01", alias="test01")
         assert len(connection._connections) == 2
-        await async_connect(host=f"mongodb://localhost:27017/{MONGO_TEST_DB}02", alias="test02")
-        await async_connect(host=f"mongodb://localhost:27017/{MONGO_TEST_DB}02", alias="test02")
+        await async_connect(
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}02", alias="test02"
+        )
+        await async_connect(
+            host=f"mongodb://localhost:27017/{MONGO_TEST_DB}02", alias="test02"
+        )
         assert len(connection._connections) == 3
 
     @pytest.mark.asyncio
@@ -255,7 +281,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert len(connection_settings) == 0
 
     @pytest.mark.asyncio
-    async def test_async_disconnect_cleans_cached_collection_attribute_in_document(self):
+    async def test_async_disconnect_cleans_cached_collection_attribute_in_document(
+        self,
+    ):
         """Ensure that the async_disconnect() method works properly"""
         await async_connect(MONGO_TEST_DB)
 
@@ -265,7 +293,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         assert await History._aget_collection() is not None
 
         await History.adrop_collection()
-        await History.aobjects.first()  # will trigger the caching of _collection attribute
+        await (
+            History.aobjects.first()
+        )  # will trigger the caching of _collection attribute
         assert await History._aget_collection() is not None
 
         await async_disconnect()
@@ -318,7 +348,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_disconnect_does_not_close_client_used_by_another_alias(self):
         client1 = await async_connect(alias="disconnect_reused_client_test_1")
         client2 = await async_connect(alias="disconnect_reused_client_test_2")
-        client3 = await async_connect(alias="disconnect_reused_client_test_3", maxPoolSize=10)
+        client3 = await async_connect(
+            alias="disconnect_reused_client_test_3", maxPoolSize=10
+        )
         assert client1 is client2
         assert client1 is not client3
         await client1.admin.command("ping")
@@ -356,7 +388,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             name = StringField()
             meta = {"db_alias": "db1"}
 
-        await History.adrop_collection()  # will trigger the caching of _collection attribute
+        await (
+            History.adrop_collection()
+        )  # will trigger the caching of _collection attribute
         await History.aobjects.first()
         await History1.adrop_collection()
         await History1.aobjects.first()
@@ -408,18 +442,23 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         admin_username = f"admin_{uuid.uuid4().hex[:8]}"
         user_username = f"user_{uuid.uuid4().hex[:8]}"
 
-        await c.admin.command("createUser", admin_username, pwd="password", roles=["root"])
+        await c.admin.command(
+            "createUser", admin_username, pwd="password", roles=["root"]
+        )
 
-        adminadmin_settings = connection._connection_settings[
-            "adminadmin"
-        ] = connection._connection_settings["admin"].copy()
+        adminadmin_settings = connection._connection_settings["adminadmin"] = (
+            connection._connection_settings["admin"].copy()
+        )
         adminadmin_settings["username"] = admin_username
         adminadmin_settings["password"] = "password"
         ca = await async_connect(db=MONGO_TEST_DB, alias="adminadmin")
-        await ca.admin.command("createUser", user_username, pwd="password", roles=["dbOwner"])
+        await ca.admin.command(
+            "createUser", user_username, pwd="password", roles=["dbOwner"]
+        )
 
         await async_connect(
-            f"{MONGO_TEST_DB}_testdb_uri", host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}"
+            f"{MONGO_TEST_DB}_testdb_uri",
+            host=f"mongodb://username:password@localhost/{MONGO_TEST_DB}",
         )
 
         conn = await async_get_connection()
@@ -466,7 +505,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         doesn't explicitly specify them.
         """
         await async_connect(
-            host=f"mongodb://localhost/{MONGO_TEST_DB}", username="user", password="pass"
+            host=f"mongodb://localhost/{MONGO_TEST_DB}",
+            username="user",
+            password="pass",
         )
 
         # OperationFailure means that mongoengine attempted authentication
@@ -519,7 +560,9 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_register_async_connection(self):
         """Ensure that async connections with different aliases may be registered."""
-        await async_register_connection("testdb", f"{MONGO_TEST_DB}_2", mongo_client_class=AsyncMongoClient)
+        await async_register_connection(
+            "testdb", f"{MONGO_TEST_DB}_2", mongo_client_class=AsyncMongoClient
+        )
 
         with pytest.raises(ConnectionFailure):
             await async_get_connection()
@@ -533,8 +576,13 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
     @pytest.mark.asyncio
     async def test_register_async_connection_defaults(self):
         """Ensure that defaults are used when the host and port are None."""
-        await async_register_connection("testdb", MONGO_TEST_DB, host=None, port=None,
-                                        mongo_client_class=AsyncMongoClient)
+        await async_register_connection(
+            "testdb",
+            MONGO_TEST_DB,
+            host=None,
+            port=None,
+            mongo_client_class=AsyncMongoClient,
+        )
 
         conn = await async_get_connection("testdb")
         assert isinstance(conn, pymongo.AsyncMongoClient)
@@ -573,7 +621,7 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         """
         conn = await async_connect(
             host="mongodb://localhost/test?maxpoolsize=100",
-            alias="max_pool_size_via_uri"
+            alias="max_pool_size_via_uri",
         )
         if PYMONGO_VERSION >= (4,):
             assert conn.options.pool_options.max_pool_size == 100
@@ -643,13 +691,13 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             MONGO_TEST_DB,
             alias="t1",
             host="localhost",
-            read_preference=ReadPreference.PRIMARY
+            read_preference=ReadPreference.PRIMARY,
         )
         await async_connect(
             f"{MONGO_TEST_DB}_2",
             alias="t2",
             host="127.0.0.1",
-            read_preference=ReadPreference.PRIMARY_PREFERRED
+            read_preference=ReadPreference.PRIMARY_PREFERRED,
         )
         mongo_connections = connection._connections
         assert len(mongo_connections.items()) == 2
@@ -668,20 +716,28 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         )  # weird but there is a discrepancy in the address in replicaset setup
         assert mongo_connections["t1"].read_preference == ReadPreference.PRIMARY
         assert (
-                mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED
+            mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED
         )
         assert mongo_connections["t1"] is not mongo_connections["t2"]
 
     @pytest.mark.asyncio
-    async def test_async_connect_2_databases_uses_same_client_if_only_dbname_differs(self):
+    async def test_async_connect_2_databases_uses_same_client_if_only_dbname_differs(
+        self,
+    ):
         c1 = await async_connect(alias="testdb1", db="testdb1")
         c2 = await async_connect(alias="testdb2", db="testdb2")
         assert c1 is c2
 
     @pytest.mark.asyncio
-    async def test_async_connect_2_databases_uses_different_client_if_different_parameters(self):
-        c1 = await async_connect(alias="testdb1", db="testdb1", username="u1", password="pass")
-        c2 = await async_connect(alias="testdb2", db="testdb2", username="u2", password="pass")
+    async def test_async_connect_2_databases_uses_different_client_if_different_parameters(
+        self,
+    ):
+        c1 = await async_connect(
+            alias="testdb1", db="testdb1", username="u1", password="pass"
+        )
+        c2 = await async_connect(
+            alias="testdb2", db="testdb2", username="u2", password="pass"
+        )
         assert c1 is not c2
 
     @pytest.mark.asyncio
@@ -689,26 +745,30 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
         rand = random_str()
         tmp_conn = await async_connect(
             alias=rand,
-            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy"
+            host=f"mongodb://localhost:27017/{rand}?uuidRepresentation=csharpLegacy",
         )
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["csharpLegacy"]
         )
         await async_disconnect(rand)
 
     @pytest.mark.asyncio
     async def test_async_connect_uri_uuidrepresentation_set_as_arg(self):
         rand = random_str()
-        tmp_conn = await async_connect(alias=rand, db=rand, uuidRepresentation="javaLegacy")
+        tmp_conn = await async_connect(
+            alias=rand, db=rand, uuidRepresentation="javaLegacy"
+        )
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         await async_disconnect(rand)
 
     @pytest.mark.asyncio
-    async def test_async_connect_uri_uuidrepresentation_set_both_arg_and_uri_arg_prevail(self):
+    async def test_async_connect_uri_uuidrepresentation_set_both_arg_and_uri_arg_prevail(
+        self,
+    ):
         rand = random_str()
         tmp_conn = await async_connect(
             alias=rand,
@@ -716,8 +776,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
             uuidRepresentation="javaLegacy",
         )
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
+            tmp_conn.options.codec_options.uuid_representation
+            == pymongo.common._UUID_REPRESENTATIONS["javaLegacy"]
         )
         await async_disconnect(rand)
 
@@ -732,8 +792,8 @@ class AsyncConnectionTest(unittest.IsolatedAsyncioTestCase):
 
         # Assert new PyMongo 4.x behavior
         assert (
-                tmp_conn.options.codec_options.uuid_representation
-                == UuidRepresentation.UNSPECIFIED
+            tmp_conn.options.codec_options.uuid_representation
+            == UuidRepresentation.UNSPECIFIED
         )
 
         await async_disconnect(rand)

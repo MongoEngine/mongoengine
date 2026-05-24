@@ -11,6 +11,7 @@ from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import reset_async_connections
 from tests.utils import MONGO_TEST_DB
 
+
 class Doc(Document):
     id = IntField(primary_key=True)
     value = IntField()
@@ -128,7 +129,9 @@ class TestOnlyExcludeAll(unittest.IsolatedAsyncioTestCase):
         assert blog.tags == ["code", "java"]
 
         # Push a new tag with a positional argument.
-        blog = await BlogPost.aobjects(id=blog.id).modify(push__tags__0="python", new=True)
+        blog = await BlogPost.aobjects(id=blog.id).modify(
+            push__tags__0="python", new=True
+        )
         assert blog.tags == ["python", "code", "java"]
 
         # Push multiple new tags with a positional argument.

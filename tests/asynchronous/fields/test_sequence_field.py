@@ -236,10 +236,12 @@ class TestSequenceField(MongoDBAsyncTestCase):
         foo = Foo(name="Foo")
         await foo.asave()
 
-        assert "base.counter" in await self.db["mongoengine.counters"].find().distinct("_id")
+        assert "base.counter" in await self.db["mongoengine.counters"].find().distinct(
+            "_id"
+        )
         assert not (
-                ("foo.counter" or "bar.counter")
-                in await self.db["mongoengine.counters"].find().distinct("_id")
+            ("foo.counter" or "bar.counter")
+            in await self.db["mongoengine.counters"].find().distinct("_id")
         )
         assert foo.counter != bar.counter
         assert foo._fields["counter"].owner_document == Base
@@ -262,9 +264,9 @@ class TestSequenceField(MongoDBAsyncTestCase):
         foo = Foo(name="Foo")
         await foo.asave()
 
-        assert "base.counter" not in await self.db["mongoengine.counters"].find().distinct(
-            "_id"
-        )
+        assert "base.counter" not in await self.db[
+            "mongoengine.counters"
+        ].find().distinct("_id")
         existing_counters = await self.db["mongoengine.counters"].find().distinct("_id")
         assert "foo.counter" in existing_counters
         assert "bar.counter" in existing_counters

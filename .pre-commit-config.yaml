@@ -12,11 +12,10 @@ repos:
     hooks:
       - id: pyupgrade
         args: [--py36-plus]
-# TODO: Fix lint issues and enable ruff pre-commit
-#  - repo: https://github.com/astral-sh/ruff-pre-commit
-#    rev: v0.14.10
-#    hooks:
-#      # Run the linter.
-#      - id: ruff-check
-#      # Run the formatter.
-#      - id: ruff-format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      # Formatter only. ruff-check is disabled until the existing lint backlog
+      # (~6,700 errors, mostly F403/F405 from `import *` in tests and E501) is
+      # triaged in a separate PR.
+      - id: ruff-format

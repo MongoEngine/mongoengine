@@ -31,14 +31,17 @@ from mongoengine.errors import (
     InvalidQueryError,
     LookUpError,
     NotUniqueError,
-    OperationError, DoesNotExist, MultipleObjectsReturned,
+    OperationError,
+    DoesNotExist,
+    MultipleObjectsReturned,
 )
-from mongoengine.pymongo_support import (
-    LEGACY_JSON_OPTIONS
-)
+from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
 from mongoengine.base.queryset import transform, CASCADE, NULLIFY, PULL, DENY
 from mongoengine.base.queryset.field_list import QueryFieldList
-from mongoengine.base.queryset.pipeline_builder import PipelineBuilder, needs_aggregation
+from mongoengine.base.queryset.pipeline_builder import (
+    PipelineBuilder,
+    needs_aggregation,
+)
 from mongoengine.mongodb_support import async_get_mongodb_version
 from mongoengine.base.queryset.visitor import Q, QNode
 
@@ -114,7 +117,7 @@ class AsyncBaseQuerySet(abc.ABC):
     _collection_lock: asyncio.Lock for safe collection initialization
     """
 
-    def __init__(self, document: typing.Type['Document']):
+    def __init__(self, document: typing.Type["Document"]):
         """Initialize an async queryset for the given document class.
 
         Args:
@@ -170,7 +173,9 @@ class AsyncBaseQuerySet(abc.ABC):
         # it anytime we change _limit. Inspired by how it is done in pymongo.Cursor
         self._empty = False
 
-    def __call__(self, q_obj: Union['AsyncBaseQuerySet', None] = None, **query: dict) -> 'AsyncBaseQuerySet':
+    def __call__(
+        self, q_obj: Union["AsyncBaseQuerySet", None] = None, **query: dict
+    ) -> "AsyncBaseQuerySet":
         """Filter the selected documents by calling the: class:
         `~mongoengine.queryset.AsyncBaseQuerySet` with a query.
 
@@ -184,10 +189,7 @@ class AsyncBaseQuerySet(abc.ABC):
         if q_obj:
             # Make sure a proper query object is passed.
             if not isinstance(q_obj, QNode):
-                msg = (
-                        "Not a query object: %s. "
-                        "Did you intend to use key=value?" % q_obj
-                )
+                msg = "Not a query object: %s. Did you intend to use key=value?" % q_obj
                 raise InvalidQueryError(msg)
             query &= q_obj
 
@@ -280,9 +282,11 @@ class AsyncBaseQuerySet(abc.ABC):
                 "  • Convert to list: (await qs.to_list())[n]"
             )
 
-        raise TypeError("Index must be int or slice, but both are unsupported in AsyncQuerySet.")
+        raise TypeError(
+            "Index must be int or slice, but both are unsupported in AsyncQuerySet."
+        )
 
-    def __iter__(self) -> list['Document'] | dict:
+    def __iter__(self) -> list["Document"] | dict:
         raise NotImplementedError("Not supported for AsyncQuerySet.")
 
     async def _has_data(self):
@@ -424,9 +428,7 @@ class AsyncBaseQuerySet(abc.ABC):
         except StopAsyncIteration:
             return result
 
-        raise MultipleObjectsReturned(
-            "2 or more items returned, instead of 1"
-        )
+        raise MultipleObjectsReturned("2 or more items returned, instead of 1")
 
     async def create(self, **kwargs):
         """Create and save a new document instance.
@@ -483,7 +485,7 @@ class AsyncBaseQuerySet(abc.ABC):
         )
 
     async def insert(
-            self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
+        self, doc_or_docs, load_bulk=True, write_concern=None, signal_kwargs=None
     ):
         """Bulk insert documents into the database.
 
@@ -520,6 +522,7 @@ class AsyncBaseQuerySet(abc.ABC):
         docs = doc_or_docs
         return_one = False
         from .queryset import AsyncQuerySet
+
         if isinstance(docs, Document) or issubclass(docs.__class__, Document):
             return_one = True
             docs = [docs]
@@ -531,7 +534,7 @@ class AsyncBaseQuerySet(abc.ABC):
                     self._document
                 )
                 raise OperationError(msg)
-            if doc._data['id'] and not doc._created:
+            if doc._data["id"] and not doc._created:
                 msg = "Some documents have ObjectIds, use doc.aupdate() instead"
                 raise OperationError(msg)
             SequenceField = _import_class("SequenceField")
@@ -540,7 +543,9 @@ class AsyncBaseQuerySet(abc.ABC):
                     await field.aget(instance=doc, owner=None)
 
         signal_kwargs = signal_kwargs or {}
-        await signals.pre_bulk_insert.send_async(self._document, documents=docs, **signal_kwargs)
+        await signals.pre_bulk_insert.send_async(
+            self._document, documents=docs, **signal_kwargs
+        )
 
         raw = [doc.to_mongo() for doc in docs]
 
@@ -608,11 +613,7 @@ class AsyncBaseQuerySet(abc.ABC):
         """
         # mimic the fact that setting .limit(0) in pymongo sets no limit
         # https://www.mongodb.com/docs/manual/reference/method/cursor.limit/#zero-value
-        if (
-                (self._limit == 0 and not with_limit_and_skip)
-                or self._none
-                or self._empty
-        ):
+        if (self._limit == 0 and not with_limit_and_skip) or self._none or self._empty:
             return 0
 
         kwargs = {}
@@ -635,8 +636,11 @@ class AsyncBaseQuerySet(abc.ABC):
         # Ensure we await the async collection
         collection = await self._collection
         try:
-            count = await collection.count_documents(await _async_queryset_to_values(self._query), **kwargs,
-                                                     session=_get_session())
+            count = await collection.count_documents(
+                await _async_queryset_to_values(self._query),
+                **kwargs,
+                session=_get_session(),
+            )
         except pymongo.errors.OperationFailure as err:
             message = "Could not count documents (%s)"
             raise OperationError(message % err) from err
@@ -644,7 +648,9 @@ class AsyncBaseQuerySet(abc.ABC):
         self._cursor_obj = None
         return count
 
-    async def delete(self, write_concern=None, _from_doc_delete=False, cascade_refs=None):
+    async def delete(
+        self, write_concern=None, _from_doc_delete=False, cascade_refs=None
+    ):
         """Delete documents matching the query.
 
         Async version of BaseQuerySet.delete(). Handles delete rules (CASCADE,
@@ -673,13 +679,13 @@ class AsyncBaseQuerySet(abc.ABC):
         # Handle deletes where skips or limits have been applied or
         # there is an untriggered delete signal
         has_delete_signal = signals.signals_available and (
-                signals.pre_delete.has_receivers_for(doc)
-                or signals.post_delete.has_receivers_for(doc)
+            signals.pre_delete.has_receivers_for(doc)
+            or signals.post_delete.has_receivers_for(doc)
         )
 
         call_document_delete = (
-                                       queryset._skip or queryset._limit or has_delete_signal
-                               ) and not _from_doc_delete
+            queryset._skip or queryset._limit or has_delete_signal
+        ) and not _from_doc_delete
 
         if call_document_delete:
             cnt = 0
@@ -721,7 +727,9 @@ class AsyncBaseQuerySet(abc.ABC):
                     **{field_name + "__in": self, "pk__nin": cascade_refs}
                 )
                 if await refs.count() > 0:
-                    await  refs.delete(write_concern=write_concern, cascade_refs=cascade_refs)
+                    await refs.delete(
+                        write_concern=write_concern, cascade_refs=cascade_refs
+                    )
             elif rule == NULLIFY:
                 await document_cls.aobjects(**{field_name + "__in": self}).update(
                     write_concern=write_concern, **{"unset__%s" % field_name: 1}
@@ -753,14 +761,14 @@ class AsyncBaseQuerySet(abc.ABC):
                 return result.deleted_count
 
     async def update(
-            self,
-            upsert=False,
-            multi=True,
-            write_concern=None,
-            read_concern=None,
-            full_result=False,
-            array_filters=None,
-            **update,
+        self,
+        upsert=False,
+        multi=True,
+        write_concern=None,
+        read_concern=None,
+        full_result=False,
+        array_filters=None,
+        **update,
     ):
         """Perform atomic update on documents matching the query.
 
@@ -804,7 +812,7 @@ class AsyncBaseQuerySet(abc.ABC):
         queryset = self.clone()
         query = await _async_queryset_to_values(queryset._query)
         if "__raw__" in update and isinstance(
-                update["__raw__"], list
+            update["__raw__"], list
         ):  # Case of Update with Aggregation Pipeline
             update = [
                 transform.update(queryset._document, **{"__raw__": u})
@@ -830,7 +838,7 @@ class AsyncBaseQuerySet(abc.ABC):
 
         try:
             with set_read_write_concern(
-                    await queryset._collection, write_concern, read_concern
+                await queryset._collection, write_concern, read_concern
             ) as collection:
                 update_func = collection.update_one
                 if multi:
@@ -886,12 +894,12 @@ class AsyncBaseQuerySet(abc.ABC):
         return document
 
     async def update_one(
-            self,
-            upsert=False,
-            write_concern=None,
-            full_result=False,
-            array_filters=None,
-            **update,
+        self,
+        upsert=False,
+        write_concern=None,
+        full_result=False,
+        array_filters=None,
+        **update,
     ):
         """Perform an atomic update on the fields of the first document
         matched by the query.
@@ -920,12 +928,12 @@ class AsyncBaseQuerySet(abc.ABC):
         )
 
     async def modify(
-            self,
-            upsert=False,
-            remove=False,
-            new=False,
-            array_filters=None,
-            **update,
+        self,
+        upsert=False,
+        remove=False,
+        new=False,
+        array_filters=None,
+        **update,
     ):
         """Update and return the updated document.
 
@@ -1292,7 +1300,11 @@ class AsyncBaseQuerySet(abc.ABC):
             top = parts[0]
             doc_field = self._document._fields.get(top)
 
-            from mongoengine.fields import EmbeddedDocumentField, ListField, ReferenceField
+            from mongoengine.fields import (
+                EmbeddedDocumentField,
+                ListField,
+                ReferenceField,
+            )
 
             # Walk nested path
             instance = None
@@ -1318,7 +1330,9 @@ class AsyncBaseQuerySet(abc.ABC):
                 return [model(**v) for v in raw_values if isinstance(v, dict)]
 
             # List of embedded
-            if isinstance(doc_field, ListField) and isinstance(doc_field.field, EmbeddedDocumentField):
+            if isinstance(doc_field, ListField) and isinstance(
+                doc_field.field, EmbeddedDocumentField
+            ):
                 model = doc_field.field.document_type
                 return [model(**v) for v in raw_values if isinstance(v, dict)]
 
@@ -1335,8 +1349,13 @@ class AsyncBaseQuerySet(abc.ABC):
         # --------------------------------------------------------------
         queryset._query = await _async_queryset_to_values(queryset._query)
 
-        alias = (queryset._using[0] if queryset._using else None) or queryset._document._db_alias()
-        pipeline_builder = PipelineBuilder(queryset=queryset, mongo_version=await async_get_mongodb_version(alias=alias))
+        alias = (
+            queryset._using[0] if queryset._using else None
+        ) or queryset._document._db_alias()
+        pipeline_builder = PipelineBuilder(
+            queryset=queryset,
+            mongo_version=await async_get_mongodb_version(alias=alias),
+        )
         pipeline = pipeline_builder.build()
 
         # Detect shape of field
@@ -1352,7 +1371,7 @@ class AsyncBaseQuerySet(abc.ABC):
             pipeline += [
                 {"$group": {"_id": f"${field}"}},
                 {"$replaceRoot": {"newRoot": {"value": "$_id"}}},
-                {"$project": {"_id": 0}}
+                {"$project": {"_id": 0}},
             ]
 
             coll = await queryset._collection
@@ -1380,7 +1399,7 @@ class AsyncBaseQuerySet(abc.ABC):
             {"$unwind": f"${field}"},
             {"$group": {"_id": f"${field}"}},
             {"$replaceRoot": {"newRoot": {"value": "$_id"}}},
-            {"$project": {"_id": 0}}
+            {"$project": {"_id": 0}},
         ]
 
         coll = await queryset._collection
@@ -1808,9 +1827,8 @@ class AsyncBaseQuerySet(abc.ABC):
 
     # JS functionality
     async def map_reduce(
-            self, map_f, reduce_f, output, finalize_f=None, limit=None, scope=None
+        self, map_f, reduce_f, output, finalize_f=None, limit=None, scope=None
     ):
-
         queryset = self.clone()
         MapReduceDocument = _import_class("MapReduceDocument")
         collection_name = queryset._document._get_collection_name()
@@ -2007,9 +2025,14 @@ class AsyncBaseQuerySet(abc.ABC):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = [res async for res in (
-            await (await self._document._aget_collection(self._using)).aggregate(pipeline, session=_get_session())
-        )]
+        result = [
+            res
+            async for res in (
+                await (await self._document._aget_collection(self._using)).aggregate(
+                    pipeline, session=_get_session()
+                )
+            )
+        ]
         if result:
             return result[0]["total"]
         return 0
@@ -2051,9 +2074,14 @@ class AsyncBaseQuerySet(abc.ABC):
         if isinstance(field_instances[-1], ListField):
             pipeline.insert(1, {"$unwind": "$" + field})
 
-        result = [res async for res in (
-            await (await self._document._aget_collection(self._using)).aggregate(pipeline, session=_get_session())
-        )]
+        result = [
+            res
+            async for res in (
+                await (await self._document._aget_collection(self._using)).aggregate(
+                    pipeline, session=_get_session()
+                )
+            )
+        ]
         if result:
             return result[0]["total"]
         return 0
@@ -2144,8 +2172,10 @@ class AsyncBaseQuerySet(abc.ABC):
         - queryset-level .using("alias")
         - document-class default alias
         """
-        return await self._document._aget_collection(db_alias=self._using[0] if self._using else None,
-                                                     collection_name=self._using[1] if self._using else None)
+        return await self._document._aget_collection(
+            db_alias=self._using[0] if self._using else None,
+            collection_name=self._using[1] if self._using else None,
+        )
 
     @property
     def _cursor_args(self):
@@ -2202,25 +2232,44 @@ class AsyncBaseQuerySet(abc.ABC):
             return self._cursor_obj
         if needs_aggregation(self):
             self._query = await _async_queryset_to_values(self._query)
-            alias = (self._using[0] if self._using else None) or self._document._db_alias()
-            pipeline = PipelineBuilder(queryset=self, mongo_version=await async_get_mongodb_version(alias=alias)).build()
+            alias = (
+                self._using[0] if self._using else None
+            ) or self._document._db_alias()
+            pipeline = PipelineBuilder(
+                queryset=self,
+                mongo_version=await async_get_mongodb_version(alias=alias),
+            ).build()
             if self._read_preference is not None or self._read_concern is not None:
-                self._cursor_obj = await ((await self._collection).with_options(
-                    read_preference=self._read_preference, read_concern=self._read_concern
-                )).aggregate(pipeline=pipeline, session=_get_session(), batchSize=self._batch_size)
+                self._cursor_obj = await (
+                    (await self._collection).with_options(
+                        read_preference=self._read_preference,
+                        read_concern=self._read_concern,
+                    )
+                ).aggregate(
+                    pipeline=pipeline,
+                    session=_get_session(),
+                    batchSize=self._batch_size,
+                )
             else:
-                self._cursor_obj = await (await self._collection).aggregate(pipeline=pipeline,
-                                                                            session=_get_session(),
-                                                                            batchSize=self._batch_size)
+                self._cursor_obj = await (await self._collection).aggregate(
+                    pipeline=pipeline,
+                    session=_get_session(),
+                    batchSize=self._batch_size,
+                )
         else:
             # Create a new PyMongo cursor.
             # XXX In PyMongo 3+, we define the read preference on a collection
             # level, not a cursor level. Thus, we need to get a cloned collection
             # object using `with_options` first.
             if self._read_preference is not None or self._read_concern is not None:
-                self._cursor_obj = (await self._collection).with_options(
-                    read_preference=self._read_preference, read_concern=self._read_concern
-                ).find(self._query, session=_get_session(), **self._cursor_args)
+                self._cursor_obj = (
+                    (await self._collection)
+                    .with_options(
+                        read_preference=self._read_preference,
+                        read_concern=self._read_concern,
+                    )
+                    .find(self._query, session=_get_session(), **self._cursor_args)
+                )
             else:
                 self._cursor_obj = (await self._collection).find(
                     self._query, session=_get_session(), **self._cursor_args
@@ -2321,9 +2370,7 @@ class AsyncBaseQuerySet(abc.ABC):
                     emit(null, 1);
                 }}
             }}
-        """.format(
-            field=field
-        )
+        """.format(field=field)
         reduce_func = """
             function(key, values) {
                 var total = 0;
@@ -2421,12 +2468,13 @@ class AsyncBaseQuerySet(abc.ABC):
         """
         subclasses = []
         if self._document._meta["allow_inheritance"]:
-            subclasses = [_DocumentRegistry.get(x) for x in self._document._subclasses][1:]
+            subclasses = [_DocumentRegistry.get(x) for x in self._document._subclasses][
+                1:
+            ]
 
         db_field_paths = []
 
         for field in fields:
-
             # ---- SPECIAL CASES FOR ID / _ID ----
             if field == "id":
                 db_field_paths.append("_id")
@@ -2437,9 +2485,7 @@ class AsyncBaseQuerySet(abc.ABC):
                 continue
 
             # NEW: accept Django-style embedded fields
-            field_parts = (
-                field.split("__") if "__" in field else field.split(".")
-            )
+            field_parts = field.split("__") if "__" in field else field.split(".")
 
             try:
                 # lookup field chain
@@ -2447,8 +2493,7 @@ class AsyncBaseQuerySet(abc.ABC):
 
                 # build db-field path using db_field instead of attribute name
                 db_path = ".".join(
-                    part if isinstance(part, str) else part.db_field
-                    for part in lookup
+                    part if isinstance(part, str) else part.db_field for part in lookup
                 )
                 db_field_paths.append(db_path)
                 continue

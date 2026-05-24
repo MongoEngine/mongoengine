@@ -65,7 +65,7 @@ class QuerySet(BaseQuerySet):
 
     def __len__(self):
         """Since __len__ is called quite frequently (for example, as part of
-         the list (qs)), we populate the result cache and cache the length.
+        the list (qs)), we populate the result cache and cache the length.
         """
         if self._len is not None:
             return self._len

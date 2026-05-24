@@ -1,5 +1,3 @@
-import unittest
-
 import pytest
 
 from mongoengine import *
@@ -9,7 +7,6 @@ __all__ = ("TestDynamicDocument",)
 
 
 class TestDynamicDocument(MongoDBAsyncTestCase):
-
     async def asyncSetUp(self):
         await super().asyncSetUp()
 
@@ -393,9 +390,8 @@ class TestDynamicDocument(MongoDBAsyncTestCase):
 
         assert (await Person.aobjects.first()).address.street_number == "1337"
         assert (
-            (await Person.aobjects.only("address__street_number").first()).address.street_number
-                == "1337"
-        )
+            await Person.aobjects.only("address__street_number").first()
+        ).address.street_number == "1337"
 
     async def test_dynamic_and_embedded_dict_access(self):
         """Ensure embedded dynamic documents work with dict[] style access"""
