@@ -24,6 +24,7 @@ from mongoengine import signals
 from mongoengine.base import _DocumentRegistry
 from mongoengine.base.queryset import DENY, CASCADE, NULLIFY, PULL, transform
 from mongoengine.base.queryset.pipeline_builder import PipelineBuilder, needs_aggregation
+from mongoengine.mongodb_support import get_mongodb_version
 from mongoengine.common import _import_class
 from mongoengine.context_managers import (
     set_write_concern, set_read_write_concern,
@@ -1346,7 +1347,8 @@ class BaseQuerySet(abc.ABC):
         # --------------------------------------------------------------
         # CASE 2: aggregation pipeline distinct
         # --------------------------------------------------------------
-        pipeline_builder = PipelineBuilder(queryset=queryset)
+        alias = (queryset._using[0] if queryset._using else None) or queryset._document._db_alias()
+        pipeline_builder = PipelineBuilder(queryset=queryset, mongo_version=get_mongodb_version(alias=alias))
         pipeline = pipeline_builder.build()
 
         # Detect shape of field
@@ -2142,7 +2144,8 @@ class BaseQuerySet(abc.ABC):
         if self._cursor_obj is not None:
             return self._cursor_obj
         if needs_aggregation(self):
-            pipeline = PipelineBuilder(queryset=self).build()
+            alias = (self._using[0] if self._using else None) or self._document._db_alias()
+            pipeline = PipelineBuilder(queryset=self, mongo_version=get_mongodb_version(alias=alias)).build()
             if self._read_preference is not None or self._read_concern is not None:
                 self._cursor_obj = self._collection.with_options(
                     read_preference=self._read_preference, read_concern=self._read_concern

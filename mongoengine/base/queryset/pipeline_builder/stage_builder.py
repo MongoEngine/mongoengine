@@ -23,8 +23,11 @@ class StageBuilder:
           * MongoDB 4.2/4.4 uses $indexOfArray + $arrayElemAt for compatibility.
     """
 
-    def __init__(self):
+    def __init__(self, mongo_version=None):
         self._pipeline: list[dict] = []
+        self._mongo_version = mongo_version
+        # $getField requires MongoDB >= 5.0 — gives O(1) ref hydration vs O(n) $indexOfArray scan.
+        self._use_getfield = bool(mongo_version) and tuple(mongo_version)[:2] >= (5, 0)
 
     # --------------------------------------------------------------------- #
     # Public API
@@ -168,8 +171,8 @@ class StageBuilder:
 
             # ---------------- ListField ----------------
             if isinstance(field, ListField):
-                if self._is_list_of_embedded(field):
-                    embedded_doc = self._embedded_doc_type(field)
+                if Schema.is_list_of_embedded(field):
+                    embedded_doc = Schema.embedded_doc_type(field)
                     if subtree and embedded_doc:
                         self._walk_lookups(
                             embedded_doc,
@@ -300,10 +303,26 @@ class StageBuilder:
                     apply_bucket(full_path)
                 continue
 
-            # ---------------- DictField(... ReferenceField ...) ----------------
+            # ---------------- DictField ----------------
             if isinstance(field, DictField):
                 if embedded_list_path:
                     apply_bucket(full_path)
+                    continue
+
+                if isinstance(field.field, GenericReferenceField) and getattr(field.field, "choices", None):
+                    foreign_match = None
+                    if interleave and buckets is not None:
+                        foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
+
+                    self._add_object_generic_lookup(
+                        generic_field=field.field,
+                        local_field=full_path,
+                        foreign_match=foreign_match,
+                        hydrate=requested_hydrate,
+                    )
+
+                    if foreign_match is None:
+                        apply_bucket(full_path)
                     continue
 
                 target = self._resolve_single_ref_target(field)
@@ -323,31 +342,6 @@ class StageBuilder:
                     if foreign_match is None:
                         apply_bucket(full_path)
                     continue
-
-            # ---------------- DictField(GenericReferenceField) ----------------
-            if (
-                    isinstance(field, DictField)
-                    and isinstance(field.field, GenericReferenceField)
-                    and getattr(field.field, "choices", None)
-            ):
-                if embedded_list_path:
-                    apply_bucket(full_path)
-                    continue
-
-                foreign_match = None
-                if interleave and buckets is not None:
-                    foreign_match = self._pop_foreign_match_for_prefix(buckets, full_path)
-
-                self._add_object_generic_lookup(
-                    generic_field=field.field,
-                    local_field=full_path,
-                    foreign_match=foreign_match,
-                    hydrate=requested_hydrate,
-                )
-
-                if foreign_match is None:
-                    apply_bucket(full_path)
-                continue
 
             # ---------------- GenericReferenceField scalar ----------------
             if isinstance(field, GenericReferenceField) and field.choices:
@@ -492,22 +486,6 @@ class StageBuilder:
         return {"$project": {p: 0 for p in paths if p}}
 
     @staticmethod
-    def _is_list_of_embedded(field) -> bool:
-        from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
-        return (
-                isinstance(field, EmbeddedDocumentListField)
-                or (isinstance(field, ListField) and isinstance(getattr(field, "field", None), EmbeddedDocumentField))
-        )
-
-    @staticmethod
-    def _embedded_doc_type(field):
-        dt = getattr(field, "document_type", None)
-        if dt:
-            return dt
-        inner = getattr(field, "field", None)
-        return getattr(inner, "document_type", None) if inner else None
-
-    @staticmethod
     def _resolve_single_ref_target(field_shape):
         from mongoengine.fields import ReferenceField, ListField, DictField, MapField
 
@@ -604,61 +582,48 @@ class StageBuilder:
                 {"_missing_reference": True, "_ref": <ObjectId>}
             (NO "_cls")
           - If the stored value is a DBRef-like object, _ref must be its $id, not the object itself.
+
+        Performance:
+          - When _use_getfield is True (MongoDB >= 5.0), the docs array is converted ONCE
+            into a hash {id_str: doc, ...} in an outer $let, then each ref leaf does an
+            O(1) $getField lookup. This is dramatically faster for List/Map/Dict of refs
+            against large joined collections (O(n+m) vs O(n*m)).
+          - When _use_getfield is False, falls back to the legacy $indexOfArray scan path.
+        """
+        if self._use_getfield:
+            return {
+                "$let": {
+                    "vars": {"docsHash": self._build_docs_hash_expr(docs_expr)},
+                    "in": self._build_value_expr_inner(field, source_expr, "$$docsHash", use_hash=True),
+                }
+            }
+        return self._build_value_expr_inner(field, source_expr, docs_expr, use_hash=False)
+
+    @staticmethod
+    def _build_docs_hash_expr(docs_expr):
+        """Build {$toString(_id): doc, ...} from a docs array — done ONCE per hydration."""
+        docs_arr = {"$cond": [{"$isArray": docs_expr}, docs_expr, []]}
+        return {
+            "$arrayToObject": {
+                "$map": {
+                    "input": docs_arr,
+                    "as": "d",
+                    "in": {"k": {"$toString": "$$d._id"}, "v": "$$d"},
+                }
+            }
+        }
+
+    def _build_value_expr_inner(self, field, source_expr, lookup_expr, use_hash):
+        """
+        Recursive worker.
+          - When use_hash=True: lookup_expr is a docs hash {id_str: doc}; leaf uses $getField.
+          - When use_hash=False: lookup_expr is the raw docs array; leaf uses $indexOfArray.
         """
         from mongoengine.fields import ReferenceField, ListField, DictField, GenericReferenceField, MapField
 
         # ---- ReferenceField (leaf) ----
         if isinstance(field, ReferenceField):
-            docs_arr = {"$cond": [{"$isArray": docs_expr}, docs_expr, []]}
-
-            return {
-                "$let": {
-                    "vars": {"orig": source_expr},
-                    "in": {
-                        "$cond": [
-                            {"$ifNull": ["$$orig", False]},
-                            {
-                                # rid = ObjectId regardless of whether orig is ObjectId or DBRef-like object
-                                "$let": {
-                                    "vars": {
-                                        "rid": {
-                                            "$cond": [
-                                                {"$eq": [{"$type": "$$orig"}, "object"]},
-                                                "$$orig.$id",
-                                                "$$orig",
-                                            ]
-                                        }
-                                    },
-                                    "in": (
-                                        {
-                                            "$let": {
-                                                "vars": {
-                                                    "docs": docs_arr,
-                                                    "ids": {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}},
-                                                    "idx": {
-                                                        "$indexOfArray": [
-                                                            {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}},
-                                                            "$$rid",
-                                                        ]
-                                                    },
-                                                },
-                                                "in": {
-                                                    "$cond": [
-                                                        {"$gte": ["$$idx", 0]},
-                                                        {"$arrayElemAt": ["$$docs", "$$idx"]},
-                                                        {"_missing_reference": True, "_ref": "$$rid"},
-                                                    ]
-                                                },
-                                            }
-                                        }
-                                    ),
-                                }
-                            },
-                            None,
-                        ]
-                    },
-                }
-            }
+            return self._build_ref_leaf_expr(source_expr, lookup_expr, use_hash)
 
         # ---- GenericReferenceField leaf is handled elsewhere ----
         if isinstance(field, GenericReferenceField):
@@ -673,7 +638,7 @@ class StageBuilder:
                         "$map": {
                             "input": source_expr,
                             "as": "item",
-                            "in": self._build_value_expr(field.field, "$$item", docs_expr),
+                            "in": self._build_value_expr_inner(field.field, "$$item", lookup_expr, use_hash),
                         }
                     },
                     source_expr,
@@ -689,13 +654,107 @@ class StageBuilder:
                         "as": "kv",
                         "in": {
                             "k": "$$kv.k",
-                            "v": self._build_value_expr(field.field, "$$kv.v", docs_expr),
+                            "v": self._build_value_expr_inner(field.field, "$$kv.v", lookup_expr, use_hash),
                         },
                     }
                 }
             }
 
         return source_expr
+
+    @staticmethod
+    def _build_ref_leaf_expr(source_expr, lookup_expr, use_hash):
+        """Resolve a single ReferenceField — hash path uses $getField, legacy uses $indexOfArray."""
+        if use_hash:
+            return {
+                "$let": {
+                    "vars": {"orig": source_expr},
+                    "in": {
+                        "$cond": [
+                            {"$ifNull": ["$$orig", False]},
+                            {
+                                "$let": {
+                                    "vars": {
+                                        "rid": {
+                                            "$cond": [
+                                                {"$eq": [{"$type": "$$orig"}, "object"]},
+                                                "$$orig.$id",
+                                                "$$orig",
+                                            ]
+                                        }
+                                    },
+                                    "in": {
+                                        "$let": {
+                                            "vars": {
+                                                "found": {
+                                                    "$getField": {
+                                                        "field": {"$toString": "$$rid"},
+                                                        "input": lookup_expr,
+                                                    }
+                                                }
+                                            },
+                                            "in": {
+                                                "$ifNull": [
+                                                    "$$found",
+                                                    {"_missing_reference": True, "_ref": "$$rid"},
+                                                ]
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                            None,
+                        ]
+                    },
+                }
+            }
+
+        # Legacy $indexOfArray path (MongoDB < 5.0)
+        docs_arr = {"$cond": [{"$isArray": lookup_expr}, lookup_expr, []]}
+        return {
+            "$let": {
+                "vars": {"orig": source_expr},
+                "in": {
+                    "$cond": [
+                        {"$ifNull": ["$$orig", False]},
+                        {
+                            "$let": {
+                                "vars": {
+                                    "rid": {
+                                        "$cond": [
+                                            {"$eq": [{"$type": "$$orig"}, "object"]},
+                                            "$$orig.$id",
+                                            "$$orig",
+                                        ]
+                                    }
+                                },
+                                "in": {
+                                    "$let": {
+                                        "vars": {
+                                            "docs": docs_arr,
+                                            "idx": {
+                                                "$indexOfArray": [
+                                                    {"$map": {"input": docs_arr, "as": "d", "in": "$$d._id"}},
+                                                    "$$rid",
+                                                ]
+                                            },
+                                        },
+                                        "in": {
+                                            "$cond": [
+                                                {"$gte": ["$$idx", 0]},
+                                                {"$arrayElemAt": ["$$docs", "$$idx"]},
+                                                {"_missing_reference": True, "_ref": "$$rid"},
+                                            ]
+                                        },
+                                    }
+                                },
+                            }
+                        },
+                        None,
+                    ]
+                },
+            }
+        }
 
     # --------------------------------------------------------------------- #
     # foreign-match translation for local filtering

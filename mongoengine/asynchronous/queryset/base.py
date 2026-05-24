@@ -39,6 +39,7 @@ from mongoengine.pymongo_support import (
 from mongoengine.base.queryset import transform, CASCADE, NULLIFY, PULL, DENY
 from mongoengine.base.queryset.field_list import QueryFieldList
 from mongoengine.base.queryset.pipeline_builder import PipelineBuilder, needs_aggregation
+from mongoengine.mongodb_support import async_get_mongodb_version
 from mongoengine.base.queryset.visitor import Q, QNode
 
 __all__ = ("AsyncBaseQuerySet",)
@@ -1334,7 +1335,8 @@ class AsyncBaseQuerySet(abc.ABC):
         # --------------------------------------------------------------
         queryset._query = await _async_queryset_to_values(queryset._query)
 
-        pipeline_builder = PipelineBuilder(queryset=queryset)
+        alias = (queryset._using[0] if queryset._using else None) or queryset._document._db_alias()
+        pipeline_builder = PipelineBuilder(queryset=queryset, mongo_version=await async_get_mongodb_version(alias=alias))
         pipeline = pipeline_builder.build()
 
         # Detect shape of field
@@ -2200,7 +2202,8 @@ class AsyncBaseQuerySet(abc.ABC):
             return self._cursor_obj
         if needs_aggregation(self):
             self._query = await _async_queryset_to_values(self._query)
-            pipeline = PipelineBuilder(queryset=self).build()
+            alias = (self._using[0] if self._using else None) or self._document._db_alias()
+            pipeline = PipelineBuilder(queryset=self, mongo_version=await async_get_mongodb_version(alias=alias)).build()
             if self._read_preference is not None or self._read_concern is not None:
                 self._cursor_obj = await ((await self._collection).with_options(
                     read_preference=self._read_preference, read_concern=self._read_concern

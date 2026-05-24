@@ -173,6 +173,7 @@ async def async_register_connection(
 
 async def async_disconnect(alias=DEFAULT_CONNECTION_NAME):
     """Close the async connection with a given alias."""
+    from mongoengine.mongodb_support import reset_mongodb_version_cache
 
     connection: AsyncMongoClient | None = _connections.pop(alias, None)
     if connection:
@@ -183,6 +184,7 @@ async def async_disconnect(alias=DEFAULT_CONNECTION_NAME):
         # will compare equal even with different options
         if all(connection is not c for c in _connections.values()):
             await connection.close()
+        reset_mongodb_version_cache(alias=alias)
 
     if alias in _dbs:
         # Detach all cached collections in Documents

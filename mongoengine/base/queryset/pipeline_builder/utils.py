@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .schema import Schema
+
 __all__ = ("needs_aggregation",)
 
 
@@ -11,37 +13,11 @@ def needs_aggregation(queryset):
     from mongoengine.fields import (
         ReferenceField,
         EmbeddedDocumentField,
-        EmbeddedDocumentListField,
         ListField,
         GenericReferenceField,
         DictField,
         MapField,
     )
-
-    def is_list_of_embedded(fld):
-        return (
-                isinstance(fld, EmbeddedDocumentListField)
-                or (
-                        isinstance(fld, ListField)
-                        and isinstance(getattr(fld, "field", None), EmbeddedDocumentField)
-                )
-        )
-
-    def embedded_doc_type(fld):
-        dt = getattr(fld, "document_type", None)
-        if dt:
-            return dt
-        inner = getattr(fld, "field", None)
-        dt = getattr(inner, "document_type", None) if inner else None
-        if dt:
-            return dt
-        return None
-
-    def unwrap_list(fld):
-        cur = fld
-        while isinstance(cur, ListField):
-            cur = cur.field
-        return cur
 
     def field_path_requires_lookup(parts):
         cls = doc
@@ -60,7 +36,7 @@ def needs_aggregation(queryset):
                 if isinstance(sub, GenericReferenceField):
                     return bool(getattr(sub, "choices", None))
                 if isinstance(sub, ListField):
-                    leaf = unwrap_list(sub)
+                    leaf = Schema.unwrap_list_leaf(sub)
                     if isinstance(leaf, ReferenceField):
                         return True
                     if isinstance(leaf, GenericReferenceField):
@@ -73,14 +49,14 @@ def needs_aggregation(queryset):
                 return True
 
             if isinstance(fld, ListField):
-                leaf = unwrap_list(fld)
+                leaf = Schema.unwrap_list_leaf(fld)
                 if isinstance(leaf, ReferenceField):
                     return True
                 if isinstance(leaf, GenericReferenceField):
                     return bool(getattr(leaf, "choices", None))
 
-            if isinstance(fld, EmbeddedDocumentField) or is_list_of_embedded(fld):
-                cls = embedded_doc_type(fld)
+            if isinstance(fld, EmbeddedDocumentField) or Schema.is_list_of_embedded(fld):
+                cls = Schema.embedded_doc_type(fld)
                 continue
 
             cls = None
@@ -117,7 +93,7 @@ def needs_aggregation(queryset):
             if isinstance(sub, GenericReferenceField):
                 return bool(getattr(sub, "choices", None))
             if isinstance(sub, ListField):
-                leaf = unwrap_list(sub)
+                leaf = Schema.unwrap_list_leaf(sub)
                 if isinstance(leaf, ReferenceField):
                     return True
                 if isinstance(leaf, GenericReferenceField):
@@ -130,14 +106,14 @@ def needs_aggregation(queryset):
             return True
 
         if isinstance(field, ListField):
-            leaf = unwrap_list(field)
+            leaf = Schema.unwrap_list_leaf(field)
             if isinstance(leaf, ReferenceField):
                 return True
             if isinstance(leaf, GenericReferenceField):
                 return bool(getattr(leaf, "choices", None))
 
-        if isinstance(field, EmbeddedDocumentField) or is_list_of_embedded(field):
-            dt = embedded_doc_type(field)
+        if isinstance(field, EmbeddedDocumentField) or Schema.is_list_of_embedded(field):
+            dt = Schema.embedded_doc_type(field)
             if not dt or dt in seen_embedded:
                 return False
             seen2 = set(seen_embedded)

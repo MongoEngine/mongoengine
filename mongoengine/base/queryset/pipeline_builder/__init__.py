@@ -1,7 +1,4 @@
-from .pipeline_builder import *
-from .utils import *
+from .pipeline_builder import PipelineBuilder
+from .utils import needs_aggregation
 
-__all__ = (
-        list(pipeline_builder.__all__) +
-        list(utils.__all__)
-)
+__all__ = ("PipelineBuilder", "needs_aggregation")

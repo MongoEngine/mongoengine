@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable
 
 from .match_planner import MatchPlanner
+from .schema import Schema
 
 
 class LookupPlanner:
@@ -157,16 +158,8 @@ class LookupPlanner:
     def _get_field_by_db_part(doc_cls, db_part: str):
         if doc_cls is None:
             return None
-
-        fld = doc_cls._fields.get(db_part)
-        if fld is not None:
-            return fld
-
-        for _name, f in doc_cls._fields.items():
-            if getattr(f, "db_field", None) == db_part:
-                return f
-
-        return None
+        _, field = Schema.resolve_field_name(doc_cls, db_part)
+        return field
 
     # ---- select_related converter (keep / adapt to your queryset format)
     def _tree_from_select_related(self, select_related) -> dict:

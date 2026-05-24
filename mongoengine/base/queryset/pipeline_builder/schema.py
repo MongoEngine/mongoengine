@@ -61,3 +61,19 @@ class Schema:
     @staticmethod
     def regex_match(input_expr: str, cls) -> dict:
         return {"$regexMatch": {"input": input_expr, "regex": Schema.cls_regex(cls)}}
+
+    @staticmethod
+    def is_list_of_embedded(field) -> bool:
+        from mongoengine.fields import EmbeddedDocumentListField, ListField, EmbeddedDocumentField
+        return isinstance(field, EmbeddedDocumentListField) or (
+            isinstance(field, ListField)
+            and isinstance(getattr(field, "field", None), EmbeddedDocumentField)
+        )
+
+    @staticmethod
+    def embedded_doc_type(field):
+        dt = getattr(field, "document_type", None)
+        if dt:
+            return dt
+        inner = getattr(field, "field", None)
+        return getattr(inner, "document_type", None) if inner else None

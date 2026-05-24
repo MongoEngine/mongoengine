@@ -40,15 +40,6 @@ class MatchPlanner:
             # Convert mongoengine-style "__" to dotted path if it isn't already dotted.
             return k.replace("__", ".") if ("__" in k and "." not in k) else k
 
-        def get_field_by_db_part(cur, part):
-            fld = cur._fields.get(part)
-            if fld:
-                return fld
-            for _name, f in cur._fields.items():
-                if getattr(f, "db_field", None) == part:
-                    return f
-            return None
-
         def walk(q, cur_doc=doc_cls):
             if not isinstance(q, dict):
                 merge("", q)
@@ -74,12 +65,8 @@ class MatchPlanner:
                     continue
 
                 fk = dotted(k)
-                parts = fk.split(".")
-                if not parts:
+                if not fk:
                     continue
-
-                first = parts[0]
-                fld0 = get_field_by_db_part(cur_doc, first)
 
                 # IMPORTANT:
                 # We do not do any $expr rewrites here (map/dict/nested list), because those rely on hydration.

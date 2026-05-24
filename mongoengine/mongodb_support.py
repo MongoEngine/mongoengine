@@ -2,7 +2,7 @@
 Helper functions, constants, and types to aid with MongoDB version support
 """
 from mongoengine.asynchronous import async_get_connection
-from mongoengine.synchronous.connection import get_connection
+from mongoengine.synchronous.connection import DEFAULT_CONNECTION_NAME, get_connection
 
 # Constant that can be used to compare the version retrieved with
 # get_mongodb_version()
@@ -13,20 +13,44 @@ MONGODB_60 = (6, 0)
 MONGODB_70 = (7, 0)
 MONGODB_80 = (8, 0)
 
+# Cache the server version per alias — server_info() is a network roundtrip and the
+# MongoDB version doesn't change during a process lifetime. Different aliases can point
+# to different clusters with different versions, so the cache MUST be keyed per-alias.
+_VERSION_CACHE: dict[str, tuple] = {}
 
-def get_mongodb_version():
-    """Return the version of the default connected mongoDB (first 2 digits)
 
+def get_mongodb_version(alias: str = DEFAULT_CONNECTION_NAME):
+    """Return the version of the connected MongoDB for the given alias (first 2 digits).
+
+    :param alias: Connection alias. Different aliases may point to different clusters.
     :return: tuple(int, int)
     """
-    version_list = get_connection().server_info()["versionArray"][:2]  # e.g: (4, 2)
-    return tuple(version_list)
+    cached = _VERSION_CACHE.get(alias)
+    if cached is not None:
+        return cached
+    version = tuple(get_connection(alias=alias).server_info()["versionArray"][:2])
+    _VERSION_CACHE[alias] = version
+    return version
 
 
-async def async_get_mongodb_version():
-    """Return the version of the default connected mongoDB (first 2 digits)
+async def async_get_mongodb_version(alias: str = DEFAULT_CONNECTION_NAME):
+    """Return the version of the connected MongoDB for the given alias (first 2 digits).
 
+    :param alias: Connection alias. Different aliases may point to different clusters.
     :return: tuple(int, int)
     """
-    version_list = (await (await async_get_connection()).server_info())["versionArray"][:2]  # e.g: (4, 2)
-    return tuple(version_list)
+    cached = _VERSION_CACHE.get(alias)
+    if cached is not None:
+        return cached
+    conn = await async_get_connection(alias=alias)
+    version = tuple((await conn.server_info())["versionArray"][:2])
+    _VERSION_CACHE[alias] = version
+    return version
+
+
+def reset_mongodb_version_cache(alias: str | None = None):
+    """Clear cached server version. Pass alias to clear one entry, None to clear all."""
+    if alias is None:
+        _VERSION_CACHE.clear()
+    else:
+        _VERSION_CACHE.pop(alias, None)

@@ -136,19 +136,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                 [],
                                                             ]
                                                         },
-                                                        "ids": {
-                                                            "$map": {
-                                                                "input": {
-                                                                    "$cond": [
-                                                                        {"$isArray": "$book__docs"},
-                                                                        "$book__docs",
-                                                                        [],
-                                                                    ]
-                                                                },
-                                                                "as": "d",
-                                                                "in": "$$d._id",
-                                                            }
-                                                        },
                                                         "idx": {
                                                             "$indexOfArray": [
                                                                 {
@@ -277,19 +264,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                 [],
                                                                             ]
                                                                         },
-                                                                        "ids": {
-                                                                            "$map": {
-                                                                                "input": {
-                                                                                    "$cond": [
-                                                                                        {"$isArray": "$books__docs"},
-                                                                                        "$books__docs",
-                                                                                        [],
-                                                                                    ]
-                                                                                },
-                                                                                "as": "d",
-                                                                                "in": "$$d._id",
-                                                                            }
-                                                                        },
                                                                         "idx": {
                                                                             "$indexOfArray": [
                                                                                 {
@@ -412,19 +386,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                 "$by_key__docs",
                                                                                 [],
                                                                             ]
-                                                                        },
-                                                                        "ids": {
-                                                                            "$map": {
-                                                                                "input": {
-                                                                                    "$cond": [
-                                                                                        {"$isArray": "$by_key__docs"},
-                                                                                        "$by_key__docs",
-                                                                                        [],
-                                                                                    ]
-                                                                                },
-                                                                                "as": "d",
-                                                                                "in": "$$d._id",
-                                                                            }
                                                                         },
                                                                         "idx": {
                                                                             "$indexOfArray": [
@@ -552,19 +513,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                 "$by_key__docs",
                                                                                 [],
                                                                             ]
-                                                                        },
-                                                                        "ids": {
-                                                                            "$map": {
-                                                                                "input": {
-                                                                                    "$cond": [
-                                                                                        {"$isArray": "$by_key__docs"},
-                                                                                        "$by_key__docs",
-                                                                                        [],
-                                                                                    ]
-                                                                                },
-                                                                                "as": "d",
-                                                                                "in": "$$d._id",
-                                                                            }
                                                                         },
                                                                         "idx": {
                                                                             "$indexOfArray": [
@@ -820,20 +768,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                             [],
                                                                                         ]
                                                                                     },
-                                                                                    "ids": {
-                                                                                        "$map": {
-                                                                                            "input": {
-                                                                                                "$cond": [
-                                                                                                    {
-                                                                                                        "$isArray": f"${parent_docs}"},
-                                                                                                    f"${parent_docs}",
-                                                                                                    [],
-                                                                                                ]
-                                                                                            },
-                                                                                            "as": "d",
-                                                                                            "in": "$$d._id",
-                                                                                        }
-                                                                                    },
                                                                                     "idx": {
                                                                                         "$indexOfArray": [
                                                                                             {
@@ -959,20 +893,6 @@ class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
                                                                                             f"${target_docs}",
                                                                                             [],
                                                                                         ]
-                                                                                    },
-                                                                                    "ids": {
-                                                                                        "$map": {
-                                                                                            "input": {
-                                                                                                "$cond": [
-                                                                                                    {
-                                                                                                        "$isArray": f"${target_docs}"},
-                                                                                                    f"${target_docs}",
-                                                                                                    [],
-                                                                                                ]
-                                                                                            },
-                                                                                            "as": "d",
-                                                                                            "in": "$$d._id",
-                                                                                        }
                                                                                     },
                                                                                     "idx": {
                                                                                         "$indexOfArray": [
