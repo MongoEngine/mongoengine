@@ -230,7 +230,7 @@ class StageBuilder:
                             f"{full_path}.",
                             subtree,
                             buckets,
-                            embedded_list_path,
+                            full_path,  # walk inside list elements, not as a flat path
                             interleave,
                             subtree_hydrate_tree,
                         )
