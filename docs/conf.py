@@ -26,7 +26,11 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.todo", "readthedocs_ext.readthedocs"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.todo"]
+
+# Only load readthedocs_ext on ReadTheDocs (it's incompatible with Sphinx 9.x locally)
+if os.environ.get("READTHEDOCS") == "True":
+    extensions.append("readthedocs_ext.readthedocs")
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
