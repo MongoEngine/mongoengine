@@ -39,13 +39,14 @@ jobs:
   test:
     # Test suite runs against recent python versions
     # and against a few combinations of MongoDB and pymongo
+    name: "test (Python ${{ matrix.python-version }}, MongoDB ${{ matrix.mongodb-version }}, PyMongo ${{ matrix.pymongo-version }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
         mongodb-version: [ "4.4", "5.0", "6.0", "7.0", "8.0", "8.3" ]
-        pymongo-version: [ "414", "415", "416", "417" ]
+        pymongo-version: [ "4.14", "4.15", "4.16", "4.17" ]
     steps:
       - uses: actions/checkout@v6
       - name: Install uv and set the Python version ${{ matrix.python-version }}
@@ -70,7 +71,7 @@ jobs:
         run: uv sync --only-group test
       - name: Run test suite
         run: |
-          env="py$(echo "${{ matrix.python-version }}" | tr -d . )-mg${{ matrix.pymongo-version }}"
+          env="py$(echo "${{ matrix.python-version }}" | tr -d . )-mg$(echo "${{ matrix.pymongo-version }}" | tr -d . )"
           echo "Running tox environment: $env"
           uv run tox run -e "$env" -- "--cov=mongoengine --cov-report="
           uv run coverage combine
