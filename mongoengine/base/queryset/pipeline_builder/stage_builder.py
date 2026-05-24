@@ -19,15 +19,17 @@ class StageBuilder:
         IMPORTANT: for ReferenceField this marker MUST NOT include "_cls",
         otherwise MapField(ReferenceField).__get__ may treat it like a GenericReference wrapper.
       - MongoDB version aware:
-          * MongoDB >= 5.0 uses $getField for O(1) doc lookup by id (faster for large joined arrays).
-          * MongoDB 4.2/4.4 uses $indexOfArray + $arrayElemAt for compatibility.
+          * MongoDB >= 8.0 uses $getField with variable fields for O(1) doc lookup by id (faster for large joined arrays).
+          * MongoDB < 8.0 uses $indexOfArray + $arrayElemAt (O(n) scan).
+        Note: MongoDB 5.0-7.0 supports $getField but only with constant field names.
     """
 
     def __init__(self, mongo_version=None):
         self._pipeline: list[dict] = []
         self._mongo_version = mongo_version
-        # $getField requires MongoDB >= 5.0 — gives O(1) ref hydration vs O(n) $indexOfArray scan.
-        self._use_getfield = bool(mongo_version) and tuple(mongo_version)[:2] >= (5, 0)
+        # $getField with variable field requires MongoDB >= 8.0 — gives O(1) ref hydration vs O(n) $indexOfArray scan.
+        # MongoDB 5.0-7.0 don't support variable field names in $getField, so we use the legacy approach.
+        self._use_getfield = bool(mongo_version) and tuple(mongo_version)[:2] >= (8, 0)
 
     # --------------------------------------------------------------------- #
     # Public API
