@@ -26,7 +26,7 @@ except ImportError:
     UTC = timezone.utc
 
 
-class ZonedDateTimeField(ComplexBaseField):
+class AwareDateTimeField(ComplexBaseField):
     """DateTime field that preserves timezone information.
 
     Stores datetime as a dictionary with:
@@ -40,7 +40,7 @@ class ZonedDateTimeField(ComplexBaseField):
 
     Example:
         class Event (Document):
-            start_time = ZonedDateTimeField()
+            start_time = AwareDateTimeField()
             meta = {
                 'indexes': [
                     'start_time', # Automatically indexed as 'start_time.utc'
@@ -83,7 +83,7 @@ class ZonedDateTimeField(ComplexBaseField):
 
     def __init__(self, *args, **kwargs):
         """
-        Initialize ZonedDateTimeField.
+        Initialize AwareDateTimeField.
 
         When indexing this field, you can use the field name directly in meta.indexes:
             meta = {'indexes': ['start_time']}
@@ -93,7 +93,7 @@ class ZonedDateTimeField(ComplexBaseField):
         """
         if ZoneInfo is None:
             raise ImportError(
-                "ZonedDateTimeField requires zoneinfo (Python 3.9+) or pytz. "
+                "AwareDateTimeField requires zoneinfo (Python 3.9+) or pytz. "
                 "Install pytz: pip install pytz"
             )
         super().__init__(*args, **kwargs)
@@ -224,13 +224,13 @@ class ZonedDateTimeField(ComplexBaseField):
 
         if not isinstance(value, datetime.datetime):
             self.error(
-                f"ZonedDateTimeField only accepts datetime objects, got {type(value)}"
+                f"AwareDateTimeField only accepts datetime objects, got {type(value)}"
             )
 
         # Ensure timezone-aware
         if value.tzinfo is None:
             self.error(
-                "ZonedDateTimeField requires timezone-aware datetime. "
+                "AwareDateTimeField requires timezone-aware datetime. "
                 "Use datetime.now(ZoneInfo('Asia/Kolkata')) or similar."
             )
 
@@ -313,14 +313,14 @@ class ZonedDateTimeField(ComplexBaseField):
 
         if not isinstance(value, datetime.datetime):
             self.error(
-                f"ZonedDateTimeField only accepts datetime objects, got {type(value)}"
+                f"AwareDateTimeField only accepts datetime objects, got {type(value)}"
             )
 
         if value.tzinfo is None:
             self.error(
-                "ZonedDateTimeField requires timezone-aware datetime. "
+                "AwareDateTimeField requires timezone-aware datetime. "
                 f"Got naive datetime: {value}"
             )
 
 
-__all__ = ("ZonedDateTimeField",)
+__all__ = ("AwareDateTimeField",)

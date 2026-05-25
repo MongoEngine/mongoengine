@@ -9,7 +9,7 @@ Fields handle validation, type conversion, and MongoDB BSON serialization.
 from .string import StringField, URLField, EmailField
 from .numeric import IntField, FloatField, DecimalField, Decimal128Field
 from .boolean import *
-from .datetime import DateTimeField, DateField, ComplexDateTimeField, ZonedDateTimeField
+from .datetime import DateTimeField, DateField, ComplexDateTimeField, AwareDateTimeField
 from .document import (
     EmbeddedDocumentField,
     GenericEmbeddedDocumentField,
@@ -73,7 +73,7 @@ __all__ = (
     "DateTimeField",
     "DateField",
     "ComplexDateTimeField",
-    "ZonedDateTimeField",
+    "AwareDateTimeField",
     # document.py
     "EmbeddedDocumentField",
     "GenericEmbeddedDocumentField",
