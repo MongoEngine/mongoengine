@@ -1,7 +1,5 @@
 import asyncio
-import unittest
 from datetime import datetime, timedelta
-from tests.utils import MONGO_TEST_DB
 
 try:
     # Python 3.11+
@@ -18,15 +16,12 @@ from mongoengine import (
     FloatField,
     StringField,
 )
-from mongoengine.asynchronous import async_connect, async_get_db, async_disconnect
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import requires_mongodb_gte_50
+from tests.asynchronous.utils import MongoDBAsyncTestCase, requires_mongodb_gte_50
 
 
-class TestTimeSeriesCollections(unittest.IsolatedAsyncioTestCase):
+class TestTimeSeriesCollections(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
-        self.db = await async_get_db()
+        await super().asyncSetUp()
 
         class SensorData(Document):
             timestamp = DateTimeField(required=True)
@@ -45,19 +40,17 @@ class TestTimeSeriesCollections(unittest.IsolatedAsyncioTestCase):
         self.SensorData = SensorData
 
     async def asyncTearDown(self):
-        await super().asyncTearDown()
-        _CollectionRegistry.clear()
+        try:
+            for collection_name in await self.db.list_collection_names():
+                if not collection_name.startswith("system."):
+                    await self.db.drop_collection(collection_name)
+        finally:
+            await super().asyncTearDown()
 
     async def test_get_db(self):
         """Ensure that get_db returns the expected db."""
         db = await self.SensorData._async_get_db()
         assert self.db == db
-
-    async def asyncTearDown(self):
-        for collection_name in await self.db.list_collection_names():
-            if not collection_name.startswith("system."):
-                await self.db.drop_collection(collection_name)
-        await async_disconnect()
 
     async def test_definition(self):
         """Ensure that document may be defined using fields."""

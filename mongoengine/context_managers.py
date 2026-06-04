@@ -538,7 +538,7 @@ class run_in_transaction:
     # Async context manager
     # ------------------------------------------------------------------
     async def __aenter__(self):
-        conn = await async_get_connection(self.alias)
+        conn = async_get_connection(self.alias)
 
         self._async_session_cm = conn.start_session(**self.session_kwargs)
         self._async_session = await self._async_session_cm.__aenter__()

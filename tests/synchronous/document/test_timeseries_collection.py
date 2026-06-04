@@ -7,17 +7,23 @@ from mongoengine import (
     Document,
     FloatField,
     StringField,
-    connect,
-    get_db,
 )
-from mongoengine.synchronous.connection import disconnect
-from tests.utils import requires_mongodb_gte_50, MONGO_TEST_DB
+from tests.synchronous.utils import MongoDBTestCase
+from tests.utils import requires_mongodb_gte_50
+
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+
+    UTC = timezone.utc
 
 
-class TestTimeSeriesCollections(unittest.TestCase):
+class TestTimeSeriesCollections(MongoDBTestCase):
     def setUp(self):
-        connect(db=MONGO_TEST_DB)
-        self.db = get_db()
+        super().setUp()
 
         class SensorData(Document):
             timestamp = DateTimeField(required=True)
@@ -41,10 +47,12 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert self.db == db
 
     def tearDown(self):
-        for collection_name in self.db.list_collection_names():
-            if not collection_name.startswith("system."):
-                self.db.drop_collection(collection_name)
-        disconnect()
+        try:
+            for collection_name in self.db.list_collection_names():
+                if not collection_name.startswith("system."):
+                    self.db.drop_collection(collection_name)
+        finally:
+            super().tearDown()
 
     def test_definition(self):
         """Ensure that document may be defined using fields."""
@@ -84,7 +92,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert collection_name in self.db.list_collection_names()
 
         # Insert a document and ensure it was inserted
-        self.SensorData(timestamp=datetime.utcnow(), temperature=23.4).save()
+        self.SensorData(timestamp=datetime.now(UTC), temperature=23.4).save()
         assert collection.count_documents({}) == 1
 
     @requires_mongodb_gte_50
@@ -98,7 +106,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert options.get("timeseries", {}) is not None
         assert options["expireAfterSeconds"] == 1
 
-        self.SensorData(timestamp=datetime.utcnow(), temperature=23.4).save()
+        self.SensorData(timestamp=datetime.now(UTC), temperature=23.4).save()
 
         assert collection.count_documents({}) == 1
 
@@ -144,7 +152,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         self.SensorData._get_collection()
 
         # Insert documents out of order
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         self.SensorData(timestamp=now, temperature=23.4).save()
         self.SensorData(timestamp=now - timedelta(seconds=5), temperature=22.0).save()
         self.SensorData(timestamp=now + timedelta(seconds=5), temperature=24.0).save()
@@ -164,7 +172,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         self.SensorData._get_collection_name()
         self.SensorData._get_collection()
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         self.SensorData(timestamp=now - timedelta(seconds=10), temperature=22.0).save()
         self.SensorData(timestamp=now - timedelta(seconds=5), temperature=23.0).save()
         self.SensorData(timestamp=now, temperature=24.0).save()

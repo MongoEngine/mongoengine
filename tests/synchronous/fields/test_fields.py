@@ -86,7 +86,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
             day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
@@ -166,7 +166,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         # Trying setting values to None
         person = Person(name=None, age=None, userid=None, created=None)
@@ -200,7 +200,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         person = Person()
         person.name = None
@@ -268,7 +268,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         person = Person(
             name="Ross",
@@ -333,7 +333,7 @@ class TestField(MongoDBTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.com_dt_fld = datetime.datetime.utcnow()
+        doc.com_dt_fld = datetime.datetime.now(datetime.UTC)
         doc.save()
 
         res = HandleNoneFields.objects(id=doc.id).update(
@@ -369,7 +369,7 @@ class TestField(MongoDBTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.comp_dt_fld = datetime.datetime.utcnow()
+        doc.comp_dt_fld = datetime.datetime.now(datetime.UTC)
         doc.save()
 
         # Unset all the fields

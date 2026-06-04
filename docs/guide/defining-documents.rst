@@ -22,7 +22,7 @@ objects** as class attributes to the document class::
 
     class Page(Document):
         title = StringField(max_length=200, required=True)
-        date_modified = DateTimeField(default=datetime.datetime.utcnow)
+        date_modified = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.

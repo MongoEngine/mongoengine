@@ -11,30 +11,30 @@ from pymongo.results import UpdateResult
 
 from mongoengine import *
 from mongoengine.base import LazyReference
-from mongoengine.registry import _CollectionRegistry
-from mongoengine.synchronous import QuerySet, QuerySetNoCache
-from mongoengine.synchronous.connection import get_db
+from mongoengine.base.queryset import (
+    CASCADE,
+    DENY,
+    NULLIFY,
+    PULL,
+    QuerySetManager,
+    queryset_manager,
+)
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import (
     get_mongodb_version,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
-from mongoengine.base.queryset import (
-    QuerySetManager,
-    queryset_manager,
-    NULLIFY,
-    CASCADE,
-    DENY,
-    PULL,
-)
+from mongoengine.registry import _CollectionRegistry
+from mongoengine.synchronous import QuerySet, QuerySetNoCache
+from mongoengine.synchronous.connection import get_db
 from mongoengine.synchronous.queryset.base import BaseQuerySet
 from tests.synchronous.utils import db_ops_tracker, get_as_pymongo, reset_connections
 from tests.utils import (
+    MONGO_TEST_DB,
     requires_mongodb_gte_42,
     requires_mongodb_gte_44,
 )
-from tests.utils import MONGO_TEST_DB
 
 
 def get_key_compat(mongo_ver):
@@ -45,6 +45,8 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.TestCase):
     def setUp(self):
+        reset_connections()
+        _CollectionRegistry.clear()
         connect(db=MONGO_TEST_DB)
         connect(db=f"{MONGO_TEST_DB}_2", alias="test2")
 
@@ -63,11 +65,13 @@ class TestQueryset(unittest.TestCase):
 
         self.mongodb_version = get_mongodb_version()
 
-    async def tearDown(self):
-        disconnect(alias="default")
-        disconnect(alias="test2")
-        reset_connections()
-        _CollectionRegistry.clear()
+    def tearDown(self):
+        try:
+            disconnect(alias="default")
+            disconnect(alias="test2")
+        finally:
+            reset_connections()
+            _CollectionRegistry.clear()
 
     def test_initialisation(self):
         """Ensure that a QuerySet is correctly initialised by QuerySetManager."""
@@ -1559,7 +1563,7 @@ class TestQueryset(unittest.TestCase):
             meta = {"ordering": ["-published_date"]}
 
         BlogPost.objects.create(
-            title="whatever", published_date=datetime.datetime.utcnow()
+            title="whatever", published_date=datetime.datetime.now(datetime.UTC)
         )
 
         with db_ops_tracker() as q:
@@ -3024,7 +3028,7 @@ class TestQueryset(unittest.TestCase):
 
         Link.drop_collection()
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
@@ -3941,9 +3945,6 @@ class TestQueryset(unittest.TestCase):
         assert isinstance(objects[post_1.id], dict)
 
         BlogPost.drop_collection()
-
-    def tearDown(self):
-        self.Person.drop_collection()
 
     def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used."""

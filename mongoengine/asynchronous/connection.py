@@ -1,5 +1,5 @@
 from pymongo import AsyncMongoClient, ReadPreference
-from pymongo.asynchronous import uri_parser
+from pymongo.synchronous import uri_parser
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.common import _UUID_REPRESENTATIONS
 from pymongo.driver_info import DriverInfo
@@ -31,7 +31,7 @@ _connections = {}
 _dbs = {}
 
 
-async def _async_get_connection_settings(
+def _async_get_connection_settings(
     db=None,
     name=None,
     host=None,
@@ -74,7 +74,7 @@ async def _async_get_connection_settings(
             resolved_hosts.append(entity)
             continue
 
-        uri_info = await uri_parser.parse_uri(entity)
+        uri_info = uri_parser.parse_uri(entity)
         resolved_hosts.append(entity)
 
         # override DB name from URI if provided
@@ -122,7 +122,7 @@ async def _async_get_connection_settings(
     return conn_settings
 
 
-async def async_register_connection(
+def async_register_connection(
     alias,
     db=None,
     name=None,
@@ -158,7 +158,7 @@ async def async_register_connection(
         for example, maxpoolsize, tz_aware, etc. See the documentation
         for pymongo's `MongoClient` for a full list.
     """
-    conn_settings = await _async_get_connection_settings(
+    conn_settings = _async_get_connection_settings(
         db=db,
         name=name,
         host=host,
@@ -218,13 +218,8 @@ def _create_connection(alias, mongo_client_class, **connection_settings):
         raise ConnectionFailure(f"Cannot connect to database {alias} :\n{e}")
 
 
-async def async_get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
+def async_get_connection(alias=DEFAULT_CONNECTION_NAME):
     """Return a connection with a given alias."""
-
-    # Connect to the database if not already connected
-    if reconnect:
-        await async_disconnect(alias)
-
     # If the requested alias already exists in the _connections list, return
     # it immediately.
     if alias in _connections and isinstance(_connections[alias], AsyncMongoClient):
@@ -313,7 +308,7 @@ async def async_get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False) -> AsyncD
         await async_disconnect(alias)
 
     if alias not in _dbs or not isinstance(_dbs[alias], AsyncDatabase):
-        conn = await async_get_connection(alias)
+        conn = async_get_connection(alias)
         conn_settings = _connection_settings[alias]
         db = conn[conn_settings["name"]]
         # Authenticate if necessary
@@ -321,7 +316,7 @@ async def async_get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False) -> AsyncD
     return _dbs[alias]
 
 
-async def async_connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
+def async_connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     """Connect to the database specified by the 'db' argument.
 
     Connection settings may be provided here as well if the database is not
@@ -339,7 +334,7 @@ async def async_connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
     """
     if alias in _connections:
         prev_conn_setting = _connection_settings[alias]
-        new_conn_settings = await _async_get_connection_settings(db, **kwargs)
+        new_conn_settings = _async_get_connection_settings(db, **kwargs)
         if new_conn_settings != prev_conn_setting:
             err_msg = (
                 "A different connection with alias `{}` was already "
@@ -347,6 +342,6 @@ async def async_connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
             ).format(alias)
             raise ConnectionFailure(err_msg)
     else:
-        await async_register_connection(alias, db, **kwargs)
+        async_register_connection(alias, db, **kwargs)
 
-    return await async_get_connection(alias)
+    return async_get_connection(alias)

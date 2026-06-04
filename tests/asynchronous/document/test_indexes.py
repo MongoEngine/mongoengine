@@ -1,38 +1,36 @@
-import unittest
 from datetime import datetime
 
 import pytest
 from pymongo.collation import Collation
 
 from mongoengine import (
+    DateTimeField,
+    DictField,
     Document,
-    StringField,
-    IntField,
+    DynamicDocument,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    EmbeddedDocumentListField,
+    IntField,
     ListField,
     SortedListField,
-    DictField,
-    DynamicDocument,
-    DateTimeField,
-    EmbeddedDocumentListField,
+    StringField,
 )
-from mongoengine.asynchronous import async_connect, async_get_db, async_disconnect_all
-from mongoengine.errors import OperationError, NotUniqueError
+from mongoengine.asynchronous import async_connect
+from mongoengine.errors import NotUniqueError, OperationError
 from mongoengine.mongodb_support import (
     MONGODB_42,
     MONGODB_80,
     async_get_mongodb_version,
 )
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import reset_async_connections
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 from tests.utils import MONGO_TEST_DB
 
 
-class TestIndexes(unittest.IsolatedAsyncioTestCase):
+class TestIndexes(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        self.connection = await async_connect(db=MONGO_TEST_DB)
-        self.db = async_get_db()
+        await super().asyncSetUp()
+        self.connection = self._connection
 
         class Person(Document):
             name = StringField()
@@ -45,10 +43,10 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
         self.Person = Person
 
     async def asyncTearDown(self):
-        await self.Person.adrop_collection()
-        await async_disconnect_all()
-        await reset_async_connections()
-        _CollectionRegistry.clear()
+        try:
+            await self.Person.adrop_collection()
+        finally:
+            await super().asyncTearDown()
 
     async def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for
@@ -996,7 +994,7 @@ class TestIndexes(unittest.IsolatedAsyncioTestCase):
         # Use a new connection and database since dropping the database could
         # cause concurrent tests to fail.
         tmp_alias = "test_indexes_after_database_drop"
-        connection = await async_connect(db=f"{MONGO_TEST_DB}_tempdb", alias=tmp_alias)
+        connection = async_connect(db=f"{MONGO_TEST_DB}_tempdb", alias=tmp_alias)
 
         class BlogPost(Document):
             slug = StringField(unique=True)

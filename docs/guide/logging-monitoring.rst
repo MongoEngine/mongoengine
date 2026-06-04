@@ -67,7 +67,7 @@ The following snippet provides a basic logging of all command events:
     # The asynchronous alternative is as follows:
 
     async def async_logging_example():
-        await async_connect()
+        async_connect()
 
         log.info('GO ASYNC!')
 

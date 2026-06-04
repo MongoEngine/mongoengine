@@ -4,6 +4,7 @@ from mongoengine import *
 from mongoengine import signals
 from mongoengine.base import _DocumentRegistry
 from mongoengine.registry import _CollectionRegistry
+from tests.synchronous.utils import reset_connections
 from tests.utils import MONGO_TEST_DB
 
 signal_output = []
@@ -23,6 +24,7 @@ class TestSignal(unittest.TestCase):
         return signal_output
 
     def setUp(self):
+        reset_connections()
         connect(db=MONGO_TEST_DB)
 
         class Author(Document):
@@ -211,47 +213,50 @@ class TestSignal(unittest.TestCase):
         signals.post_bulk_insert.connect(Post.post_bulk_insert, sender=Post)
 
     def tearDown(self):
-        signals.pre_init.disconnect(self.Author.pre_init)
-        signals.post_init.disconnect(self.Author.post_init)
-        signals.post_delete.disconnect(self.Author.post_delete)
-        signals.pre_delete.disconnect(self.Author.pre_delete)
-        signals.post_save.disconnect(self.Author.post_save)
-        signals.pre_save_post_validation.disconnect(
-            self.Author.pre_save_post_validation
-        )
-        signals.pre_save.disconnect(self.Author.pre_save)
-        signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
-        signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
+        try:
+            signals.pre_init.disconnect(self.Author.pre_init)
+            signals.post_init.disconnect(self.Author.post_init)
+            signals.post_delete.disconnect(self.Author.post_delete)
+            signals.pre_delete.disconnect(self.Author.pre_delete)
+            signals.post_save.disconnect(self.Author.post_save)
+            signals.pre_save_post_validation.disconnect(
+                self.Author.pre_save_post_validation
+            )
+            signals.pre_save.disconnect(self.Author.pre_save)
+            signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
 
-        signals.post_delete.disconnect(self.Another.post_delete)
-        signals.pre_delete.disconnect(self.Another.pre_delete)
+            signals.post_delete.disconnect(self.Another.post_delete)
+            signals.pre_delete.disconnect(self.Another.pre_delete)
 
-        signals.post_save.disconnect(self.ExplicitId.post_save)
+            signals.post_save.disconnect(self.ExplicitId.post_save)
 
-        signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
-        signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
+            signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
 
-        # Check that all our signals got disconnected properly.
-        post_signals = (
-            len(signals.pre_init.receivers),
-            len(signals.post_init.receivers),
-            len(signals.pre_save.receivers),
-            len(signals.pre_save_post_validation.receivers),
-            len(signals.post_save.receivers),
-            len(signals.pre_delete.receivers),
-            len(signals.post_delete.receivers),
-            len(signals.pre_bulk_insert.receivers),
-            len(signals.post_bulk_insert.receivers),
-        )
+            # Check that all our signals got disconnected properly.
+            post_signals = (
+                len(signals.pre_init.receivers),
+                len(signals.post_init.receivers),
+                len(signals.pre_save.receivers),
+                len(signals.pre_save_post_validation.receivers),
+                len(signals.post_save.receivers),
+                len(signals.pre_delete.receivers),
+                len(signals.post_delete.receivers),
+                len(signals.pre_bulk_insert.receivers),
+                len(signals.post_bulk_insert.receivers),
+            )
 
-        self.ExplicitId.objects.delete()
+            self.ExplicitId.objects.delete()
 
-        # Note that there is a chance that the following assert fails in case
-        # some receivers (eventually created in other tests)
-        # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
-        assert self.pre_signals == post_signals
-        _DocumentRegistry.clear()
-        _CollectionRegistry.clear()
+            # Note that there is a chance that the following assert fails in case
+            # some receivers (eventually created in other tests)
+            # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
+            assert self.pre_signals == post_signals
+        finally:
+            reset_connections()
+            _DocumentRegistry.clear()
+            _CollectionRegistry.clear()
 
     def test_model_signals(self):
         """Model saves should throw some signals."""

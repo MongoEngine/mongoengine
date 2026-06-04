@@ -4,18 +4,11 @@ from bson import DBRef, ObjectId
 
 from mongoengine import *
 from mongoengine.context_managers import query_counter
+from tests.synchronous.utils import MongoDBTestCase
 from tests.utils import MONGO_TEST_DB
 
 
-class FieldTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.db = connect(db=MONGO_TEST_DB)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.db.drop_database(MONGO_TEST_DB)
-
+class FieldTest(MongoDBTestCase):
     def test_list_item_dereference(self):
         """Ensure that DBRef items in ListFields are dereferenced."""
 

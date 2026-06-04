@@ -477,7 +477,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             db, include_system_collections=True
         ):
             collection = db[collection_name]
-            collection.options()
+            await collection.options()
             return collection
 
         opts = {"expireAfterSeconds": timeseries_opts.pop("expireAfterSeconds", None)}

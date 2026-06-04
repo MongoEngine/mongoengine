@@ -110,7 +110,7 @@ A simple synchronous example:
 
     class BlogPost(Document):
         title = StringField(required=True, max_length=200)
-        posted = DateTimeField(default=datetime.datetime.utcnow)
+        posted = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
         tags = ListField(StringField(max_length=50))
 
     post = BlogPost(

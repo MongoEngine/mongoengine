@@ -6,17 +6,15 @@ import pytest
 from bson import ObjectId
 
 from mongoengine import *
+from mongoengine.base.queryset import Q
 from mongoengine.common import _async_queryset_to_values
 from mongoengine.errors import InvalidQueryError
-from mongoengine.base.queryset import Q
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import reset_async_connections
-from tests.utils import MONGO_TEST_DB
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
-class TestQ(unittest.IsolatedAsyncioTestCase):
+class TestQ(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
+        await super().asyncSetUp()
 
         class Person(Document):
             name = StringField()
@@ -27,9 +25,7 @@ class TestQ(unittest.IsolatedAsyncioTestCase):
         self.Person = Person
 
     async def asyncTearDown(self):
-        await async_disconnect()
-        await reset_async_connections()
-        _CollectionRegistry.clear()
+        await super().asyncTearDown()
 
     async def test_empty_q(self):
         """Ensure that empty Q objects won't hurt."""

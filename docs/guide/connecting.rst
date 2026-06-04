@@ -16,7 +16,7 @@ function. The first argument is the name of the database to connect to::
 The asynchronous alternative is :func:`~mongoengine.async_connect`::
 
     from mongoengine import async_connect
-    await async_connect('project1')
+    async_connect('project1')
 
 By default, MongoEngine assumes that the :program:`mongod` instance is running
 on **localhost** on port **27017**.
@@ -55,7 +55,7 @@ The asynchronous alternative is as follows::
 
     # Connects to 'my_db' database by authenticating
     # with given credentials against that same database
-    await async_connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
+    async_connect(host="mongodb://my_user:my_password@127.0.0.1:27017/my_db?authSource=my_db")
 
 The URI string can also be used to configure advanced parameters like ssl, replicaSet, etc. For more
 information or example about URI string, you can refer to the `official doc <https://www.mongodb.com/docs/manual/reference/connection-string/>`_::
@@ -79,7 +79,7 @@ and :attr:`authentication_source` arguments should be provided::
 
 The asynchronous alternative is as follows::
 
-    await async_connect('my_db', username='my_user', password='my_password', authentication_source='admin')
+    async_connect('my_db', username='my_user', password='my_password', authentication_source='admin')
 
 The set of attributes that :func:`~mongoengine.connect` recognizes includes but is not limited to:
 :attr:`host`, :attr:`port`, :attr:`read_preference`, :attr:`username`, :attr:`password`, :attr:`authentication_source`, :attr:`authentication_mechanism`,
@@ -171,11 +171,11 @@ connection globally::
 The asynchronous alternative is :func:`~mongoengine.async_disconnect`::
 
         from mongoengine import async_connect, async_disconnect
-        await async_connect('a_db', alias='db1')
+        async_connect('a_db', alias='db1')
 
         await async_disconnect(alias='db1')
 
-        await async_connect('another_db', alias='db1')
+        async_connect('another_db', alias='db1')
 
 .. note:: Calling :func:`~mongoengine.disconnect` without argument
     will disconnect the "default" connection

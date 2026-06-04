@@ -5,9 +5,8 @@ from mongoengine import (
     IntField,
     ListField,
     StringField,
-    connect,
 )
-from tests.utils import MONGO_TEST_DB
+from tests.synchronous.utils import MongoDBTestCase
 
 
 class Doc(Document):
@@ -15,9 +14,9 @@ class Doc(Document):
     value = IntField()
 
 
-class TestFindAndModify(unittest.TestCase):
+class TestFindAndModify(MongoDBTestCase):
     def setUp(self):
-        connect(db=MONGO_TEST_DB)
+        super().setUp()
         Doc.drop_collection()
 
     def _assert_db_equal(self, docs):

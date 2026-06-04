@@ -2,8 +2,8 @@ import pytest
 from bson.son import SON
 
 from mongoengine import *
-from mongoengine.common import _async_queryset_to_values
 from mongoengine.base.queryset import Q, transform
+from mongoengine.common import _async_queryset_to_values
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 

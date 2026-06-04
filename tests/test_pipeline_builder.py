@@ -1,27 +1,22 @@
 from mongoengine import (
+    DictField,
     Document,
     EmbeddedDocument,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
-    IntField,
-    StringField,
-    ReferenceField,
-    ListField,
-    DictField,
-    MapField,
     GenericReferenceField,
+    IntField,
+    ListField,
+    MapField,
+    ReferenceField,
+    StringField,
 )
-from mongoengine.base import _DocumentRegistry
 from mongoengine.base.queryset.pipeline_builder import PipelineBuilder
 from mongoengine.base.queryset.pipeline_builder.schema import Schema
-
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class TestQuerysetPipelineBuilderStress(MongoDBAsyncTestCase):
-    def tearDown(self):
-        _DocumentRegistry.clear()
-
     def test_reference_field_attribute_match(self):
         class Parent(Document):
             age = IntField(required=True)

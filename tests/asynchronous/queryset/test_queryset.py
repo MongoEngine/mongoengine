@@ -12,20 +12,20 @@ from pymongo.results import UpdateResult
 
 from mongoengine import *
 from mongoengine.base import LazyReference
+from mongoengine.base.queryset import (
+    CASCADE,
+    DENY,
+    NULLIFY,
+    PULL,
+    QuerySetManager,
+    queryset_manager,
+)
 from mongoengine.context_managers import async_query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
 from mongoengine.mongodb_support import (
     async_get_mongodb_version,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
-from mongoengine.base.queryset import (
-    QuerySetManager,
-    queryset_manager,
-    CASCADE,
-    NULLIFY,
-    DENY,
-    PULL,
-)
 from mongoengine.registry import _CollectionRegistry
 from tests.asynchronous.utils import (
     async_db_ops_tracker,
@@ -52,8 +52,10 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
-        await async_connect(db=f"{MONGO_TEST_DB}_2", alias="test2")
+        await reset_async_connections()
+        _CollectionRegistry.clear()
+        async_connect(db=MONGO_TEST_DB, alias="default")
+        async_connect(db=f"{MONGO_TEST_DB}_2", alias="test2")
 
         class PersonMeta(EmbeddedDocument):
             weight = IntField()
@@ -72,10 +74,13 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         self.mongodb_version = await async_get_mongodb_version()
 
     async def asyncTearDown(self):
-        await async_disconnect(alias="default")
-        await async_disconnect(alias="test2")
-        await reset_async_connections()
-        _CollectionRegistry.clear()
+        await super().asyncTearDown()
+        try:
+            await async_disconnect(alias="default")
+            await async_disconnect(alias="test2")
+        finally:
+            await reset_async_connections()
+            _CollectionRegistry.clear()
 
     async def test_initialisation(self):
         """Ensure that a QuerySet is correctly initialised by AsyncQuerySetManager."""
@@ -229,7 +234,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
     async def test___getitem___invalid_index(self):
         """Ensure slicing a queryset works as expected."""
         with pytest.raises(TypeError):
-            await self.Person.aobjects().to_list()["a"]
+            results = await self.Person.aobjects().to_list()
+            assert results["a"]
 
     async def test_find_one(self):
         """Ensure that a query using find_one returns a valid result."""
@@ -1667,7 +1673,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         other = await Dummy(reference=base).asave()
         other2 = await Dummy(reference=other).asave()
         base.reference = other
-        base.asave()
+        await base.asave()
 
         await cat.adelete()
 
@@ -2994,7 +3000,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await Link.adrop_collection()
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
@@ -3616,7 +3622,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
             assert await qs1.to_list() == await qs2.to_list()
 
     async def test_distinct_handles_references_to_alias(self):
-        await async_register_connection("testdb", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb", f"{MONGO_TEST_DB}_2")
 
         class Bar(Document):
             text = StringField()
@@ -3945,9 +3951,6 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await BlogPost.adrop_collection()
 
-    async def tearDown(self):
-        await self.Person.adrop_collection()
-
     async def test_custom_querysets(self):
         """Ensure that custom QuerySet classes may be used."""
 
@@ -3964,7 +3967,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         assert not await Post.aobjects.not_empty()
 
         await Post().asave()
-        assert Post.aobjects.not_empty()
+        assert await Post.aobjects.not_empty()
 
         await Post.adrop_collection()
 
@@ -5579,8 +5582,8 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
         if not test:
             raise AssertionError("Cursor has data and returned False")
 
-        anext(queryset)
-        if not queryset.exists():
+        await anext(queryset)
+        if not await queryset.exists():
             raise AssertionError(
                 "Cursor has data and it must returns True, even in the last item."
             )

@@ -4,26 +4,23 @@ only get triggered on first hit.  This way we can ensure its imported into the
 top level and called first by the test suite.
 """
 
-import unittest
 import warnings
 
 from mongoengine import *
 from mongoengine.base.common import _document_registry
-from tests.asynchronous.utils import reset_async_connections
-from tests.utils import MONGO_TEST_DB
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
-class TestAllWarnings(unittest.IsolatedAsyncioTestCase):
+class TestAllWarnings(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
         self.warning_list = []
         self.showwarning_default = warnings.showwarning
         warnings.showwarning = self.append_to_warning_list
+        await super().asyncSetUp()
 
     async def asyncTearDown(self):
         warnings.showwarning = self.showwarning_default
-        await async_disconnect_all()
-        await reset_async_connections()
+        await super().asyncTearDown()
 
     def append_to_warning_list(self, message, category, *args):
         self.warning_list.append({"message": message, "category": category})

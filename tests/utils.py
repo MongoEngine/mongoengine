@@ -6,7 +6,7 @@ import os
 import pymongo
 import pytest
 
-from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
+from mongoengine.mongodb_support import async_get_mongodb_version, get_mongodb_version
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 

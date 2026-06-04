@@ -13,8 +13,8 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.pymongo_support import async_list_collection_names
-from tests.fixtures import Base
 from tests.asynchronous.utils import MongoDBAsyncTestCase
+from tests.fixtures import Base
 
 
 class TestInheritance(MongoDBAsyncTestCase):

@@ -1,17 +1,12 @@
-import unittest
-
 import pytest
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, async_disconnect
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import reset_async_connections
-from tests.utils import MONGO_TEST_DB
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
-class TestOnlyExcludeAll(unittest.IsolatedAsyncioTestCase):
+class TestOnlyExcludeAll(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
+        await super().asyncSetUp()
 
         class Person(Document):
             name = StringField()
@@ -22,9 +17,7 @@ class TestOnlyExcludeAll(unittest.IsolatedAsyncioTestCase):
         self.Person = Person
 
     async def asyncTearDown(self):
-        await async_disconnect()
-        await reset_async_connections()
-        _CollectionRegistry.clear()
+        await super().asyncTearDown()
 
     def test_mixing_only_exclude(self):
         class MyDoc(Document):

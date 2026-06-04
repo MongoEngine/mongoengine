@@ -6,16 +6,14 @@ import unittest
 import pytest
 
 from mongoengine.asynchronous import (
-    async_disconnect_all,
     async_connect,
-    async_get_db,
     async_disconnect,
+    async_get_db,
 )
 from mongoengine.base import _DocumentRegistry
 from mongoengine.context_managers import async_query_counter
-from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
+from mongoengine.mongodb_support import async_get_mongodb_version, get_mongodb_version
 from mongoengine.registry import _CollectionRegistry
-
 from tests.utils import MONGO_TEST_DB
 
 
@@ -25,13 +23,27 @@ class MongoDBAsyncTestCase(unittest.IsolatedAsyncioTestCase):
     """
 
     async def asyncSetUp(self):
-        await async_disconnect_all()
-        self._connection = await async_connect(db=MONGO_TEST_DB)
+        # 1. Clear out everything from previous runs
+        await reset_async_connections()
+        _DocumentRegistry.clear()
+        _CollectionRegistry.clear()
+
+        # 2. Establish the fresh connection
+        self._connection = async_connect(db=MONGO_TEST_DB)
         await self._connection.drop_database(MONGO_TEST_DB)
         self.db = await async_get_db()
 
     async def asyncTearDown(self):
-        await self._connection.drop_database(MONGO_TEST_DB)
+        # 1. Grab the connection safely (handles cases where setup failed mid-way)
+        conn = getattr(self, "_connection", None)
+        if conn:
+            await conn.drop_database(MONGO_TEST_DB)
+
+        # 2. Break references immediately so Python collects them while the loop is still alive
+        self._connection = None
+        self.db = None
+
+        # 3. Purge registries and disconnect
         await async_disconnect()
         await reset_async_connections()
         _DocumentRegistry.clear()
@@ -121,8 +133,8 @@ class async_db_ops_tracker(async_query_counter):
 
 async def reset_async_connections():
     from mongoengine.asynchronous.connection import (
-        _connections,
         _connection_settings,
+        _connections,
         _dbs,
     )
 

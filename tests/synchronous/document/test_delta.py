@@ -3,7 +3,6 @@ import unittest
 from bson import SON
 
 from mongoengine import *
-from mongoengine.pymongo_support import list_collection_names
 from tests.synchronous.utils import MongoDBTestCase, get_as_pymongo
 
 
@@ -20,10 +19,6 @@ class TestDelta(MongoDBTestCase):
             meta = {"allow_inheritance": True}
 
         self.Person = Person
-
-    def tearDown(self):
-        for collection in list_collection_names(self.db):
-            self.db.drop_collection(collection)
 
     def test_delta(self):
         self.delta(Document)

@@ -3,28 +3,28 @@ import logging
 import random
 
 import pytest
-from pymongo.errors import OperationFailure, InvalidOperation
+from pymongo.errors import InvalidOperation, OperationFailure
 from pymongo.read_concern import ReadConcern
 
 from mongoengine import *
 from mongoengine.asynchronous import (
-    async_register_connection,
-    async_get_db,
     async_connect,
+    async_get_db,
+    async_register_connection,
 )
-from mongoengine.session import _get_session
 from mongoengine.context_managers import (
+    async_query_counter,
     no_sub_classes,
+    run_in_transaction,
     set_read_write_concern,
     set_write_concern,
     switch_collection,
     switch_db,
-    async_query_counter,
-    run_in_transaction,
 )
 from mongoengine.pymongo_support import async_count_documents
+from mongoengine.session import _get_session
 from tests.asynchronous.utils import MongoDBAsyncTestCase
-from tests.utils import requires_mongodb_gte_44, MONGO_TEST_DB
+from tests.utils import MONGO_TEST_DB, requires_mongodb_gte_44
 
 
 class TestRollbackError(Exception):
@@ -75,7 +75,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert original_write_concern.document == collection.write_concern.document
 
     async def test_switch_db_context_manager(self):
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -100,7 +100,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert 1 == await Group.aobjects.count()
 
     async def test_switch_collection_context_manager(self):
-        await async_register_connection(alias="testdb-1", db=f"{MONGO_TEST_DB}_2")
+        async_register_connection(alias="testdb-1", db=f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -274,7 +274,7 @@ class TestContextManagers(MongoDBAsyncTestCase):
     async def test_query_counter_alias(self):
         """query_counter works properly with db aliases?"""
         # Register a connection with db_alias testdb-1
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             """Uses default db_alias"""
@@ -423,8 +423,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
         assert await A.aobjects.count() == 0
 
     async def test_transaction_updates_across_databases(self):
-        await async_connect(MONGO_TEST_DB)
-        await async_connect(f"{MONGO_TEST_DB}_2", "test2")
+        async_connect(MONGO_TEST_DB)
+        async_connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()
@@ -450,8 +450,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
     async def test_collection_creation_via_upserts_across_databases_in_transaction(
         self,
     ):
-        await async_connect(MONGO_TEST_DB)
-        await async_connect(f"{MONGO_TEST_DB}_test2", "test2")
+        async_connect(MONGO_TEST_DB)
+        async_connect(f"{MONGO_TEST_DB}_test2", "test2")
 
         class A(Document):
             name = StringField()
@@ -481,8 +481,8 @@ class TestContextManagers(MongoDBAsyncTestCase):
     async def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
         self,
     ):
-        await async_connect(MONGO_TEST_DB)
-        await async_connect(f"{MONGO_TEST_DB}_2", "test2")
+        async_connect(MONGO_TEST_DB)
+        async_connect(f"{MONGO_TEST_DB}_2", "test2")
 
         class A(Document):
             name = StringField()
