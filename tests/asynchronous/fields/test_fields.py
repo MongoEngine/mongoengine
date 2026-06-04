@@ -95,7 +95,7 @@ class TestField(MongoDBAsyncTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
             day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
@@ -175,7 +175,7 @@ class TestField(MongoDBAsyncTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
 
         # Trying setting values to None
         person = Person(name=None, age=None, userid=None, created=None)
@@ -277,7 +277,7 @@ class TestField(MongoDBAsyncTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
 
         person = Person(
             name="Ross",
@@ -342,7 +342,7 @@ class TestField(MongoDBAsyncTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.com_dt_fld = datetime.datetime.now(datetime.UTC)
+        doc.com_dt_fld = datetime.datetime.now(UTC)
         await doc.asave()
 
         res = await HandleNoneFields.aobjects(id=doc.id).update(

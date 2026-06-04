@@ -82,7 +82,7 @@ are as follows:
 * :class:`~mongoengine.fields.BooleanField`
 * :class:`~mongoengine.fields.ComplexDateTimeField`
 * :class:`~mongoengine.fields.DateTimeField`
-* :class:`~mongoengine.fields.ZonedDateTimeField`
+* :class:`~mongoengine.fields.AwareDateTimeField`
 * :class:`~mongoengine.fields.DecimalField`
 * :class:`~mongoengine.fields.DictField`
 * :class:`~mongoengine.fields.DynamicField`

@@ -36,6 +36,15 @@ from tests.utils import (
     requires_mongodb_gte_44,
 )
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 
 def get_key_compat(mongo_ver):
     ORDER_BY_KEY = "sort"
@@ -1563,7 +1572,7 @@ class TestQueryset(unittest.TestCase):
             meta = {"ordering": ["-published_date"]}
 
         BlogPost.objects.create(
-            title="whatever", published_date=datetime.datetime.now(datetime.UTC)
+            title="whatever", published_date=datetime.datetime.now(UTC)
         )
 
         with db_ops_tracker() as q:
@@ -3028,7 +3037,7 @@ class TestQueryset(unittest.TestCase):
 
         Link.drop_collection()
 
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(UTC)
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should

@@ -3000,7 +3000,7 @@ class TestQueryset(unittest.IsolatedAsyncioTestCase):
 
         await Link.adrop_collection()
 
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(UTC)
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should

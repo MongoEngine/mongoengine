@@ -107,7 +107,7 @@ Fields
 .. autoclass:: mongoengine.fields.BooleanField
 .. autoclass:: mongoengine.fields.DateTimeField
 .. autoclass:: mongoengine.fields.ComplexDateTimeField
-.. autoclass:: mongoengine.fields.ZonedDateTimeField
+.. autoclass:: mongoengine.fields.AwareDateTimeField
 .. autoclass:: mongoengine.fields.EmbeddedDocumentField
 .. autoclass:: mongoengine.fields.GenericEmbeddedDocumentField
 .. autoclass:: mongoengine.fields.DynamicField
