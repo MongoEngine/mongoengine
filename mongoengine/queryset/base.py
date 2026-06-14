@@ -1866,9 +1866,7 @@ class BaseQuerySet:
                     emit(null, 1);
                 }}
             }}
-        """.format(
-            field=field
-        )
+        """.format(field=field)
         reduce_func = """
             function(key, values) {
                 var total = 0;
