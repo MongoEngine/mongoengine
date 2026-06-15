@@ -124,7 +124,7 @@ jobs:
         check-latest: true
     - name: build dummy wheel for test-pypi
       run: |
-        pip install wheel
+        pip install setuptools wheel
         python setup.py sdist bdist_wheel
 
   build-n-publish:
@@ -142,7 +142,7 @@ jobs:
     # https://stackoverflow.com/questions/59349905/which-properties-does-github-event-in-a-github-workflow-have
     - name: build dummy wheel for test-pypi
       run: |
-        pip install wheel
+        pip install setuptools wheel
         python setup.py sdist bdist_wheel
     - name: publish pypi
       uses: pypa/gh-action-pypi-publish@release/v1
