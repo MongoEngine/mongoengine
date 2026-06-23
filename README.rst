@@ -25,13 +25,11 @@ MongoEngine
 .. image:: https://readthedocs.org/projects/mongoengine-odm/badge/?version=latest
   :target: https://readthedocs.org/projects/mongoengine-odm/builds/
 
-.. warning::
-
-   The official MongoEngine project is maintained on
-   `GitHub <https://github.com/MongoEngine/mongoengine>`_ and documented on
-   `ReadTheDocs <https://mongoengine-odm.readthedocs.io/>`_.
-   ``mongoengine.org`` is no longer controlled by the MongoEngine project and
-   appears to be an expired domain takeover.
+⚠️ **Warning:** ``mongoengine.org`` is no longer controlled by the MongoEngine
+project and appears to be an expired domain takeover. The official MongoEngine
+project is maintained on `GitHub <https://github.com/MongoEngine/mongoengine>`_
+and documented on
+`ReadTheDocs <https://mongoengine-odm.readthedocs.io/>`_.
 
 About
 =====
