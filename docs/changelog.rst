@@ -12,9 +12,11 @@ Development
 - Fix querying GenericReferenceField with __in operator #2886
 - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
+
   Some considerations:
+
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
-    - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of `UnknownTransactionCommitResult` but not `TransientTransactionError` exceptions
+    - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of ``UnknownTransactionCommitResult`` but not ``TransientTransactionError`` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
 - BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
@@ -222,12 +224,13 @@ Changes in 0.19.1
 =================
 - Tests require Pillow < 7.0.0 as it dropped Python2 support
 - DEPRECATION: The interface of ``QuerySet.aggregate`` method was changed, it no longer takes an unpacked list of
-    pipeline steps (*pipeline) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
+  pipeline steps (``*pipeline``) but simply takes the pipeline list just like ``pymongo.Collection.aggregate`` does. #2079
 
 Changes in 0.19.0
 =================
 - BREAKING CHANGE: ``class_check`` and ``read_preference`` keyword arguments are no longer available when filtering a ``QuerySet``. #2112
-    - Instead of ``Doc.objects(foo=bar, read_preference=...)`` use ``Doc.objects(foo=bar).read_preference(...)``.
+
+  - Instead of ``Doc.objects(foo=bar, read_preference=...)`` use ``Doc.objects(foo=bar).read_preference(...)``.
     - Instead of ``Doc.objects(foo=bar, class_check=False)`` use ``Doc.objects(foo=bar).clear_cls_query(...)``.
     - This change also renames the private ``QuerySet._initial_query`` attribute to ``_cls_query``.
 - BREAKING CHANGE: Removed the deprecated ``format`` param from ``QuerySet.explain``. #2113
@@ -494,7 +497,7 @@ Changes in 0.10.0
 - Added support for specifying authentication source as option ``authSource`` in URI. #967
 - Fixed mark_as_changed to handle higher/lower level fields changed. #927
 - ListField of embedded docs doesn't set the _instance attribute when iterating over it #914
-- Support += and *= for ListField #595
+- Support ``+=`` and ``*=`` for ListField #595
 - Use sets for populating dbrefs to dereference
 - Fixed unpickled documents replacing the global field's list. #888
 - Fixed storage of microseconds in ComplexDateTimeField and unused separator option. #910

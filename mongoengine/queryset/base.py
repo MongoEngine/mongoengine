@@ -682,8 +682,7 @@ class BaseQuerySet:
             updated items
         :param array_filters: A list of filters specifying which array elements an update should apply.
         :param update: Django-style update keyword arguments
-            full_result
-        :returns the number of updated documents (unless ``full_result`` is True)
+        :returns: the number of updated documents (unless ``full_result`` is True)
         """
         return self.update(
             upsert=upsert,
@@ -904,7 +903,7 @@ class BaseQuerySet:
         achieved using array-slicing syntax (e.g. ``User.objects[:5]``).
 
         :param n: the maximum number of objects to return if n is greater than 0.
-        When 0 is passed, returns all the documents in the cursor
+            When 0 is passed, returns all the documents in the cursor
         """
         queryset = self.clone()
         queryset._limit = n
@@ -955,18 +954,21 @@ class BaseQuerySet:
         """
         Collation allows users to specify language-specific rules for string
         comparison, such as rules for lettercase and accent marks.
-        :param collation: `~pymongo.collation.Collation` or dict with
-        following fields:
-            {
-                locale: str,
-                caseLevel: bool,
-                caseFirst: str,
-                strength: int,
-                numericOrdering: bool,
-                alternate: str,
-                maxVariable: str,
-                backwards: str
-            }
+
+        :param collation: ``~pymongo.collation.Collation`` or dict with
+            following fields::
+
+                {
+                    locale: str,
+                    caseLevel: bool,
+                    caseFirst: str,
+                    strength: int,
+                    numericOrdering: bool,
+                    alternate: str,
+                    maxVariable: str,
+                    backwards: str
+                }
+
         Collation should be added to indexes like in test example
         """
         queryset = self.clone()
