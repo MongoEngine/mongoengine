@@ -1,0 +1,460 @@
+import inspect
+import unittest
+
+from mongoengine import *
+from mongoengine import signals
+from mongoengine.asynchronous import async_connect, async_register_connection
+from tests.asynchronous.utils import reset_async_connections
+from tests.utils import MONGO_TEST_DB
+
+signal_output = []
+
+
+class TestSignal(unittest.IsolatedAsyncioTestCase):
+    """
+    Testing signals before/after saving and deleting.
+    """
+
+    @staticmethod
+    async def get_signal_output(fn, *args, **kwargs):
+        # Flush any existing signal output
+        global signal_output
+        signal_output = []
+        if inspect.iscoroutinefunction(fn):
+            await fn(*args, **kwargs)
+        else:
+            fn(*args, **kwargs)
+        return signal_output
+
+    async def asyncSetUp(self):
+        await reset_async_connections()
+        async_connect(db=MONGO_TEST_DB)
+
+        class Author(Document):
+            # Make the id deterministic for easier testing
+            id = SequenceField(primary_key=True)
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+            @classmethod
+            def pre_init(cls, sender, document, *args, **kwargs):
+                signal_output.append("pre_init signal, %s" % cls.__name__)
+                signal_output.append(kwargs["values"])
+
+            @classmethod
+            def post_init(cls, sender, document, **kwargs):
+                signal_output.append(
+                    "post_init signal, %s, document._created = %s"
+                    % (document, document._created)
+                )
+
+            @classmethod
+            async def pre_save(cls, sender, document, **kwargs):
+                signal_output.append("pre_save signal, %s" % document)
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def pre_save_post_validation(cls, sender, document, **kwargs):
+                signal_output.append("pre_save_post_validation signal, %s" % document)
+                if kwargs.pop("created", False):
+                    signal_output.append("Is created")
+                else:
+                    signal_output.append("Is updated")
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def post_save(cls, sender, document, **kwargs):
+                dirty_keys = list(document._delta()[0].keys()) + list(
+                    document._delta()[1].keys()
+                )
+                signal_output.append("post_save signal, %s" % document)
+                signal_output.append("post_save dirty keys, %s" % dirty_keys)
+                if kwargs.pop("created", False):
+                    signal_output.append("Is created")
+                else:
+                    signal_output.append("Is updated")
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def pre_delete(cls, sender, document, **kwargs):
+                signal_output.append("pre_delete signal, %s" % document)
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def post_delete(cls, sender, document, **kwargs):
+                signal_output.append("post_delete signal, %s" % document)
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def pre_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append("pre_bulk_insert signal, %s" % documents)
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def post_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append("post_bulk_insert signal, %s" % documents)
+                if kwargs.pop("loaded", False):
+                    signal_output.append("Is loaded")
+                else:
+                    signal_output.append("Not loaded")
+                signal_output.append(kwargs)
+
+        self.Author = Author
+        await Author.adrop_collection()
+        await Author.id.aset_next_value(0)
+
+        class Another(Document):
+            name = StringField()
+
+            def __unicode__(self):
+                return self.name
+
+            @classmethod
+            async def pre_delete(cls, sender, document, **kwargs):
+                signal_output.append("pre_delete signal, %s" % document)
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def post_delete(cls, sender, document, **kwargs):
+                signal_output.append("post_delete signal, %s" % document)
+                signal_output.append(kwargs)
+
+        self.Another = Another
+        await Another.adrop_collection()
+
+        class ExplicitId(Document):
+            id = IntField(primary_key=True)
+
+            @classmethod
+            async def post_save(cls, sender, document, **kwargs):
+                if "created" in kwargs:
+                    if kwargs["created"]:
+                        signal_output.append("Is created")
+                    else:
+                        signal_output.append("Is updated")
+
+        self.ExplicitId = ExplicitId
+        await ExplicitId.adrop_collection()
+
+        class Post(Document):
+            title = StringField()
+            content = StringField()
+            active = BooleanField(default=False)
+
+            def __unicode__(self):
+                return self.title
+
+            @classmethod
+            async def pre_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append(
+                    "pre_bulk_insert signal, %s"
+                    % [
+                        (doc, {"active": documents[n].active})
+                        for n, doc in enumerate(documents)
+                    ]
+                )
+
+                # make changes here, this is just an example -
+                # it could be anything that needs pre-validation or looks-ups before bulk bulk inserting
+                for document in documents:
+                    if not document.active:
+                        document.active = True
+                signal_output.append(kwargs)
+
+            @classmethod
+            async def post_bulk_insert(cls, sender, documents, **kwargs):
+                signal_output.append(
+                    "post_bulk_insert signal, %s"
+                    % [
+                        (doc, {"active": documents[n].active})
+                        for n, doc in enumerate(documents)
+                    ]
+                )
+                if kwargs.pop("loaded", False):
+                    signal_output.append("Is loaded")
+                else:
+                    signal_output.append("Not loaded")
+                signal_output.append(kwargs)
+
+        self.Post = Post
+        await Post.adrop_collection()
+
+        # Save up the number of connected signals so that we can check at the
+        # end that all the signals we register get properly unregistered
+        self.pre_signals = (
+            len(signals.pre_init.receivers),
+            len(signals.post_init.receivers),
+            len(signals.pre_save.receivers),
+            len(signals.pre_save_post_validation.receivers),
+            len(signals.post_save.receivers),
+            len(signals.pre_delete.receivers),
+            len(signals.post_delete.receivers),
+            len(signals.pre_bulk_insert.receivers),
+            len(signals.post_bulk_insert.receivers),
+        )
+
+        signals.pre_init.connect(Author.pre_init, sender=Author)
+        signals.post_init.connect(Author.post_init, sender=Author)
+        signals.pre_save.connect(Author.pre_save, sender=Author)
+        signals.pre_save_post_validation.connect(
+            Author.pre_save_post_validation, sender=Author
+        )
+        signals.post_save.connect(Author.post_save, sender=Author)
+        signals.pre_delete.connect(Author.pre_delete, sender=Author)
+        signals.post_delete.connect(Author.post_delete, sender=Author)
+        signals.pre_bulk_insert.connect(Author.pre_bulk_insert, sender=Author)
+        signals.post_bulk_insert.connect(Author.post_bulk_insert, sender=Author)
+
+        signals.pre_delete.connect(Another.pre_delete, sender=Another)
+        signals.post_delete.connect(Another.post_delete, sender=Another)
+
+        signals.post_save.connect(ExplicitId.post_save, sender=ExplicitId)
+
+        signals.pre_bulk_insert.connect(Post.pre_bulk_insert, sender=Post)
+        signals.post_bulk_insert.connect(Post.post_bulk_insert, sender=Post)
+
+    async def asyncTearDown(self):
+        try:
+            signals.pre_init.disconnect(self.Author.pre_init)
+            signals.post_init.disconnect(self.Author.post_init)
+            signals.post_delete.disconnect(self.Author.post_delete)
+            signals.pre_delete.disconnect(self.Author.pre_delete)
+            signals.post_save.disconnect(self.Author.post_save)
+            signals.pre_save_post_validation.disconnect(
+                self.Author.pre_save_post_validation
+            )
+            signals.pre_save.disconnect(self.Author.pre_save)
+            signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
+
+            signals.post_delete.disconnect(self.Another.post_delete)
+            signals.pre_delete.disconnect(self.Another.pre_delete)
+
+            signals.post_save.disconnect(self.ExplicitId.post_save)
+
+            signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
+
+            # Check that all our signals got disconnected properly.
+            post_signals = (
+                len(signals.pre_init.receivers),
+                len(signals.post_init.receivers),
+                len(signals.pre_save.receivers),
+                len(signals.pre_save_post_validation.receivers),
+                len(signals.post_save.receivers),
+                len(signals.pre_delete.receivers),
+                len(signals.post_delete.receivers),
+                len(signals.pre_bulk_insert.receivers),
+                len(signals.post_bulk_insert.receivers),
+            )
+
+            await self.ExplicitId.aobjects.delete()
+
+            # Note that there is a chance that the following assert fails in case
+            # some receivers (eventually created in other tests)
+            # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
+            assert self.pre_signals == post_signals
+        finally:
+            await reset_async_connections()
+
+    async def test_model_signals(self):
+        """Model saves should throw some signals."""
+
+        async def create_author():
+            self.Author(name="Bill Shakespeare")
+
+        async def bulk_create_author_with_load():
+            a1 = self.Author(name="Bill Shakespeare")
+            await self.Author.aobjects.insert([a1], load_bulk=True)
+
+        async def bulk_create_author_without_load():
+            a1 = self.Author(name="Bill Shakespeare")
+            await self.Author.aobjects.insert([a1], load_bulk=False)
+
+        async def load_existing_author():
+            a = self.Author(name="Bill Shakespeare")
+            await a.asave()
+            await self.get_signal_output(lambda: None)  # eliminate signal output
+            _ = await self.Author.aobjects(name="Bill Shakespeare").first()
+
+        assert await self.get_signal_output(create_author) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+        ]
+
+        a1 = self.Author(name="Bill Shakespeare")
+        assert await self.get_signal_output(a1.asave) == [
+            "pre_save signal, Bill Shakespeare",
+            {},
+            "pre_save_post_validation signal, Bill Shakespeare",
+            "Is created",
+            {},
+            "post_save signal, Bill Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is created",
+            {},
+        ]
+
+        await a1.areload()
+        a1.name = "William Shakespeare"
+        assert await self.get_signal_output(a1.asave) == [
+            "pre_save signal, William Shakespeare",
+            {},
+            "pre_save_post_validation signal, William Shakespeare",
+            "Is updated",
+            {},
+            "post_save signal, William Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is updated",
+            {},
+        ]
+        assert await self.get_signal_output(a1.adelete) == [
+            "pre_delete signal, William Shakespeare",
+            {},
+            "post_delete signal, William Shakespeare",
+            {},
+        ]
+
+        assert await self.get_signal_output(load_existing_author) == [
+            "pre_init signal, Author",
+            {"id": 2, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+        ]
+
+        assert await self.get_signal_output(bulk_create_author_with_load) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {},
+            "pre_init signal, Author",
+            {"id": 3, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Is loaded",
+            {},
+        ]
+
+        assert await self.get_signal_output(bulk_create_author_without_load) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {},
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Not loaded",
+            {},
+        ]
+
+    async def test_signal_kwargs(self):
+        """Make sure signal_kwargs is passed to signals calls."""
+
+        async def live_and_let_die():
+            a = self.Author(name="Bill Shakespeare")
+            await a.asave(signal_kwargs={"live": True, "die": False})
+            await a.adelete(signal_kwargs={"live": False, "die": True})
+
+        assert await self.get_signal_output(live_and_let_die) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_save signal, Bill Shakespeare",
+            {"die": False, "live": True},
+            "pre_save_post_validation signal, Bill Shakespeare",
+            "Is created",
+            {"die": False, "live": True},
+            "post_save signal, Bill Shakespeare",
+            "post_save dirty keys, ['name']",
+            "Is created",
+            {"die": False, "live": True},
+            "pre_delete signal, Bill Shakespeare",
+            {"die": True, "live": False},
+            "post_delete signal, Bill Shakespeare",
+            {"die": True, "live": False},
+        ]
+
+        async def bulk_create_author():
+            a1 = self.Author(name="Bill Shakespeare")
+            await self.Author.aobjects.insert([a1], signal_kwargs={"key": True})
+
+        assert await self.get_signal_output(bulk_create_author) == [
+            "pre_init signal, Author",
+            {"name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = True",
+            "pre_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            {"key": True},
+            "pre_init signal, Author",
+            {"id": 2, "name": "Bill Shakespeare"},
+            "post_init signal, Bill Shakespeare, document._created = False",
+            "post_bulk_insert signal, [<Author: Bill Shakespeare>]",
+            "Is loaded",
+            {"key": True},
+        ]
+
+    async def test_queryset_delete_signals(self):
+        """Queryset delete should throw some signals."""
+
+        await self.Another(name="Bill Shakespeare").asave()
+        assert await self.get_signal_output(self.Another.aobjects.delete) == [
+            "pre_delete signal, Bill Shakespeare",
+            {},
+            "post_delete signal, Bill Shakespeare",
+            {},
+        ]
+
+    async def test_signals_with_explicit_doc_ids(self):
+        """Model saves must have a created flag the first time."""
+        ei = self.ExplicitId(id=123)
+        # post save must received the created flag, even if there's already
+        # an object id present
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+        # second time, it must be an update
+        assert await self.get_signal_output(ei.asave) == ["Is updated"]
+
+    async def test_signals_with_switch_collection(self):
+        ei = self.ExplicitId(id=123)
+        ei.switch_collection("explicit__1")
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+        ei.switch_collection("explicit__1")
+        assert await self.get_signal_output(ei.asave) == ["Is updated"]
+
+        ei.switch_collection("explicit__1", keep_created=False)
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+        ei.switch_collection("explicit__1", keep_created=False)
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+
+    async def test_signals_with_switch_db(self):
+        async_connect(MONGO_TEST_DB)
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+
+        ei = self.ExplicitId(id=123)
+        ei.switch_db("testdb-1")
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+        ei.switch_db("testdb-1")
+        assert await self.get_signal_output(ei.asave) == ["Is updated"]
+
+        ei.switch_db("testdb-1", keep_created=False)
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+        ei.switch_db("testdb-1", keep_created=False)
+        assert await self.get_signal_output(ei.asave) == ["Is created"]
+
+    async def test_signals_bulk_insert(self):
+        async def bulk_set_active_post():
+            posts = [
+                self.Post(title="Post 1"),
+                self.Post(title="Post 2"),
+                self.Post(title="Post 3"),
+            ]
+            await self.Post.aobjects.insert(posts)
+
+        results = await self.get_signal_output(bulk_set_active_post)
+        assert results == [
+            "pre_bulk_insert signal, [(<Post: Post 1>, {'active': False}), (<Post: Post 2>, {'active': False}), (<Post: Post 3>, {'active': False})]",
+            {},
+            "post_bulk_insert signal, [(<Post: Post 1>, {'active': True}), (<Post: Post 2>, {'active': True}), (<Post: Post 3>, {'active': True})]",
+            "Is loaded",
+            {},
+        ]

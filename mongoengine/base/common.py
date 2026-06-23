@@ -4,7 +4,6 @@ from mongoengine.errors import NotRegistered
 
 __all__ = ("UPDATE_OPERATORS", "_DocumentRegistry")
 
-
 UPDATE_OPERATORS = {
     "set",
     "unset",
@@ -22,7 +21,6 @@ UPDATE_OPERATORS = {
     "max",
     "rename",
 }
-
 
 _document_registry = {}
 
@@ -78,6 +76,10 @@ class _DocumentRegistry:
     @staticmethod
     def unregister(doc_cls_name):
         _document_registry.pop(doc_cls_name)
+
+    @staticmethod
+    def clear():
+        _document_registry.clear()
 
 
 def _get_documents_by_db(connection_alias, default_connection_alias):

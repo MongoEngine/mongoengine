@@ -15,7 +15,8 @@ MongoDB. To install it, simply run
 
 :doc:`guide/index`
   The Full guide to MongoEngine --- from modeling documents to storing files,
-  from querying for data to firing signals and *everything* between.
+  from querying for data to firing signals and *everything* between. Now with
+  full **asynchronous support**.
 
 :doc:`apireference`
   The complete API documentation --- the innards of documents, querysets and fields.

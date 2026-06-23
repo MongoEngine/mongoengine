@@ -15,7 +15,7 @@ Built-in validation
 ===================
 
 Mongoengine provides different fields that encapsulate the corresponding validation
-out of the box. Validation runs when calling `.validate()` or `.save()`
+out of the box. Validation runs when calling `.validate()`, `.save()` or `.asave()`
 
 .. code-block:: python
 
@@ -31,6 +31,15 @@ out of the box. Validation runs when calling `.validate()` or `.save()`
 
     user2 = User(email='john.doe@garbage.com', age=1000)
     user2.save()        # raises ValidationError (Integer value is too large: ['age'])
+
+    # The asynchronous alternative is as follows:
+
+    user = User(email='invalid@', age=24)
+    user.validate()      # raises ValidationError
+    await user.asave()   # raises ValidationError
+
+    user2 = User(email='john.doe@garbage.com', age=1000)
+    await user2.asave()  # raises ValidationError
 
 Custom validation
 =================
@@ -51,10 +60,16 @@ The following feature can be used to customize the validation:
     Person(full_name='Billy Doe').save()
     Person(full_name='John Doe').save()  # raises ValidationError (John Doe is not a valid name)
 
+    # The asynchronous alternative is as follows:
+
+    await Person(full_name='Billy Doe').asave()
+    await Person(full_name='John Doe').asave()  # raises ValidationError
+
 
 * Document `clean` method
 
-This method is called as part of :meth:`~mongoengine.document.Document.save` and should be used to provide
+This method is called as part of :meth:`~mongoengine.document.Document.save` or
+:meth:`~mongoengine.document.Document.asave` and should be used to provide
 custom model validation and/or to modify some of the field values prior to validation.
 For instance, you could use it to automatically provide a value for a field, or to do validation
 that requires access to more than a single field.
@@ -75,7 +90,7 @@ that requires access to more than a single field.
 
 .. note::
     Cleaning is only called if validation is turned on and when calling
-    :meth:`~mongoengine.Document.save`.
+    :meth:`~mongoengine.Document.save` or :meth:`~mongoengine.Document.asave`.
 
 * Adding custom Field classes
 
@@ -98,6 +113,12 @@ to subclass a Field and encapsulate some validation by overriding the `validate`
     Person(age=1000).save() # raises ValidationError (Integer value is too large: ['age'])
     Person(age=60).save()   # raises ValidationError (Person:None) (60 is not allowed: ['age'])
 
+    # The asynchronous alternative is as follows:
+
+    await Person(age=20).asave()   # passes
+    await Person(age=1000).asave() # raises ValidationError
+    await Person(age=60).asave()   # raises ValidationError
+
 
 .. note::
 
@@ -108,7 +129,8 @@ Skipping validation
 ====================
 
 Although discouraged as it allows to violate fields constraints, if for some reason you need to disable
-the validation and cleaning of a document when you call :meth:`~mongoengine.document.Document.save`, you can use `.save(validate=False)`.
+the validation and cleaning of a document when you call :meth:`~mongoengine.document.Document.save` or
+:meth:`~mongoengine.document.Document.asave`, you can use `.save(validate=False)` or `.asave(validate=False)`.
 
 .. code-block:: python
 
@@ -119,4 +141,10 @@ the validation and cleaning of a document when you call :meth:`~mongoengine.docu
 
     Person(age=1000).save(validate=False)
     person = Person.objects.first()
+    assert person.age == 1000
+
+    # The asynchronous alternative is as follows:
+
+    await Person(age=1000).asave(validate=False)
+    person = await Person.aobjects.first()
     assert person.age == 1000

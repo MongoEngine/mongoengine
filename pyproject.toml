@@ -1,0 +1,110 @@
+[project]
+name = "mongoengine"
+version = "0.30.0"
+description = "MongoEngine is a Python Object-Document Mapper for working with MongoDB."
+authors = [
+    { name = "Harry Marr", email = "harry.marr@gmail.com" }
+]
+maintainers = [
+    { name = "Bastien Gerard", email = "bast.gerard@gmail.com" }
+]
+license = "MIT"
+license-files = [
+    "LICENSE",
+    "AUTHORS",
+]
+readme = "README.rst"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pymongo (>=4.14,<5.0)",
+]
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.15)",
+    "pre-commit (>=4.6)"
+]
+docs = [
+    # Use Sphinx 8.x for Python 3.10-3.11, Sphinx 9.x for Python 3.12+
+    "docutils==0.21.2; python_version < '3.12'",  # Sphinx 8.x requires <0.22
+    "docutils==0.22.4; python_version >= '3.12'",  # Sphinx 9.x supports 0.22+
+    "jinja2==3.1.6",
+    "readthedocs-sphinx-ext==2.2.5",
+    "sphinx==8.1.3; python_version < '3.12'",
+    "sphinx==9.1.0; python_version >= '3.12'",
+    "sphinx-rtd-theme==3.1.0",
+]
+test = [
+    "pytest (>=9.0.3)",
+    "pytest-asyncio (>=1.3)",
+    "pytest-cov (>=7.1)",
+    "coverage (>=7.14)",
+    "blinker (>=1.9)",
+    "pillow (>=12.2)",
+    "tox (>=4.54)",
+    "tox-uv>=1.35.2",
+    "mongomock>=4.3.0"
+]
+
+[project.urls]
+homepage = "http://mongoengine.org/"
+repository = "https://github.com/MongoEngine/mongoengine"
+download_url = "https://github.com/MongoEngine/mongoengine/tarball/master"
+
+[build-system]
+requires = ["uv_build>=0.11.16,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mongoengine"
+module-root = ""
+
+
+# Ruff Configurations
+[tool.ruff]
+#line-length = 79
+
+exclude = ["docs"]
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "W", # pycodestyle warnings
+    "B", # flake8-bugbear
+    "I", # isort
+]
+
+ignore = [
+    "I002", # additional newline in imports
+    "W605", # invalid escape sequence
+    "B007", # loop control variable not used
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 47
+
+[tool.ruff.lint.isort]
+known-first-party = ["mongoengine", "tests"]
+default-section = "third-party"
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true
+lines-after-imports = 1

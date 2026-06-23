@@ -4,16 +4,15 @@ import warnings
 from mongoengine.base.common import _DocumentRegistry
 from mongoengine.base.fields import (
     BaseField,
-    ComplexBaseField,
     ObjectIdField,
+    ComplexBaseField,
 )
+from mongoengine.base.queryset import QuerySetManager, DO_NOTHING
 from mongoengine.common import _import_class
-from mongoengine.errors import InvalidDocumentError
-from mongoengine.queryset import (
-    DO_NOTHING,
+from mongoengine.errors import (
+    InvalidDocumentError,
     DoesNotExist,
     MultipleObjectsReturned,
-    QuerySetManager,
 )
 
 __all__ = ("DocumentMetaclass", "TopLevelDocumentMetaclass")
@@ -49,9 +48,9 @@ class DocumentMetaclass(type):
                 elif hasattr(base, "_meta"):
                     meta.merge(base._meta)
             attrs["_meta"] = meta
-            attrs["_meta"][
-                "abstract"
-            ] = False  # 789: EmbeddedDocument shouldn't inherit abstract
+            attrs["_meta"]["abstract"] = (
+                False  # 789: EmbeddedDocument shouldn't inherit abstract
+            )
 
         # If allow_inheritance is True, add a "_cls" string field to the attrs
         if attrs["_meta"].get("allow_inheritance"):
@@ -162,7 +161,6 @@ class DocumentMetaclass(type):
             Document,
             EmbeddedDocument,
             DictField,
-            CachedReferenceField,
         ) = mcs._import_classes()
 
         if issubclass(new_class, Document):
@@ -177,17 +175,6 @@ class DocumentMetaclass(type):
             if f.owner_document is None:
                 f.owner_document = new_class
             delete_rule = getattr(f, "reverse_delete_rule", DO_NOTHING)
-            if isinstance(f, CachedReferenceField):
-                if issubclass(new_class, EmbeddedDocument):
-                    raise InvalidDocumentError(
-                        "CachedReferenceFields is not allowed in EmbeddedDocuments"
-                    )
-
-                if f.auto_sync:
-                    f.start_listener()
-
-                f.document_type._cached_reference_fields.append(f)
-
             if isinstance(f, ComplexBaseField) and hasattr(f, "field"):
                 delete_rule = getattr(f.field, "reverse_delete_rule", DO_NOTHING)
                 if isinstance(f, DictField) and delete_rule != DO_NOTHING:
@@ -240,8 +227,7 @@ class DocumentMetaclass(type):
         Document = _import_class("Document")
         EmbeddedDocument = _import_class("EmbeddedDocument")
         DictField = _import_class("DictField")
-        CachedReferenceField = _import_class("CachedReferenceField")
-        return Document, EmbeddedDocument, DictField, CachedReferenceField
+        return Document, EmbeddedDocument, DictField
 
 
 class TopLevelDocumentMetaclass(DocumentMetaclass):
@@ -376,8 +362,15 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
         # Provide a default queryset unless exists or one has been set
         if "objects" not in dir(new_class):
             new_class.objects = QuerySetManager()
+        if "aobjects" not in dir(new_class):
+            from mongoengine.asynchronous import AsyncQuerySet
+
+            new_class.aobjects = QuerySetManager(default=AsyncQuerySet)
 
         # Validate the fields and set primary key if needed
+        ListField = _import_class("ListField")
+        GenericReferenceField = _import_class("GenericReferenceField")
+        ReferenceField = _import_class("ReferenceField")
         for field_name, field in new_class._fields.items():
             if field.primary_key:
                 # Ensure only one primary key is set
@@ -389,6 +382,24 @@ class TopLevelDocumentMetaclass(DocumentMetaclass):
                 if not current_pk:
                     new_class._meta["id_field"] = field_name
                     new_class.id = field
+            if isinstance(field, GenericReferenceField) and field.choices:
+                resolved = []
+                for ch in field.choices:
+                    if isinstance(ch, str) and ch.lower() == "self":
+                        resolved.append(new_class)
+                    else:
+                        resolved.append(ch)
+                field.choices = tuple(resolved)
+            if isinstance(field, ListField) and isinstance(
+                field.field, GenericReferenceField
+            ):
+                resolved = []
+                for ch in field.field.choices:
+                    if isinstance(ch, str) and ch.lower() == "self":
+                        resolved.append(new_class)
+                    else:
+                        resolved.append(ch)
+                field.field.choices = tuple(resolved)
 
         # If the document doesn't explicitly define a primary key field, create
         # one. Make it an ObjectIdField and give it a non-clashing name ("id"

@@ -23,6 +23,9 @@ In the following example, a document is created to store details about animals, 
         marmot.photo.put(fd, content_type = 'image/jpeg')
     marmot.save()
 
+.. note::
+    For the asynchronous alternative, see :doc:`async-gridfs`.
+
 Retrieval
 ---------
 
@@ -87,3 +90,6 @@ the :func:`put` method so even metadata can (and should) be replaced::
     another_marmot = open('another_marmot.png', 'rb')
     marmot.photo.replace(another_marmot, content_type='image/png')  # Replaces the GridFS document
     marmot.save()                                                   # Replaces the GridFS reference contained in marmot instance
+
+.. seealso::
+    For asynchronous GridFS operations, see :doc:`async-gridfs`.

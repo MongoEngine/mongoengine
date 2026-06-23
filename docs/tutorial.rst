@@ -29,6 +29,12 @@ of the MongoDB database to use::
 
     connect('tumblelog')
 
+The asynchronous alternative is :func:`~mongoengine.async_connect`::
+
+    from mongoengine import async_connect
+
+    async_connect('tumblelog')
+
 There are lots of options for connecting to MongoDB, for more information about
 them see the :ref:`guide-connecting` guide.
 
@@ -198,6 +204,10 @@ object::
 
     ross = User(email='ross@example.com', first_name='Ross', last_name='Lawley').save()
 
+    # The asynchronous alternative is as follows:
+
+    ross = await User(email='ross@example.com', first_name='Ross', last_name='Lawley').asave()
+
 .. note::
     We could have also defined our user using attribute syntax::
 
@@ -205,6 +215,13 @@ object::
         ross.first_name = 'Ross'
         ross.last_name = 'Lawley'
         ross.save()
+
+        # The asynchronous alternative is as follows:
+
+        ross = User(email='ross@example.com')
+        ross.first_name = 'Ross'
+        ross.last_name = 'Lawley'
+        await ross.asave()
 
 Assign another user to a variable called ``john``, just like we did above with
 ``ross``.
@@ -221,8 +238,22 @@ Now that we've got our users in the database, let's add a couple of posts::
     post2.tags = ['mongoengine']
     post2.save()
 
+    # The asynchronous alternative is as follows:
+
+    post1 = TextPost(title='Fun with MongoEngine', author=john)
+    post1.content = 'Took a look at MongoEngine today, looks pretty cool.'
+    post1.tags = ['mongodb', 'mongoengine']
+    await post1.asave()
+
+    post2 = LinkPost(title='MongoEngine Documentation', author=ross)
+    post2.link_url = 'http://docs.mongoengine.com/'
+    post2.tags = ['mongoengine']
+    await post2.asave()
+
 .. note:: If you change a field on an object that has already been saved and
     then call :meth:`save` again, the document will be updated.
+
+    The same applies to the asynchronous :meth:`asave` method.
 
 Accessing our data
 ==================
@@ -231,9 +262,16 @@ So now we've got a couple of posts in our database, how do we display them?
 Each document class (i.e. any class that inherits either directly or indirectly
 from :class:`~mongoengine.Document`) has an :attr:`objects` attribute, which is
 used to access the documents in the database collection associated with that
-class. So let's see how we can get our posts' titles::
+class. The asynchronous equivalent is the :attr:`aobjects` attribute.
+
+So let's see how we can get our posts' titles::
 
     for post in Post.objects:
+        print(post.title)
+
+    # The asynchronous alternative is as follows:
+
+    async for post in Post.aobjects:
         print(post.title)
 
 Retrieving type-specific information
@@ -246,11 +284,17 @@ to use the :attr:`objects` attribute of a subclass of :class:`Post`::
     for post in TextPost.objects:
         print(post.content)
 
+    # The asynchronous alternative is as follows:
+
+    async for post in TextPost.aobjects:
+        print(post.content)
+
 Using TextPost's :attr:`objects` attribute only returns documents that were
 created using :class:`TextPost`. Actually, there is a more general rule here:
 the :attr:`objects` attribute of any subclass of :class:`~mongoengine.Document`
 only looks for documents that were created using that subclass or one of its
-subclasses.
+subclasses. The same rule applies to the :attr:`aobjects` attribute in an
+asynchronous context.
 
 So how would we display all of our posts, showing only the information that
 corresponds to each post's specific type? There is a better way than just using
@@ -270,6 +314,18 @@ practice::
         if isinstance(post, LinkPost):
             print('Link: {}'.format(post.link_url))
 
+    # The asynchronous alternative is as follows:
+
+    async for post in Post.aobjects:
+        print(post.title)
+        print('=' * len(post.title))
+
+        if isinstance(post, TextPost):
+            print(post.content)
+
+        if isinstance(post, LinkPost):
+            print('Link: {}'.format(post.link_url))
+
 This would print the title of each post, followed by the content if it was a
 text post, and "Link: <url>" if it was a link post.
 
@@ -279,10 +335,17 @@ Searching our posts by tag
 The :attr:`objects` attribute of a :class:`~mongoengine.Document` is actually a
 :class:`~mongoengine.queryset.QuerySet` object. This lazily queries the
 database only when you need the data. It may also be filtered to narrow down
-your query.  Let's adjust our query so that only posts with the tag "mongodb"
-are returned::
+your query. The asynchronous equivalent is the :attr:`aobjects` attribute, which
+returns an :class:`~mongoengine.queryset.AsyncQuerySet` object.
+
+Let's adjust our query so that only posts with the tag "mongodb" are returned::
 
     for post in Post.objects(tags='mongodb'):
+        print(post.title)
+
+    # The asynchronous alternative is as follows:
+
+    async for post in Post.aobjects(tags='mongodb'):
         print(post.title)
 
 There are also methods available on :class:`~mongoengine.queryset.QuerySet`
@@ -292,6 +355,11 @@ the first matched by the query you provide. Aggregation functions may also be
 used on :class:`~mongoengine.queryset.QuerySet` objects::
 
     num_posts = Post.objects(tags='mongodb').count()
+    print('Found {} posts with tag "mongodb"'.format(num_posts))
+
+    # The asynchronous alternative is as follows:
+
+    num_posts = await Post.aobjects(tags='mongodb').count()
     print('Found {} posts with tag "mongodb"'.format(num_posts))
 
 Learning more about MongoEngine

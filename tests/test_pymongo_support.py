@@ -1,6 +1,6 @@
 from mongoengine import Document
 from mongoengine.pymongo_support import count_documents
-from tests.utils import MongoDBTestCase
+from tests.synchronous.utils import MongoDBTestCase
 
 
 class TestPymongoSupport(MongoDBTestCase):

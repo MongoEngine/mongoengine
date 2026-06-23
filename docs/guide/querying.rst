@@ -5,13 +5,25 @@ Querying the database
 is used for accessing the objects in the database associated with the class.
 The :attr:`objects` attribute is actually a
 :class:`~mongoengine.queryset.QuerySetManager`, which creates and returns a new
-:class:`~mongoengine.queryset.QuerySet` object on access. The
-:class:`~mongoengine.queryset.QuerySet` object may be iterated over to
+:class:`~mongoengine.queryset.QuerySet` or
+:class:`~mongoengine.queryset.AsyncQuerySet` object on access.
+
+MongoEngine provides two QuerySet classes:
+:class:`~mongoengine.queryset.QuerySet` for synchronous operations and
+:class:`~mongoengine.queryset.AsyncQuerySet` for asynchronous operations.
+
+The :class:`~mongoengine.queryset.QuerySet` object may be iterated over to
 fetch documents from the database::
 
     # Prints out the names of all the users in the database
     for user in User.objects:
         print user.name
+
+    # The asynchronous alternative is as follows:
+
+    # Prints out the names of all the users in the database
+    async for user in User.aobjects:
+        print(user.name)
 
 .. note::
 
@@ -39,6 +51,16 @@ syntax::
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
 
+    # The asynchronous alternative is as follows:
+
+    # This will return an AsyncQuerySet that will only iterate over users whose
+    # 'country' field is set to 'uk'
+    uk_users = User.aobjects(country='uk')
+
+    # This will return an AsyncQuerySet that will only iterate over pages that have
+    # been written by a user whose 'country' field is set to 'uk'
+    uk_pages = Page.aobjects(author__country='uk')
+
 .. note::
 
    (version **0.9.1+**) if your field name is like mongodb operator name (for example
@@ -55,6 +77,11 @@ operator name to a key with a double-underscore::
 
     # Only find users whose age is 18 or less
     young_users = Users.objects(age__lte=18)
+
+    # The asynchronous alternative is as follows:
+
+    # Only find users whose age is 18 or less
+    young_users = Users.aobjects(age__lte=18)
 
 Available operators are as follows:
 
@@ -155,6 +182,13 @@ The following were added in MongoEngine 0.8 for
         loc.objects(point__near=[40, 5], point__max_distance=1000)
         loc.objects(point__near=[40, 5], point__min_distance=100)
 
+    # The asynchronous alternative is as follows:
+
+    # Using PointField, LineStringField and PolygonField
+    await loc.aobjects(point__geo_within=[[[40, 5], [40, 6], [41, 6], [40, 5]]]).to_list()
+    await loc.aobjects(point__near=[40, 5]).to_list()
+    await loc.aobjects(point__near=[40, 5], point__max_distance=1000).to_list()
+
 The older 2D indexes are still supported with the
 :class:`~mongoengine.fields.GeoPointField`:
 
@@ -190,21 +224,40 @@ lists that contain that item will be matched::
     # 'tags' list
     Page.objects(tags='coding')
 
+    # The asynchronous alternative is as follows:
+
+    # This will match all pages that have the word 'coding' as an item in the
+    # 'tags' list
+    Page.aobjects(tags='coding')
+
 It is possible to query by position in a list by using a numerical value as a
 query operator. So if you wanted to find all pages whose first tag was ``db``,
 you could use the following query::
 
     Page.objects(tags__0='db')
 
+    # The asynchronous alternative is as follows:
+
+    Page.aobjects(tags__0='db')
+
 The string queries operators can be used as well for querying a list field, e.g.::
 
     Page.objects(tags__iexact='db')
+
+    # The asynchronous alternative is as follows:
+
+    Page.aobjects(tags__iexact='db')
 
 If you only want to fetch part of a list eg: you want to paginate a list, then
 the `slice` operator is required::
 
     # comments - skip 5, limit 10
     Page.objects.fields(slice__comments=[5, 10])
+
+    # The asynchronous alternative is as follows:
+
+    # comments - skip 5, limit 10
+    Page.aobjects.fields(slice__comments=[5, 10])
 
 For updating documents, if you don't know the position in a list, you can use
 the $ positional operator ::
@@ -214,6 +267,11 @@ the $ positional operator ::
 However, this doesn't map well to the syntax so you can also use a capital S instead ::
 
     Post.objects(comments__by="joe").update(inc__comments__S__votes=1)
+
+    # The asynchronous alternative is as follows:
+
+    await Post.aobjects(comments__by="joe").update(**{'inc__comments__$__votes': 1})
+    await Post.aobjects(comments__by="joe").update(inc__comments__S__votes=1)
 
 .. note::
     Due to :program:`Mongo`, currently the $ operator only applies to the
@@ -227,13 +285,25 @@ be integrated directly into the query. This is done using the ``__raw__`` keywor
 
     Page.objects(__raw__={'tags': 'coding'})
 
+    # The asynchronous alternative is as follows:
+
+    await Page.aobjects(__raw__={'tags': 'coding'}).to_list()
+
 Similarly, a raw update can be provided to the :meth:`~mongoengine.queryset.QuerySet.update` method::
 
     Page.objects(tags='coding').update(__raw__={'$set': {'tags': 'coding'}})
 
+    # The asynchronous alternative is as follows:
+
+    await Page.aobjects(tags='coding').update(__raw__={'$set': {'tags': 'coding'}})
+
 And the two can also be combined::
 
     Page.objects(__raw__={'tags': 'coding'}).update(__raw__={'$set': {'tags': 'coding'}})
+
+    # The asynchronous alternative is as follows:
+
+    await Page.aobjects(__raw__={'tags': 'coding'}).update(__raw__={'$set': {'tags': 'coding'}})
 
 
 Update with Aggregation Pipeline
@@ -246,6 +316,13 @@ and provide the pipeline as a list
 
     # 'tags' field is set to 'coding is fun'
     Page.objects(tags='coding').update(__raw__=[
+        {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
+        ],
+    )
+
+    # The asynchronous alternative is as follows:
+
+    await Page.aobjects(tags='coding').update(__raw__=[
         {"$set": {"tags": {"$concat": ["$tags", "is fun"]}}}
         ],
     )
@@ -268,6 +345,12 @@ This is done by using ``__raw__`` keyword argument to the update method and prov
 
     )
 
+    # The asynchronous alternative is as follows:
+
+    await Page.aobjects().update(__raw__={'$set': {"tags.$[element]": 'test11111'}},
+                                 array_filters=[{"element": {'$eq': 'test2'}}],
+                                 )
+
 
 Sorting/Ordering results
 ========================
@@ -279,6 +362,14 @@ The order may be specified by prepending each of the keys by "+" or "-". Ascendi
 
     # Order by ascending date first, then descending title
     blogs = BlogPost.objects().order_by('+date', '-title')
+
+    # The asynchronous alternative is as follows:
+
+    # Order by ascending date
+    blogs = BlogPost.aobjects().order_by('date')
+
+    # Order by ascending date first, then descending title
+    blogs = BlogPost.aobjects().order_by('+date', '-title')
 
 
 Limiting and skipping results
@@ -299,6 +390,17 @@ is preferred for achieving this::
     # 5 users, starting from the 11th user found
     users = User.objects[10:15]
 
+    # The asynchronous alternative is as follows:
+
+    # Only the first 5 people
+    users = User.aobjects.limit(5)
+
+    # All except for the first 5 people
+    users = User.aobjects.skip(5)
+
+    # 5 users, starting from the 11th user found
+    users = User.aobjects.skip(10).limit(5)
+
 You may also index the query to retrieve a single result. If an item at that
 index does not exists, an :class:`IndexError` will be raised. A shortcut for
 retrieving the first result and returning :attr:`None` if no result exists is
@@ -312,6 +414,23 @@ provided (:meth:`~mongoengine.queryset.QuerySet.first`)::
     True
     >>> User(name='Test User').save()
     >>> User.objects[0] == User.objects.first()
+    True
+
+    # The asynchronous alternative is as follows:
+
+    >>> # Make sure there are no users
+    >>> await User.adrop_collection()
+    >>> await User.aobjects.first() == None
+    True
+    >>> await User(name='Test User').asave()
+    >>> await User.aobjects.first() != None
+    True
+    >>> # Note: AsyncQuerySet does not support indexing directly with await.
+    >>> # Use .first() or skip/limit instead.
+    >>> await User.aobjects.skip(0).first() == await User.aobjects.first()
+    True
+    >>> # limit(1).first() is also equivalent to first()
+    >>> await User.aobjects.limit(1).first() == await User.aobjects.first()
     True
 
 Retrieving unique results
@@ -369,6 +488,13 @@ custom manager methods as you like::
     assert len(BlogPost.objects) == 2
     assert len(BlogPost.live_posts()) == 1
 
+    # The asynchronous alternative is as follows:
+
+    await BlogPost(title='test1', published=False).asave()
+    await BlogPost(title='test2', published=True).asave()
+    assert await BlogPost.aobjects.count() == 2
+    assert await BlogPost.live_posts.count() == 1
+
 Custom QuerySets
 ================
 Should you want to add custom methods for interacting with or filtering
@@ -388,6 +514,23 @@ a document, set ``queryset_class`` to the custom class in a
     # To call:
     Page.objects.get_awesome()
 
+    # The asynchronous alternative is as follows:
+
+    # Define AwesomerAsyncQuerySet
+    class AwesomerAsyncQuerySet(AsyncQuerySet):
+        def get_awesome(self):
+            return self.filter(awesome=True)
+
+    # Set it in meta
+    class Page(Document):
+        meta = {'queryset_class': AwesomerQuerySet}
+        # To support async, you need to set it for aobjects too if it's not default
+        # But usually custom AsyncQuerySet is used like this:
+        aobjects = QuerySetManager(default=AwesomerAsyncQuerySet)
+
+    # To call:
+    await Page.aobjects.get_awesome().to_list()
+
 .. versionadded:: 0.4
 
 Aggregation
@@ -405,6 +548,10 @@ Just as with limiting and skipping results, there is a method on a
 
     num_users = User.objects.count()
 
+    # The asynchronous alternative is as follows:
+
+    num_users = await User.aobjects.count()
+
 You could technically use ``len(User.objects)`` to get the same result, but it
 would be significantly slower than :meth:`~mongoengine.queryset.QuerySet.count`.
 When you execute a server-side count query, you let MongoDB do the heavy
@@ -420,6 +567,10 @@ You may sum over the values of a specific field on documents using
 
     yearly_expense = Employee.objects.sum('salary')
 
+    # The asynchronous alternative is as follows:
+
+    yearly_expense = await Employee.aobjects.sum('salary')
+
 .. note::
 
    If the field isn't present on a document, that document will be ignored from
@@ -429,6 +580,10 @@ To get the average (mean) of a field on a collection of documents, use
 :meth:`~mongoengine.queryset.QuerySet.average`::
 
     mean_age = User.objects.average('age')
+
+    # The asynchronous alternative is as follows:
+
+    mean_age = await User.aobjects.average('age')
 
 As MongoDB provides native lists, MongoEngine provides a helper method to get a
 dictionary of the frequencies of items in lists across an entire collection --
@@ -440,6 +595,14 @@ would be generating "tag-clouds"::
 
     # After adding some tagged articles...
     tag_freqs = Article.objects.item_frequencies('tag', normalize=True)
+
+    from operator import itemgetter
+    top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
+
+    # The asynchronous alternative is as follows:
+
+    # After adding some tagged articles...
+    tag_freqs = await Article.aobjects.item_frequencies('tag', normalize=True)
 
     from operator import itemgetter
     top_tags = sorted(tag_freqs.items(), key=itemgetter(1), reverse=True)[:10]
@@ -462,6 +625,14 @@ An example of its use would be::
             {"$project": {"_id": 0, "name": {"$toUpper": "$name"}}}
             ]
         data = Person.objects().aggregate(pipeline)
+        assert data == [{'name': 'BOB'}, {'name': 'JOHN'}]
+
+        # The asynchronous alternative is as follows:
+
+        # Person(name='John').asave()
+        # Person(name='Bob').asave()
+        # ...
+        data = await Person.aobjects().aggregate(pipeline).to_list()
         assert data == [{'name': 'BOB'}, {'name': 'JOHN'}]
 
 Query efficiency and performance
@@ -491,6 +662,16 @@ will be given::
     ...
     >>> Film(title='The Shawshank Redemption', year=1994, rating=5).save()
     >>> f = Film.objects.only('title').first()
+    >>> f.title
+    'The Shawshank Redemption'
+    >>> f.year   # None
+    >>> f.rating # default value
+    3
+
+    # The asynchronous alternative is as follows:
+
+    >>> await Film(title='The Shawshank Redemption', year=1994, rating=5).asave()
+    >>> f = await Film.aobjects.only('title').first()
     >>> f.title
     'The Shawshank Redemption'
     >>> f.year   # None
@@ -536,11 +717,25 @@ data. To turn off dereferencing of the results of a query use
     post = Post.objects.no_dereference().first()
     assert(isinstance(post.author, DBRef))
 
+    # The asynchronous alternative is as follows:
+
+    post = await Post.aobjects.no_dereference().first()
+    assert(isinstance(post.author, DBRef))
+
 You can also turn off all dereferencing for a fixed period by using the
 :class:`~mongoengine.context_managers.no_dereference` context manager::
 
     with no_dereference(Post):
         post = Post.objects.first()
+        assert(isinstance(post.author, DBRef))
+
+    # Outside the context manager dereferencing occurs.
+    assert(isinstance(post.author, User))
+
+    # The asynchronous alternative is as follows:
+
+    async with no_dereference(Post):
+        post = await Post.aobjects.first()
         assert(isinstance(post.author, DBRef))
 
     # Outside the context manager dereferencing occurs.
@@ -569,6 +764,14 @@ calling it with keyword arguments::
 
     # Get top posts
     Post.objects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000))
+
+    # The asynchronous alternative is as follows:
+
+    # Get published posts
+    await Post.aobjects(Q(published=True) | Q(publish_date__lte=datetime.now())).to_list()
+
+    # Get top posts
+    await Post.aobjects((Q(featured=True) & Q(hits__gte=1000)) | Q(hits__gte=5000)).to_list()
 
 .. warning:: You have to use bitwise operators.  You cannot use ``or``, ``and``
     to combine queries as ``Q(a=a) or Q(b=b)`` is not the same as
@@ -622,6 +825,23 @@ modifier comes before the field, not after it::
     'Example Post'
     >>> BlogPost.objects(id=post.id).update_one(push__tags='nosql')
     >>> post.reload()
+    >>> post.tags
+    ['database', 'nosql']
+
+    # The asynchronous alternative is as follows:
+
+    >>> post = BlogPost(title='Test', page_views=0, tags=['database'])
+    >>> await post.asave()
+    >>> await BlogPost.aobjects(id=post.id).update_one(inc__page_views=1)
+    >>> await post.reload()
+    >>> post.page_views
+    1
+    >>> await BlogPost.aobjects(id=post.id).update_one(set__title='Example Post')
+    >>> await post.reload()
+    >>> post.title
+    'Example Post'
+    >>> await BlogPost.aobjects(id=post.id).update_one(push__tags='nosql')
+    >>> await post.reload()
     >>> post.tags
     ['database', 'nosql']
 
@@ -720,6 +940,24 @@ example)::
         options = {'includeNegatives': include_negatives}
         return document.objects.exec_js(code, field_name, **options)
 
+    # The asynchronous alternative is as follows:
+
+    async def sum_field_async(document, field_name, include_negatives=True):
+        code = """
+        function(sumField) {
+            var total = 0.0;
+            db[collection].find(query).forEach(function(doc) {
+                var val = doc[sumField];
+                if (val >= 0.0 || options.includeNegatives) {
+                    total += val;
+                }
+            });
+            return total;
+        }
+        """
+        options = {'includeNegatives': include_negatives}
+        return await document.aobjects.exec_js(code, field_name, **options)
+
 As fields in MongoEngine may use different names in the database (set using the
 :attr:`db_field` keyword argument to a :class:`Field` constructor), a mechanism
 exists for replacing MongoEngine field names with the database field names in
@@ -765,3 +1003,11 @@ following example shows how the substitutions are made::
         return comments;
     }
     """)
+
+    # The asynchronous alternative is as follows:
+
+    # BlogPost.aobjects.exec_js(...)
+
+
+.. note::
+    Async support for ``exec_js`` is available via ``aobjects.exec_js``.

@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = uv run sphinx-build
 PAPER         =
 BUILDDIR      = _build
 
@@ -24,8 +24,6 @@ help:
 	@echo "  linkcheck to check all external links for integrity"
 	@echo "  doctest   to run all doctests embedded in the documentation (if enabled)"
 
-install-deps:
-	-pip install -r requirements.txt
 
 clean:
 	-rm -rf $(BUILDDIR)/*
@@ -36,7 +34,7 @@ html:
 	@echo "Build finished. Check $(BUILDDIR)/html/index.html"
 
 html-readthedocs:
-	$(SPHINXBUILD) -T -E -b readthedocs $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(SPHINXBUILD) -T -E -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 	@echo "Open in browser: file://`realpath $(BUILDDIR)/html/index.html`"
 

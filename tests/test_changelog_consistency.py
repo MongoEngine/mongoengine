@@ -9,9 +9,9 @@ def test_package_version_described_in_changelog():
     """Ensures that changelog is updated when version is incremented"""
     version_str = get_version()
     changelog_content = Path(os.path.join(DOCS_DIR, "changelog.rst")).read_text()
-    assert (
-        version_str in changelog_content
-    ), "Version in __init__.py not present in changelog"
+    assert version_str in changelog_content, (
+        "Version in __init__.py not present in changelog"
+    )
 
 
 def test_package_version_incremented_when_new_version_added_to_changelog():

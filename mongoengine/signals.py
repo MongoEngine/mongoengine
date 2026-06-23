@@ -38,6 +38,10 @@ except ImportError:
             )
 
         send = lambda *a, **kw: None  # noqa
+
+        async def send_async(self, *a, **kw):
+            """Fake send_async as no-op fallback when blinker is unavailable."""
+
         connect = disconnect = has_receivers_for = receivers_for = (
             temporarily_connected_to
         ) = _fail

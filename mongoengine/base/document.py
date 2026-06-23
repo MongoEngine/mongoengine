@@ -52,15 +52,20 @@ class BaseDocument:
         "_initialised",
         "_created",
         "_data",
+        "_db_alias",
         "_dynamic_fields",
         "_auto_id_field",
         "_db_field_map",
         "__weakref__",
+        "_select_related",
     )
 
     _dynamic = False
     _dynamic_lock = True
     STRICT = False
+    # Cache for `to_mongo` parameter detection per Field class to avoid
+    # repeated introspection of function signatures on hot paths.
+    _to_mongo_param_cache = {}
 
     def __init__(self, *args, **values):
         """
@@ -75,6 +80,7 @@ class BaseDocument:
         """
         self._initialised = False
         self._created = True
+        self._select_related = None
 
         if args:
             raise TypeError(
@@ -123,7 +129,13 @@ class BaseDocument:
             field = self._fields.get(key)
             if field or key in ("id", "pk", "_cls"):
                 if __auto_convert and value is not None:
-                    if field and not isinstance(field, FileField):
+                    from mongoengine.asynchronous import AsyncQuerySet
+
+                    if (
+                        field
+                        and not isinstance(value, AsyncQuerySet)
+                        and not isinstance(field, FileField)
+                    ):
                         value = field.to_python(value)
                 setattr(self, key, value)
             else:
@@ -336,11 +348,25 @@ class BaseDocument:
         fields = fields or []
 
         data = SON()
-        data["_id"] = None
+        # _id is set by its corresponding field below when applicable
         data["_cls"] = self._class_name
 
-        # only root fields ['test1.a', 'test2'] => ['test1', 'test2']
-        root_fields = {f.split(".")[0] for f in fields}
+        # Preprocess requested fields once:
+        # - Map root field -> list of nested paths (stripped of the root and dot)
+        # - And the set of roots to quickly filter top-level iteration
+        if fields:
+            embedded_map = {}
+            for f in fields:
+                if "." in f:
+                    root, rest = f.split(".", 1)
+                    embedded_map.setdefault(root, []).append(rest)
+                else:
+                    # ensure presence of the root with empty selection
+                    embedded_map.setdefault(f, [])
+            root_fields = set(embedded_map)
+        else:
+            embedded_map = None
+            root_fields = set()
 
         for field_name in self:
             if root_fields and field_name not in root_fields:
@@ -353,25 +379,28 @@ class BaseDocument:
                 field = self._dynamic_fields.get(field_name)
 
             if value is not None:
-                f_inputs = field.to_mongo.__code__.co_varnames
+                # Discover accepted parameters for this Field.to_mongo only once per class
+                cache = BaseDocument._to_mongo_param_cache
+                f_cls = field.__class__
+                params = cache.get(f_cls)
+                if params is None:
+                    varnames = field.to_mongo.__code__.co_varnames
+                    params = (
+                        ("fields" in varnames),
+                        ("use_db_field" in varnames),
+                    )
+                    cache[f_cls] = params
+
+                accepts_fields, accepts_use_db_field = params
+
                 ex_vars = {}
-                if fields and "fields" in f_inputs:
-                    key = "%s." % field_name
-                    embedded_fields = [
-                        i.replace(key, "") for i in fields if i.startswith(key)
-                    ]
+                if embedded_map is not None and accepts_fields:
+                    ex_vars["fields"] = embedded_map.get(field_name, [])
 
-                    ex_vars["fields"] = embedded_fields
-
-                if "use_db_field" in f_inputs:
+                if accepts_use_db_field:
                     ex_vars["use_db_field"] = use_db_field
 
                 value = field.to_mongo(value, **ex_vars)
-
-            # Handle self generating fields
-            if value is None and field._auto_gen:
-                value = field.generate()
-                self._data[field_name] = value
 
             if value is not None or field.null:
                 if use_db_field:
@@ -641,9 +670,7 @@ class BaseDocument:
     def _get_changed_fields(self):
         """Return a list of all fields that have explicitly been changed."""
         EmbeddedDocument = _import_class("EmbeddedDocument")
-        LazyReferenceField = _import_class("LazyReferenceField")
         ReferenceField = _import_class("ReferenceField")
-        GenericLazyReferenceField = _import_class("GenericLazyReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
         SortedListField = _import_class("SortedListField")
 
@@ -671,9 +698,7 @@ class BaseDocument:
                 if hasattr(field, "field") and isinstance(
                     field.field,
                     (
-                        LazyReferenceField,
                         ReferenceField,
-                        GenericLazyReferenceField,
                         GenericReferenceField,
                     ),
                 ):
@@ -771,14 +796,7 @@ class BaseDocument:
         return set_data, unset_data
 
     @classmethod
-    def _get_collection_name(cls):
-        """Return the collection name for this class. None for abstract
-        class.
-        """
-        return cls._meta.get("collection", None)
-
-    @classmethod
-    def _from_son(cls, son, _auto_dereference=True, created=False):
+    def _from_son(cls, son, created=False):
         """Create an instance of a Document (subclass) from a PyMongo SON (dict)"""
         if son and not isinstance(son, dict):
             raise ValueError(
@@ -807,16 +825,10 @@ class BaseDocument:
         errors_dict = {}
 
         fields = cls._fields
-        if not _auto_dereference:
-            # if auto_deref is turned off, we copy the fields so
-            # we can mutate the auto_dereference of the fields
-            fields = copy.deepcopy(fields)
+        fields = copy.deepcopy(fields)
 
         # Apply field-name / db-field conversion
         for field_name, field in fields.items():
-            field.set_auto_dereferencing(
-                _auto_dereference
-            )  # align the field's auto-dereferencing with the document's
             if field.db_field in data:
                 value = data[field.db_field]
                 try:
@@ -842,8 +854,7 @@ class BaseDocument:
 
         obj = cls(__auto_convert=False, _created=created, **data)
         obj._changed_fields = []
-        if not _auto_dereference:
-            obj._fields = fields
+        # obj._fields = fields
 
         return obj
 
@@ -1076,34 +1087,33 @@ class BaseDocument:
         Returns:
             A list of Field instances for fields that were found or
             strings for sub-fields that weren't.
-
-        Example:
-            >>> user._lookup_field('name')
-            [<mongoengine.fields.StringField at 0x1119bff50>]
-
-            >>> user._lookup_field('roles')
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>]
-
-            >>> user._lookup_field(['roles', 'role'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             <mongoengine.fields.StringField at 0x1119ec050>]
-
-            >>> user._lookup_field('doesnt_exist')
-            raises LookUpError
-
-            >>> user._lookup_field(['roles', 'doesnt_exist'])
-            [<mongoengine.fields.EmbeddedDocumentListField at 0x1119ec250>,
-             'doesnt_exist']
-
         """
-        # TODO this method is WAY too complicated. Simplify it.
-        # TODO don't think returning a string for embedded non-existent fields is desired
-
         ListField = _import_class("ListField")
         DynamicField = _import_class("DynamicField")
+        DictField = _import_class("DictField")
+        MapField = _import_class("MapField")
+        ReferenceField = _import_class("ReferenceField")
+        GenericReferenceField = _import_class("GenericReferenceField")
 
         if not isinstance(parts, (list, tuple)):
             parts = [parts]
+
+        # Helper: resolve document classes for GenericReferenceField choices
+        def _resolve_generic_choices(generic_field):
+            from mongoengine.document import _DocumentRegistry
+
+            choices = getattr(generic_field, "choices", None) or ()
+            resolved = []
+            for ch in choices:
+                if isinstance(ch, str):
+                    dc = _DocumentRegistry.get(ch)
+                elif isinstance(ch, type):
+                    dc = _DocumentRegistry.get(ch.__name__)
+                else:
+                    dc = None
+                if dc is not None:
+                    resolved.append(dc)
+            return resolved
 
         fields = []
         field = None
@@ -1140,58 +1150,210 @@ class BaseDocument:
                         raise LookUpError('Cannot resolve field "%s"' % field_name)
                 else:
                     raise LookUpError('Cannot resolve field "%s"' % field_name)
-            else:
-                ReferenceField = _import_class("ReferenceField")
-                GenericReferenceField = _import_class("GenericReferenceField")
 
-                # If previous field was a reference, throw an error (we
-                # cannot look up fields that are on references).
-                if isinstance(field, (ReferenceField, GenericReferenceField)):
+                fields.append(field)
+                continue
+
+            # ------------------------------------------------------------------
+            # JOINABLE PATH SUPPORT (ReferenceField / GenericReferenceField)
+            # plus ListField(ReferenceField/GenericReferenceField)
+            # ------------------------------------------------------------------
+            join_field = None
+            if isinstance(field, ReferenceField):
+                join_field = field
+            elif isinstance(field, GenericReferenceField):
+                join_field = field
+            elif isinstance(field, ListField) and isinstance(
+                field.field, (ReferenceField, GenericReferenceField)
+            ):
+                join_field = field.field
+
+            if isinstance(join_field, ReferenceField):
+                target = getattr(join_field, "document_type", None) or getattr(
+                    join_field, "document_type_obj", None
+                )
+                if target is None:
                     raise LookUpError(
-                        "Cannot perform join in mongoDB: %s" % "__".join(parts)
+                        'Cannot resolve reference target for "%s"' % join_field.name
                     )
 
-                # If the parent field has a "field" attribute which has a
-                # lookup_member method, call it to find the field
-                # corresponding to this iteration.
+                # Delegate resolution to referenced document. This does NOT perform a join;
+                # it only resolves the field definition so the aggregation/query layer can.
+                sub_field = target._lookup_field([field_name])[0]
+                field = sub_field
+                fields.append(field)
+                continue
+
+            if isinstance(join_field, GenericReferenceField):
+                # choices required in your design
+                choice_classes = _resolve_generic_choices(join_field)
+                if not choice_classes:
+                    raise LookUpError(
+                        'Cannot resolve GenericReferenceField choices for "%s"'
+                        % "__".join(parts)
+                    )
+
+                resolved_fields = []
+                for dc in choice_classes:
+                    resolved_fields.append(dc._lookup_field([field_name])[0])
+
+                # Must be consistent across choices (same Field class)
+                types = {type(f) for f in resolved_fields}
+                if len(types) != 1:
+                    raise LookUpError(
+                        'Ambiguous GenericReferenceField path "%s" (different field types across choices)'
+                        % field_name
+                    )
+
+                field = resolved_fields[0]
+                fields.append(field)
+                continue
+
+            # ------------------------------------------------------------------
+            # MapField/DictField key support:
+            # e.g. my_map__SOMEKEY__number
+            # SOMEKEY is a key, not a schema field.
+            # ------------------------------------------------------------------
+            if isinstance(field, (MapField, DictField)):
+                # Try normal resolution first (some containers expose lookup_member)
+                new_field = None
                 if hasattr(getattr(field, "field", None), "lookup_member"):
                     new_field = field.field.lookup_member(field_name)
-
-                # If the parent field is a DynamicField or if it's part of
-                # a DynamicDocument, mark current field as a DynamicField
-                # with db_name equal to the field name.
-                elif cls._dynamic and (
-                    isinstance(field, DynamicField)
-                    or getattr(getattr(field, "document_type", None), "_dynamic", None)
-                ):
-                    new_field = DynamicField(db_field=field_name)
-
-                # Else, try to use the parent field's lookup_member method
-                # to find the subfield.
                 elif hasattr(field, "lookup_member"):
                     new_field = field.lookup_member(field_name)
 
-                # Raise a LookUpError if all the other conditions failed.
-                else:
-                    raise LookUpError(
-                        "Cannot resolve subfield or operator {} "
-                        "on the field {}".format(field_name, field.name)
-                    )
-
-                # If current field still wasn't found and the parent field
-                # is a ComplexBaseField, add the name current field name and
-                # move on.
-                if not new_field and isinstance(field, ComplexBaseField):
-                    fields.append(field_name)
+                if new_field:
+                    field = new_field
+                    fields.append(field)
                     continue
-                elif not new_field:
-                    raise LookUpError('Cannot resolve field "%s"' % field_name)
 
-                field = new_field  # update field to the new field type
+                # Treat as dictionary key token
+                fields.append(field_name)
+                # Descend into the container value field for the next segment
+                field = field.field
+                continue
 
+            # ------------------------------------------------------------------
+            # Original behavior for embedded/dynamic/complex fields
+            # ------------------------------------------------------------------
+            # If the parent field has a "field" attribute which has a
+            # lookup_member method, call it to find the field
+            if hasattr(getattr(field, "field", None), "lookup_member"):
+                new_field = field.field.lookup_member(field_name)
+
+            # If the parent field is a DynamicField or if it's part of
+            # a DynamicDocument, mark current field as a DynamicField
+            elif cls._dynamic and (
+                isinstance(field, DynamicField)
+                or getattr(getattr(field, "document_type", None), "_dynamic", None)
+            ):
+                new_field = DynamicField(db_field=field_name)
+
+            # Else, try to use the parent field's lookup_member method
+            elif hasattr(field, "lookup_member"):
+                new_field = field.lookup_member(field_name)
+
+            else:
+                raise LookUpError(
+                    "Cannot resolve subfield or operator {} on the field {}".format(
+                        field_name, field.name
+                    )
+                )
+
+            # If current field still wasn't found and the parent field
+            # is a ComplexBaseField, add the name current field name and move on.
+            if not new_field and isinstance(field, ComplexBaseField):
+                fields.append(field_name)
+                continue
+            elif not new_field:
+                raise LookUpError('Cannot resolve field "%s"' % field_name)
+
+            field = new_field
             fields.append(field)
 
         return fields
+
+    @classmethod
+    def _validate_related_chain(doc_cls, parts: list[str]) -> bool:
+        """
+        Validate a field chain like:
+            "author__parent__manager"
+            "comments__user__profile"
+            "meta__owner.name"
+
+        Returns True if the entire chain is valid, else raises LookUpError.
+        """
+
+        current = doc_cls
+
+        for part in parts:
+            field = current._fields.get(part)
+
+            if not field:
+                raise LookUpError(
+                    f'Cannot resolve field "{part}" on {current.__name__}'
+                )
+
+            # ---- Reference field end — VALID but cannot expand further unless select_related handles it --
+            from mongoengine import ReferenceField
+            from mongoengine import GenericReferenceField
+            from mongoengine import EmbeddedDocumentField, DictField
+
+            if isinstance(field, ReferenceField):
+                current = field.document_type
+                continue
+
+            if isinstance(field, GenericReferenceField):
+                # Allowed but cannot validate deeper — treated as terminal
+                return True
+
+            # ---- Embedded document — descend into child fields ----
+            if isinstance(field, EmbeddedDocumentField):
+                current = field.document_type
+                continue
+
+            # ---- List of references ----
+            from mongoengine import ListField
+
+            if isinstance(field, ListField):
+                sub = field.field
+                while isinstance(sub, ListField):
+                    sub = sub.field  # element type
+
+                if isinstance(sub, ReferenceField):
+                    current = sub.document_type
+                    continue
+
+                if isinstance(sub, EmbeddedDocumentField):
+                    current = sub.document_type
+                    continue
+
+                if isinstance(sub, GenericReferenceField):
+                    return True
+
+            # ---- DictField support ----
+            if isinstance(field, DictField):
+                sub = field
+                while sub and hasattr(sub, "field"):
+                    sub = sub.field
+
+                if isinstance(sub, ReferenceField):
+                    current = sub.document_type
+                    continue
+
+                if isinstance(sub, EmbeddedDocumentField):
+                    current = sub.document_type
+                    continue
+
+                if isinstance(sub, GenericReferenceField):
+                    return True
+
+            # No further navigation allowed
+            raise LookUpError(
+                f'Cannot dereference through "{part}" ({type(field).__name__})'
+            )
+
+        return True
 
     @classmethod
     def _translate_field_name(cls, field, sep="."):
