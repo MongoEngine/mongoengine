@@ -65,6 +65,8 @@ if [ ! -d "$mongosh_dir" ]; then
     exit 1
 fi
 
+# creating a ".path" file to make sure start_mongo is referring to the same binaries
+# that this installation is referring to
 echo >&2 "Creating mongo.path"
 echo "export PATH='${mongodb_dir}/bin:${mongosh_dir}/bin:'"'$PATH' \
   | tee >&2 mongo.path

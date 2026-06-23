@@ -47,14 +47,11 @@ class _DocumentRegistry:
             if len(possible_match) == 1:
                 doc = _document_registry.get(possible_match.pop(), None)
         if not doc:
-            raise NotRegistered(
-                """
+            raise NotRegistered("""
                 `%s` has not been registered in the document registry.
                 Importing the document class automatically registers it, has it
                 been imported?
-            """.strip()
-                % name
-            )
+            """.strip() % name)
         return doc
 
     @staticmethod

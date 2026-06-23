@@ -3042,14 +3042,10 @@ class TestDocumentInstance(MongoDBTestCase):
         assert susan_karl_books_qs.count() == 1
 
         # $Where
-        custom_qs = Book.objects.filter(
-            __raw__={
-                "$where": """
+        custom_qs = Book.objects.filter(__raw__={"$where": """
                                             function(){
                                                 return this.name == '1' ||
-                                                       this.name == '2';}"""
-            }
-        )
+                                                       this.name == '2';}"""})
         assert [str(b) for b in custom_qs] == ["1", "2"]
 
         # count only will work with this raw query before pymongo 4.x, but
