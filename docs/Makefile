@@ -36,7 +36,7 @@ html:
 	@echo "Build finished. Check $(BUILDDIR)/html/index.html"
 
 html-readthedocs:
-	$(SPHINXBUILD) -T -E -b readthedocs $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	python -m sphinx -T -b html -d $(BUILDDIR)/doctrees -D language=en . $(BUILDDIR)/html
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 	@echo "Open in browser: file://`realpath $(BUILDDIR)/html/index.html`"
 

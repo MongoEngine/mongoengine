@@ -7,6 +7,8 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
+  project and appears to be an expired domain takeover.
 - Fix querying GenericReferenceField with __in operator #2886
 - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
@@ -72,7 +74,7 @@ Changes in 0.27.0
 - Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
   Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
-  For more info, check https://docs.mongoengine.org/guide/mongomock.html
+  For more info, check https://mongoengine-odm.readthedocs.io/guide/mongomock.html
 - Fix DictField that always gets marked as changed #2606
 - fix for Queryset.none() that has no effect on update/aggregate / first #2669
 

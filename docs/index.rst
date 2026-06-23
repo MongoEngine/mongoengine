@@ -9,6 +9,11 @@ MongoDB. To install it, simply run
 
     $ python -m pip install -U mongoengine
 
+.. warning::
+
+   ``mongoengine.org`` is no longer controlled by the MongoEngine project and
+   appears to be an expired domain takeover.
+
 :doc:`tutorial`
   A quick tutorial building a tumblelog to get you up and running with
   MongoEngine.
