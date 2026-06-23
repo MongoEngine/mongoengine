@@ -71,7 +71,7 @@ Changes in 0.27.0
 - Added `mongo_client_class` optional parameter to connect() to allow to use an alternative mongo client than pymongo.MongoClient.
   Typically to support mock mongo libraries like mongomock, montydb, mongita #2729
 - BREAKING CHANGE: connecting MongoEngine with mongomock should now use the new `mongo_client_class`
-  For more info, check https://docs.mongoengine.org/guide/mongomock.html
+  For more info, check https://mongoengine-odm.readthedocs.io/guide/mongomock.html
 - Fix DictField that always gets marked as changed #2606
 - fix for Queryset.none() that has no effect on update/aggregate / first #2669
 

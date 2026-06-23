@@ -95,7 +95,7 @@ Documentation
 -------------
 
 To contribute to the `API documentation
-<http://docs.mongoengine.org/en/latest/apireference.html>`_
+<https://mongoengine-odm.readthedocs.io/>`_
 just make your changes to the inline documentation of the appropriate
 `source code <https://github.com/MongoEngine/mongoengine>`_ or `rst file
 <https://github.com/MongoEngine/mongoengine/tree/master/docs>`_ in a

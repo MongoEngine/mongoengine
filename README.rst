@@ -25,6 +25,13 @@ MongoEngine
 .. image:: https://readthedocs.org/projects/mongoengine-odm/badge/?version=latest
   :target: https://readthedocs.org/projects/mongoengine-odm/builds/
 
+.. warning::
+
+   The official MongoEngine project is maintained on
+   `GitHub <https://github.com/MongoEngine/mongoengine>`_ and documented on
+   `ReadTheDocs <https://mongoengine-odm.readthedocs.io/>`_.
+   ``mongoengine.org`` is unaffiliated with the MongoEngine project.
+
 About
 =====
 MongoEngine is a Python Object-Document Mapper for working with MongoDB.

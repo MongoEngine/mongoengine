@@ -79,7 +79,7 @@ class TestJson(MongoDBTestCase):
             map_field = MapField(IntField(), default=lambda: {"simple": 1})
             decimal_field = DecimalField(default=1.0)
             complex_datetime_field = ComplexDateTimeField(default=datetime.now)
-            url_field = URLField(default="http://mongoengine.org")
+            url_field = URLField(default="https://mongoengine-odm.readthedocs.io/")
             dynamic_field = DynamicField(default=1)
             generic_reference_field = GenericReferenceField(
                 default=lambda: Simple().save()
