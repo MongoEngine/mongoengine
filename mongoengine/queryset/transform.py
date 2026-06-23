@@ -129,6 +129,7 @@ def query(_doc_cls=None, **kwargs):
 
             singular_ops = [None, "ne", "gt", "gte", "lt", "lte", "not"]
             singular_ops += STRING_OPERATORS
+            is_iterable = False
             if op in singular_ops:
                 value = field.prepare_query_value(op, value)
 
@@ -136,6 +137,7 @@ def query(_doc_cls=None, **kwargs):
                     value = value["_id"]
 
             elif op in ("in", "nin", "all", "near") and not isinstance(value, dict):
+                is_iterable = True
                 # Raise an error if the in/nin/all/near param is not iterable.
                 value = _prepare_query_for_iterable(field, op, value)
 
@@ -144,10 +146,24 @@ def query(_doc_cls=None, **kwargs):
             # * If the value is a DBRef, the key should be "field_name._ref".
             # * If the value is an ObjectId, the key should be "field_name._ref.$id".
             if isinstance(field, GenericReferenceField):
-                if isinstance(value, DBRef):
+                if isinstance(value, DBRef) or (
+                    is_iterable and all(isinstance(v, DBRef) for v in value)
+                ):
                     parts[-1] += "._ref"
-                elif isinstance(value, ObjectId):
+                elif isinstance(value, ObjectId) or (
+                    is_iterable and all(isinstance(v, ObjectId) for v in value)
+                ):
                     parts[-1] += "._ref.$id"
+                elif (
+                    is_iterable
+                    and any(isinstance(v, DBRef) for v in value)
+                    and any(isinstance(v, ObjectId) for v in value)
+                ):
+                    raise ValueError(
+                        "The `in`, `nin`, `all`, or `near`-operators cannot "
+                        "be applied to mixed queries of DBRef/ObjectId/%s"
+                        % _doc_cls.__name__
+                    )
 
         # if op and op not in COMPARISON_OPERATORS:
         if op:
