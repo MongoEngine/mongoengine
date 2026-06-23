@@ -30,7 +30,8 @@ MongoEngine
    The official MongoEngine project is maintained on
    `GitHub <https://github.com/MongoEngine/mongoengine>`_ and documented on
    `ReadTheDocs <https://mongoengine-odm.readthedocs.io/>`_.
-   ``mongoengine.org`` is unaffiliated with the MongoEngine project.
+   ``mongoengine.org`` is no longer controlled by the MongoEngine project and
+   appears to be an expired domain takeover.
 
 About
 =====

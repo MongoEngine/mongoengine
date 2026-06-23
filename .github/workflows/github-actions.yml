@@ -113,7 +113,7 @@ jobs:
     - name: build doc
       run: |
         cd docs
-        python -m sphinx -T -b html -d _build/doctrees -D language=en . _build/html
+        make html-readthedocs
 
   build-dryrun:
     runs-on: ubuntu-latest
