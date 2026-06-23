@@ -577,7 +577,7 @@ but are not limited to:
 
 .. note::
 
-    Additional options are forwarded as **kwargs to pymongo's create_index method.
+    Additional options are forwarded as ``**kwargs`` to pymongo's create_index method.
     Inheritance adds extra fields indices see: :ref:`document-inheritance`.
 
 Global index default options
