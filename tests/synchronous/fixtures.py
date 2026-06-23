@@ -2,7 +2,6 @@ import pickle
 
 from mongoengine import *
 from mongoengine import signals
-
 from tests.fixtures import PickleEmbedded
 
 

@@ -1,10 +1,15 @@
 import datetime as dt
+import unittest
 
 import pytest
 
 from mongoengine import *
-from mongoengine.asynchronous import async_connect, connection
-from tests.asynchronous.utils import MongoDBAsyncTestCase, async_get_as_pymongo
+from mongoengine.asynchronous import async_connect
+from tests.asynchronous.utils import (
+    MongoDBAsyncTestCase,
+    async_get_as_pymongo,
+    reset_async_connections,
+)
 from tests.utils import MONGO_TEST_DB
 
 try:
@@ -239,14 +244,15 @@ class TestDateTimeField(MongoDBAsyncTestCase):
             dtd.validate()
 
 
-class TestDateTimeTzAware(MongoDBAsyncTestCase):
-    async def test_datetime_tz_aware_mark_as_changed(self):
-        # Reset the connections
-        connection._connection_settings = {}
-        connection._connections = {}
-        connection._dbs = {}
+class TestDateTimeTzAware(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        await reset_async_connections()
 
-        await async_connect(db=MONGO_TEST_DB, tz_aware=True)
+    async def asyncTearDown(self):
+        await reset_async_connections()
+
+    async def test_datetime_tz_aware_mark_as_changed(self):
+        async_connect(db=MONGO_TEST_DB, tz_aware=True)
 
         class LogEntry(Document):
             time = DateTimeField()

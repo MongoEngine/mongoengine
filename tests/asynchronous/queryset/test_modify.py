@@ -6,10 +6,7 @@ from mongoengine import (
     ListField,
     StringField,
 )
-from mongoengine.asynchronous import async_connect, async_disconnect
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import reset_async_connections
-from tests.utils import MONGO_TEST_DB
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class Doc(Document):
@@ -17,15 +14,13 @@ class Doc(Document):
     value = IntField()
 
 
-class TestOnlyExcludeAll(unittest.IsolatedAsyncioTestCase):
+class TestOnlyExcludeAll(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
+        await super().asyncSetUp()
         await Doc.adrop_collection()
 
     async def asyncTearDown(self):
-        await async_disconnect()
-        await reset_async_connections()
-        _CollectionRegistry.clear()
+        await super().asyncTearDown()
 
     async def _assert_db_equal(self, docs):
         assert await (await Doc._aget_collection()).find().sort("id").to_list() == docs

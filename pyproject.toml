@@ -60,6 +60,7 @@ test = [
     "pillow (>=12.2)",
     "tox (>=4.54)",
     "tox-uv>=1.35.2",
+    "mongomock>=4.3.0"
 ]
 
 [project.urls]

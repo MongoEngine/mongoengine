@@ -2,20 +2,19 @@ import datetime
 import unittest
 import uuid
 
-import pymongo
-import pymongo.database
-import pymongo.mongo_client
-import pytest
 from bson.tz_util import utc
+import pymongo
 from pymongo import MongoClient, ReadPreference
+import pymongo.database
 from pymongo.errors import (
     InvalidName,
     InvalidOperation,
     OperationFailure,
 )
+import pymongo.mongo_client
 from pymongo.read_preferences import Secondary
+import pytest
 
-import mongoengine.synchronous.connection
 from mongoengine import (
     DateTimeField,
     Document,
@@ -25,7 +24,9 @@ from mongoengine import (
     register_connection,
 )
 from mongoengine.base import _DocumentRegistry
+from mongoengine.pymongo_support import PYMONGO_VERSION
 from mongoengine.registry import _CollectionRegistry
+import mongoengine.synchronous.connection
 from mongoengine.synchronous.connection import (
     ConnectionFailure,
     _get_connection_settings,
@@ -33,7 +34,7 @@ from mongoengine.synchronous.connection import (
     get_connection,
     get_db,
 )
-from mongoengine.pymongo_support import PYMONGO_VERSION
+from tests.synchronous.utils import reset_connections
 from tests.utils import MONGO_TEST_DB
 
 
@@ -46,20 +47,16 @@ def get_tz_awareness(connection):
 
 
 class ConnectionTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        disconnect_all()
-
-    @classmethod
-    def tearDownClass(cls):
-        disconnect_all()
+    def setUp(self):
+        reset_connections()
 
     def tearDown(self):
-        mongoengine.synchronous.connection._connection_settings = {}
-        mongoengine.synchronous.connection._connections = {}
-        mongoengine.synchronous.connection._dbs = {}
-        _DocumentRegistry.clear()
-        _CollectionRegistry.clear()
+        try:
+            disconnect_all()
+        finally:
+            reset_connections()
+            _DocumentRegistry.clear()
+            _CollectionRegistry.clear()
 
     def test_connect(self):
         """Ensure that the connect() method works properly."""
@@ -330,6 +327,8 @@ class ConnectionTest(unittest.TestCase):
         assert db1_users == [{"_id": user1.id, "name": "John is in db1"}]
         db2_users = list(client[db2].user.find())
         assert db2_users == [{"_id": user2.id, "name": "Bob is in db2"}]
+
+        client.close()
 
     def test_disconnect_silently_pass_if_alias_does_not_exist(self):
         connections = mongoengine.synchronous.connection._connections

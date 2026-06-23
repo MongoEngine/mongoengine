@@ -43,7 +43,7 @@ async def async_get_mongodb_version(alias: str = DEFAULT_CONNECTION_NAME):
     cached = _VERSION_CACHE.get(alias)
     if cached is not None:
         return cached
-    conn = await async_get_connection(alias=alias)
+    conn = async_get_connection(alias=alias)
     version = tuple((await conn.server_info())["versionArray"][:2])
     _VERSION_CACHE[alias] = version
     return version

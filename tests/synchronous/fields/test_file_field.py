@@ -18,7 +18,7 @@ try:
 except ImportError:
     HAS_PIL = False
 
-from tests.synchronous.utils import MongoDBTestCase, MONGO_TEST_DB
+from tests.synchronous.utils import MONGO_TEST_DB, MongoDBTestCase
 
 require_pil = pytest.mark.skipif(not HAS_PIL, reason="PIL not installed")
 

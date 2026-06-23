@@ -6,22 +6,20 @@ from pymongo.collation import Collation
 
 from mongoengine import *
 from mongoengine.errors import NotUniqueError
-from mongoengine.registry import _CollectionRegistry
-from mongoengine.synchronous.connection import get_db
 from mongoengine.mongodb_support import (
     MONGODB_42,
     MONGODB_80,
     get_mongodb_version,
 )
 from mongoengine.pymongo_support import PYMONGO_VERSION
-from tests.synchronous.utils import reset_connections
+from tests.synchronous.utils import MongoDBTestCase
 from tests.utils import MONGO_TEST_DB
 
 
-class TestIndexes(unittest.TestCase):
+class TestIndexes(MongoDBTestCase):
     def setUp(self):
-        self.connection = connect(db=MONGO_TEST_DB)
-        self.db = get_db()
+        super().setUp()
+        self.connection = self._connection
 
         class Person(Document):
             name = StringField()
@@ -34,11 +32,10 @@ class TestIndexes(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        self.Person.adrop_collection()
-        self.connection.drop_database(self.db)
-        disconnect_all()
-        reset_connections()
-        _CollectionRegistry.clear()
+        try:
+            self.Person.drop_collection()
+        finally:
+            super().tearDown()
 
     def test_indexes_document(self):
         """Ensure that indexes are used when meta[indexes] is specified for

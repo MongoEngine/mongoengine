@@ -27,7 +27,8 @@ class TestSignal(unittest.IsolatedAsyncioTestCase):
         return signal_output
 
     async def asyncSetUp(self):
-        await async_connect(db=MONGO_TEST_DB)
+        await reset_async_connections()
+        async_connect(db=MONGO_TEST_DB)
 
         class Author(Document):
             # Make the id deterministic for easier testing
@@ -215,46 +216,48 @@ class TestSignal(unittest.IsolatedAsyncioTestCase):
         signals.post_bulk_insert.connect(Post.post_bulk_insert, sender=Post)
 
     async def asyncTearDown(self):
-        signals.pre_init.disconnect(self.Author.pre_init)
-        signals.post_init.disconnect(self.Author.post_init)
-        signals.post_delete.disconnect(self.Author.post_delete)
-        signals.pre_delete.disconnect(self.Author.pre_delete)
-        signals.post_save.disconnect(self.Author.post_save)
-        signals.pre_save_post_validation.disconnect(
-            self.Author.pre_save_post_validation
-        )
-        signals.pre_save.disconnect(self.Author.pre_save)
-        signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
-        signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
+        try:
+            signals.pre_init.disconnect(self.Author.pre_init)
+            signals.post_init.disconnect(self.Author.post_init)
+            signals.post_delete.disconnect(self.Author.post_delete)
+            signals.pre_delete.disconnect(self.Author.pre_delete)
+            signals.post_save.disconnect(self.Author.post_save)
+            signals.pre_save_post_validation.disconnect(
+                self.Author.pre_save_post_validation
+            )
+            signals.pre_save.disconnect(self.Author.pre_save)
+            signals.pre_bulk_insert.disconnect(self.Author.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Author.post_bulk_insert)
 
-        signals.post_delete.disconnect(self.Another.post_delete)
-        signals.pre_delete.disconnect(self.Another.pre_delete)
+            signals.post_delete.disconnect(self.Another.post_delete)
+            signals.pre_delete.disconnect(self.Another.pre_delete)
 
-        signals.post_save.disconnect(self.ExplicitId.post_save)
+            signals.post_save.disconnect(self.ExplicitId.post_save)
 
-        signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
-        signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
+            signals.pre_bulk_insert.disconnect(self.Post.pre_bulk_insert)
+            signals.post_bulk_insert.disconnect(self.Post.post_bulk_insert)
 
-        # Check that all our signals got disconnected properly.
-        post_signals = (
-            len(signals.pre_init.receivers),
-            len(signals.post_init.receivers),
-            len(signals.pre_save.receivers),
-            len(signals.pre_save_post_validation.receivers),
-            len(signals.post_save.receivers),
-            len(signals.pre_delete.receivers),
-            len(signals.post_delete.receivers),
-            len(signals.pre_bulk_insert.receivers),
-            len(signals.post_bulk_insert.receivers),
-        )
+            # Check that all our signals got disconnected properly.
+            post_signals = (
+                len(signals.pre_init.receivers),
+                len(signals.post_init.receivers),
+                len(signals.pre_save.receivers),
+                len(signals.pre_save_post_validation.receivers),
+                len(signals.post_save.receivers),
+                len(signals.pre_delete.receivers),
+                len(signals.post_delete.receivers),
+                len(signals.pre_bulk_insert.receivers),
+                len(signals.post_bulk_insert.receivers),
+            )
 
-        await self.ExplicitId.aobjects.delete()
+            await self.ExplicitId.aobjects.delete()
 
-        # Note that there is a chance that the following assert fails in case
-        # some receivers (eventually created in other tests)
-        # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
-        assert self.pre_signals == post_signals
-        await reset_async_connections()
+            # Note that there is a chance that the following assert fails in case
+            # some receivers (eventually created in other tests)
+            # gets garbage collected (https://pythonhosted.org/blinker/#blinker.base.Signal.connect)
+            assert self.pre_signals == post_signals
+        finally:
+            await reset_async_connections()
 
     async def test_model_signals(self):
         """Model saves should throw some signals."""
@@ -424,8 +427,8 @@ class TestSignal(unittest.IsolatedAsyncioTestCase):
         assert await self.get_signal_output(ei.asave) == ["Is created"]
 
     async def test_signals_with_switch_db(self):
-        await async_connect(MONGO_TEST_DB)
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_connect(MONGO_TEST_DB)
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         ei = self.ExplicitId(id=123)
         ei.switch_db("testdb-1")

@@ -7,11 +7,10 @@ import pytest
 
 from mongoengine import connect
 from mongoengine.base import _DocumentRegistry
+from mongoengine.context_managers import query_counter
+from mongoengine.mongodb_support import async_get_mongodb_version, get_mongodb_version
 from mongoengine.registry import _CollectionRegistry
 from mongoengine.synchronous.connection import disconnect_all, get_db
-from mongoengine.context_managers import query_counter
-from mongoengine.mongodb_support import get_mongodb_version, async_get_mongodb_version
-
 from tests.utils import MONGO_TEST_DB
 
 
@@ -21,14 +20,29 @@ class MongoDBTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        disconnect_all()
+        # 1. Clear out everything from previous runs
+        reset_connections()
+        _DocumentRegistry.clear()
+        _CollectionRegistry.clear()
+
+        # 2. Establish the fresh connection
         self._connection = connect(db=MONGO_TEST_DB)
         self._connection.drop_database(MONGO_TEST_DB)
         self.db = get_db()
 
     def tearDown(self):
-        self._connection.drop_database(MONGO_TEST_DB)
+        # 1. Grab the connection safely (handles cases where setup failed mid-way)
+        conn = getattr(self, "_connection", None)
+        if conn:
+            conn.drop_database(MONGO_TEST_DB)
+
+        # 2. Break references immediately so Python collects them
+        self._connection = None
+        self.db = None
+
+        # 3. Purge registries and disconnect
         disconnect_all()
+        reset_connections()
         _DocumentRegistry.clear()
         _CollectionRegistry.clear()
 
@@ -108,8 +122,8 @@ class db_ops_tracker(query_counter):
 
 def reset_connections():
     from mongoengine.synchronous.connection import (
-        _connections,
         _connection_settings,
+        _connections,
         _dbs,
     )
 

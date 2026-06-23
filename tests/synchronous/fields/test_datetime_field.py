@@ -1,16 +1,25 @@
 import datetime as dt
+import unittest
 
 import pytest
 
 from mongoengine import *
-from mongoengine.synchronous import connection
-from tests.synchronous.utils import MongoDBTestCase, get_as_pymongo
+from tests.synchronous.utils import MongoDBTestCase, get_as_pymongo, reset_connections
 from tests.utils import MONGO_TEST_DB
 
 try:
     import dateutil
 except ImportError:
     dateutil = None
+
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+
+    UTC = timezone.utc
 
 
 class TestDateTimeField(MongoDBTestCase):
@@ -46,9 +55,9 @@ class TestDateTimeField(MongoDBTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=dt.datetime.utcnow)
+            created = DateTimeField(default=lambda: dt.datetime.now(UTC))
 
-        utcnow = dt.datetime.utcnow()
+        utcnow = dt.datetime.now(UTC)
         person = Person()
         person.validate()
         person_created_t0 = person.created
@@ -227,13 +236,14 @@ class TestDateTimeField(MongoDBTestCase):
             dtd.validate()
 
 
-class TestDateTimeTzAware(MongoDBTestCase):
-    def test_datetime_tz_aware_mark_as_changed(self):
-        # Reset the connections
-        connection._connection_settings = {}
-        connection._connections = {}
-        connection._dbs = {}
+class TestDateTimeTzAware(unittest.TestCase):
+    def setUp(self):
+        reset_connections()
 
+    def tearDown(self):
+        reset_connections()
+
+    def test_datetime_tz_aware_mark_as_changed(self):
         connect(db=MONGO_TEST_DB, tz_aware=True)
 
         class LogEntry(Document):

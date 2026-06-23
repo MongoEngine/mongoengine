@@ -22,15 +22,16 @@ from bson import DBRef, ObjectId
 from mongoengine import *
 from mongoengine import signals
 from mongoengine.asynchronous import (
-    async_get_db,
     async_disconnect,
+    async_get_db,
     async_register_connection,
 )
 from mongoengine.base import _DocumentRegistry
+from mongoengine.base.queryset import CASCADE, DENY, NULLIFY, PULL, Q
 from mongoengine.context_managers import (
-    switch_db,
     async_query_counter,
     switch_collection,
+    switch_db,
 )
 from mongoengine.errors import (
     FieldDoesNotExist,
@@ -43,15 +44,8 @@ from mongoengine.errors import (
 from mongoengine.pymongo_support import (
     async_list_collection_names,
 )
-from mongoengine.base.queryset import NULLIFY, Q, CASCADE, PULL, DENY
 from mongoengine.registry import _CollectionRegistry
 from tests import fixtures
-from tests.fixtures import (
-    PickleDynamicEmbedded,
-    PickleDynamicTest,
-    PickleEmbedded,
-    PickleTest,
-)
 from tests.asynchronous.fixtures import PickleSignalsTest
 from tests.asynchronous.utils import (
     MongoDBAsyncTestCase,
@@ -59,6 +53,12 @@ from tests.asynchronous.utils import (
     async_get_as_pymongo,
     requires_mongodb_gte_44,
     reset_async_connections,
+)
+from tests.fixtures import (
+    PickleDynamicEmbedded,
+    PickleDynamicTest,
+    PickleEmbedded,
+    PickleTest,
 )
 from tests.utils import MONGO_TEST_DB
 
@@ -87,7 +87,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
     async def asyncTearDown(self):
         for collection in await async_list_collection_names(self.db):
-            self.db.drop_collection(collection)
+            await self.db.drop_collection(collection)
         await super().asyncTearDown()
         await reset_async_connections()
         _CollectionRegistry.clear()
@@ -2945,9 +2945,9 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         """DB Alias tests."""
         # mongoenginetest - Is default connection alias from setUp()
         # Register Aliases
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
-        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
-        await async_register_connection("testdb-3", f"{MONGO_TEST_DB}_4")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
+        async_register_connection("testdb-3", f"{MONGO_TEST_DB}_4")
 
         class User(Document):
             name = StringField()
@@ -3017,7 +3017,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
     async def test_db_alias_overrides(self):
         """Test db_alias can be overriden."""
         # Register a connection with db_alias testdb-2
-        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-2", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             """Uses default db_alias"""
@@ -3039,7 +3039,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
     async def test_db_alias_propagates(self):
         """db_alias propagates?"""
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class A(Document):
             name = StringField()
@@ -3137,7 +3137,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert [str(b) async for b in custom_qs] == ["1", "2"]
 
     async def test_switch_db_instance(self):
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3186,8 +3186,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert "hello - default" == group.name
 
     async def test_switch_db_multiple_documents_same_context(self):
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
-        await async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-2", f"{MONGO_TEST_DB}_3")
 
         class Group(Document):
             name = StringField()
@@ -3243,7 +3243,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
             assert p2.title == "post-testdb-2"
 
     async def test_switch_db_and_switch_collection_instance(self):
-        await async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
+        async_register_connection("testdb-1", f"{MONGO_TEST_DB}_2")
 
         class Group(Document):
             name = StringField()
@@ -3306,8 +3306,8 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert "hello - default" == g0.name
 
     async def test_switch_multiple_db_and_multiple_collection_same_time(self):
-        await async_register_connection("tenantA", f"{MONGO_TEST_DB}_2")
-        await async_register_connection("tenantB", f"{MONGO_TEST_DB}_2")
+        async_register_connection("tenantA", f"{MONGO_TEST_DB}_2")
+        async_register_connection("tenantB", f"{MONGO_TEST_DB}_2")
 
         class User(Document):
             name = StringField()
@@ -3789,7 +3789,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
 
     async def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
-            created_on = DateTimeField(default=lambda: datetime.utcnow())
+            created_on = DateTimeField(default=lambda: datetime.now(UTC))
             name = StringField()
 
         p = Person(name="alon")
@@ -3805,7 +3805,7 @@ class TestDocumentInstance(MongoDBAsyncTestCase):
         assert orig_created_on == p3.created_on
 
         class Person(Document):
-            created_on = DateTimeField(default=lambda: datetime.utcnow())
+            created_on = DateTimeField(default=lambda: datetime.now(UTC))
             name = StringField()
             height = IntField(default=189)
 

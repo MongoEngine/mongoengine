@@ -9,8 +9,6 @@ from pymongo.errors import OperationFailure
 from pymongo.read_concern import ReadConcern
 
 from mongoengine import *
-from mongoengine.session import _get_session
-from mongoengine.synchronous.connection import get_db
 from mongoengine.context_managers import (
     no_sub_classes,
     query_counter,
@@ -21,8 +19,10 @@ from mongoengine.context_managers import (
     switch_db,
 )
 from mongoengine.pymongo_support import count_documents
+from mongoengine.session import _get_session
+from mongoengine.synchronous.connection import get_db
 from tests.synchronous.utils import MongoDBTestCase
-from tests.utils import requires_mongodb_gte_44, MONGO_TEST_DB
+from tests.utils import MONGO_TEST_DB, requires_mongodb_gte_44
 
 
 class TestRollbackError(Exception):

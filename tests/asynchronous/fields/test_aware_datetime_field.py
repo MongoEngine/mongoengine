@@ -30,9 +30,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         await Event.adrop_collection()
 
         # Create event with Asia/Kolkata timezone
-        kolkata_time = datetime.datetime(
-            2024, 6, 15, 14, 30, tzinfo=ZoneInfo("Asia/Kolkata")
-        )
+        kolkata_time = datetime.datetime.now().astimezone(ZoneInfo("Asia/Kolkata"))
         event = Event(start_time=kolkata_time)
         await event.asave()
 
@@ -40,6 +38,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         raw = await async_get_as_pymongo(event)
         assert "start_time" in raw
         assert "utc" in raw["start_time"]
+        assert "iso" in raw["start_time"]
         assert "tz" in raw["start_time"]
         assert raw["start_time"]["tz"] == "Asia/Kolkata"
 
@@ -59,24 +58,11 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         await Event.adrop_collection()
 
         # Create events in different timezones
+        now = datetime.datetime.now(UTC)
         timezones = [
-            (
-                "Asia/Kolkata",
-                datetime.datetime(2024, 6, 15, 14, 30, tzinfo=ZoneInfo("Asia/Kolkata")),
-            ),
-            (
-                "America/New_York",
-                datetime.datetime(
-                    2024, 6, 15, 9, 0, tzinfo=ZoneInfo("America/New_York")
-                ),
-            ),
-            (
-                "Europe/London",
-                datetime.datetime(2024, 6, 15, 15, 0, tzinfo=ZoneInfo("Europe/London")),
-            ),
-            ("UTC", datetime.datetime(2024, 6, 15, 12, 0, tzinfo=UTC)),
+            (tz, now.astimezone(ZoneInfo(tz)))
+            for tz in ["Asia/Kolkata", "America/New_York", "Europe/London", "UTC"]
         ]
-
         for tz_name, dt in timezones:
             await Event(name=tz_name, start_time=dt).asave()
 
@@ -99,7 +85,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         winter = Event(
             name="Winter",
             start_time=datetime.datetime(
-                2024, 1, 15, 10, 0, tzinfo=ZoneInfo("America/New_York")
+                2024, 1, 15, 10, 0, 30, 500000, tzinfo=ZoneInfo("America/New_York")
             ),
         )
         await winter.asave()
@@ -108,7 +94,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         summer = Event(
             name="Summer",
             start_time=datetime.datetime(
-                2024, 7, 15, 10, 0, tzinfo=ZoneInfo("America/New_York")
+                2024, 7, 15, 10, 0, 30, 500000, tzinfo=ZoneInfo("America/New_York")
             ),
         )
         await summer.asave()
@@ -140,19 +126,19 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         await Event(
             name="Early",
             start_time=datetime.datetime(
-                2024, 6, 15, 8, 0, tzinfo=ZoneInfo("Asia/Kolkata")
+                2024, 6, 15, 8, 0, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
             ),
         ).asave()
         # Late: 18:00 Asia/Kolkata (UTC+5:30) = 12:30 UTC
         await Event(
             name="Late",
             start_time=datetime.datetime(
-                2024, 6, 15, 18, 0, tzinfo=ZoneInfo("Asia/Kolkata")
+                2024, 6, 15, 18, 0, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
             ),
         ).asave()
 
         # Query by UTC time - should find only the Late event
-        utc_noon = datetime.datetime(2024, 6, 15, 12, 0, tzinfo=UTC)
+        utc_noon = datetime.datetime(2024, 6, 15, 12, 0, 30, 500000, tzinfo=UTC)
         events_after_noon = Event.aobjects(start_time__utc__gte=utc_noon)
 
         assert await events_after_noon.count() == 1
@@ -170,12 +156,12 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         # Create events in different timezones
         await Event(
             start_time=datetime.datetime(
-                2024, 6, 15, 14, 30, tzinfo=ZoneInfo("Asia/Kolkata")
+                2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
             )
         ).asave()
         await Event(
             start_time=datetime.datetime(
-                2024, 6, 15, 9, 0, tzinfo=ZoneInfo("America/New_York")
+                2024, 6, 15, 9, 0, 30, 500000, tzinfo=ZoneInfo("America/New_York")
             )
         ).asave()
 
@@ -198,13 +184,13 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         await Event(
             name="First",
             start_time=datetime.datetime(
-                2024, 6, 15, 10, 0, tzinfo=ZoneInfo("Asia/Kolkata")
+                2024, 6, 15, 10, 0, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
             ),  # 04:30 UTC
         ).asave()
         await Event(
             name="Second",
             start_time=datetime.datetime(
-                2024, 6, 15, 9, 0, tzinfo=ZoneInfo("America/New_York")
+                2024, 6, 15, 9, 0, 30, 500000, tzinfo=ZoneInfo("America/New_York")
             ),  # 13:00 UTC
         ).asave()
 
@@ -247,7 +233,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         await Event.adrop_collection()
 
         # Naive datetime should raise validation error
-        naive_dt = datetime.datetime(2024, 6, 15, 14, 30)
+        naive_dt = datetime.datetime(2024, 6, 15, 14, 30, 30, 500000)
         event = Event(start_time=naive_dt)
 
         with pytest.raises(ValidationError):
@@ -283,7 +269,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
         """Test default values work correctly."""
 
         def get_default_time():
-            return datetime.datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
+            return datetime.datetime(2024, 1, 1, 0, 0, 30, 500000, tzinfo=UTC)
 
         class Event(Document):
             start_time = AwareDateTimeField(default=get_default_time)
@@ -307,7 +293,7 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
 
         # Create event in Kolkata timezone
         kolkata_time = datetime.datetime(
-            2024, 6, 15, 14, 30, tzinfo=ZoneInfo("Asia/Kolkata")
+            2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
         )
         event = Event(start_time=kolkata_time)
         await event.asave()
@@ -371,3 +357,100 @@ class TestAwareDateTimeField(MongoDBAsyncTestCase):
 
         assert desc_idx is not None
         assert desc_idx["key"][0] == ("start_time.utc", -1)
+
+    async def test_iso_field_stored_in_mongodb(self):
+        """Test that the iso field is stored alongside utc and tz."""
+
+        class Event(Document):
+            start_time = AwareDateTimeField(required=True)
+
+        await Event.adrop_collection()
+
+        dt = datetime.datetime(
+            2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        event = await Event(start_time=dt).asave()
+
+        raw = await async_get_as_pymongo(event)
+        assert "iso" in raw["start_time"]
+        assert isinstance(raw["start_time"]["iso"], str)
+        # ISO string must round-trip back to the original datetime
+        assert datetime.datetime.fromisoformat(raw["start_time"]["iso"]) == dt
+
+    async def test_microsecond_precision_preserved_via_iso(self):
+        """Test that microseconds survive the MongoDB round-trip via the iso field."""
+
+        class Event(Document):
+            start_time = AwareDateTimeField(required=True)
+
+        await Event.adrop_collection()
+
+        dt = datetime.datetime(
+            2024, 3, 10, 8, 45, 17, 987654, tzinfo=ZoneInfo("Europe/London")
+        )
+        await Event(start_time=dt).asave()
+
+        retrieved = await Event.aobjects.first()
+        assert retrieved.start_time.second == 17
+        assert retrieved.start_time.microsecond == 987654
+        assert retrieved.start_time == dt
+
+    async def test_iso_field_queryable(self):
+        """Test that start_time__iso can be used in queries."""
+
+        class Event(Document):
+            name = StringField()
+            start_time = AwareDateTimeField(required=True)
+
+        await Event.adrop_collection()
+
+        dt = datetime.datetime(
+            2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        await Event(name="kolkata", start_time=dt).asave()
+
+        iso_str = dt.isoformat()
+        result = await Event.aobjects(start_time__iso=iso_str).first()
+        assert result is not None
+        assert result.name == "kolkata"
+
+    async def test_iso_field_contains_timezone_offset(self):
+        """Test that the stored iso string includes the UTC offset."""
+
+        class Event(Document):
+            start_time = AwareDateTimeField(required=True)
+
+        await Event.adrop_collection()
+
+        # Kolkata is UTC+5:30
+        dt = datetime.datetime(
+            2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        event = await Event(start_time=dt).asave()
+
+        raw = await async_get_as_pymongo(event)
+        iso_str = raw["start_time"]["iso"]
+        # ISO string must encode the +05:30 offset
+        assert "+05:30" in iso_str or "05:30" in iso_str
+
+    async def test_half_hour_offset_precision(self):
+        """Test that UTC+5:30 (Kolkata) microseconds convert correctly to/from UTC."""
+
+        class Event(Document):
+            start_time = AwareDateTimeField(required=True)
+
+        await Event.adrop_collection()
+
+        # 14:30:30.500000 Kolkata = 09:00:30.500000 UTC
+        dt = datetime.datetime(
+            2024, 6, 15, 14, 30, 30, 500000, tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        await Event(start_time=dt).asave()
+
+        retrieved = await Event.aobjects.first()
+        utc_dt = retrieved.start_time.astimezone(UTC)
+
+        assert utc_dt.hour == 9
+        assert utc_dt.minute == 0
+        assert utc_dt.second == 30
+        assert utc_dt.microsecond == 500000

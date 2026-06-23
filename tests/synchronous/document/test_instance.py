@@ -14,9 +14,8 @@ from bson import DBRef, ObjectId
 from mongoengine import *
 from mongoengine import signals
 from mongoengine.base import _DocumentRegistry
-from mongoengine.registry import _CollectionRegistry
-from mongoengine.synchronous.connection import get_db
-from mongoengine.context_managers import query_counter, switch_db, switch_collection
+from mongoengine.base.queryset import CASCADE, DENY, NULLIFY, PULL, Q
+from mongoengine.context_managers import query_counter, switch_collection, switch_db
 from mongoengine.errors import (
     FieldDoesNotExist,
     InvalidDocumentError,
@@ -32,7 +31,8 @@ from mongoengine.pymongo_support import (
     PYMONGO_VERSION,
     list_collection_names,
 )
-from mongoengine.base.queryset import NULLIFY, Q, PULL, CASCADE, DENY
+from mongoengine.registry import _CollectionRegistry
+from mongoengine.synchronous.connection import get_db
 from tests import fixtures
 from tests.fixtures import (
     PickleDynamicEmbedded,
@@ -49,6 +49,15 @@ from tests.synchronous.utils import (
     reset_connections,
 )
 from tests.utils import MONGO_TEST_DB
+
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+
+    UTC = timezone.utc
 
 TEST_IMAGE_PATH = os.path.join(os.path.dirname(__file__), "../fields/mongoengine.png")
 
@@ -3766,7 +3775,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
-            created_on = DateTimeField(default=lambda: datetime.utcnow())
+            created_on = DateTimeField(default=lambda: datetime.now(UTC))
             name = StringField()
 
         p = Person(name="alon")
@@ -3780,7 +3789,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert orig_created_on == p3.created_on
 
         class Person(Document):
-            created_on = DateTimeField(default=lambda: datetime.utcnow())
+            created_on = DateTimeField(default=lambda: datetime.now(UTC))
             name = StringField()
             height = IntField(default=189)
 

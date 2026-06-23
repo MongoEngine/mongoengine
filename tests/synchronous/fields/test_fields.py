@@ -35,6 +35,15 @@ from mongoengine.base import BaseField, EmbeddedDocumentList
 from mongoengine.errors import DeprecatedError
 from tests.synchronous.utils import MongoDBTestCase
 
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python ≤ 3.10
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 
 class TestField(MongoDBTestCase):
     def test_constructor_set_historical_behavior_is_kept(self):
@@ -86,7 +95,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
             day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
@@ -166,7 +175,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
 
         # Trying setting values to None
         person = Person(name=None, age=None, userid=None, created=None)
@@ -200,7 +209,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
 
         person = Person()
         person.name = None
@@ -268,7 +277,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=datetime.datetime.utcnow)
+            created = DateTimeField(default=lambda: datetime.datetime.now(UTC))
 
         person = Person(
             name="Ross",
@@ -333,7 +342,7 @@ class TestField(MongoDBTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.com_dt_fld = datetime.datetime.utcnow()
+        doc.com_dt_fld = datetime.datetime.now(UTC)
         doc.save()
 
         res = HandleNoneFields.objects(id=doc.id).update(
@@ -369,7 +378,7 @@ class TestField(MongoDBTestCase):
         doc.str_fld = "spam ham egg"
         doc.int_fld = 42
         doc.flt_fld = 4.2
-        doc.comp_dt_fld = datetime.datetime.utcnow()
+        doc.comp_dt_fld = datetime.datetime.now(UTC)
         doc.save()
 
         # Unset all the fields

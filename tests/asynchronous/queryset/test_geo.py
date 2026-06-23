@@ -384,7 +384,7 @@ class TestGeoQueries(MongoDBAsyncTestCase):
             name = StringField()
             line = LineStringField()
 
-        Road.adrop_collection()
+        await Road.adrop_collection()
 
         road = Road(name="66", line=[[40, 5], [41, 6]])
         await road.asave()

@@ -7,7 +7,7 @@ import gridfs
 import pytest
 
 from mongoengine import *
-from mongoengine.asynchronous import async_register_connection, async_get_db
+from mongoengine.asynchronous import async_get_db, async_register_connection
 from mongoengine.base.queryset import Q
 
 try:
@@ -19,7 +19,6 @@ except ImportError:
 
 from tests.asynchronous.utils import MongoDBAsyncTestCase
 from tests.utils import MONGO_TEST_DB
-
 
 require_pil = pytest.mark.skipif(not HAS_PIL, reason="PIL not installed")
 
@@ -517,7 +516,7 @@ class TestFileField(MongoDBAsyncTestCase):
         await t.image.adelete()
 
     async def test_file_multidb(self):
-        await async_register_connection("test_files", f"{MONGO_TEST_DB}_test_files")
+        async_register_connection("test_files", f"{MONGO_TEST_DB}_test_files")
 
         class TestFile(Document):
             name = StringField()
@@ -542,11 +541,11 @@ class TestFileField(MongoDBAsyncTestCase):
         assert await test_file.the_file.aread() == b"Hello, World!"
 
         test_file = await TestFile.aobjects.first()
-        test_file.the_file.aput(b"Hello, World!")
+        await test_file.the_file.areplace(b"Hello, World 2!")
         await test_file.asave()
 
         test_file = await TestFile.aobjects.first()
-        assert await test_file.the_file.aread() == b"Hello, World!"
+        assert await test_file.the_file.aread() == b"Hello, World 2!"
 
     async def test_copyable(self):
         class PutFile(Document):

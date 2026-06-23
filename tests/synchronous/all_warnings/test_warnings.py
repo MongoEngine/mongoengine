@@ -4,29 +4,26 @@ only get triggered on first hit.  This way we can ensure its imported into the
 top level and called first by the test suite.
 """
 
-import unittest
 import warnings
 
 from mongoengine import *
-from tests.synchronous.utils import reset_connections
 from mongoengine.base.common import _document_registry
-from tests.utils import MONGO_TEST_DB
+from tests.synchronous.utils import MongoDBTestCase
 
 
-class TestAllWarnings(unittest.TestCase):
+class TestAllWarnings(MongoDBTestCase):
     def setUp(self):
-        connect(db=MONGO_TEST_DB)
         self.warning_list = []
         self.showwarning_default = warnings.showwarning
         warnings.showwarning = self.append_to_warning_list
+        super().setUp()
 
     def append_to_warning_list(self, message, category, *args):
         self.warning_list.append({"message": message, "category": category})
 
     def tearDown(self):
-        # restore default handling of warnings
         warnings.showwarning = self.showwarning_default
-        reset_connections()
+        super().tearDown()
 
     def test_document_collection_syntax_warning(self):
         class NonAbstractBase(Document):

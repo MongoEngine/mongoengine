@@ -80,7 +80,7 @@ import asyncio
 
 
 async def run_async_tumblelog():
-    await async_connect("tumblelog")
+    async_connect("tumblelog")
 
     await Post.adrop_collection()
 

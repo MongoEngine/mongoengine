@@ -1,13 +1,9 @@
 from bson import SON
 
 from mongoengine import *
-from mongoengine.pymongo_support import (
-    async_list_collection_names,
-)
 from tests.asynchronous.utils import (
     MongoDBAsyncTestCase,
     async_get_as_pymongo,
-    reset_async_connections,
 )
 
 
@@ -24,12 +20,6 @@ class TestDelta(MongoDBAsyncTestCase):
             meta = {"allow_inheritance": True}
 
         self.Person = Person
-
-    async def asyncTearDown(self):
-        for collection in await async_list_collection_names(self.db):
-            self.db.drop_collection(collection)
-        await async_disconnect()
-        await reset_async_connections()
 
     async def test_delta(self):
         await self.delta(Document)

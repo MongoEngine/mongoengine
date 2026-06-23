@@ -33,7 +33,7 @@ The asynchronous alternative is :func:`~mongoengine.async_connect`::
 
     from mongoengine import async_connect
 
-    await async_connect('tumblelog')
+    async_connect('tumblelog')
 
 There are lots of options for connecting to MongoDB, for more information about
 them see the :ref:`guide-connecting` guide.

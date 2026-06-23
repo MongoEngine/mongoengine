@@ -1,16 +1,14 @@
 import unittest
 
 from mongoengine import *
-from mongoengine.synchronous.connection import get_db
-from mongoengine.pymongo_support import list_collection_names
 from mongoengine.base.queryset import NULLIFY, PULL
-from tests.utils import MONGO_TEST_DB
+from mongoengine.pymongo_support import list_collection_names
+from tests.synchronous.utils import MongoDBTestCase
 
 
-class TestClassMethods(unittest.TestCase):
+class TestClassMethods(MongoDBTestCase):
     def setUp(self):
-        connect(db=MONGO_TEST_DB)
-        self.db = get_db()
+        super().setUp()
 
         class Person(Document):
             name = StringField()
@@ -23,8 +21,7 @@ class TestClassMethods(unittest.TestCase):
         self.Person = Person
 
     def tearDown(self):
-        for collection in list_collection_names(self.db):
-            self.db.drop_collection(collection)
+        super().tearDown()
 
     def test_definition(self):
         """Ensure that document may be defined using fields."""

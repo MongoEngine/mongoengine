@@ -6,14 +6,15 @@ import pytest
 from bson import ObjectId
 
 from mongoengine import *
-from mongoengine.errors import InvalidQueryError
 from mongoengine.base.queryset import Q
+from mongoengine.errors import InvalidQueryError
+from tests.synchronous.utils import MongoDBTestCase
 from tests.utils import MONGO_TEST_DB
 
 
-class TestQ(unittest.TestCase):
+class TestQ(MongoDBTestCase):
     def setUp(self):
-        connect(db=MONGO_TEST_DB)
+        super().setUp()
 
         class Person(Document):
             name = StringField()

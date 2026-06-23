@@ -3,7 +3,7 @@ from pymongo.read_preferences import ReadPreference
 
 from mongoengine import Document, IntField, PointField, StringField
 from mongoengine.mongodb_support import async_get_mongodb_version
-from tests.asynchronous.utils import async_db_ops_tracker, MongoDBAsyncTestCase
+from tests.asynchronous.utils import MongoDBAsyncTestCase, async_db_ops_tracker
 from tests.utils import MONGO_TEST_DB
 
 

@@ -81,6 +81,8 @@ class AwareDateTimeField(ComplexBaseField):
             meta = {'indexes': ['start_time.tz']} # Explicit nested field
     """
 
+    AVAILABLE_TIMEZONES = available_timezones()  # Compute this once, CPU intensive call
+
     def __init__(self, *args, **kwargs):
         """
         Initialize AwareDateTimeField.
@@ -188,30 +190,35 @@ class AwareDateTimeField(ComplexBaseField):
             return None
 
         if isinstance(value, datetime.datetime):
-            # Already a datetime object
             return value
 
-        if isinstance(value, dict) and "utc" in value and "tz" in value:
-            # Stored format: {"utc": datetime, "tz": "Asia/Kolkata"}
-            utc_dt = value["utc"]
-            tz_name = value["tz"]
+        if not (isinstance(value, dict) and "utc" in value and "tz" in value):
+            return None
 
-            if not isinstance(utc_dt, datetime.datetime):
-                return None
+        utc_dt = value["utc"]
+        tz_name = value["tz"]
 
-            # Ensure UTC datetime is timezone-aware
-            if utc_dt.tzinfo is None:
-                utc_dt = utc_dt.replace(tzinfo=UTC)
+        if not isinstance(utc_dt, datetime.datetime):
+            return None
 
-            # Convert from UTC to original timezone
+        try:
+            tz = ZoneInfo(tz_name)
+        except Exception:
+            return utc_dt.replace(tzinfo=UTC) if utc_dt.tzinfo is None else utc_dt
+
+        # Prefer the ISO string: it preserves microseconds and the exact UTC offset.
+        iso_str = value.get("iso")
+        if isinstance(iso_str, str):
             try:
-                tz = ZoneInfo(tz_name)
-                return utc_dt.astimezone(tz)
-            except Exception:
-                # If timezone is invalid, return UTC
-                return utc_dt
+                tz_aware_dt = datetime.datetime.fromisoformat(iso_str)
+                if tz_aware_dt.tzinfo is None:
+                    tz_aware_dt = tz_aware_dt.replace(tzinfo=UTC)
+                return tz_aware_dt.astimezone(tz)
+            except (ValueError, TypeError):
+                pass  # fall through to UTC path
 
-        return None
+        # Fallback for documents stored before the iso field was added
+        return utc_dt.astimezone(tz)
 
     def to_mongo(self, value):
         """Convert Python datetime to MongoDB storage format."""
@@ -234,25 +241,19 @@ class AwareDateTimeField(ComplexBaseField):
                 "Use datetime.now(ZoneInfo('Asia/Kolkata')) or similar."
             )
 
-        # Get timezone name
+        # Resolve the IANA timezone name from the tzinfo object
         tz_name = None
         if hasattr(value.tzinfo, "key"):
-            # pytz timezone
+            # pytz: zone.key == "Asia/Kolkata"
             tz_name = value.tzinfo.key
-        elif hasattr(value.tzinfo, "tzname"):
-            # Could be ZoneInfo or other
-            tz_name_str = value.tzinfo.tzname(value)
-            # For ZoneInfo, try to get the actual zone name
-            if hasattr(value.tzinfo, "__str__"):
-                # ZoneInfo's __str__ returns the zone name
-                zone_str = str(value.tzinfo)
-                # ZoneInfo zones are in available_timezones
-                if zone_str in available_timezones():
-                    tz_name = zone_str
-                else:
-                    tz_name = tz_name_str
+        else:
+            # ZoneInfo: str(zone) == "Asia/Kolkata"
+            zone_str = str(value.tzinfo)
+            if zone_str in self.AVAILABLE_TIMEZONES:
+                tz_name = zone_str
             else:
-                tz_name = tz_name_str
+                # Last resort: tzname() — covers datetime.timezone.utc → "UTC"
+                tz_name = value.tzinfo.tzname(value)
 
         if not tz_name:
             self.error(
@@ -260,11 +261,10 @@ class AwareDateTimeField(ComplexBaseField):
                 "Use ZoneInfo('Asia/Kolkata') or pytz.timezone('Asia/Kolkata')"
             )
 
-        # Convert to UTC for storage
-        utc_dt = value.astimezone(UTC)
-
         return {
-            "utc": utc_dt,
+            "utc": value.astimezone(UTC),
+            # ISO string preserves the original UTC offset and microseconds exactly
+            "iso": value.isoformat(),
             "tz": tz_name,
         }
 
@@ -294,6 +294,14 @@ class AwareDateTimeField(ComplexBaseField):
             # Return field type for nested UTC datetime
             field = DateTimeField()
             field.db_field = "utc"
+            field.name = member_name
+            return field
+        elif member_name == "iso":
+            from mongoengine.fields.string import StringField
+
+            # Return field type for nested iso string
+            field = StringField()
+            field.db_field = "iso"
             field.name = member_name
             return field
         elif member_name == "tz":

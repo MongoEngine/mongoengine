@@ -1,9 +1,7 @@
 import pickle
 
 from mongoengine import Document, IntField, StringField
-from mongoengine.asynchronous import async_disconnect
-from mongoengine.registry import _CollectionRegistry
-from tests.asynchronous.utils import MongoDBAsyncTestCase, reset_async_connections
+from tests.asynchronous.utils import MongoDBAsyncTestCase
 
 
 class Person(Document):
@@ -20,12 +18,6 @@ class TestQuerysetPickable(MongoDBAsyncTestCase):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.john = await Person.aobjects.create(name="John", age=21)
-
-    async def asyncTearDown(self):
-        await Person.adrop_collection()
-        await async_disconnect()
-        await reset_async_connections()
-        _CollectionRegistry.clear()
 
     async def test_picke_simple_qs(self):
         qs = Person.aobjects.all()
