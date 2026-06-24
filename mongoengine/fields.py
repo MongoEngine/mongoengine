@@ -1088,6 +1088,14 @@ class DictField(ComplexBaseField):
 
         return super().prepare_query_value(op, value)
 
+    def to_python(self, value):
+        if value is None:
+            return None
+        to_python = getattr(self.field, "to_python", None)
+        if not to_python or not value:
+            return value
+        return {k: to_python(v) for k, v in value.items()}
+
 
 class MapField(DictField):
     """A field that maps a name to a specified field type. Similar to
