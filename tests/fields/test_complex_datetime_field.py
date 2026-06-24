@@ -163,34 +163,40 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         assert fetched_log.timestamp is None
 
     def test_default_static_value(self):
-        NOW = datetime.datetime.utcnow()
+        NOW_UTC = datetime.datetime.now(datetime.timezone.utc)
+        NOW_NAIVE = NOW_UTC.replace(tzinfo=None)
 
         class Log(Document):
-            timestamp = ComplexDateTimeField(default=NOW)
+            timestamp = ComplexDateTimeField(default=NOW_UTC)
 
         Log.drop_collection()
 
         log = Log()
-        assert log.timestamp == NOW
+        assert log.timestamp == NOW_NAIVE
         log.save()
 
         fetched_log = Log.objects.with_id(log.id)
-        assert fetched_log.timestamp == NOW
+        assert fetched_log.timestamp == NOW_NAIVE
 
     def test_default_callable(self):
-        NOW = datetime.datetime.utcnow()
+        NOW_UTC = datetime.datetime.now(datetime.timezone.utc)
+        NOW_NAIVE = NOW_UTC.replace(tzinfo=None)
 
         class Log(Document):
-            timestamp = ComplexDateTimeField(default=datetime.datetime.utcnow)
+            timestamp = ComplexDateTimeField(
+                default=lambda: datetime.datetime.now(datetime.timezone.utc)
+            )
 
         Log.drop_collection()
 
         log = Log()
-        assert log.timestamp >= NOW
+        assert (
+            log.timestamp >= NOW_NAIVE
+        )  # since  ComplexDateTimeField returns naive timestamp without timezone
         log.save()
 
         fetched_log = Log.objects.with_id(log.id)
-        assert fetched_log.timestamp >= NOW
+        assert fetched_log.timestamp >= NOW_NAIVE
 
     def test_setting_bad_value_does_not_raise_unless_validate_is_called(self):
         # test regression of #2253

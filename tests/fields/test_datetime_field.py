@@ -1,4 +1,5 @@
 import datetime as dt
+from datetime import timezone
 
 import pytest
 
@@ -45,9 +46,9 @@ class TestDateTimeField(MongoDBTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=dt.datetime.utcnow)
+            created = DateTimeField(default=lambda: dt.datetime.now(dt.timezone.utc))
 
-        utcnow = dt.datetime.utcnow()
+        utcnow = dt.datetime.now(timezone.utc)
         person = Person()
         person.validate()
         person_created_t0 = person.created

@@ -22,7 +22,7 @@ objects** as class attributes to the document class::
 
     class Page(Document):
         title = StringField(max_length=200, required=True)
-        date_modified = DateTimeField(default=datetime.datetime.utcnow)
+        date_modified = DateTimeField(default=datetime.datetime.now(datetime.timezone.utc))
 
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
@@ -274,7 +274,7 @@ store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate
         user = ReferenceField(User)
         answers = DictField()
 
-    survey_response = SurveyResponse(date=datetime.utcnow(), user=request.user)
+    survey_response = SurveyResponse(date=datetime.datetime.now(datetime.timezone.utc), user=request.user)
     response_form = ResponseForm(request.POST)
     survey_response.answers = response_form.cleaned_data()
     survey_response.save()
@@ -689,7 +689,7 @@ collection after a given period. See the official
 documentation for more information.  A common usecase might be session data::
 
     class Session(Document):
-        created = DateTimeField(default=datetime.utcnow)
+        created = DateTimeField(default=datetime.datetime.now(datetime.timezone.utc))
         meta = {
             'indexes': [
                 {'fields': ['created'], 'expireAfterSeconds': 3600}
@@ -717,7 +717,7 @@ A default ordering can be specified for your
 :class:`~mongoengine.queryset.QuerySet` is created, and can be overridden by
 subsequent calls to :meth:`~mongoengine.queryset.QuerySet.order_by`. ::
 
-    from datetime import datetime
+    from datetime import datetime,timezone
 
     class BlogPost(Document):
         title = StringField()
@@ -812,7 +812,7 @@ the class name in every documents. When a document is loaded, MongoEngine checks
 it's :attr:`_cls` attribute and use that class to construct the instance.::
 
     Page(title='a funky title').save()
-    DatedPage(title='another title', date=datetime.utcnow()).save()
+    DatedPage(title='another title', date=datetime.now(timezone.utc)).save()
 
     print(Page.objects().count())         # 2
     print(DatedPage.objects().count())    # 1
@@ -823,7 +823,7 @@ it's :attr:`_cls` attribute and use that class to construct the instance.::
     print(list(qs))
     # [
     #   {'_cls': u 'Page', 'title': 'a funky title'},
-    #   {'_cls': u 'Page.DatedPage', 'title': u 'another title', 'date': datetime.datetime(2019, 12, 13, 20, 16, 59, 993000)}
+    #   {'_cls': u 'Page.DatedPage', 'title': u 'another title', 'date': datetime(2019, 12, 13, 20, 16, 59, 993000)}
     # ]
 
 Working with existing data

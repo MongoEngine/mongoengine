@@ -74,13 +74,13 @@ Attaching Events
 After writing a handler function like the following::
 
     import logging
-    from datetime import datetime
+    from datetime import datetime,timezone
 
     from mongoengine import *
     from mongoengine import signals
 
     def update_modified(sender, document):
-        document.modified = datetime.utcnow()
+        document.modified = datetime.now(timezone.utc)
 
 You attach the event handler to your :class:`~mongoengine.Document` or
 :class:`~mongoengine.EmbeddedDocument` subclass::
@@ -139,7 +139,7 @@ cleaner looking while still allowing manual execution of the callback::
 
     @handler(signals.pre_save)
     def update_modified(sender, document):
-        document.modified = datetime.utcnow()
+        document.modified = datetime.now(timezone.utc)
 
     @update_modified.apply
     class Record(Document):

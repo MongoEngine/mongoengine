@@ -1554,7 +1554,8 @@ class TestQueryset(unittest.TestCase):
             meta = {"ordering": ["-published_date"]}
 
         BlogPost.objects.create(
-            title="whatever", published_date=datetime.datetime.utcnow()
+            title="whatever",
+            published_date=datetime.datetime.now(datetime.timezone.utc),
         )
 
         with db_ops_tracker() as q:
@@ -3114,7 +3115,7 @@ class TestQueryset(unittest.TestCase):
 
         Link.drop_collection()
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should
