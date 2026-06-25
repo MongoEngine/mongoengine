@@ -7,6 +7,11 @@ from pymongo.read_preferences import (
     Nearest,
 )
 
+DEFAULT_CONNECTION_NAME = "default"
+DEFAULT_DATABASE_NAME = "test"
+DEFAULT_HOST = "localhost"
+DEFAULT_PORT = 27017
+
 _class_registry_cache = {}
 _field_list_cache = []
 

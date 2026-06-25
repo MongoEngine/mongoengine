@@ -21,17 +21,16 @@ Asynchronous functionality is backed by PyMongo's native async support
 
 from mongoengine import document, errors, fields, signals
 
+
 # ---- private imports (for __all__ only) ----
-from mongoengine.synchronous import connection as _sync_connection
-from mongoengine.asynchronous import connection as _async_connection
-from mongoengine.synchronous import queryset as _sync_queryset
-from mongoengine.asynchronous import queryset as _async_queryset
+import mongoengine.base.queryset as _queryset_base
+import mongoengine.synchronous as _sync_modules
+import mongoengine.asynchronous as _async_modules
 
 # ---- public re-exports ----
-from mongoengine.synchronous.connection import *  # noqa: F401,F403
-from mongoengine.asynchronous.connection import *  # noqa: F401,F403
-from mongoengine.synchronous.queryset import *  # noqa: F401,F403
-from mongoengine.asynchronous.queryset import *  # noqa: F401,F403
+from mongoengine.base.queryset import *  # noqa: F401,F403
+from mongoengine.synchronous import *  # noqa: F401,F403
+from mongoengine.asynchronous import *  # noqa: F401,F403
 
 from mongoengine.document import *  # noqa: F401,F403
 from mongoengine.errors import *  # noqa: F401,F403
@@ -42,19 +41,17 @@ from mongoengine.signals import *  # noqa: F401,F403
 __all__ = (
     list(document.__all__)
     + list(fields.__all__)
-    + list(_sync_connection.__all__)
-    + list(_async_connection.__all__)
-    + list(_sync_queryset.__all__)
-    + list(_async_queryset.__all__)
+    + list(_queryset_base.__all__)
+    + list(_sync_modules.__all__)
+    + list(_async_modules.__all__)
     + list(signals.__all__)
     + list(errors.__all__)
 )
 
 # ---- hide internals ----
-del _sync_connection
-del _async_connection
-del _sync_queryset
-del _async_queryset
+del _queryset_base
+del _sync_modules
+del _async_modules
 
 VERSION = (0, 30, 0)
 
