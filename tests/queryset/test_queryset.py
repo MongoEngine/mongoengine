@@ -4016,6 +4016,28 @@ class TestQueryset(unittest.TestCase):
         assert 0 == Foo.objects.count()
         assert 1 == Bar.objects.count()
 
+    def test_select_related_when_referenced_has_custom_queryset_manager(self):
+        class Foo(Document):
+            @queryset_manager
+            def objects(klass, queryset, arg1=None, arg2=None, **kwargs):
+                return queryset(**kwargs)
+
+        class Bar(Document):
+            foo = ReferenceField(Foo)
+
+        Foo.drop_collection()
+        Bar.drop_collection()
+
+        foo = Foo()
+        foo.save()
+
+        Bar(foo=foo).save()
+
+        Bar.objects().select_related()
+
+        assert 1 == Foo.objects().count()
+        assert 1 == Bar.objects().count()
+
     def test_query_value_conversion(self):
         """Ensure that query values are properly converted when necessary."""
 

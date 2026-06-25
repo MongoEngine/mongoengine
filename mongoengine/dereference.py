@@ -1,3 +1,5 @@
+from functools import partial
+
 from bson import SON, DBRef
 
 from mongoengine.base import (
@@ -174,7 +176,10 @@ class DeReference:
                 refs = [
                     dbref for dbref in dbrefs if (col_name, dbref) not in object_map
                 ]
-                references = collection.objects.in_bulk(refs)
+                if isinstance(collection.objects, partial):
+                    references = collection.objects().in_bulk(refs)
+                else:
+                    references = collection.objects.in_bulk(refs)
                 for key, doc in references.items():
                     object_map[(col_name, key)] = doc
             else:  # Generic reference: use the refs data to convert to document
