@@ -1,6 +1,13 @@
-from .connection import *
-from .queryset import *
+import mongoengine.synchronous.connection as _connection
 
-__all__ = [
-    list(connection.__all__) + list(queryset.__all__),
-]
+from .connection import *  # noqa: F401,F403
+from .queryset import (  # noqa: F401,F403
+    QuerySet,
+    QuerySetNoCache,
+    queryset as _queryset,
+)
+
+__all__ = list(_connection.__all__) + list(_queryset.__all__)
+
+del _queryset
+del _connection

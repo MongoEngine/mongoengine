@@ -6,7 +6,14 @@ from pymongo.driver_info import DriverInfo
 from pymongo.errors import ConnectionFailure
 
 import mongoengine
-from mongoengine.common import _check_db_name, convert_read_preference
+from mongoengine.common import (
+    _check_db_name,
+    convert_read_preference,
+    DEFAULT_CONNECTION_NAME,
+    DEFAULT_DATABASE_NAME,
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+)
 
 __all__ = [
     "connect",
@@ -15,14 +22,12 @@ __all__ = [
     "get_connection",
     "get_db",
     "register_connection",
+    "DEFAULT_CONNECTION_NAME",
+    "DEFAULT_DATABASE_NAME",
 ]
 
 from mongoengine.registry import _CollectionRegistry
 
-DEFAULT_CONNECTION_NAME = "default"
-DEFAULT_DATABASE_NAME = "test"
-DEFAULT_HOST = "localhost"
-DEFAULT_PORT = 27017
 
 READ_PREFERENCE = ReadPreference.PRIMARY
 

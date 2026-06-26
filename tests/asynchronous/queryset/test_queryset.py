@@ -11,6 +11,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 
 from mongoengine import *
+from mongoengine.asynchronous.queryset import AsyncBaseQuerySet
 from mongoengine.base import LazyReference
 from mongoengine.base.queryset import (
     CASCADE,
