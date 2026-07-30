@@ -11,6 +11,7 @@ from bson import DBRef
 from mongoengine import *
 from mongoengine.connection import _get_session, get_db
 from mongoengine.context_managers import (
+    _commit_with_retry,
     no_dereference,
     no_sub_classes,
     query_counter,
@@ -58,6 +59,44 @@ class TestableThread(Thread):
 
 
 class TestContextManagers(MongoDBTestCase):
+    def test_commit_with_retry__unknown_commit_result__retries_until_success(self):
+        class Session:
+            attempts = 0
+
+            def commit_transaction(self):
+                self.attempts += 1
+                if self.attempts == 1:
+                    raise pymongo.errors.OperationFailure(
+                        "commit failed",
+                        details={
+                            "errorLabels": ["UnknownTransactionCommitResult"],
+                        },
+                    )
+
+        session = Session()
+
+        _commit_with_retry(session)
+
+        assert session.attempts == 2
+
+    def test_commit_with_retry__other_commit_failure__raises(self):
+        error = pymongo.errors.OperationFailure("commit failed")
+
+        class Session:
+            attempts = 0
+
+            def commit_transaction(self):
+                self.attempts += 1
+                raise error
+
+        session = Session()
+
+        with pytest.raises(pymongo.errors.OperationFailure) as exc_info:
+            _commit_with_retry(session)
+
+        assert exc_info.value is error
+        assert session.attempts == 1
+
     def test_set_write_concern(self):
         class User(Document):
             name = StringField()

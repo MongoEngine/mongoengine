@@ -466,6 +466,15 @@ class TestStrictDict(unittest.TestCase):
         assert dict(d) == {"a": 1, "b": 2}
         assert dict(**d) == {"a": 1, "b": 2}
 
+    def test_mapping_protocol_methods(self):
+        d = self.dtype(a=1)
+
+        d["b"] = 2
+
+        assert d.pop("missing", "default") == "default"
+        assert list(d.iteritems()) == [("a", 1), ("b", 2)]
+        assert list(d.iterkeys()) == ["a", "b"]
+
 
 if __name__ == "__main__":
     unittest.main()
