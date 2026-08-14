@@ -236,7 +236,10 @@ class BaseField:
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo."""
-        if op in UPDATE_OPERATORS:
+        # $inc/$dec apply a delta, not the stored value. Checking min_value
+        # / max_value against the delta rejects legitimate decrements on
+        # fields with min_value=0 (see #2339).
+        if op in UPDATE_OPERATORS and op not in ("inc", "dec"):
             self.validate(value)
         return value
 
