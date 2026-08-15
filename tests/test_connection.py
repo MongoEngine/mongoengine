@@ -663,10 +663,9 @@ class ConnectionTest(unittest.TestCase):
         mongo_connections["t2"].server_info()
 
         assert mongo_connections["t1"].address[0] == "localhost"
-        assert mongo_connections["t2"].address[0] in (
-            "localhost",
-            "127.0.0.1",
-        )  # weird but there is a discrepancy in the address in replicaset setup
+        assert mongoengine.connection._connection_settings["t2"]["host"] == [
+            "127.0.0.1"
+        ]
         assert mongo_connections["t1"].read_preference == ReadPreference.PRIMARY
         assert (
             mongo_connections["t2"].read_preference == ReadPreference.PRIMARY_PREFERRED

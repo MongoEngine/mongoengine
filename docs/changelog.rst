@@ -30,6 +30,18 @@ Development
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
 
+Changes in 0.29.3
+=================
+- Remove mentions of mongoengine[dot]org has we no longer own it #2905
+
+Changes in 0.29.2
+=================
+- fixes relted with
+
+Changes in 0.29.1
+=================
+- Add support for freshly released pymongo 4.9 #2849
+
 Changes in 0.29.0
 =================
 - Fix weakref in EmbeddedDocumentListField (causing brief mem leak in certain circumstances) #2827
