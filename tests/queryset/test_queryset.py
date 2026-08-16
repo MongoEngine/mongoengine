@@ -10,6 +10,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 
 from mongoengine import *
+from mongoengine.common import utcnow_naive
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import InvalidQueryError
@@ -1553,9 +1554,7 @@ class TestQueryset(unittest.TestCase):
 
             meta = {"ordering": ["-published_date"]}
 
-        BlogPost.objects.create(
-            title="whatever", published_date=datetime.datetime.utcnow()
-        )
+        BlogPost.objects.create(title="whatever", published_date=utcnow_naive())
 
         with db_ops_tracker() as q:
             BlogPost.objects.get(title="whatever")
@@ -3114,7 +3113,7 @@ class TestQueryset(unittest.TestCase):
 
         Link.drop_collection()
 
-        now = datetime.datetime.utcnow()
+        now = utcnow_naive()
 
         # Note: Test data taken from a custom Reddit homepage on
         # Fri, 12 Feb 2010 14:36:00 -0600. Link ordering should

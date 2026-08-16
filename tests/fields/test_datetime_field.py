@@ -4,6 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine import connection
+from mongoengine.common import utcnow_naive
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 try:
@@ -45,15 +46,28 @@ class TestDateTimeField(MongoDBTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=dt.datetime.utcnow)
+            created = DateTimeField(default=utcnow_naive)
 
-        utcnow = dt.datetime.utcnow()
+        utcnow = utcnow_naive()
         person = Person()
         person.validate()
         person_created_t0 = person.created
         assert person.created - utcnow < dt.timedelta(seconds=1)
         assert person_created_t0 == person.created  # make sure it does not change
         assert person._data["created"] == person.created
+
+    def test_aware_datetime_is_stored_as_naive_utc(self):
+        class LogEntry(Document):
+            time = DateTimeField()
+
+        LogEntry.drop_collection()
+        aware_datetime = dt.datetime(
+            2026, 8, 16, 12, tzinfo=dt.timezone(dt.timedelta(hours=2))
+        )
+
+        LogEntry(time=aware_datetime).save()
+
+        assert LogEntry.objects.get().time == dt.datetime(2026, 8, 16, 10)
 
     def test_set_using_callable(self):
         # Weird feature but it's there for a while so let's make sure we don't break it
