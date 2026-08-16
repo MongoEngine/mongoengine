@@ -23,7 +23,7 @@ class MongoDBTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         disconnect_all()
-        cls._connection = connect(db=MONGO_TEST_DB)
+        cls._connection = connect(db=MONGO_TEST_DB, uuidRepresentation="pythonLegacy")
         cls._connection.drop_database(MONGO_TEST_DB)
         cls.db = get_db()
 
