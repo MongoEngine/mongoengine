@@ -8,7 +8,7 @@ def _import_class(cls_name):
     Due to complications of circular imports mongoengine needs to do lots of
     inline imports in functions.  This is inefficient as classes are
     imported repeated throughout the mongoengine code.  This is
-    compounded by some recursive functions requiring inline imports.
+    compounded by some recursive functions requiring inline imports
 
     :mod:`mongoengine.common` provides a single point to import all these
     classes.  Circular imports aren't an issue as it dynamically imports the
