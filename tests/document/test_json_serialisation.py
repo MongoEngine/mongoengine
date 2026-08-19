@@ -2,10 +2,16 @@ import unittest
 import uuid
 from datetime import datetime
 
-from bson import ObjectId
+import pytest
+from bson import ObjectId, json_util
+from bson.binary import UuidRepresentation
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase
+
+PYTHON_LEGACY_JSON_OPTIONS = json_util.DEFAULT_JSON_OPTIONS.with_options(
+    uuid_representation=UuidRepresentation.PYTHON_LEGACY,
+)
 
 
 class TestJson(MongoDBTestCase):
@@ -96,10 +102,29 @@ class TestJson(MongoDBTestCase):
             def __eq__(self, other):
                 import json
 
-                return json.loads(self.to_json()) == json.loads(other.to_json())
+                return json.loads(
+                    self.to_json(json_options=PYTHON_LEGACY_JSON_OPTIONS)
+                ) == json.loads(other.to_json(json_options=PYTHON_LEGACY_JSON_OPTIONS))
 
         doc = Doc()
-        assert doc == Doc.from_json(doc.to_json())
+        json_data = doc.to_json(json_options=PYTHON_LEGACY_JSON_OPTIONS)
+        assert doc == Doc.from_json(
+            json_data,
+            json_options=PYTHON_LEGACY_JSON_OPTIONS,
+        )
+
+    def test_json_uuid__representation_is_omitted__fails(self):
+        class Doc(Document):
+            uuid_field = UUIDField()
+
+        doc = Doc(uuid_field=uuid.uuid4())
+
+        with pytest.raises(ValueError, match="cannot encode native uuid.UUID"):
+            doc.to_json()
+
+        legacy_json = doc.to_json(json_options=PYTHON_LEGACY_JSON_OPTIONS)
+        with pytest.raises(ValidationError, match="BSON UUID"):
+            Doc.from_json(legacy_json)
 
 
 if __name__ == "__main__":

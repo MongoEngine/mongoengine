@@ -13,6 +13,7 @@ from operator import itemgetter
 import gridfs
 import pymongo
 from bson import SON, Binary, DBRef, ObjectId
+from bson.binary import OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.decimal128 import Decimal128, create_decimal128_context
 from pymongo import ReturnDocument
 
@@ -2220,6 +2221,16 @@ class UUIDField(BaseField):
                 return uuid.UUID(value)
             except (ValueError, TypeError, AttributeError):
                 return original_value
+        elif isinstance(value, Binary) and value.subtype in (
+            OLD_UUID_SUBTYPE,
+            UUID_SUBTYPE,
+        ):
+            # The default uuidRepresentation was switched to UNSPECIFIED in MongoEngine 1.0.
+            # This error may mean the user did not handle the required migration.
+            self.error(
+                "BSON UUID could not be decoded to a native uuid.UUID. "
+                "Configure uuidRepresentation to match the stored UUID representation."
+            )
         return value
 
     def to_mongo(self, value):

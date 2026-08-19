@@ -210,7 +210,7 @@ class ConnectionTest(unittest.TestCase):
             "read_preference": read_pref,
             "replicaSet": "s0",
             "username": "root",
-            "uuidrepresentation": "javaLegacy",
+            "uuidRepresentation": "javaLegacy",
         }
 
     def test_connect_passes_silently_connect_multiple_times_with_same_config(self):
@@ -682,6 +682,18 @@ class ConnectionTest(unittest.TestCase):
         c2 = connect(alias="testdb2", db="testdb2", username="u2", password="pass")
         assert c1 is not c2
 
+    def test_connect__equivalent_uuidrepresentation_options__reuses_alias(self):
+        rand = random_str()
+        host = f"mongodb://localhost:27017/{rand}?uuidRepresentation=standard"
+
+        first_connection = connect(alias=rand, host=host)
+        second_connection = connect(
+            alias=rand, host=host, uuidRepresentation="standard"
+        )
+
+        assert second_connection is first_connection
+        disconnect(rand)
+
     def test_connect_uri_uuidrepresentation_set_in_uri(self):
         rand = random_str()
         tmp_conn = connect(
@@ -716,14 +728,12 @@ class ConnectionTest(unittest.TestCase):
         )
         disconnect(rand)
 
-    def test_connect_uri_uuidrepresentation_default_to_pythonlegacy(self):
-        # To be changed soon to unspecified
+    def test_connect_uuidrepresentation_defaults_to_unspecified(self):
         rand = random_str()
-        with pytest.warns(DeprecationWarning, match="No uuidRepresentation"):
-            tmp_conn = connect(alias=rand, db=rand)
+        tmp_conn = connect(alias=rand, db=rand)
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]
+            == pymongo.common._UUID_REPRESENTATIONS["unspecified"]
         )
         disconnect(rand)
 

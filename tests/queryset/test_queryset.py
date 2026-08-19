@@ -5,7 +5,8 @@ from decimal import Decimal
 
 import pymongo
 import pytest
-from bson import DBRef, ObjectId
+from bson import DBRef, ObjectId, json_util
+from bson.binary import UuidRepresentation
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import UpdateResult
 
@@ -43,7 +44,7 @@ def get_key_compat(mongo_ver):
 
 class TestQueryset(unittest.TestCase):
     def setUp(self):
-        connect(db="mongoenginetest")
+        connect(db="mongoenginetest", uuidRepresentation="pythonLegacy")
         connect(db="mongoenginetest2", alias="test2")
 
         class PersonMeta(EmbeddedDocument):
@@ -5226,10 +5227,19 @@ class TestQueryset(unittest.TestCase):
         Doc.drop_collection()
 
         Doc().save()
-        json_data = Doc.objects.to_json()
+        with pytest.raises(ValueError, match="cannot encode native uuid.UUID"):
+            Doc.objects.to_json()
+
+        json_options = json_util.DEFAULT_JSON_OPTIONS.with_options(
+            uuid_representation=UuidRepresentation.PYTHON_LEGACY,
+        )
+        json_data = Doc.objects.to_json(json_options=json_options)
         doc_objects = list(Doc.objects)
 
-        assert doc_objects == Doc.objects.from_json(json_data)
+        assert doc_objects == Doc.objects.from_json(
+            json_data,
+            json_options=json_options,
+        )
 
     def test_as_pymongo(self):
         class LastLogin(EmbeddedDocument):

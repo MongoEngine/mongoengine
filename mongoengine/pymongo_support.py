@@ -10,14 +10,9 @@ from mongoengine import connection
 
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
-# This will be changed to UuidRepresentation.UNSPECIFIED in a future
-# (breaking) release.
-if PYMONGO_VERSION >= (4,):
-    LEGACY_JSON_OPTIONS = json_util.LEGACY_JSON_OPTIONS.with_options(
-        uuid_representation=binary.UuidRepresentation.PYTHON_LEGACY,
-    )
-else:
-    LEGACY_JSON_OPTIONS = json_util.DEFAULT_JSON_OPTIONS
+DEFAULT_JSON_OPTIONS = json_util.DEFAULT_JSON_OPTIONS.with_options(
+    uuid_representation=binary.UuidRepresentation.UNSPECIFIED,
+)
 
 
 def count_documents(

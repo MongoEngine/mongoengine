@@ -30,7 +30,7 @@ from mongoengine.errors import (
     OperationError,
 )
 from mongoengine.pymongo_support import (
-    LEGACY_JSON_OPTIONS,
+    DEFAULT_JSON_OPTIONS,
     count_documents,
 )
 from mongoengine.queryset import transform
@@ -1336,22 +1336,13 @@ class BaseQuerySet:
 
     def to_json(self, *args, **kwargs):
         """Converts a queryset to JSON"""
-        if "json_options" not in kwargs:
-            warnings.warn(
-                "No 'json_options' are specified! Falling back to "
-                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
-                "For use with other MongoDB drivers specify the UUID "
-                "representation to use. This will be changed to "
-                "uuid_representation=UNSPECIFIED in a future release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            kwargs["json_options"] = LEGACY_JSON_OPTIONS
+        kwargs.setdefault("json_options", DEFAULT_JSON_OPTIONS)
         return json_util.dumps(self.as_pymongo(), *args, **kwargs)
 
-    def from_json(self, json_data):
+    def from_json(self, json_data, **kwargs):
         """Converts json data to unsaved objects"""
-        son_data = json_util.loads(json_data)
+        kwargs.setdefault("json_options", DEFAULT_JSON_OPTIONS)
+        son_data = json_util.loads(json_data, **kwargs)
         return [self._document._from_son(data) for data in son_data]
 
     def aggregate(self, pipeline, **kwargs):

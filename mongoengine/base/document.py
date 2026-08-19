@@ -1,6 +1,5 @@
 import copy
 import numbers
-import warnings
 from functools import partial
 
 import pymongo
@@ -24,7 +23,7 @@ from mongoengine.errors import (
     OperationError,
     ValidationError,
 )
-from mongoengine.pymongo_support import LEGACY_JSON_OPTIONS
+from mongoengine.pymongo_support import DEFAULT_JSON_OPTIONS
 
 __all__ = ("BaseDocument", "NON_FIELD_ERRORS")
 
@@ -447,17 +446,7 @@ class BaseDocument:
             Defaults to True.
         """
         use_db_field = kwargs.pop("use_db_field", True)
-        if "json_options" not in kwargs:
-            warnings.warn(
-                "No 'json_options' are specified! Falling back to "
-                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
-                "For use with other MongoDB drivers specify the UUID "
-                "representation to use. This will be changed to "
-                "uuid_representation=UNSPECIFIED in a future release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            kwargs["json_options"] = LEGACY_JSON_OPTIONS
+        kwargs.setdefault("json_options", DEFAULT_JSON_OPTIONS)
         return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
     @classmethod
@@ -480,17 +469,7 @@ class BaseDocument:
         # TODO should `created` default to False? If the object already exists
         # in the DB, you would likely retrieve it from MongoDB itself through
         # a query, not load it from JSON data.
-        if "json_options" not in kwargs:
-            warnings.warn(
-                "No 'json_options' are specified! Falling back to "
-                "LEGACY_JSON_OPTIONS with uuid_representation=PYTHON_LEGACY. "
-                "For use with other MongoDB drivers specify the UUID "
-                "representation to use. This will be changed to "
-                "uuid_representation=UNSPECIFIED in a future release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            kwargs["json_options"] = LEGACY_JSON_OPTIONS
+        kwargs.setdefault("json_options", DEFAULT_JSON_OPTIONS)
         return cls._from_son(json_util.loads(json_data, **kwargs), created=created)
 
     def __expand_dynamic_values(self, name, value):
