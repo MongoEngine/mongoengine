@@ -17,6 +17,39 @@ Changes in 1.0.0
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
     - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of ``UnknownTransactionCommitResult`` but not ``TransientTransactionError`` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
+
+- BREAKING CHANGE: The default UUID representation used to be ``pythonLegacy`` and is now ``unspecified``.
+  This prevents MongoEngine from silently choosing how to encode native
+  ``uuid.UUID`` values. Applications using the default binary
+  ``UUIDField`` must explicitly select a representation::
+
+      # Keep reading and writing existing Python legacy UUID data.
+      connect(uuidRepresentation="pythonLegacy")
+
+      # Use this for new databases or after migrating existing UUID data.
+      connect(uuidRepresentation="standard")
+
+  Recommendation is that applications with existing UUID data should use ``pythonLegacy``.
+
+  With ``unspecified``, writing or querying with a native ``uuid.UUID`` raises
+  ``ValueError``. Reading a BSON UUID whose representation does not match the
+  configured representation raises ``ValidationError`` instead of exposing a
+  ``bson.Binary`` value through ``UUIDField``. ``ObjectId`` values and
+  ``UUIDField(binary=False)`` are unaffected.
+
+  To migrate a normal, top-level ``UUIDField`` from Python legacy BSON subtype
+  3 to standard BSON subtype 4, read through a Python legacy client and write through a standard
+  client so PyMongo preserves the UUID value while changing its BSON subtype.
+
+  Migrating documents that have UUID as primary key (i.e UUIDField(primary_key=True)) is more tedious as documents' id cannot be updated in
+  place so you will need to recreate the documents with standard UUID primary keys and update every reference.
+
+  Extended JSON UUID handling remains independent from the connection. The
+  implicit ``json_options`` used by ``Document.to_json()``,
+  ``Document.from_json()``, ``QuerySet.to_json()``, and ``QuerySet.from_json()``
+  now also use ``UNSPECIFIED``. Pass explicit JSON options when serializing
+  native UUIDs
+
 - Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
   project and appears to be an expired domain takeover.
 - Fix querying GenericReferenceField with __in operator #2886

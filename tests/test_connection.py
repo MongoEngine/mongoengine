@@ -716,14 +716,12 @@ class ConnectionTest(unittest.TestCase):
         )
         disconnect(rand)
 
-    def test_connect_uri_uuidrepresentation_default_to_pythonlegacy(self):
-        # To be changed soon to unspecified
+    def test_connect_uuidrepresentation_defaults_to_unspecified(self):
         rand = random_str()
-        with pytest.warns(DeprecationWarning, match="No uuidRepresentation"):
-            tmp_conn = connect(alias=rand, db=rand)
+        tmp_conn = connect(alias=rand, db=rand)
         assert (
             tmp_conn.options.codec_options.uuid_representation
-            == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]
+            == pymongo.common._UUID_REPRESENTATIONS["unspecified"]
         )
         disconnect(rand)
 

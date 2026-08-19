@@ -1,6 +1,5 @@
 import collections
 import threading
-import warnings
 
 from pymongo import MongoClient, ReadPreference, uri_parser
 from pymongo.common import _UUID_REPRESENTATIONS
@@ -211,17 +210,7 @@ def _get_connection_settings(
         key.lower() for key in kwargs.keys()
     }  # pymongo options are case insensitive
     if "uuidrepresentation" not in keys and "uuidrepresentation" not in conn_settings:
-        warnings.warn(
-            "No uuidRepresentation is specified! Falling back to "
-            "'pythonLegacy' which is the default for pymongo 3.x. "
-            "For compatibility with other MongoDB drivers this should be "
-            "specified as 'standard' or '{java,csharp}Legacy' to work with "
-            "older drivers in those languages. This will be changed to "
-            "'unspecified' in a future release.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        kwargs["uuidRepresentation"] = "pythonLegacy"
+        kwargs["uuidRepresentation"] = "unspecified"
 
     conn_settings.update(kwargs)
     return conn_settings

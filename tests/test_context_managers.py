@@ -599,8 +599,7 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_40
     def test_transaction_updates_across_databases(self):
-        connect("mongoenginetest")
-        connect("test2", "test2")
+        connect("test2", "test2", uuidRepresentation="pythonLegacy")
 
         class A(Document):
             name = StringField()
@@ -624,8 +623,7 @@ class TestContextManagers(MongoDBTestCase):
 
     @requires_mongodb_gte_44
     def test_collection_creation_via_upserts_across_databases_in_transaction(self):
-        connect("mongoenginetest")
-        connect("test2", "test2")
+        connect("test2", "test2", uuidRepresentation="pythonLegacy")
 
         class A(Document):
             name = StringField()
@@ -658,8 +656,7 @@ class TestContextManagers(MongoDBTestCase):
     def test_an_exception_raised_in_transactions_across_databases_rolls_back_updates(
         self,
     ):
-        connect("mongoenginetest")
-        connect("test2", "test2")
+        connect("test2", "test2", uuidRepresentation="pythonLegacy")
 
         class A(Document):
             name = StringField()
