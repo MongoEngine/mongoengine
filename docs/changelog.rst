@@ -7,10 +7,9 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
-  project and appears to be an expired domain takeover.
-- Fix querying GenericReferenceField with __in operator #2886
-- Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
+
+Changes in 1.0.0
+===========
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
 
   Some considerations:
@@ -18,6 +17,10 @@ Development
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
     - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of ``UnknownTransactionCommitResult`` but not ``TransientTransactionError`` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
+- Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
+  project and appears to be an expired domain takeover.
+- Fix querying GenericReferenceField with __in operator #2886
+- Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
 - Fix use of $geoNear or $collStats in aggregate #2493
@@ -32,11 +35,7 @@ Development
 
 Changes in 0.29.3
 =================
-- Remove mentions of mongoengine[dot]org has we no longer own it #2905
-
-Changes in 0.29.2
-=================
-- fixes relted with
+- Remove mentions of mongoengine[dot]org as we no longer own it #2905
 
 Changes in 0.29.1
 =================

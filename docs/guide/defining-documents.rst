@@ -17,12 +17,15 @@ To define a schema for a document, create a class that inherits from
 :class:`~mongoengine.Document`. Fields are specified by adding **field
 objects** as class attributes to the document class::
 
+    from datetime import datetime, timezone
+
     from mongoengine import *
-    import datetime
 
     class Page(Document):
         title = StringField(max_length=200, required=True)
-        date_modified = DateTimeField(default=datetime.datetime.utcnow)
+        date_modified = DateTimeField(
+            default=lambda: datetime.now(timezone.utc)
+        )
 
 As BSON (the binary format for storing data in mongodb) is order dependent,
 documents are serialized based on their field order.
@@ -274,7 +277,10 @@ store; in this situation a :class:`~mongoengine.fields.DictField` is appropriate
         user = ReferenceField(User)
         answers = DictField()
 
-    survey_response = SurveyResponse(date=datetime.utcnow(), user=request.user)
+    survey_response = SurveyResponse(
+        date=datetime.now(timezone.utc),
+        user=request.user,
+    )
     response_form = ResponseForm(request.POST)
     survey_response.answers = response_form.cleaned_data()
     survey_response.save()
@@ -689,7 +695,9 @@ collection after a given period. See the official
 documentation for more information.  A common usecase might be session data::
 
     class Session(Document):
-        created = DateTimeField(default=datetime.utcnow)
+        created = DateTimeField(
+            default=lambda: datetime.now(timezone.utc)
+        )
         meta = {
             'indexes': [
                 {'fields': ['created'], 'expireAfterSeconds': 3600}
@@ -812,7 +820,10 @@ the class name in every documents. When a document is loaded, MongoEngine checks
 it's :attr:`_cls` attribute and use that class to construct the instance.::
 
     Page(title='a funky title').save()
-    DatedPage(title='another title', date=datetime.utcnow()).save()
+    DatedPage(
+        title='another title',
+        date=datetime.now(timezone.utc),
+    ).save()
 
     print(Page.objects().count())         # 2
     print(DatedPage.objects().count())    # 1

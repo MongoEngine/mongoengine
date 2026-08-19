@@ -719,7 +719,8 @@ class ConnectionTest(unittest.TestCase):
     def test_connect_uri_uuidrepresentation_default_to_pythonlegacy(self):
         # To be changed soon to unspecified
         rand = random_str()
-        tmp_conn = connect(alias=rand, db=rand)
+        with pytest.warns(DeprecationWarning, match="No uuidRepresentation"):
+            tmp_conn = connect(alias=rand, db=rand)
         assert (
             tmp_conn.options.codec_options.uuid_representation
             == pymongo.common._UUID_REPRESENTATIONS["pythonLegacy"]

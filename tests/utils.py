@@ -1,6 +1,7 @@
 import functools
 import operator
 import unittest
+from datetime import datetime, timezone
 
 import pymongo
 import pytest
@@ -15,6 +16,11 @@ PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
 
 
+def utcnow_naive() -> datetime:
+    """Return the current UTC datetime without timezone information."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class MongoDBTestCase(unittest.TestCase):
     """Base class for tests that need a mongodb connection
     It ensures that the db is clean at the beginning and dropped at the end automatically
@@ -23,7 +29,7 @@ class MongoDBTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         disconnect_all()
-        cls._connection = connect(db=MONGO_TEST_DB)
+        cls._connection = connect(db=MONGO_TEST_DB, uuidRepresentation="pythonLegacy")
         cls._connection.drop_database(MONGO_TEST_DB)
         cls.db = get_db()
 

@@ -6,7 +6,7 @@ import re
 import pytest
 
 from mongoengine import *
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, utcnow_naive
 
 
 class ComplexDateTimeFieldTest(MongoDBTestCase):
@@ -163,7 +163,7 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         assert fetched_log.timestamp is None
 
     def test_default_static_value(self):
-        NOW = datetime.datetime.utcnow()
+        NOW = utcnow_naive()
 
         class Log(Document):
             timestamp = ComplexDateTimeField(default=NOW)
@@ -178,10 +178,10 @@ class ComplexDateTimeFieldTest(MongoDBTestCase):
         assert fetched_log.timestamp == NOW
 
     def test_default_callable(self):
-        NOW = datetime.datetime.utcnow()
+        NOW = utcnow_naive()
 
         class Log(Document):
-            timestamp = ComplexDateTimeField(default=datetime.datetime.utcnow)
+            timestamp = ComplexDateTimeField(default=utcnow_naive)
 
         Log.drop_collection()
 
