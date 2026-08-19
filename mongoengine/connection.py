@@ -195,7 +195,7 @@ def _get_connection_settings(
                 REV_UUID_REPRESENTATIONS = {
                     v: k for k, v in _UUID_REPRESENTATIONS.items()
                 }
-                conn_settings["uuidrepresentation"] = REV_UUID_REPRESENTATIONS[
+                conn_settings["uuidRepresentation"] = REV_UUID_REPRESENTATIONS[
                     normalized_uri_options["uuidrepresentation"]
                 ]
         else:
@@ -206,11 +206,10 @@ def _get_connection_settings(
     kwargs.pop("slaves", None)
     kwargs.pop("is_slave", None)
 
-    keys = {
-        key.lower() for key in kwargs.keys()
-    }  # pymongo options are case insensitive
-    if "uuidrepresentation" not in keys and "uuidrepresentation" not in conn_settings:
-        kwargs["uuidRepresentation"] = "unspecified"
+    for key in tuple(kwargs):
+        if key.lower() == "uuidrepresentation":
+            conn_settings["uuidRepresentation"] = kwargs.pop(key)
+    conn_settings.setdefault("uuidRepresentation", "unspecified")
 
     conn_settings.update(kwargs)
     return conn_settings

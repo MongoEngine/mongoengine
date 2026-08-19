@@ -2225,8 +2225,8 @@ class UUIDField(BaseField):
             OLD_UUID_SUBTYPE,
             UUID_SUBTYPE,
         ):
-            # uudRepresentation got switched to UNSPECIFIED in MongoEngine 1.0
-            # This error may be a consequence of user not handlng the necessary change correctly in their codebase.
+            # The default uuidRepresentation was switched to UNSPECIFIED in MongoEngine 1.0.
+            # This error may mean the user did not handle the required migration.
             self.error(
                 "BSON UUID could not be decoded to a native uuid.UUID. "
                 "Configure uuidRepresentation to match the stored UUID representation."

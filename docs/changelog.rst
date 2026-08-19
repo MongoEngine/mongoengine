@@ -47,8 +47,11 @@ Changes in 1.0.0
   Extended JSON UUID handling remains independent from the connection. The
   implicit ``json_options`` used by ``Document.to_json()``,
   ``Document.from_json()``, ``QuerySet.to_json()``, and ``QuerySet.from_json()``
-  now also use ``UNSPECIFIED``. Pass explicit JSON options when serializing
-  native UUIDs
+  now also use ``UNSPECIFIED``. Without explicit JSON options, ``to_json()``
+  raises ``ValueError`` for native ``uuid.UUID`` values, while ``from_json()``
+  raises ``ValidationError`` when a BSON UUID cannot be decoded. Pass JSON
+  options with the intended UUID representation when serializing or
+  deserializing UUID data.
 
 - Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
   project and appears to be an expired domain takeover.
