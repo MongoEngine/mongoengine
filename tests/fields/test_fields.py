@@ -35,9 +35,8 @@ from mongoengine import (
 )
 from mongoengine.base import BaseField, EmbeddedDocumentList
 from mongoengine.base.fields import _no_dereference_for_fields
-from mongoengine.common import utcnow_naive
 from mongoengine.errors import DeprecatedError
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, utcnow_naive
 
 
 class TestField(MongoDBTestCase):
@@ -90,7 +89,9 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=utcnow_naive)
+            created = DateTimeField(
+                default=lambda: datetime.datetime.now(datetime.timezone.utc)
+            )
             day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
@@ -170,7 +171,9 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=utcnow_naive)
+            created = DateTimeField(
+                default=lambda: datetime.datetime.now(datetime.timezone.utc)
+            )
 
         # Trying setting values to None
         person = Person(name=None, age=None, userid=None, created=None)
@@ -204,7 +207,9 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=utcnow_naive)
+            created = DateTimeField(
+                default=lambda: datetime.datetime.now(datetime.timezone.utc)
+            )
 
         person = Person()
         person.name = None
@@ -272,7 +277,9 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(default=utcnow_naive)
+            created = DateTimeField(
+                default=lambda: datetime.datetime.now(datetime.timezone.utc)
+            )
 
         person = Person(
             name="Ross",

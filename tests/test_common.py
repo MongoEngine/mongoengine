@@ -1,21 +1,11 @@
-from datetime import datetime, timezone
-
 import pytest
 
-from mongoengine import Document, common
+from mongoengine import Document
 from mongoengine.base import _DocumentRegistry, common as base_common
 from mongoengine.common import _import_class
 
 
 class TestCommon:
-    def test_utcnow_naive_returns_current_naive_utc_datetime(self):
-        before = datetime.now(timezone.utc).replace(tzinfo=None)
-        result = common.utcnow_naive()
-        after = datetime.now(timezone.utc).replace(tzinfo=None)
-
-        assert result.tzinfo is None
-        assert before <= result <= after
-
     def test__import_class(self):
         doc_cls = _import_class("Document")
         assert doc_cls is Document

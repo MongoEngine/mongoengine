@@ -1,10 +1,21 @@
 import re
+from datetime import datetime, timezone
 
 import pytest
 
 from mongoengine.base.utils import LazyRegexCompiler
+from tests.utils import utcnow_naive
 
 signal_output = []
+
+
+def test_utcnow_naive__called__returns_current_naive_utc_datetime():
+    before = datetime.now(timezone.utc).replace(tzinfo=None)
+    result = utcnow_naive()
+    after = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    assert result.tzinfo is None
+    assert before <= result <= after
 
 
 class TestLazyRegexCompiler:

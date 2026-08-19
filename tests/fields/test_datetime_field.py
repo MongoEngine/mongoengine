@@ -4,7 +4,6 @@ import pytest
 
 from mongoengine import *
 from mongoengine import connection
-from mongoengine.common import utcnow_naive
 from tests.utils import MongoDBTestCase, get_as_pymongo
 
 try:
@@ -46,9 +45,9 @@ class TestDateTimeField(MongoDBTestCase):
         """
 
         class Person(Document):
-            created = DateTimeField(default=utcnow_naive)
+            created = DateTimeField(default=lambda: dt.datetime.now(dt.timezone.utc))
 
-        utcnow = utcnow_naive()
+        utcnow = dt.datetime.now(dt.timezone.utc)
         person = Person()
         person.validate()
         person_created_t0 = person.created

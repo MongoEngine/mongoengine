@@ -4,7 +4,7 @@ import pickle
 import unittest
 import uuid
 import weakref
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock
 
 import bson
@@ -15,7 +15,6 @@ from pymongo.errors import DuplicateKeyError
 from mongoengine import *
 from mongoengine import signals
 from mongoengine.base import _DocumentRegistry
-from mongoengine.common import utcnow_naive
 from mongoengine.connection import get_db
 from mongoengine.context_managers import query_counter, switch_db
 from mongoengine.errors import (
@@ -3541,7 +3540,7 @@ class TestDocumentInstance(MongoDBTestCase):
 
     def test_default_values_dont_get_override_upon_save_when_only_is_used(self):
         class Person(Document):
-            created_on = DateTimeField(default=utcnow_naive)
+            created_on = DateTimeField(default=lambda: datetime.now(timezone.utc))
             name = StringField()
 
         p = Person(name="alon")
@@ -3555,7 +3554,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert orig_created_on == p3.created_on
 
         class Person(Document):
-            created_on = DateTimeField(default=utcnow_naive)
+            created_on = DateTimeField(default=lambda: datetime.now(timezone.utc))
             name = StringField()
             height = IntField(default=189)
 

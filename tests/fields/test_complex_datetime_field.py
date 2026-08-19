@@ -6,8 +6,7 @@ import re
 import pytest
 
 from mongoengine import *
-from mongoengine.common import utcnow_naive
-from tests.utils import MongoDBTestCase
+from tests.utils import MongoDBTestCase, utcnow_naive
 
 
 class ComplexDateTimeFieldTest(MongoDBTestCase):

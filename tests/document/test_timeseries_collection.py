@@ -1,6 +1,6 @@
 import time
 import unittest
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from mongoengine import (
     DateTimeField,
@@ -10,7 +10,6 @@ from mongoengine import (
     connect,
     get_db,
 )
-from mongoengine.common import utcnow_naive
 from mongoengine.connection import disconnect
 from tests.utils import requires_mongodb_gte_50
 
@@ -85,7 +84,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert collection_name in self.db.list_collection_names()
 
         # Insert a document and ensure it was inserted
-        self.SensorData(timestamp=utcnow_naive(), temperature=23.4).save()
+        self.SensorData(timestamp=datetime.now(timezone.utc), temperature=23.4).save()
         assert collection.count_documents({}) == 1
 
     @requires_mongodb_gte_50
@@ -99,7 +98,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         assert options.get("timeseries", {}) is not None
         assert options["expireAfterSeconds"] == 1
 
-        self.SensorData(timestamp=utcnow_naive(), temperature=23.4).save()
+        self.SensorData(timestamp=datetime.now(timezone.utc), temperature=23.4).save()
 
         assert collection.count_documents({}) == 1
 
@@ -145,7 +144,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         self.SensorData._get_collection()
 
         # Insert documents out of order
-        now = utcnow_naive()
+        now = datetime.now(timezone.utc)
         self.SensorData(timestamp=now, temperature=23.4).save()
         self.SensorData(timestamp=now - timedelta(seconds=5), temperature=22.0).save()
         self.SensorData(timestamp=now + timedelta(seconds=5), temperature=24.0).save()
@@ -165,7 +164,7 @@ class TestTimeSeriesCollections(unittest.TestCase):
         self.SensorData._get_collection_name()
         self.SensorData._get_collection()
 
-        now = utcnow_naive()
+        now = datetime.now(timezone.utc)
         self.SensorData(timestamp=now - timedelta(seconds=10), temperature=22.0).save()
         self.SensorData(timestamp=now - timedelta(seconds=5), temperature=23.0).save()
         self.SensorData(timestamp=now, temperature=24.0).save()

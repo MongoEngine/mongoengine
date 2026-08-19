@@ -1,12 +1,5 @@
-from datetime import datetime, timezone
-
 _class_registry_cache = {}
 _field_list_cache = []
-
-
-def utcnow_naive() -> datetime:
-    """Return the current UTC datetime without timezone information."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _import_class(cls_name):

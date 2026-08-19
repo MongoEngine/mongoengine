@@ -1,6 +1,7 @@
 import functools
 import operator
 import unittest
+from datetime import datetime, timezone
 
 import pymongo
 import pytest
@@ -13,6 +14,11 @@ from mongoengine.mongodb_support import get_mongodb_version
 PYMONGO_VERSION = tuple(pymongo.version_tuple[:2])
 
 MONGO_TEST_DB = "mongoenginetest"  # standard name for the test database
+
+
+def utcnow_naive() -> datetime:
+    """Return the current UTC datetime without timezone information."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class MongoDBTestCase(unittest.TestCase):
