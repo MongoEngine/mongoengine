@@ -25,6 +25,20 @@ Changes in 1.0.0
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
 - Fix use of $geoNear or $collStats in aggregate #2493
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
+- BREAKING CHANGE: PyMongo 3.x is no longer supported.
+
+  As a consequence:
+
+    - ``QuerySet.count()`` no longer supports queries using ``$near``,
+      ``$nearSphere``, ``$geoNear``, or ``$where``. PyMongo's
+      ``count_documents()`` rejects these operators and raises
+      ``OperationFailure``; the removed ``Cursor.count()`` fallback is no
+      longer available. Use ``$geoWithin`` with ``$center`` or
+      ``$centerSphere`` for countable geospatial filters, and ``$expr`` instead
+      of ``$where``.
+    - GeoHaystack index specifications using the ``)`` prefix are no longer
+      supported and raise ``NotImplementedError``.
+
 - BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
