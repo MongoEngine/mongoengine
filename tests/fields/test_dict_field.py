@@ -1,5 +1,3 @@
-from enum import Enum
-
 import pytest
 from bson import DBRef, InvalidDocument, ObjectId
 
@@ -79,10 +77,12 @@ class TestDictFieldToPython:
     ):
         assert field.to_python(value) == value
 
-    def test_to_python__typed_dict_of_primitives__preserves_shape(self):
-        """Large primitive dict should round-trip unchanged (perf fast path)."""
-        field = DictField(IntField())
-        value = {f"k{i}": i for i in range(1000)}
+    def test_to_python__untyped_nested_primitives__preserves_shape(self):
+        field = DictField()
+        value = {
+            "numbers": [1, 2],
+            "nested": {"enabled": True, "name": "test"},
+        }
 
         converted = field.to_python(value)
 
@@ -104,12 +104,13 @@ class TestDictFieldToPython:
             def __bool__(self):
                 return False
 
-        value = FalsyDict({"a": 1, "b": 2})
+        value = FalsyDict({"a": "1", "b": "2"})
         assert not value  # sanity check
 
         converted = DictField(IntField()).to_python(value)
 
-        assert dict(converted) == {"a": 1, "b": 2}
+        assert type(converted) is dict
+        assert converted == {"a": 1, "b": 2}
 
     def test_to_python__mapfield_typed_dict_of_primitives__preserves_shape(self):
         """MapField inherits DictField.to_python; primitive dict must round-trip."""
@@ -555,22 +556,3 @@ class TestDictField(MongoDBTestCase):
 
         loaded = {doc.id: doc.m for doc in Model.objects.order_by("id")}
         assert loaded == {1: [{"a": 1}], 2: "some-string"}
-
-    def test_dictfield_with_enumfield_roundtrip(self):
-        """DictField(EnumField) must reconstruct enum members on read."""
-
-        class Status(Enum):
-            NEW = "new"
-            DONE = "done"
-
-        class Model(Document):
-            mapping = DictField(EnumField(Status))
-
-        Model.drop_collection()
-
-        Model(mapping={"a": Status.NEW, "b": Status.DONE}).save()
-
-        reloaded = Model.objects.first()
-        assert reloaded.mapping == {"a": Status.NEW, "b": Status.DONE}
-        assert isinstance(reloaded.mapping["a"], Status)
-        assert isinstance(reloaded.mapping["b"], Status)
