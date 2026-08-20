@@ -138,6 +138,40 @@ class TestDictFieldToPython:
         ):
             Model(values=[1]).validate()
 
+    def test_to_python__bson_native_untyped_dict__aliases_input(self):
+        """When called with bson_native=True (only from _from_son) the
+        untyped branch aliases the input rather than rebuilding, skipping the
+        O(n) walk.
+        """
+        value = {"a": 1, "b": {"nested": 2}}
+
+        converted = DictField().to_python(value, bson_native=True)
+
+        assert converted is value
+
+    def test_to_python__default_not_bson_native__still_walks_and_converts(self):
+        """The default (no ``bson_native`` kwarg) preserves the pre-existing
+        untyped-branch semantics: Documents become DBRefs, ``.to_python()``
+        gets delegated. User code calling ``field.to_python(value)`` must
+        never accidentally hit the fast path.
+        """
+
+        class Referenced(Document):
+            pass
+
+        class Convertible:
+            def to_python(self):
+                return "converted"
+
+        referenced = Referenced(id=ObjectId())
+        value = {"ref": referenced, "conv": Convertible()}
+
+        converted = DictField().to_python(value)  # no bson_native kwarg
+
+        assert converted is not value
+        assert isinstance(converted["ref"], DBRef)
+        assert converted["conv"] == "converted"
+
 
 class TestDictField(MongoDBTestCase):
     def test_storage(self):

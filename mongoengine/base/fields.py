@@ -46,6 +46,14 @@ class BaseField:
     _geo_index = False
     _auto_gen = False  # Call `generate` to generate a value
     _thread_local_storage = threading.local()
+    # Whether this field's ``to_python`` accepts the internal ``bson_native``
+    # kwarg used by the MongoDB read path (:meth:`BaseDocument._from_son`).
+    # Kept as a class-level flag so the fast path can dispatch without per-call
+    # signature inspection. Overridden to ``True`` on :class:`ComplexBaseField`
+    # and only subclasses whose ``to_python`` signature declares
+    # ``bson_native`` should set it. Read-only from the field consumer's
+    # perspective.
+    _to_python_accepts_bson_native = False
 
     # These track each time a Field instance is created. Used to retain order.
     # The auto_creation_counter is used for fields that MongoEngine implicitly
@@ -228,6 +236,19 @@ class BaseField:
         """Convert a Python type to a MongoDB-compatible type."""
         return self.to_python(value)
 
+    def _to_python_safe_call(self, value, bson_native=False):
+        """Helper method to call to_python, forwarding ``bson_native`` only
+        when the field opts in via :attr:`_to_python_accepts_bson_native`.
+
+        User-defined Field subclasses that override ``to_python(self, value)``
+        without knowing about the internal ``bson_native`` kwarg keep working
+        — passing it blindly would raise ``TypeError``. Mirrors
+        :meth:`_to_mongo_safe_call`.
+        """
+        if self._to_python_accepts_bson_native:
+            return self.to_python(value, bson_native=bson_native)
+        return self.to_python(value)
+
     def _to_mongo_safe_call(self, value, use_db_field=True, fields=None):
         """Helper method to call to_mongo with proper inputs."""
         f_inputs = self.to_mongo.__code__.co_varnames
@@ -319,6 +340,8 @@ class ComplexBaseField(BaseField):
     items in a list / dict rather than one at a time.
     """
 
+    _to_python_accepts_bson_native = True
+
     def __init__(self, field=None, **kwargs):
         if field is not None and not isinstance(field, BaseField):
             raise TypeError(
@@ -409,8 +432,17 @@ class ComplexBaseField(BaseField):
 
         return value
 
-    def to_python(self, value):
-        """Convert a MongoDB-compatible type to a Python type."""
+    def to_python(self, value, *, bson_native=False):
+        """Convert a MongoDB-compatible type to a Python type.
+
+        ``bson_native=True`` is an internal signal set by :meth:`_from_son`
+        (the MongoDB read path) meaning ``value`` came straight out of
+        pymongo's BSON parser and therefore only contains BSON-native types
+        at every level. In that case there is nothing left to convert on the
+        untyped branch, so the value can be aliased instead of walked. Do not
+        pass ``bson_native=True`` for user-supplied data — it would silently
+        skip Document→DBRef conversion and ``.to_python()`` delegation.
+        """
         if isinstance(value, str):
             return value
 
@@ -432,9 +464,20 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             self.field.set_auto_dereferencing(self._auto_dereference)
-            value_dict = {
-                key: self.field.to_python(item) for key, item in value.items()
-            }
+            field_to_python = self.field.to_python
+            if self.field._to_python_accepts_bson_native:
+                value_dict = {
+                    k: field_to_python(v, bson_native=bson_native)
+                    for k, v in value.items()
+                }
+            else:
+                value_dict = {k: field_to_python(v) for k, v in value.items()}
+        elif bson_native and not is_list:
+            # BSON-native tree with no sub-field: none of the untyped-branch
+            # conversions (Document→DBRef, value.to_python(), nested recursion)
+            # apply to BSON-native values, so aliasing the input is safe and
+            # skips the O(n) rebuild entirely.
+            return value
         else:
             Document = _import_class("Document")
             value_dict = {}
@@ -457,7 +500,7 @@ class ComplexBaseField(BaseField):
                 elif hasattr(v, "to_python"):
                     value_dict[k] = v.to_python()
                 else:
-                    value_dict[k] = self.to_python(v)
+                    value_dict[k] = self.to_python(v, bson_native=bson_native)
 
         if is_list:  # Convert back to a list
             return [

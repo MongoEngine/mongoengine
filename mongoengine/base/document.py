@@ -822,7 +822,9 @@ class BaseDocument:
                 value = data[field.db_field]
                 try:
                     data[field_name] = (
-                        value if value is None else field.to_python(value)
+                        value
+                        if value is None
+                        else field._to_python_safe_call(value, bson_native=True)
                     )
                     if field_name != field.db_field:
                         del data[field.db_field]
