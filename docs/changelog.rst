@@ -9,7 +9,7 @@ Development
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 1.0.0
-===========
+================
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
 
   Some considerations:
