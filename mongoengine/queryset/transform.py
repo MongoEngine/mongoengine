@@ -365,6 +365,7 @@ def update(_doc_cls=None, **update):
                     value = field.prepare_query_value(op, value)
             elif op == "unset":
                 value = 1
+            # dec is normalized to inc above.
             elif op in ("inc", "mul"):
                 value = field.prepare_query_value(op, value)
 
