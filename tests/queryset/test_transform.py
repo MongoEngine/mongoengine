@@ -1,6 +1,7 @@
 import unittest
 
 import pytest
+from bson.decimal128 import Decimal128
 from bson.son import SON
 
 from mongoengine import *
@@ -90,12 +91,16 @@ class TestTransform(MongoDBTestCase):
             amount = FloatField(min_value=0, required=True)
             count = IntField(min_value=0, max_value=100)
             money = DecimalField(min_value=0)
+            money128 = Decimal128Field(min_value=0)
 
         update = transform.update(Account, dec__amount=10)
         assert update == {"$inc": {"amount": -10.0}}
 
-        update = transform.update(Account, inc__count=1)
-        assert update == {"$inc": {"count": 1}}
+        update = transform.update(Account, inc__count=200)
+        assert update == {"$inc": {"count": 200}}
+
+        update = transform.update(Account, mul__count="200")
+        assert update == {"$mul": {"count": 200}}
 
         update = transform.update(Account, dec__count=5)
         assert update == {"$inc": {"count": -5}}
@@ -103,11 +108,23 @@ class TestTransform(MongoDBTestCase):
         update = transform.update(Account, dec__money=3)
         assert update == {"$inc": {"money": -3.0}}
 
+        update = transform.update(Account, dec__money128=3)
+        assert update == {"$inc": {"money128": Decimal128("-3")}}
+
         with pytest.raises(ValidationError):
             transform.update(Account, set__amount=-1)
 
         with pytest.raises(ValidationError):
             transform.update(Account, set__count=101)
+
+    def test_transform_update__inc_on_string_field__skips_validation(self):
+        """inc leaves nonnumeric field validation to MongoDB."""
+
+        class Person(Document):
+            name = StringField()
+
+        update = transform.update(Person, inc__name=1)
+        assert update == {"$inc": {"name": 1}}
 
     def test_transform_update_no_operator_default_to_set(self):
         """Ensure the differences in behvaior between 'push' and 'push_all'"""

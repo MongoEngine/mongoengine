@@ -596,6 +596,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``min`` -- update only if value is smaller
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
+* ``mul`` -- multiply a value by a given amount
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
 * ``pop`` -- remove the first or last element of a list `depending on the value`_
@@ -603,6 +604,13 @@ There are several different "modifiers" that you may use with these methods:
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
 * ``rename`` -- rename the key name
+
+.. note::
+
+    The operands passed to ``inc``, ``dec``, and ``mul`` are deltas or
+    multipliers, not replacement field values. MongoEngine therefore does not
+    validate them against the field's ``min_value`` or ``max_value`` as this would require a lookup. These
+    atomic updates can leave the stored value outside those bounds.
 
 .. _need to add upsert=True: http://docs.mongodb.org/manual/reference/operator/update/setOnInsert
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/
