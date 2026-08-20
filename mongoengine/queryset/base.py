@@ -61,7 +61,6 @@ class BaseQuerySet:
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
         self._ordering = None
-        self._snapshot = False
         self._timeout = True
         self._allow_disk_use = False
         self._read_preference = None
@@ -857,7 +856,6 @@ class BaseQuerySet:
             "_where_clause",
             "_loaded_fields",
             "_ordering",
-            "_snapshot",
             "_timeout",
             "_allow_disk_use",
             "_read_preference",
@@ -1227,18 +1225,6 @@ class BaseQuerySet:
         :class:`~mongoengine.queryset.QuerySet` cursor.
         """
         return self._cursor.explain()
-
-    # DEPRECATED. Has no more impact on PyMongo 3+
-    def snapshot(self, enabled):
-        """Enable or disable snapshot mode when querying.
-
-        :param enabled: whether or not snapshot mode is enabled
-        """
-        msg = "snapshot is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        queryset = self.clone()
-        queryset._snapshot = enabled
-        return queryset
 
     def allow_disk_use(self, enabled):
         """Enable or disable the use of temporary files on disk while processing a blocking sort operation.
@@ -1726,12 +1712,6 @@ class BaseQuerySet:
     @property
     def _cursor_args(self):
         fields_name = "projection"
-        # snapshot is not handled at all by PyMongo 3+
-        # TODO: evaluate similar possibilities using modifiers
-        if self._snapshot:
-            msg = "The snapshot option is not anymore available with PyMongo 3+"
-            warnings.warn(msg, DeprecationWarning, stacklevel=3)
-
         cursor_args = {}
         if not self._timeout:
             cursor_args["no_cursor_timeout"] = True
