@@ -173,6 +173,17 @@ class ConnectionTest(unittest.TestCase):
             == str(exc_info.value)
         )
 
+    def test_connect__obsolete_slave_options__raises_connection_failure(self):
+        obsolete_options = ({"slaves": []}, {"is_slave": True})
+
+        for options in obsolete_options:
+            option_name = next(iter(options))
+            with self.subTest(options=options), pytest.raises(
+                ConnectionFailure
+            ) as exc_info:
+                connect(alias=random_str(), **options)
+            assert option_name in str(exc_info.value)
+
     def test_connect_fails_if_similar_connection_settings_arent_defined_the_same_way(
         self,
     ):
