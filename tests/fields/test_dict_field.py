@@ -403,6 +403,24 @@ class TestDictField(MongoDBTestCase):
         expected_raw_doc = {"_id": doc.id, "events": [{"a": 1}, {}]}
         assert raw_doc == expected_raw_doc
 
+        doc.reload()
+        assert doc.events[-1] == {}
+        assert isinstance(doc.events[-1], dict)
+
+    def test_update__push_empty_dict_to_list_of_mapfield__preserves_dict_on_reload(
+        self,
+    ):
+        class MyModel(Document):
+            events = ListField(MapField(IntField()))
+
+        doc = MyModel(events=[{"a": 1}]).save()
+        MyModel.objects(id=doc.id).update(push__events={})
+
+        doc.reload()
+
+        assert doc.events[-1] == {}
+        assert isinstance(doc.events[-1], dict)
+
     def test_ensure_unique_default_instances(self):
         """Ensure that every field has it's own unique default instance."""
 

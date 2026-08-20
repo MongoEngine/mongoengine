@@ -18,6 +18,12 @@ from mongoengine.errors import DeprecatedError, ValidationError
 __all__ = ("BaseField", "ComplexBaseField", "ObjectIdField", "GeoJsonBaseField")
 
 
+# Types whose values do not need any conversion when they appear inside a
+# ComplexBaseField (DictField / ListField). Short-circuiting these avoids
+# re-entering to_python for every primitive leaf of a large nested tree.
+_PRIMITIVE_TYPES = frozenset((str, int, float, bool, type(None), bytes))
+
+
 @contextlib.contextmanager
 def _no_dereference_for_fields(*fields):
     """Context manager for temporarily disabling a Field's auto-dereferencing
@@ -433,7 +439,13 @@ class ComplexBaseField(BaseField):
             Document = _import_class("Document")
             value_dict = {}
             for k, v in value.items():
-                if isinstance(v, Document):
+                # Primitive leaves (the overwhelming majority of entries in a
+                # dict-of-primitives read from MongoDB) need no conversion.
+                # Short-circuiting them avoids re-entering to_python, which
+                # is where large nested trees spend most of their time.
+                if type(v) in _PRIMITIVE_TYPES:
+                    value_dict[k] = v
+                elif isinstance(v, Document):
                     # We need the id from the saved object to create the DBRef
                     if v.pk is None:
                         self.error(
