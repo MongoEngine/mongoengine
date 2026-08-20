@@ -30,6 +30,7 @@ Changes in 1.0.0
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
 - BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
+- BREAKING CHANGE: The obsolete ``slaves`` and ``is_slave`` connection options were silently ignored since 2014 and will now raise ``ConnectionFailure`` if provided #2920.
 - BugFix - Calling .clear on a ListField wasn't being marked as changed (and flushed to db upon .save()) #2858
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
