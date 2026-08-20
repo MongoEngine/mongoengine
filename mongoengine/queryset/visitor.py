@@ -1,15 +1,9 @@
 import copy
-import warnings
 
 from mongoengine.errors import InvalidQueryError
 from mongoengine.queryset import transform
 
 __all__ = ("Q", "QNode")
-
-
-def warn_empty_is_deprecated():
-    msg = "'empty' property is deprecated in favour of using 'not bool(filter)'"
-    warnings.warn(msg, DeprecationWarning, stacklevel=2)
 
 
 class QNodeVisitor:
@@ -108,11 +102,6 @@ class QNode:
 
         return QCombination(operation, [self, other])
 
-    @property
-    def empty(self):
-        warn_empty_is_deprecated()
-        return False
-
     def __or__(self, other):
         return self._combine(other, self.OR)
 
@@ -150,11 +139,6 @@ class QCombination(QNode):
 
         return visitor.visit_combination(self)
 
-    @property
-    def empty(self):
-        warn_empty_is_deprecated()
-        return not bool(self.children)
-
     def __eq__(self, other):
         return (
             self.__class__ == other.__class__
@@ -182,8 +166,3 @@ class Q(QNode):
 
     def accept(self, visitor):
         return visitor.visit_query(self)
-
-    @property
-    def empty(self):
-        warn_empty_is_deprecated()
-        return not bool(self.query)
