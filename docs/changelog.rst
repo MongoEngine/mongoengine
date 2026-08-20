@@ -26,8 +26,7 @@ Changes in 1.0.0
 - Fix use of $geoNear or $collStats in aggregate #2493
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
 - BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
-- BREAKING CHANGE: Remove the deprecated ``Q.empty`` and ``QNode.empty``
-  properties. Use ``not query`` instead (or ``bool(query)`` for the inverse).
+- BREAKING CHANGE: Remove the deprecated ``Q.empty`` and ``QNode.empty`` properties. Use ``not query`` instead (or ``bool(query)`` for the inverse). #2919
 - Fixed stacklevel of many warnings (to point places emitting the warning more accurately)
 - Add support for collation/hint/comment to delete/update and aggregate #2842
 - BREAKING CHANGE: Remove LongField as it's equivalent to IntField since we drop support to Python2 long time ago (User should simply switch to IntField) #2309
