@@ -83,6 +83,32 @@ class TestTransform(MongoDBTestCase):
         update = transform.update(BlogPost, push_all__tags=["mongo", "db"])
         assert update == {"$push": {"tags": {"$each": ["mongo", "db"]}}}
 
+    def test_transform_update_inc_dec_ignores_min_max(self):
+        """inc/dec pass a delta; min_value/max_value apply to stored values (#2339)."""
+
+        class Account(Document):
+            amount = FloatField(min_value=0, required=True)
+            count = IntField(min_value=0, max_value=100)
+            money = DecimalField(min_value=0)
+
+        update = transform.update(Account, dec__amount=10)
+        assert update == {"$inc": {"amount": -10.0}}
+
+        update = transform.update(Account, inc__count=1)
+        assert update == {"$inc": {"count": 1}}
+
+        update = transform.update(Account, dec__count=5)
+        assert update == {"$inc": {"count": -5}}
+
+        update = transform.update(Account, dec__money=3)
+        assert update == {"$inc": {"money": -3.0}}
+
+        with pytest.raises(ValidationError):
+            transform.update(Account, set__amount=-1)
+
+        with pytest.raises(ValidationError):
+            transform.update(Account, set__count=101)
+
     def test_transform_update_no_operator_default_to_set(self):
         """Ensure the differences in behvaior between 'push' and 'push_all'"""
 

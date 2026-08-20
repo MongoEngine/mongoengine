@@ -9,7 +9,11 @@ Development
 - (Fill this out as you fix issues and develop your features).
 
 Changes in 1.0.0
-===========
+================
+- Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
+  project and appears to be an expired domain takeover.
+- Fix querying GenericReferenceField with __in operator #2886
+- Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
 
   Some considerations:
@@ -33,6 +37,7 @@ Changes in 1.0.0
 - BREAKING CHANGE: The obsolete ``slaves`` and ``is_slave`` connection options were silently ignored since 2014 and will now raise ``ConnectionFailure`` if provided #2920.
 - BugFix - Calling .clear on a ListField wasn't being marked as changed (and flushed to db upon .save()) #2858
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
+- Fix inc/dec atomic updates rejecting deltas outside a field's min_value/max_value #2339
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
 
 Changes in 0.29.3
