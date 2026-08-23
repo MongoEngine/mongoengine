@@ -39,6 +39,28 @@ syntax::
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
 
+.. warning::
+
+   Be aware that MongoDB considers field order when matching an embedded
+   document. As a result, querying a :class:`~mongoengine.fields.DictField` or
+   :class:`~mongoengine.fields.MapField` against a complete dictionary only
+   matches when its keys are in the same order as the stored document. The same
+   applies when querying an :class:`~mongoengine.fields.EmbeddedDocumentField`
+   with an embedded document instance. For example, this query may not match
+   when the stored keys are in the opposite order::
+
+       SurveyResponse.objects(
+           answers={"question_2": "no", "question_1": "yes"},
+       )
+
+   Query individual dictionary keys to match their values regardless of
+   order::
+
+       SurveyResponse.objects(
+           answers__question_1="yes",
+           answers__question_2="no",
+       )
+
 .. note::
 
    (version **0.9.1+**) if your field name is like mongodb operator name (for example

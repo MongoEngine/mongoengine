@@ -12,7 +12,7 @@ from operator import itemgetter
 
 import gridfs
 import pymongo
-from bson import SON, Binary, DBRef, ObjectId
+from bson import Binary, DBRef, ObjectId
 from bson.decimal128 import Decimal128, create_decimal128_context
 from pymongo import ReturnDocument
 
@@ -824,7 +824,7 @@ class GenericEmbeddedDocumentField(BaseField):
         return value
 
     def validate(self, value, clean=True):
-        if self.choices and isinstance(value, SON):
+        if self.choices and isinstance(value, dict):
             for choice in self.choices:
                 if value["_cls"] == choice._class_name:
                     return True
@@ -1385,14 +1385,14 @@ class CachedReferenceField(BaseField):
         else:
             self.error("Only accept a document object")
 
-        value = SON((("_id", id_field.to_mongo(id_)),))
+        value = {"_id": id_field.to_mongo(id_)}
 
         if fields:
             new_fields = [f for f in self.fields if f in fields]
         else:
             new_fields = self.fields
 
-        value.update(dict(document.to_mongo(use_db_field, fields=new_fields)))
+        value.update(document.to_mongo(use_db_field, fields=new_fields))
         return value
 
     def prepare_query_value(self, op, value):
@@ -1506,10 +1506,10 @@ class GenericReferenceField(BaseField):
         return super().__get__(instance, owner)
 
     def validate(self, value):
-        if not isinstance(value, (Document, DBRef, dict, SON)):
+        if not isinstance(value, (Document, DBRef, dict)):
             self.error("GenericReferences can only contain documents")
 
-        if isinstance(value, (dict, SON)):
+        if isinstance(value, dict):
             if "_ref" not in value or "_cls" not in value:
                 self.error("GenericReferences can only contain documents")
 
@@ -1521,7 +1521,7 @@ class GenericReferenceField(BaseField):
         if document is None:
             return None
 
-        if isinstance(document, (dict, SON, ObjectId, DBRef)):
+        if isinstance(document, (dict, ObjectId, DBRef)):
             return document
 
         id_field_name = document.__class__._meta["id_field"]
@@ -1539,7 +1539,7 @@ class GenericReferenceField(BaseField):
         id_ = id_field.to_mongo(id_)
         collection = document._get_collection_name()
         ref = DBRef(collection, id_)
-        return SON((("_cls", document._class_name), ("_ref", ref)))
+        return {"_cls": document._class_name, "_ref": ref}
 
     def prepare_query_value(self, op, value):
         if value is None:
@@ -2575,7 +2575,7 @@ class GenericLazyReferenceField(GenericReferenceField):
                     value.document_type, value.pk, passthrough=self.passthrough
                 )
         elif value is not None:
-            if isinstance(value, (dict, SON)):
+            if isinstance(value, dict):
                 value = LazyReference(
                     _DocumentRegistry.get(value["_cls"]),
                     value["_ref"].id,
@@ -2611,17 +2611,12 @@ class GenericLazyReferenceField(GenericReferenceField):
             return None
 
         if isinstance(document, LazyReference):
-            return SON(
-                (
-                    ("_cls", document.document_type._class_name),
-                    (
-                        "_ref",
-                        DBRef(
-                            document.document_type._get_collection_name(), document.pk
-                        ),
-                    ),
-                )
-            )
+            return {
+                "_cls": document.document_type._class_name,
+                "_ref": DBRef(
+                    document.document_type._get_collection_name(), document.pk
+                ),
+            }
         else:
             return super().to_mongo(document)
 

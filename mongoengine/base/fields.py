@@ -4,7 +4,7 @@ import threading
 import weakref
 
 import pymongo
-from bson import SON, DBRef, ObjectId
+from bson import DBRef, ObjectId
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (
@@ -748,4 +748,4 @@ class GeoJsonBaseField(BaseField):
     def to_mongo(self, value):
         if isinstance(value, dict):
             return value
-        return SON([("type", self._type), ("coordinates", value)])
+        return {"type": self._type, "coordinates": value}
