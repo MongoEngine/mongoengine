@@ -23,6 +23,7 @@ Changes in 1.0.0
 - Bug Fix - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
+- Fix use of $search, $searchMeta, or $vectorSearch in aggregate #2878
 - BugFix - Fix use of $geoNear or $collStats in aggregate #2493
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
 - BREAKING CHANGE: Further to the deprecation warning, remove `full_response` from `QuerySet.modify` as it wasn't supported with Pymongo 3+
