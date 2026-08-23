@@ -280,6 +280,16 @@ class TestGenericEmbeddedDocumentField(MongoDBTestCase):
         person = Person.objects.first()
         assert isinstance(person.like, Dish)
 
+    def test_generic_embedded_document_choices_accept_mongo_dict(self):
+        class Dish(EmbeddedDocument):
+            food = StringField()
+
+        field = GenericEmbeddedDocumentField(choices=(Dish,))
+        mongo_value = field.to_mongo(Dish(food="arroz"))
+
+        assert type(mongo_value) is dict
+        assert field.validate(mongo_value) is True
+
     def test_generic_list_embedded_document_choices(self):
         """Ensure you can limit GenericEmbeddedDocument choices inside
         a list field.

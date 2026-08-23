@@ -138,10 +138,11 @@ class TestDictField(MongoDBTestCase):
         # with a Document with a _cls field
         to_embed_recursive = ToEmbedChild(id=1).save()
         to_embed_child = ToEmbedChild(
-            id=2, recursive=to_embed_recursive.to_mongo().to_dict()
+            id=2, recursive=to_embed_recursive.to_mongo()
         ).save()
 
-        doc_dump_as_dict = to_embed_child.to_mongo().to_dict()
+        doc_dump_as_dict = to_embed_child.to_mongo()
+        assert type(doc_dump_as_dict) is dict
         doc = Doc(field=doc_dump_as_dict)
         assert Doc.field._auto_dereference is False
         assert isinstance(doc.field, dict)  # depends on auto_dereference
@@ -174,10 +175,8 @@ class TestDictField(MongoDBTestCase):
             recursive = DictField()
 
         to_embed_recursive = ToEmbed(id=1).save()
-        to_embed = ToEmbed(
-            id=2, recursive=to_embed_recursive.to_mongo().to_dict()
-        ).save()
-        doc = Doc(field=to_embed.to_mongo().to_dict())
+        to_embed = ToEmbed(id=2, recursive=to_embed_recursive.to_mongo()).save()
+        doc = Doc(field=to_embed.to_mongo())
         doc.save()
         assert isinstance(doc.field, dict)
         assert doc.field == {"_id": 2, "recursive": {"_id": 1, "recursive": {}}}
