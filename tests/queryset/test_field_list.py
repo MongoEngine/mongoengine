@@ -4,6 +4,7 @@ import pytest
 
 from mongoengine import *
 from mongoengine.queryset import QueryFieldList
+from tests.utils import MongoDBTestCase, get_as_pymongo
 
 
 class TestQueryFieldList:
@@ -64,6 +65,72 @@ class TestQueryFieldList:
         q = QueryFieldList()
         q += QueryFieldList(fields=["a"], value={"$slice": 5})
         assert q.as_dict() == {"a": {"$slice": 5}}
+
+
+class TestListField(MongoDBTestCase):
+    def test_save__list_field_is_empty__stores_empty_list_and_del_unsets(self):
+        class BlogPost(Document):
+            authors = ListField(default=[])
+
+        BlogPost.drop_collection()
+
+        blog = BlogPost().save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": []}
+
+        blog.authors = []
+        blog.save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": []}
+
+        blog.authors = [1]
+        blog.save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": [1]}
+
+        del blog.authors
+        blog.save()
+        assert get_as_pymongo(blog) == {"_id": blog.id}
+
+        blog = BlogPost(authors=[]).save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": []}
+
+        blog = BlogPost(authors=None).save()
+        assert get_as_pymongo(blog) == {"_id": blog.id, "authors": []}
+
+    def test_only__list_field_is_missing__returns_default(self):
+        # Ensure no regression of #938
+        class Doc(Document):
+            values = ListField(IntField())
+
+        Doc.drop_collection()
+
+        doc = Doc(values=[]).save()
+        del doc.values
+        doc.save()
+
+        assert get_as_pymongo(doc) == {"_id": doc.id}
+        assert Doc.objects(id=doc.id).only("values").get().values == []
+
+    def test_item_frequencies__list_is_empty_or_missing__distinguishes_values(self):
+        class Doc(Document):
+            fruit = ListField(StringField())
+
+        Doc.drop_collection()
+
+        doc = Doc(fruit=["a", "a", "b"]).save()
+        other_doc = Doc(fruit=["b", "c"]).save()
+
+        assert Doc.objects.item_frequencies("fruit") == {"a": 2, "b": 2, "c": 1}
+
+        other_doc.delete()
+        assert Doc.objects.item_frequencies("fruit") == {"a": 2, "b": 1}
+
+        doc.fruit = []
+        doc.save()
+        assert Doc.objects.item_frequencies("fruit") == {}
+
+        del doc.fruit
+        doc.save()
+        assert get_as_pymongo(doc) == {"_id": doc.id}
+        assert Doc.objects.item_frequencies("fruit") == {None: 1}
 
 
 class TestOnlyExcludeAll(unittest.TestCase):

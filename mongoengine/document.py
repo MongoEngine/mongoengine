@@ -353,6 +353,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             setattr(self, field, self._reload(field, updated[field]))
 
         self._changed_fields = updated._changed_fields
+        self._unset_fields = updated._unset_fields
         self._created = False
 
         return True
@@ -816,6 +817,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if fields
             else obj._changed_fields
         )
+        self._unset_fields = (
+            list(set(self._unset_fields) - set(fields)) if fields else obj._unset_fields
+        )
         self._created = False
         return self
 
@@ -835,6 +839,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._instance = None
             value._changed_fields = []
+            value._unset_fields = []
         return value
 
     def to_dbref(self):
@@ -1087,13 +1092,11 @@ class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Delete the attribute by setting to None and allowing _delta
-        to unset it.
-        """
+        """Delete a dynamic field."""
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
-            self._dynamic_fields[field_name].null = False
+            self._mark_as_unset(field_name)
         else:
             super().__delattr__(*args, **kwargs)
 
@@ -1110,17 +1113,13 @@ class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Delete the attribute by setting to None and allowing _delta
-        to unset it.
-        """
+        """Delete a dynamic embedded field."""
         field_name = args[0]
         if field_name in self._fields:
-            default = self._fields[field_name].default
-            if callable(default):
-                default = default()
-            setattr(self, field_name, default)
+            super().__delattr__(*args, **kwargs)
         else:
             setattr(self, field_name, None)
+            self._mark_as_unset(field_name)
 
 
 class MapReduceDocument:

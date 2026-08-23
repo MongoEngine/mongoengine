@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import bson
 import pytest
 from bson import SON, DBRef, ObjectId
+from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 
 from mongoengine import *
@@ -571,22 +572,93 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_reload_with_changed_fields(self):
         """Ensures reloading will not affect changed fields"""
 
+        class VitalSigns(EmbeddedDocument):
+            blood_pressure = FloatField()
+
         class User(Document):
             name = StringField()
             number = IntField()
+            phone = StringField()
+            vital_signs = EmbeddedDocumentField(VitalSigns)
 
         User.drop_collection()
 
-        user = User(name="Bob", number=1).save()
+        user = User(
+            name="Bob",
+            number=1,
+            phone="01234",
+            vital_signs=VitalSigns(blood_pressure=0.99),
+        ).save()
         user.name = "John"
         user.number = 2
+        user.vital_signs.blood_pressure = 0.11
+        del user.phone
 
-        assert user._get_changed_fields() == ["name", "number"]
+        assert user._delta() == (
+            {"name": "John", "number": 2, "vital_signs.blood_pressure": 0.11},
+            {"phone": 1},
+        )
         user.reload("number")
-        assert user._get_changed_fields() == ["name"]
+        assert user._delta() == (
+            {"name": "John", "vital_signs.blood_pressure": 0.11},
+            {"phone": 1},
+        )
+        user.reload("vital_signs")
+        assert user._delta() == ({"name": "John"}, {"phone": 1})
+        user.reload("phone")
+        assert user._delta() == ({"name": "John"}, {})
         user.save()
+
+        assert get_as_pymongo(user) == {
+            "_id": user.id,
+            "name": "John",
+            "number": 1,
+            "phone": "01234",
+            "vital_signs": {"blood_pressure": 0.99},
+        }
+
+        del user.phone
+        del user.vital_signs.blood_pressure
+        assert user._delta() == (
+            {},
+            {"phone": 1, "vital_signs.blood_pressure": 1},
+        )
         user.reload()
+        assert user._delta() == ({}, {})
         assert user.name == "John"
+        assert user.number == 1
+        assert user.phone == "01234"
+        assert user.vital_signs.blood_pressure == 0.99
+
+    def test_save__reference_and_embedded_fields_are_deleted__unsets_whole_fields(
+        self,
+    ):
+        class VitalSigns(EmbeddedDocument):
+            blood_pressure = FloatField()
+
+        class Car(Document):
+            brand = StringField()
+
+        car = Car(brand="Lamborghini").save()
+
+        class User(Document):
+            car = ReferenceField(Car, default=lambda: car)
+            vital_signs = EmbeddedDocumentField(
+                VitalSigns,
+                default=lambda: VitalSigns(blood_pressure=0.99),
+            )
+
+        user = User().save()
+
+        del user.car
+        del user.vital_signs
+
+        assert user.car == car
+        assert user.vital_signs.blood_pressure == 0.99
+        assert user._delta() == ({}, {"car": 1, "vital_signs": 1})
+
+        user.save()
+        assert get_as_pymongo(user) == {"_id": user.id}
 
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly."""
@@ -2891,8 +2963,6 @@ class TestDocumentInstance(MongoDBTestCase):
         job.save()
 
         person = Person(name="name", age=10, job=job)
-
-        from pymongo.collection import Collection
 
         orig_update_one = Collection.update_one
         try:

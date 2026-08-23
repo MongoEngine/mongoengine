@@ -10,6 +10,10 @@ Development
 
 Changes in 1.0.0
 ================
+- BREAKING CHANGE: Assigning a field's default value now stores that value instead
+  of unsetting the field. Use ``del document.field`` to explicitly unset it.
+  Existing documents with missing default-valued fields must be migrated if they
+  need to match queries for the default value.
 - Add support for transaction through run_in_transaction (kudos to juannyG for this) #2569
 
   Some considerations:

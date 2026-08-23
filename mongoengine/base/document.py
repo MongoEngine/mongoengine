@@ -1,5 +1,4 @@
 import copy
-import numbers
 import warnings
 from functools import partial
 
@@ -49,6 +48,7 @@ class BaseDocument:
     # 4. The codebase is littered with `hasattr` calls for `_changed_fields`.
     __slots__ = (
         "_changed_fields",
+        "_unset_fields",
         "_initialised",
         "_created",
         "_data",
@@ -75,6 +75,7 @@ class BaseDocument:
         """
         self._initialised = False
         self._created = True
+        self._unset_fields = []
 
         if args:
             raise TypeError(
@@ -155,10 +156,14 @@ class BaseDocument:
             if callable(default):
                 default = default()
             setattr(self, field_name, default)
+            self._mark_as_unset(field_name)
         else:
             super().__delattr__(*args, **kwargs)
 
     def __setattr__(self, name, value):
+        if not name.startswith("_") and getattr(self, "_unset_fields", None):
+            self._unmark_as_unset(name)
+
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
             if name not in self._fields_ordered and not name.startswith("_"):
@@ -212,6 +217,7 @@ class BaseDocument:
         data = {}
         for k in (
             "_changed_fields",
+            "_unset_fields",
             "_initialised",
             "_created",
             "_dynamic_fields",
@@ -228,6 +234,7 @@ class BaseDocument:
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in (
             "_changed_fields",
+            "_unset_fields",
             "_initialised",
             "_created",
             "_data",
@@ -522,17 +529,42 @@ class BaseDocument:
 
         return value
 
+    def _resolve_key(self, key):
+        """Resolve a field name to its database path."""
+        if "." in key:
+            key, rest = key.split(".", 1)
+            key = self._db_field_map.get(key, key)
+            return f"{key}.{rest}"
+        return self._db_field_map.get(key, key)
+
+    def _unmark_as_unset(self, key):
+        if not key or not getattr(self, "_unset_fields", None):
+            return
+
+        key = self._resolve_key(key)
+        self._unset_fields = [
+            path
+            for path in self._unset_fields
+            if not (
+                path == key or path.startswith(f"{key}.") or key.startswith(f"{path}.")
+            )
+        ]
+
+    def _mark_as_unset(self, key):
+        if not key or not hasattr(self, "_unset_fields"):
+            return
+
+        self._mark_as_changed(key)
+        key = self._resolve_key(key)
+        self._unset_fields.append(key)
+
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
         if not hasattr(self, "_changed_fields"):
             return
 
-        if "." in key:
-            key, rest = key.split(".", 1)
-            key = self._db_field_map.get(key, key)
-            key = f"{key}.{rest}"
-        else:
-            key = self._db_field_map.get(key, key)
+        self._unmark_as_unset(key)
+        key = self._resolve_key(key)
 
         if key not in self._changed_fields:
             levels, idx = key.split("."), 1
@@ -548,6 +580,31 @@ class BaseDocument:
                 for field in self._changed_fields[:]:
                     if field.startswith(level):
                         remove(field)
+
+    def _is_field_unset(self, path):
+        """Return whether a database path was explicitly unset."""
+        parts = path.split(".")
+        data = self
+
+        for index, part in enumerate(parts):
+            if isinstance(data, BaseDocument):
+                remaining_path = ".".join(parts[index:])
+                if any(
+                    remaining_path == unset_path
+                    or remaining_path.startswith(f"{unset_path}.")
+                    for unset_path in data._unset_fields
+                ):
+                    return True
+                field_name = data._reverse_db_field_map.get(part, part)
+                data = data._data.get(field_name)
+            elif isinstance(data, list) and part.isdigit():
+                data = data[int(part)]
+            elif hasattr(data, "get"):
+                data = data.get(part)
+            else:
+                break
+
+        return False
 
     def _clear_changed_fields(self):
         """Using _get_changed_fields iterate and remove any fields that
@@ -578,6 +635,7 @@ class BaseDocument:
                         continue
 
                     data._changed_fields = []
+                    data._unset_fields = []
                 elif isinstance(data, (list, tuple, dict)):
                     if hasattr(data, "field") and isinstance(
                         data.field, (ReferenceField, GenericReferenceField)
@@ -586,6 +644,7 @@ class BaseDocument:
                     BaseDocument._nestable_types_clear_changed_fields(data)
 
         self._changed_fields = []
+        self._unset_fields = []
 
     @staticmethod
     def _nestable_types_clear_changed_fields(data):
@@ -702,74 +761,43 @@ class BaseDocument:
             set_data = {}
             # Fetch each set item from its path
             for path in set_fields:
+                if self._is_field_unset(path):
+                    unset_data[path] = 1
+                    continue
+
                 parts = path.split(".")
                 d = doc
                 new_path = []
+                missing = False
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
                         # Don't dig in the references
                         break
-                    elif isinstance(d, list) and p.isdigit():
+
+                    new_path.append(p)
+                    if missing:
+                        continue
+                    if isinstance(d, list) and p.isdigit():
                         # An item of a list (identified by its index) is updated
                         d = d[int(p)]
                     elif hasattr(d, "get"):
                         # dict-like (dict, embedded document)
-                        d = d.get(p)
-                    new_path.append(p)
+                        if p in d:
+                            d = d[p]
+                        else:
+                            missing = True
                 path = ".".join(new_path)
-                set_data[path] = d
+                if missing:
+                    unset_data[path] = 1
+                else:
+                    set_data[path] = d
         else:
             set_data = doc
             if "_id" in set_data:
                 del set_data["_id"]
+            for path in self._unset_fields:
+                set_data.pop(path, None)
 
-        # Determine if any changed items were actually unset.
-        for path, value in list(set_data.items()):
-            if value or isinstance(
-                value, (numbers.Number, bool)
-            ):  # Account for 0 and True that are truthy
-                continue
-
-            parts = path.split(".")
-
-            if self._dynamic and len(parts) and parts[0] in self._dynamic_fields:
-                del set_data[path]
-                unset_data[path] = 1
-                continue
-
-            # If we've set a value that ain't the default value don't unset it.
-            default = None
-            if path in self._fields:
-                default = self._fields[path].default
-            else:  # Perform a full lookup for lists / embedded lookups
-                d = self
-                db_field_name = parts.pop()
-                for p in parts:
-                    if isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
-                    elif hasattr(d, "__getattribute__") and not isinstance(d, dict):
-                        real_path = d._reverse_db_field_map.get(p, p)
-                        d = getattr(d, real_path)
-                    else:
-                        d = d.get(p)
-
-                if hasattr(d, "_fields"):
-                    field_name = d._reverse_db_field_map.get(
-                        db_field_name, db_field_name
-                    )
-                    if field_name in d._fields:
-                        default = d._fields.get(field_name).default
-                    else:
-                        default = None
-
-            if default is not None:
-                default = default() if callable(default) else default
-
-            if value != default:
-                continue
-
-            del set_data[path]
-            unset_data[path] = 1
         return set_data, unset_data
 
     @classmethod
@@ -844,6 +872,7 @@ class BaseDocument:
 
         obj = cls(__auto_convert=False, _created=created, **data)
         obj._changed_fields = []
+        obj._unset_fields = []
         if not _auto_dereference:
             obj._fields = fields
 
