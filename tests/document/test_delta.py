@@ -1,7 +1,5 @@
 import unittest
 
-from bson import SON
-
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
 from tests.utils import MongoDBTestCase, get_as_pymongo
@@ -663,14 +661,14 @@ class TestDelta(MongoDBTestCase):
 
         p = Person(name="James", age=34)
         assert p._delta() == (
-            SON([("_cls", "Person"), ("name", "James"), ("age", 34)]),
+            {"_cls": "Person", "name": "James", "age": 34},
             {},
         )
 
         p.doc = 123
         del p.doc
         assert p._delta() == (
-            SON([("_cls", "Person"), ("name", "James"), ("age", 34)]),
+            {"_cls": "Person", "name": "James", "age": 34},
             {},
         )
 

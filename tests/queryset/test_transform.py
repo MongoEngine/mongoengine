@@ -2,7 +2,6 @@ import unittest
 
 import pytest
 from bson.decimal128 import Decimal128
-from bson.son import SON
 
 from mongoengine import *
 from mongoengine.queryset import Q, transform
@@ -35,6 +34,33 @@ class TestTransform(MongoDBTestCase):
         }
         assert transform.query(name__in=["Tom"], __raw__={"name": "Mark"}) == {
             "$and": [{"name": {"$in": ["Tom"]}}, {"name": "Mark"}]
+        }
+
+    def test_query__near_with_distance__returns_ordered_dict(self):
+        class LegacyLocation(Document):
+            location = GeoPointField()
+
+        legacy_query = transform.query(
+            LegacyLocation, location__near=[1, 2], location__max_distance=3
+        )
+        assert type(legacy_query["location"]) is dict
+        assert list(legacy_query["location"]) == ["$near", "$maxDistance"]
+
+        class GeoJsonLocation(Document):
+            location = PointField()
+
+        near_value = {
+            "$geometry": {"type": "Point", "coordinates": [1, 2]},
+        }
+        geojson_query = transform.query(
+            GeoJsonLocation, location__near=near_value, location__max_distance=3
+        )
+        near_query = geojson_query["location"]["$near"]
+        assert type(geojson_query["location"]) is dict
+        assert type(near_query) is dict
+        assert list(near_query) == ["$geometry", "$maxDistance"]
+        assert near_value == {
+            "$geometry": {"type": "Point", "coordinates": [1, 2]},
         }
 
     def test_transform_update(self):
@@ -399,9 +425,7 @@ class TestTransform(MongoDBTestCase):
 
         word = Word(word="abc", index=1)
         update = transform.update(MainDoc, pull__content__text=word)
-        assert update == {
-            "$pull": {"content.text": SON([("word", "abc"), ("index", 1)])}
-        }
+        assert update == {"$pull": {"content.text": {"word": "abc", "index": 1}}}
 
         update = transform.update(MainDoc, pull__content__heading="xyz")
         assert update == {"$pull": {"content.heading": "xyz"}}

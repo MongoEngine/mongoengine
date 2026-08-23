@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 import pymongo
 import pymongo.errors
-from bson import SON, json_util
+from bson import json_util
 from bson.code import Code
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
@@ -246,7 +246,7 @@ class BaseQuerySet:
         if queryset._search_text:
             raise OperationError("It is not possible to use search_text two times.")
 
-        query_kwargs = SON({"$search": text})
+        query_kwargs = {"$search": text}
         if language:
             query_kwargs["$language"] = language
 
@@ -1509,7 +1509,7 @@ class BaseQuerySet:
                     if value:
                         ordered_output.append((part, value))
 
-                mr_args["out"] = SON(ordered_output)
+                mr_args["out"] = dict(ordered_output)
 
         db = queryset._document._get_db()
         result = db.command(
