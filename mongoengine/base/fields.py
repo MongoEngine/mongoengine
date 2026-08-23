@@ -4,7 +4,7 @@ import threading
 import weakref
 
 import pymongo
-from bson import SON, DBRef, ObjectId
+from bson import DBRef, ObjectId
 
 from mongoengine.base.common import UPDATE_OPERATORS
 from mongoengine.base.datastructures import (
@@ -236,7 +236,9 @@ class BaseField:
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo."""
-        if op in UPDATE_OPERATORS:
+        # Do not validate $inc/$mul operands against stored-value min/max bounds.
+        # dec is normalized to inc with a negative value before this point.
+        if op in UPDATE_OPERATORS and op not in ("inc", "mul"):
             self.validate(value)
         return value
 
@@ -746,4 +748,4 @@ class GeoJsonBaseField(BaseField):
     def to_mongo(self, value):
         if isinstance(value, dict):
             return value
-        return SON([("type", self._type), ("coordinates", value)])
+        return {"type": self._type, "coordinates": value}

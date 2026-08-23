@@ -116,7 +116,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     def to_mongo(self, *args, **kwargs):
         data = super().to_mongo(*args, **kwargs)
 
-        # remove _id from the SON if it's in it and it's None
+        # remove _id from the data if it's in it and it's None
         if "_id" in data and data["_id"] is None:
             del data["_id"]
 
@@ -303,7 +303,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         data = super().to_mongo(*args, **kwargs)
 
         # If '_id' is None, try and set it from self._data. If that
-        # doesn't exist either, remove '_id' from the SON completely.
+        # doesn't exist either, remove '_id' from the data completely.
         if data["_id"] is None:
             if self._data.get("id") is None:
                 del data["_id"]

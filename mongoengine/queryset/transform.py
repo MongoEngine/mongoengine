@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 import pymongo
-from bson import SON, ObjectId
+from bson import ObjectId
 from bson.dbref import DBRef
 
 from mongoengine.base import UPDATE_OPERATORS
@@ -201,38 +201,38 @@ def query(_doc_cls=None, **kwargs):
         else:
             if isinstance(mongo_query[key], dict) and isinstance(value, dict):
                 mongo_query[key].update(value)
-                # $max/minDistance needs to come last - convert to SON
+                # $max/minDistance needs to come last - rebuild in order
                 value_dict = mongo_query[key]
                 if ("$maxDistance" in value_dict or "$minDistance" in value_dict) and (
                     "$near" in value_dict or "$nearSphere" in value_dict
                 ):
-                    value_son = SON()
+                    ordered_value = {}
                     for k, v in value_dict.items():
                         if k == "$maxDistance" or k == "$minDistance":
                             continue
-                        value_son[k] = v
+                        ordered_value[k] = v
                     # Required for MongoDB >= 2.6, may fail when combining
                     # PyMongo 3+ and MongoDB < 2.6
                     near_embedded = False
                     for near_op in ("$near", "$nearSphere"):
                         if isinstance(value_dict.get(near_op), dict):
-                            value_son[near_op] = SON(value_son[near_op])
+                            ordered_value[near_op] = dict(ordered_value[near_op])
                             if "$maxDistance" in value_dict:
-                                value_son[near_op]["$maxDistance"] = value_dict[
+                                ordered_value[near_op]["$maxDistance"] = value_dict[
                                     "$maxDistance"
                                 ]
                             if "$minDistance" in value_dict:
-                                value_son[near_op]["$minDistance"] = value_dict[
+                                ordered_value[near_op]["$minDistance"] = value_dict[
                                     "$minDistance"
                                 ]
                             near_embedded = True
 
                     if not near_embedded:
                         if "$maxDistance" in value_dict:
-                            value_son["$maxDistance"] = value_dict["$maxDistance"]
+                            ordered_value["$maxDistance"] = value_dict["$maxDistance"]
                         if "$minDistance" in value_dict:
-                            value_son["$minDistance"] = value_dict["$minDistance"]
-                    mongo_query[key] = value_son
+                            ordered_value["$minDistance"] = value_dict["$minDistance"]
+                    mongo_query[key] = ordered_value
             else:
                 # Store for manually merging later
                 merge_query[key].append(value)
@@ -365,7 +365,8 @@ def update(_doc_cls=None, **update):
                     value = field.prepare_query_value(op, value)
             elif op == "unset":
                 value = 1
-            elif op == "inc":
+            # dec is normalized to inc above.
+            elif op in ("inc", "mul"):
                 value = field.prepare_query_value(op, value)
 
         if match:

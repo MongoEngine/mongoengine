@@ -39,6 +39,28 @@ syntax::
     # been written by a user whose 'country' field is set to 'uk'
     uk_pages = Page.objects(author__country='uk')
 
+.. warning::
+
+   Be aware that MongoDB considers field order when matching an embedded
+   document. As a result, querying a :class:`~mongoengine.fields.DictField` or
+   :class:`~mongoengine.fields.MapField` against a complete dictionary only
+   matches when its keys are in the same order as the stored document. The same
+   applies when querying an :class:`~mongoengine.fields.EmbeddedDocumentField`
+   with an embedded document instance. For example, this query may not match
+   when the stored keys are in the opposite order::
+
+       SurveyResponse.objects(
+           answers={"question_2": "no", "question_1": "yes"},
+       )
+
+   Query individual dictionary keys to match their values regardless of
+   order::
+
+       SurveyResponse.objects(
+           answers__question_1="yes",
+           answers__question_2="no",
+       )
+
 .. note::
 
    (version **0.9.1+**) if your field name is like mongodb operator name (for example
@@ -596,6 +618,7 @@ There are several different "modifiers" that you may use with these methods:
 * ``min`` -- update only if value is smaller
 * ``inc`` -- increment a value by a given amount
 * ``dec`` -- decrement a value by a given amount
+* ``mul`` -- multiply a value by a given amount
 * ``push`` -- append a value to a list
 * ``push_all`` -- append several values to a list
 * ``pop`` -- remove the first or last element of a list `depending on the value`_
@@ -603,6 +626,13 @@ There are several different "modifiers" that you may use with these methods:
 * ``pull_all`` -- remove several values from a list
 * ``add_to_set`` -- add value to a list only if its not in the list already
 * ``rename`` -- rename the key name
+
+.. note::
+
+    The operands passed to ``inc``, ``dec``, and ``mul`` are deltas or
+    multipliers, not replacement field values. MongoEngine therefore does not
+    validate them against the field's ``min_value`` or ``max_value`` as this would require a lookup. These
+    atomic updates can leave the stored value outside those bounds.
 
 .. _need to add upsert=True: http://docs.mongodb.org/manual/reference/operator/update/setOnInsert
 .. _depending on the value: http://docs.mongodb.org/manual/reference/operator/update/pop/

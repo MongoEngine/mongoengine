@@ -27,6 +27,8 @@ env:
   PYMONGO_4_17: "4.17.0"
 
   MAIN_PYTHON_VERSION: "3.14"
+  MAIN_MONGODB_VERSION: $MONGODB_8_0
+  MAIN_PYMONGO_VERSION: $PYMONGO_4_17
 
 jobs:
   linting:
@@ -88,7 +90,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_SERVICE_NAME: github-actions
-      if: ${{ matrix.python-version == env.MAIN_PYTHON_VERSION }}
+      if: >-
+        ${{
+          matrix.python-version == env.MAIN_PYTHON_VERSION &&
+          matrix.MONGODB == env.MAIN_MONGODB_VERSION &&
+          matrix.PYMONGO == env.MAIN_PYMONGO_VERSION
+        }}
       run: coveralls
 
   build_doc_dryrun:

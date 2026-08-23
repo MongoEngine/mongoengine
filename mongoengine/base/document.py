@@ -98,7 +98,7 @@ class BaseDocument:
         else:
             self._data = {}
 
-        self._dynamic_fields = SON()
+        self._dynamic_fields = {}
 
         # Assign default values for fields
         # not set in the constructor
@@ -215,10 +215,11 @@ class BaseDocument:
             if hasattr(self, k):
                 data[k] = getattr(self, k)
         data["_data"] = self.to_mongo()
+        data["_data_is_mongo"] = True
         return data
 
     def __setstate__(self, data):
-        if isinstance(data["_data"], SON):
+        if data.pop("_data_is_mongo", False) or isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in (
             "_changed_fields",
@@ -236,7 +237,7 @@ class BaseDocument:
                 _super_fields_ordered = type(self)._fields_ordered
                 self._fields_ordered = _super_fields_ordered
 
-        dynamic_fields = data.get("_dynamic_fields") or SON()
+        dynamic_fields = data.get("_dynamic_fields") or {}
         for k in dynamic_fields.keys():
             setattr(self, k, data["_data"].get(k))
 
@@ -326,11 +327,11 @@ class BaseDocument:
 
     def to_mongo(self, use_db_field=True, fields=None):
         """
-        Return as SON data ready for use with MongoDB.
+        Return as a dictionary ready for use with MongoDB.
         """
         fields = fields or []
 
-        data = SON()
+        data = {}
         data["_id"] = None
         data["_cls"] = self._class_name
 

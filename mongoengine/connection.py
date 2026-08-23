@@ -188,10 +188,6 @@ def _get_connection_settings(
             resolved_hosts.append(entity)
     conn_settings["host"] = resolved_hosts
 
-    # Deprecated parameters that should not be passed on
-    kwargs.pop("slaves", None)
-    kwargs.pop("is_slave", None)
-
     keys = {
         key.lower() for key in kwargs.keys()
     }  # pymongo options are case insensitive

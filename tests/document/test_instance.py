@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import bson
 import pytest
-from bson import DBRef, ObjectId
+from bson import SON, DBRef, ObjectId
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from mongoengine import *
@@ -708,17 +708,13 @@ class TestDocumentInstance(MongoDBTestCase):
         class Employee(Person):
             salary = IntField()
 
-        assert sorted(Person(name="Bob", age=35).to_mongo().keys()) == [
-            "_cls",
-            "age",
-            "name",
-        ]
-        assert sorted(Employee(name="Bob", age=35, salary=0).to_mongo().keys()) == [
-            "_cls",
-            "age",
-            "name",
-            "salary",
-        ]
+        person_data = Person(name="Bob", age=35).to_mongo()
+        assert type(person_data) is dict
+        assert list(person_data) == ["_cls", "name", "age"]
+
+        employee_data = Employee(name="Bob", age=35, salary=0).to_mongo()
+        assert type(employee_data) is dict
+        assert list(employee_data) == ["_cls", "name", "age", "salary"]
 
     def test_embedded_document_to_mongo_id(self):
         class SubDoc(EmbeddedDocument):
@@ -782,12 +778,9 @@ class TestDocumentInstance(MongoDBTestCase):
         class Doc(Document):
             embedded_field = ListField(EmbeddedDocumentField(Embedded))
 
-        d = (
-            Doc(embedded_field=[Embedded(string="Hi")])
-            .to_mongo(use_db_field=False)
-            .to_dict()
-        )
-        assert d["embedded_field"] == [{"string": "Hi"}]
+        data = Doc(embedded_field=[Embedded(string="Hi")]).to_mongo(use_db_field=False)
+        assert type(data) is dict
+        assert data["embedded_field"] == [{"string": "Hi"}]
 
     def test_instance_is_set_on_setattr(self):
         class Email(EmbeddedDocument):
@@ -2763,6 +2756,44 @@ class TestDocumentInstance(MongoDBTestCase):
             resurrected.embedded._dynamic_fields.keys()
             == pickle_doc.embedded._dynamic_fields.keys()
         )
+
+    def test_pickle__new_and_legacy_state__restores_python_values(self):
+        class PickleChild(EmbeddedDocument):
+            value = StringField(db_field="db_value")
+
+        class PickleParent(EmbeddedDocument):
+            title = StringField(db_field="db_title")
+            child = EmbeddedDocumentField(PickleChild, db_field="db_child")
+
+        document = PickleParent(title="parent", child=PickleChild(value="child"))
+        state = document.__getstate__()
+
+        assert type(state["_data"]) is dict
+        assert state["_data_is_mongo"] is True
+
+        restored = PickleParent.__new__(PickleParent)
+        restored.__setstate__(copy.deepcopy(state))
+        assert restored.title == "parent"
+        assert isinstance(restored.child, PickleChild)
+        assert restored.child.value == "child"
+
+        legacy_son_state = copy.deepcopy(state)
+        legacy_son_state.pop("_data_is_mongo")
+        legacy_son_state["_data"] = SON(legacy_son_state["_data"])
+        restored_from_son = PickleParent.__new__(PickleParent)
+        restored_from_son.__setstate__(legacy_son_state)
+        assert restored_from_son.title == "parent"
+        assert isinstance(restored_from_son.child, PickleChild)
+        assert restored_from_son.child.value == "child"
+
+        legacy_raw_state = copy.deepcopy(state)
+        legacy_raw_state.pop("_data_is_mongo")
+        legacy_raw_state["_data"] = copy.deepcopy(document._data)
+        restored_from_raw_data = PickleParent.__new__(PickleParent)
+        restored_from_raw_data.__setstate__(legacy_raw_state)
+        assert restored_from_raw_data.title == "parent"
+        assert isinstance(restored_from_raw_data.child, PickleChild)
+        assert restored_from_raw_data.child.value == "child"
 
     def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(number=1, string="One", lists=["1", "2"])

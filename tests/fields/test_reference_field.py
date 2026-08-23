@@ -1,5 +1,5 @@
 import pytest
-from bson import SON, DBRef
+from bson import DBRef
 
 from mongoengine import *
 from tests.utils import MongoDBTestCase
@@ -113,7 +113,7 @@ class TestReferenceField(MongoDBTestCase):
             parent = ReferenceField("self", dbref=False)
 
         p = Person(name="Steve", parent=DBRef("person", "abcdefghijklmnop"))
-        assert p.to_mongo() == SON([("name", "Steve"), ("parent", "abcdefghijklmnop")])
+        assert p.to_mongo() == {"name": "Steve", "parent": "abcdefghijklmnop"}
 
     def test_objectid_reference_fields(self):
         class Person(Document):

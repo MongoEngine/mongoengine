@@ -1,4 +1,4 @@
-from bson import SON, DBRef
+from bson import DBRef
 
 from mongoengine.base import (
     BaseDict,
@@ -130,7 +130,7 @@ class DeReference:
                         continue
                     elif isinstance(v, DBRef):
                         reference_map.setdefault(field.document_type, set()).add(v.id)
-                    elif isinstance(v, (dict, SON)) and "_ref" in v:
+                    elif isinstance(v, dict) and "_ref" in v:
                         reference_map.setdefault(
                             _DocumentRegistry.get(v["_cls"]), set()
                         ).add(v["_ref"].id)
@@ -150,7 +150,7 @@ class DeReference:
                 continue
             elif isinstance(item, DBRef):
                 reference_map.setdefault(item.collection, set()).add(item.id)
-            elif isinstance(item, (dict, SON)) and "_ref" in item:
+            elif isinstance(item, dict) and "_ref" in item:
                 reference_map.setdefault(
                     _DocumentRegistry.get(item["_cls"]), set()
                 ).add(item["_ref"].id)
@@ -229,7 +229,7 @@ class DeReference:
                 else:
                     return BaseList(items, instance, name)
 
-        if isinstance(items, (dict, SON)):
+        if isinstance(items, dict):
             if "_ref" in items:
                 return self.object_map.get(
                     (items["_ref"].collection, items["_ref"].id), items
@@ -272,7 +272,7 @@ class DeReference:
                         data[k]._data[field_name] = self.object_map.get(
                             (v.collection, v.id), v
                         )
-                    elif isinstance(v, (dict, SON)) and "_ref" in v:
+                    elif isinstance(v, dict) and "_ref" in v:
                         data[k]._data[field_name] = self.object_map.get(
                             (v["_ref"].collection, v["_ref"].id), v
                         )

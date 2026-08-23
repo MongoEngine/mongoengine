@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 import pymongo
 import pymongo.errors
-from bson import SON, json_util
+from bson import json_util
 from bson.code import Code
 from pymongo.collection import ReturnDocument
 from pymongo.common import validate_read_preference
@@ -61,7 +61,6 @@ class BaseQuerySet:
         self._where_clause = None
         self._loaded_fields = QueryFieldList()
         self._ordering = None
-        self._snapshot = False
         self._timeout = True
         self._allow_disk_use = False
         self._read_preference = None
@@ -247,7 +246,7 @@ class BaseQuerySet:
         if queryset._search_text:
             raise OperationError("It is not possible to use search_text two times.")
 
-        query_kwargs = SON({"$search": text})
+        query_kwargs = {"$search": text}
         if language:
             query_kwargs["$language"] = language
 
@@ -857,7 +856,6 @@ class BaseQuerySet:
             "_where_clause",
             "_loaded_fields",
             "_ordering",
-            "_snapshot",
             "_timeout",
             "_allow_disk_use",
             "_read_preference",
@@ -1228,18 +1226,6 @@ class BaseQuerySet:
         """
         return self._cursor.explain()
 
-    # DEPRECATED. Has no more impact on PyMongo 3+
-    def snapshot(self, enabled):
-        """Enable or disable snapshot mode when querying.
-
-        :param enabled: whether or not snapshot mode is enabled
-        """
-        msg = "snapshot is deprecated as it has no impact when using PyMongo 3+."
-        warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        queryset = self.clone()
-        queryset._snapshot = enabled
-        return queryset
-
     def allow_disk_use(self, enabled):
         """Enable or disable the use of temporary files on disk while processing a blocking sort operation.
          (To store data exceeding the 100 megabyte system memory limit)
@@ -1396,13 +1382,20 @@ class BaseQuerySet:
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        # geoNear and collStats must be the first stages in the pipeline if present
+        # Some aggregation stages must precede MongoEngine's implicit stages.
         first_step = []
         new_user_pipeline = []
         for step_step in pipeline:
-            if "$geoNear" in step_step:
-                first_step.append(step_step)
-            elif "$collStats" in step_step:
+            if any(
+                operator in step_step
+                for operator in (
+                    "$geoNear",
+                    "$collStats",
+                    "$search",
+                    "$searchMeta",
+                    "$vectorSearch",
+                )
+            ):
                 first_step.append(step_step)
             else:
                 new_user_pipeline.append(step_step)
@@ -1523,7 +1516,7 @@ class BaseQuerySet:
                     if value:
                         ordered_output.append((part, value))
 
-                mr_args["out"] = SON(ordered_output)
+                mr_args["out"] = dict(ordered_output)
 
         db = queryset._document._get_db()
         result = db.command(
@@ -1726,12 +1719,6 @@ class BaseQuerySet:
     @property
     def _cursor_args(self):
         fields_name = "projection"
-        # snapshot is not handled at all by PyMongo 3+
-        # TODO: evaluate similar possibilities using modifiers
-        if self._snapshot:
-            msg = "The snapshot option is not anymore available with PyMongo 3+"
-            warnings.warn(msg, DeprecationWarning, stacklevel=3)
-
         cursor_args = {}
         if not self._timeout:
             cursor_args["no_cursor_timeout"] = True

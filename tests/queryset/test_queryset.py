@@ -2148,6 +2148,55 @@ class TestQueryset(unittest.TestCase):
         post.reload()
         assert post.hits == 11
 
+    def test_update_number_operators__operand_outside_bounds__bypasses_validation(self):
+        """inc, dec, and mul operands are not stored values and bypass bounds."""
+
+        class Counter(Document):
+            number = IntField(min_value=1, max_value=5)
+
+        Counter.drop_collection()
+        counter = Counter(number=1).save()
+
+        Counter.objects.update(inc__number=5)
+        counter.reload()
+        assert counter.number == 6
+
+        Counter.objects.update(dec__number=6)
+        counter.reload()
+        assert counter.number == 0
+
+        counter.number = 2
+        counter.save()
+
+        Counter.objects.update(mul__number=10)
+        counter.reload()
+        assert counter.number == 20
+
+    def test_update_inc__numeric_string__converts_to_number(self):
+        """inc converts a numeric string through IntField before updating."""
+
+        class Counter(Document):
+            number = IntField()
+
+        Counter.drop_collection()
+        counter = Counter(number=1).save()
+
+        Counter.objects.update(inc__number="5")
+        counter.reload()
+        assert counter.number == 6
+
+    def test_update_inc__string_field__relies_on_server_validation(self):
+        """MongoDB rejects inc after MongoEngine skips client-side validation."""
+
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="Alice").save()
+
+        with pytest.raises(OperationError):
+            Person.objects.update(inc__name=1)
+
     def test_update_decimalfield_operator(self):
         class BlogPost(Document):
             review = DecimalField()

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from pymongo.read_preferences import ReadPreference
 
@@ -373,3 +375,21 @@ class TestQuerysetAggregate(MongoDBTestCase):
         res = list(SomeDoc.objects.aggregate(pipeline))
         assert len(res) == 1
         assert res[0]["count"] == 2
+
+    def test_aggregate__search_stage__precedes_implicit_match(self):
+        class SearchableDoc(Document):
+            last_name = StringField()
+
+        for search_stage in ("$search", "$searchMeta", "$vectorSearch"):
+            with self.subTest(search_stage=search_stage):
+                search_step = {search_stage: {}}
+
+                # End-to-end execution requires MongoDB Search (mongot), so mock
+                # the collection and verify the pipeline passed to PyMongo.
+                with patch.object(SearchableDoc, "_collection") as collection:
+                    SearchableDoc.objects(last_name="bar").aggregate([search_step])
+
+                assert collection.aggregate.call_args.args[0] == [
+                    search_step,
+                    {"$match": {"last_name": "bar"}},
+                ]
