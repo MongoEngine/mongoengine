@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -377,29 +376,20 @@ class TestQuerysetAggregate(MongoDBTestCase):
         assert len(res) == 1
         assert res[0]["count"] == 2
 
-    def test_aggregate_search_used_as_initial_step_before_cls_implicit_step(self):
+    def test_aggregate__search_stage__precedes_implicit_match(self):
         class SearchableDoc(Document):
-            first_name = StringField()
             last_name = StringField()
 
-        privileged_step = {
-            "$search": {
-                "index": "default",
-                "autocomplete": {
-                    "query": "foo",
-                    "path": "first_name",
-                },
-            }
-        }
-        pipeline = [privileged_step]
+        for search_stage in ("$search", "$searchMeta", "$vectorSearch"):
+            with self.subTest(search_stage=search_stage):
+                search_step = {search_stage: {}}
 
-        # Search requires an Atlas instance, so we instead mock the aggregation call to inspect the final pipeline
-        with patch.object(SearchableDoc, "_collection") as coll_mk:
-            SearchableDoc.objects(last_name="bar").aggregate(pipeline)
-            if sys.version_info < (3, 8):
-                final_pipeline = coll_mk.aggregate.call_args_list[0][0][0]
-            else:
-                final_pipeline = coll_mk.aggregate.call_args_list[0].args[0]
-            assert len(final_pipeline) == 2
-            # $search moved before the $match on last_name
-            assert final_pipeline[0] == privileged_step
+                # End-to-end execution requires MongoDB Search (mongot), so mock
+                # the collection and verify the pipeline passed to PyMongo.
+                with patch.object(SearchableDoc, "_collection") as collection:
+                    SearchableDoc.objects(last_name="bar").aggregate([search_step])
+
+                assert collection.aggregate.call_args.args[0] == [
+                    search_step,
+                    {"$match": {"last_name": "bar"}},
+                ]

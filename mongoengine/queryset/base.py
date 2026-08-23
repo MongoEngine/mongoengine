@@ -1382,13 +1382,19 @@ class BaseQuerySet:
         if self._skip is not None:
             initial_pipeline.append({"$skip": self._skip})
 
-        # geoNear and collStats must be the first stages in the pipeline if present
+        # Some aggregation stages must precede MongoEngine's implicit stages.
         first_step = []
         new_user_pipeline = []
         for step_step in pipeline:
             if any(
-                el in step_step
-                for el in ["$geoNear", "$collStats", "$search", "$vectorSearch"]
+                operator in step_step
+                for operator in (
+                    "$geoNear",
+                    "$collStats",
+                    "$search",
+                    "$searchMeta",
+                    "$vectorSearch",
+                )
             ):
                 first_step.append(step_step)
             else:
