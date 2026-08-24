@@ -1,8 +1,10 @@
 import datetime
 import unittest
 
+import pytest
+from pymongo.errors import OperationFailure
+
 from mongoengine import *
-from mongoengine.pymongo_support import PYMONGO_VERSION
 from tests.utils import MongoDBTestCase
 
 
@@ -40,6 +42,18 @@ class TestGeoQueries(MongoDBTestCase):
 
         return event1, event2, event3
 
+    def test_count__unsupported_geo_operator__raises_operation_failure(self):
+        self._create_event_data()
+        unsupported_queries = (
+            {"location": {"$near": [-87.67892, 41.9120459]}},
+            {"location": {"$nearSphere": [-87.67892, 41.9120459]}},
+            {"$geoNear": {"near": [-87.67892, 41.9120459]}},
+        )
+
+        for query in unsupported_queries:
+            with self.subTest(query=query), pytest.raises(OperationFailure):
+                self.Event.objects(__raw__=query).count()
+
     def test_near(self):
         """Make sure the "near" operator works."""
         event1, event2, event3 = self._create_event_data()
@@ -48,15 +62,11 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
         events = events.order_by("-date")
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 3
         assert list(events) == [event3, event1, event2]
 
     def test_near_and_max_distance(self):
@@ -68,8 +78,6 @@ class TestGeoQueries(MongoDBTestCase):
         # find events within 10 degrees of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__max_distance=10)
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 1
         assert list(events) == [event2]
 
     def test_near_and_min_distance(self):
@@ -81,8 +89,6 @@ class TestGeoQueries(MongoDBTestCase):
         # find events at least 10 degrees away of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__min_distance=10)
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 2
         assert list(events) == [event3, event1]
 
     def test_within_distance(self):
@@ -159,15 +165,11 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(location__near=[-87.67892, 41.9120459])
         events = events.order_by("-date")
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 3
         assert list(events) == [event3, event1, event2]
 
     def test_2dsphere_near_and_max_distance(self):
@@ -179,24 +181,18 @@ class TestGeoQueries(MongoDBTestCase):
         # find events within 10km of san francisco
         point = [-122.415579, 37.7566023]
         events = self.Event.objects(location__near=point, location__max_distance=10000)
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 1
         assert list(events) == [event2]
 
         # find events within 1km of greenpoint, broolyn, nyc, ny
         events = self.Event.objects(
             location__near=[-73.9509714, 40.7237134], location__max_distance=1000
         )
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 0
         assert list(events) == []
 
         # ensure ordering is respected by "near"
         events = self.Event.objects(
             location__near=[-87.67892, 41.9120459], location__max_distance=10000
         ).order_by("-date")
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 2
         assert list(events) == [event3, event1]
 
     def test_2dsphere_geo_within_box(self):
@@ -248,16 +244,12 @@ class TestGeoQueries(MongoDBTestCase):
             location__min_distance=1000,
             location__max_distance=10000,
         ).order_by("-date")
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 1
         assert list(events) == [event3]
 
         # ensure ordering is respected by "near" with "min_distance"
         events = self.Event.objects(
             location__near=[-87.67892, 41.9120459], location__min_distance=10000
         ).order_by("-date")
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 1
         assert list(events) == [event2]
 
     def test_2dsphere_geo_within_center(self):
@@ -303,8 +295,6 @@ class TestGeoQueries(MongoDBTestCase):
         # note that "near" will show the san francisco event, too,
         # although it sorts to last.
         events = Event.objects(venue__location__near=[-87.67892, 41.9120459])
-        if PYMONGO_VERSION < (4,):
-            assert events.count() == 3
         assert list(events) == [event1, event3, event2]
 
     def test_geo_spatial_embedded(self):
@@ -333,8 +323,6 @@ class TestGeoQueries(MongoDBTestCase):
         # Finds both points because they are within 60 km of the reference
         # point equidistant between them.
         points = Point.objects(location__near_sphere=[-122, 37.5])
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 2
         assert list(points) == [north_point, south_point]
 
         # Same behavior for _within_spherical_distance
@@ -346,8 +334,6 @@ class TestGeoQueries(MongoDBTestCase):
         points = Point.objects(
             location__near_sphere=[-122, 37.5], location__max_distance=60 / earth_radius
         )
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 2
         assert list(points) == [north_point, south_point]
 
         # Test query works with max_distance, being farer from one point
@@ -355,16 +341,12 @@ class TestGeoQueries(MongoDBTestCase):
             location__near_sphere=[-122, 37.8], location__max_distance=60 / earth_radius
         )
         close_point = points.first()
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 1
         assert list(points) == [north_point]
 
         # Test query works with min_distance, being farer from one point
         points = Point.objects(
             location__near_sphere=[-122, 37.8], location__min_distance=60 / earth_radius
         )
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 1
         far_point = points.first()
         assert list(points) == [south_point]
         assert close_point != far_point
@@ -372,15 +354,11 @@ class TestGeoQueries(MongoDBTestCase):
         # Finds both points, but orders the north point first because it's
         # closer to the reference point to the north.
         points = Point.objects(location__near_sphere=[-122, 38.5])
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 2
         assert list(points) == [north_point, south_point]
 
         # Finds both points, but orders the south point first because it's
         # closer to the reference point to the south.
         points = Point.objects(location__near_sphere=[-122, 36.5])
-        if PYMONGO_VERSION < (4,):
-            assert points.count() == 2
         assert list(points) == [south_point, north_point]
 
         # Finds only one point because only the first point is within 60km of
@@ -404,18 +382,12 @@ class TestGeoQueries(MongoDBTestCase):
         # near
         point = {"type": "Point", "coordinates": [40, 5]}
         roads = Road.objects.filter(line__near=point["coordinates"])
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         roads = Road.objects.filter(line__near=point)
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         roads = Road.objects.filter(line__near={"$geometry": point})
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         # Within
@@ -478,18 +450,12 @@ class TestGeoQueries(MongoDBTestCase):
         # near
         point = {"type": "Point", "coordinates": [40, 5]}
         roads = Road.objects.filter(poly__near=point["coordinates"])
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         roads = Road.objects.filter(poly__near=point)
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         roads = Road.objects.filter(poly__near={"$geometry": point})
-        if PYMONGO_VERSION < (4,):
-            assert roads.count() == 1
         assert list(roads) == [road]
 
         # Within

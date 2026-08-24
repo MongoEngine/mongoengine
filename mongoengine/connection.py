@@ -10,14 +10,9 @@ try:
 except ImportError:
     from pymongo.database import _check_name
 
-# DriverInfo was added in PyMongo 3.7.
-try:
-    from pymongo.driver_info import DriverInfo
-except ImportError:
-    DriverInfo = None
+from pymongo.driver_info import DriverInfo
 
 import mongoengine
-from mongoengine.pymongo_support import PYMONGO_VERSION
 
 __all__ = [
     "DEFAULT_CONNECTION_NAME",
@@ -165,19 +160,9 @@ def _get_connection_settings(
                     ReadPreference.SECONDARY_PREFERRED,
                 )
 
-                # Starting with PyMongo v3.5, the "readpreference" option is
-                # returned as a string (e.g. "secondaryPreferred") and not an
-                # int (e.g. 3).
-                # TODO simplify the code below once we drop support for
-                # PyMongo v3.4.
-                read_pf_mode = normalized_uri_options["readpreference"]
-                if isinstance(read_pf_mode, str):
-                    read_pf_mode = read_pf_mode.lower()
+                read_pf_mode = normalized_uri_options["readpreference"].lower()
                 for preference in read_preferences:
-                    if (
-                        preference.name.lower() == read_pf_mode
-                        or preference.mode == read_pf_mode
-                    ):
+                    if preference.name.lower() == read_pf_mode:
                         ReadPrefClass = preference.__class__
                         break
 
@@ -209,7 +194,7 @@ def _get_connection_settings(
     if "uuidrepresentation" not in keys and "uuidrepresentation" not in conn_settings:
         warnings.warn(
             "No uuidRepresentation is specified! Falling back to "
-            "'pythonLegacy' which is the default for pymongo 3.x. "
+            "'pythonLegacy' for backward compatibility. "
             "For compatibility with other MongoDB drivers this should be "
             "specified as 'standard' or '{java,csharp}Legacy' to work with "
             "older drivers in those languages. This will be changed to "
@@ -329,26 +314,14 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
         raise ConnectionFailure(msg)
 
     def _clean_settings(settings_dict):
-        if PYMONGO_VERSION < (4,):
-            irrelevant_fields_set = {
-                "name",
-                "username",
-                "password",
-                "authentication_source",
-                "authentication_mechanism",
-                "authmechanismproperties",
-            }
-            rename_fields = {}
-        else:
-            irrelevant_fields_set = {"name"}
-            rename_fields = {
-                "authentication_source": "authSource",
-                "authentication_mechanism": "authMechanism",
-            }
+        rename_fields = {
+            "authentication_source": "authSource",
+            "authentication_mechanism": "authMechanism",
+        }
         return {
             rename_fields.get(k, k): v
             for k, v in settings_dict.items()
-            if k not in irrelevant_fields_set and v is not None
+            if k != "name" and v is not None
         }
 
     raw_conn_settings = _connection_settings[alias].copy()
@@ -357,10 +330,9 @@ def get_connection(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
     # alias and remove the database name and authentication info (we don't
     # care about them at this point).
     conn_settings = _clean_settings(raw_conn_settings)
-    if DriverInfo is not None:
-        conn_settings.setdefault(
-            "driver", DriverInfo("MongoEngine", mongoengine.__version__)
-        )
+    conn_settings.setdefault(
+        "driver", DriverInfo("MongoEngine", mongoengine.__version__)
+    )
 
     # Determine if we should use PyMongo's or mongomock's MongoClient.
     if "mongo_client_class" in conn_settings:
@@ -425,25 +397,8 @@ def get_db(alias=DEFAULT_CONNECTION_NAME, reconnect=False):
 
     if alias not in _dbs:
         conn = get_connection(alias)
-        conn_settings = _connection_settings[alias]
-        db = conn[conn_settings["name"]]
-        # Authenticate if necessary
-        if (
-            PYMONGO_VERSION < (4,)
-            and conn_settings["username"]
-            and (
-                conn_settings["password"]
-                or conn_settings["authentication_mechanism"] == "MONGODB-X509"
-            )
-            and conn_settings["authmechanismproperties"] is None
-        ):
-            auth_kwargs = {"source": conn_settings["authentication_source"]}
-            if conn_settings["authentication_mechanism"] is not None:
-                auth_kwargs["mechanism"] = conn_settings["authentication_mechanism"]
-            db.authenticate(
-                conn_settings["username"], conn_settings["password"], **auth_kwargs
-            )
-        _dbs[alias] = db
+        db_name = _connection_settings[alias]["name"]
+        _dbs[alias] = conn[db_name]
     return _dbs[alias]
 
 

@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import bson
 import pytest
 from bson import SON, DBRef, ObjectId
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from mongoengine import *
 from mongoengine import signals
@@ -3078,11 +3078,8 @@ class TestDocumentInstance(MongoDBTestCase):
                                                 return this.name == '1' ||
                                                        this.name == '2';}"""})
         assert [str(b) for b in custom_qs] == ["1", "2"]
-
-        # count only will work with this raw query before pymongo 4.x, but
-        # the length is also implicitly checked above
-        if PYMONGO_VERSION < (4,):
-            assert custom_qs.count() == 2
+        with pytest.raises(OperationFailure):
+            custom_qs.count()
 
     def test_switch_db_instance(self):
         register_connection("testdb-1", "mongoenginetest2")
