@@ -689,18 +689,20 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.embedded_field.list_field.append(1)
         doc.embedded_field.dict_field["woot"] = "woot"
 
-        changed = doc._get_changed_fields()
-        assert changed == [
-            "list_field",
-            "dict_field.woot",
-            "embedded_field.list_field",
-            "embedded_field.dict_field.woot",
-        ]
+        assert doc._get_updated_fields() == (
+            [
+                "list_field",
+                "dict_field.woot",
+                "embedded_field.list_field",
+                "embedded_field.dict_field.woot",
+            ],
+            [],
+        )
         doc.save()
 
         assert len(doc.list_field) == 4
         doc = doc.reload(10)
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert len(doc.list_field) == 4
         assert len(doc.dict_field) == 2
         assert len(doc.embedded_field.list_field) == 4
@@ -710,7 +712,7 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.save()
         doc.dict_field["extra"] = 1
         doc = doc.reload(10, "list_field")
-        assert doc._get_changed_fields() == ["dict_field.extra"]
+        assert doc._get_updated_fields() == (["dict_field.extra"], [])
         assert len(doc.list_field) == 5
         assert len(doc.dict_field) == 3
         assert len(doc.embedded_field.list_field) == 4
@@ -1048,7 +1050,7 @@ class TestDocumentInstance(MongoDBTestCase):
         del doc_copy.job.years
 
         assert doc.to_json() == doc_copy.to_json()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
 
         self._assert_db_equal([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
@@ -1719,7 +1721,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.age == 21
         assert person.active is False
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
+    def test__get_updated_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
         self,
     ):
         # Refers to Issue #1685
@@ -1730,10 +1732,9 @@ class TestDocumentInstance(MongoDBTestCase):
             child = EmbeddedDocumentField(EmbeddedChildModel)
 
         emb = EmbeddedChildModel(id={"1": [1]})
-        changed_fields = ParentModel(child=emb)._get_changed_fields()
-        assert changed_fields == []
+        assert ParentModel(child=emb)._get_updated_fields() == ([], [])
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
+    def test__get_updated_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
         self,
     ):
         # Refers to Issue #1685
@@ -1752,10 +1753,10 @@ class TestDocumentInstance(MongoDBTestCase):
         message = Message(id=1, author=user).save()
 
         message.author.name = "tutu"
-        assert message._get_changed_fields() == []
-        assert user._get_changed_fields() == ["name"]
+        assert message._get_updated_fields() == ([], [])
+        assert user._get_updated_fields() == (["name"], [])
 
-    def test__get_changed_fields_same_ids_embedded(self):
+    def test__get_updated_fields_same_ids_embedded(self):
         # Refers to Issue #1768
         class User(EmbeddedDocument):
             id = IntField()
@@ -1772,7 +1773,7 @@ class TestDocumentInstance(MongoDBTestCase):
         message = Message(id=1, author=user).save()
 
         message.author.name = "tutu"
-        assert message._get_changed_fields() == ["author.name"]
+        assert message._get_updated_fields() == (["author.name"], [])
         message.save()
 
         message_fetched = Message.objects.with_id(message.id)

@@ -38,6 +38,17 @@ def mark_key_as_changed_wrapper(parent_method):
     return wrapper
 
 
+def mark_key_as_unset_wrapper(parent_method):
+    """Decorator that ensures _mark_as_unset gets called after deleting a key."""
+
+    def wrapper(self, key, *args, **kwargs):
+        result = parent_method(self, key, *args, **kwargs)
+        self._mark_as_unset(key)
+        return result
+
+    return wrapper
+
+
 class BaseDict(dict):
     """A special dict so we can watch any changes."""
 
@@ -86,8 +97,7 @@ class BaseDict(dict):
         return self
 
     __setitem__ = mark_key_as_changed_wrapper(dict.__setitem__)
-    __delattr__ = mark_key_as_changed_wrapper(dict.__delattr__)
-    __delitem__ = mark_key_as_changed_wrapper(dict.__delitem__)
+    __delitem__ = mark_key_as_unset_wrapper(dict.__delitem__)
     pop = mark_as_changed_wrapper(dict.pop)
     clear = mark_as_changed_wrapper(dict.clear)
     update = mark_as_changed_wrapper(dict.update)
@@ -100,6 +110,10 @@ class BaseDict(dict):
                 self._instance._mark_as_changed(f"{self._name}.{key}")
             else:
                 self._instance._mark_as_changed(self._name)
+
+    def _mark_as_unset(self, key):
+        if hasattr(self._instance, "_mark_as_unset"):
+            self._instance._mark_as_unset(f"{self._name}.{key}")
 
 
 class BaseList(list):

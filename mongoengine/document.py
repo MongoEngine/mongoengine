@@ -495,7 +495,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             self.__class__, document=self, created=created, **signal_kwargs
         )
 
-        self._clear_changed_fields()
+        self._clear_updated_fields()
         self._created = False
 
         return self
