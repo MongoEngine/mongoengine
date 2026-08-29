@@ -11,7 +11,7 @@ import bson
 import pytest
 from bson import SON, DBRef, ObjectId
 from pymongo.collection import Collection
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from mongoengine import *
 from mongoengine import signals
