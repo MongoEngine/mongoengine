@@ -32,7 +32,6 @@ from mongoengine.connection import (
     get_connection,
     get_db,
 )
-from mongoengine.pymongo_support import PYMONGO_VERSION
 
 
 def random_str():
@@ -199,17 +198,11 @@ class ConnectionTest(unittest.TestCase):
         funky_host = "mongodb://root:12345678@1.1.1.1:27017,2.2.2.2:27017,3.3.3.3:27017/db_api?replicaSet=s0&readPreference=secondary&uuidRepresentation=javaLegacy&readPreferenceTags=region:us-west-2,usage:api"
         settings = _get_connection_settings(host=funky_host)
 
-        if PYMONGO_VERSION < (4,):
-            read_pref = Secondary(
-                tag_sets=[{"region": "us-west-2", "usage": "api"}],
-                max_staleness=-1,
-            )
-        else:
-            read_pref = Secondary(
-                tag_sets=[{"region": "us-west-2", "usage": "api"}],
-                max_staleness=-1,
-                hedge=None,
-            )
+        read_pref = Secondary(
+            tag_sets=[{"region": "us-west-2", "usage": "api"}],
+            max_staleness=-1,
+            hedge=None,
+        )
         assert settings == {
             "authentication_mechanism": None,
             "authentication_source": None,
@@ -358,17 +351,15 @@ class ConnectionTest(unittest.TestCase):
         client2.admin.command("ping")
         disconnect("disconnect_reused_client_test_2")
         # The client is now closed:
-        if PYMONGO_VERSION >= (4,):
-            with pytest.raises(InvalidOperation):
-                client2.admin.command("ping")
+        with pytest.raises(InvalidOperation):
+            client2.admin.command("ping")
         # 3rd client connected to the same cluster with different options
         # is not closed either.
         client3.admin.command("ping")
         disconnect("disconnect_reused_client_test_3")
         # 3rd client is now closed:
-        if PYMONGO_VERSION >= (4,):
-            with pytest.raises(InvalidOperation):
-                client3.admin.command("ping")
+        with pytest.raises(InvalidOperation):
+            client3.admin.command("ping")
 
     def test_disconnect_all(self):
         connections = mongoengine.connection._connections
@@ -494,14 +485,10 @@ class ConnectionTest(unittest.TestCase):
         # OperationFailure means that mongoengine attempted authentication
         # w/ the provided username/password and failed - that's the desired
         # behavior. If the MongoDB URI would override the credentials
-        if PYMONGO_VERSION >= (4,):
-            with pytest.raises(OperationFailure):
-                db = get_db()
-                # pymongo 4.x does not call db.authenticate and needs to perform an operation to trigger the failure
-                db.list_collection_names()
-        else:
-            with pytest.raises(OperationFailure):
-                get_db()
+        with pytest.raises(OperationFailure):
+            db = get_db()
+            # Authentication is lazy; perform an operation to trigger the failure.
+            db.list_collection_names()
 
     def test_connect_uri_with_authsource(self):
         """Ensure that the connect() method works well with `authSource`
@@ -578,10 +565,7 @@ class ConnectionTest(unittest.TestCase):
         conn = connect(
             "mongoenginetest", alias="max_pool_size_via_kwarg", **pool_size_kwargs
         )
-        if PYMONGO_VERSION >= (4,):
-            assert conn.options.pool_options.max_pool_size == 100
-        else:
-            assert conn.max_pool_size == 100
+        assert conn.options.pool_options.max_pool_size == 100
 
     def test_connection_pool_via_uri(self):
         """Ensure we can specify a max connection pool size using
@@ -591,10 +575,7 @@ class ConnectionTest(unittest.TestCase):
             host="mongodb://localhost/test?maxpoolsize=100",
             alias="max_pool_size_via_uri",
         )
-        if PYMONGO_VERSION >= (4,):
-            assert conn.options.pool_options.max_pool_size == 100
-        else:
-            assert conn.max_pool_size == 100
+        assert conn.options.pool_options.max_pool_size == 100
 
     def test_write_concern(self):
         """Ensure write concern can be specified in connect() via
@@ -667,7 +648,7 @@ class ConnectionTest(unittest.TestCase):
         assert "t1" in mongo_connections.keys()
         assert "t2" in mongo_connections.keys()
 
-        # Handle PyMongo 3+ Async Connection (lazily established)
+        # Handle PyMongo's lazily established connection.
         # Ensure we are connected, throws ServerSelectionTimeoutError otherwise.
         # Purposely not catching exception to fail test if thrown.
         mongo_connections["t1"].server_info()
