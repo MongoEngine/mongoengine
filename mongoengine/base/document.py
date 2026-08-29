@@ -11,7 +11,6 @@ from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    LazyReference,
     StrictDict,
 )
 from mongoengine.base.fields import ComplexBaseField
@@ -36,19 +35,10 @@ except AttributeError:
 
 
 class BaseDocument:
-    # TODO simplify how `_changed_fields` is used.
-    # Currently, handling of `_changed_fields` seems unnecessarily convoluted:
-    # 1. `BaseDocument` defines `_changed_fields` in its `__slots__`, yet it's
-    #    not setting it to `[]` (or any other value) in `__init__`.
-    # 2. `EmbeddedDocument` sets `_changed_fields` to `[]` it its overloaded
-    #    `__init__`.
-    # 3. `Document` does NOT set `_changed_fields` upon initialization. The
-    #    field is primarily set via `_from_son` or `_clear_updated_fields`,
-    #    though there are also other methods that manipulate it.
-    # 4. The codebase is littered with `hasattr` calls for `_changed_fields`.
     __slots__ = (
         "_changed_fields",
         "_unset_fields",
+        "_has_change_tracking_baseline",
         "_initialised",
         "_created",
         "_data",
@@ -72,10 +62,18 @@ class BaseDocument:
             to Python-type values via each field's `to_python` method.
         :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
+        :param _changed_fields: Database field paths changed since the tracking
+            baseline was established.
+        :param _unset_fields: Database field paths explicitly unset since the
+            tracking baseline was established.
+        :param _has_change_tracking_baseline: Whether the document has a known
+            state against which changes can be tracked.
         """
         self._initialised = False
         self._created = True
+        self._changed_fields = []
         self._unset_fields = []
+        self._has_change_tracking_baseline = False
 
         if args:
             raise TypeError(
@@ -156,12 +154,15 @@ class BaseDocument:
             if callable(default):
                 default = default()
             setattr(self, field_name, default)
-            self._mark_as_unset(field_name)
+            # Without a baseline, preserve historical full-document behavior
+            # and let serialization determine the delta.
+            if self._has_change_tracking_baseline:
+                self._mark_as_unset(field_name)
         else:
             super().__delattr__(*args, **kwargs)
 
     def __setattr__(self, name, value):
-        if not name.startswith("_") and getattr(self, "_unset_fields", None):
+        if not name.startswith("_") and self._unset_fields:
             self._unmark_as_unset(name)
 
         # Handle dynamic data only if an initialised dynamic document
@@ -179,7 +180,7 @@ class BaseDocument:
             # Handle marking data as changed
             if name in self._dynamic_fields:
                 self._data[name] = value
-                if hasattr(self, "_changed_fields"):
+                if self._initialised:
                     self._mark_as_changed(name)
         try:
             self__created = self._created
@@ -218,6 +219,7 @@ class BaseDocument:
         for k in (
             "_changed_fields",
             "_unset_fields",
+            "_has_change_tracking_baseline",
             "_initialised",
             "_created",
             "_dynamic_fields",
@@ -230,11 +232,19 @@ class BaseDocument:
         return data
 
     def __setstate__(self, data):
+        # __init__ is not called when unpickling, and legacy states may omit
+        # these tracking fields so it's important that we set them to maintain backward compatibility.
+        self._changed_fields = []
+        self._unset_fields = []
+        self._has_change_tracking_baseline = (
+            not self._is_document or "_changed_fields" in data
+        )
         if data.pop("_data_is_mongo", False) or isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in (
             "_changed_fields",
             "_unset_fields",
+            "_has_change_tracking_baseline",
             "_initialised",
             "_created",
             "_data",
@@ -538,7 +548,7 @@ class BaseDocument:
         return self._db_field_map.get(key, key)
 
     def _unmark_as_unset(self, key):
-        if not key or not getattr(self, "_unset_fields", None):
+        if not key or not self._unset_fields:
             return
 
         key = self._resolve_key(key)
@@ -551,7 +561,7 @@ class BaseDocument:
         ]
 
     def _mark_as_unset(self, key):
-        if not key or not hasattr(self, "_unset_fields"):
+        if not key:
             return
 
         key = self._resolve_key(key)
@@ -568,7 +578,7 @@ class BaseDocument:
 
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
-        if not hasattr(self, "_changed_fields"):
+        if not self._has_change_tracking_baseline:
             return
 
         self._unmark_as_unset(key)
@@ -612,9 +622,7 @@ class BaseDocument:
                     field_name = data._reverse_db_field_map.get(part, part)
                     data = getattr(data, field_name, None)
 
-                if not isinstance(data, LazyReference) and hasattr(
-                    data, "_changed_fields"
-                ):
+                if isinstance(data, BaseDocument):
                     if getattr(data, "_is_document", False):
                         continue
 
@@ -629,6 +637,7 @@ class BaseDocument:
 
         self._changed_fields = []
         self._unset_fields = []
+        self._has_change_tracking_baseline = True
 
     @staticmethod
     def _nestable_types_clear_updated_fields(data):
@@ -712,8 +721,8 @@ class BaseDocument:
         GenericReferenceField = _import_class("GenericReferenceField")
         SortedListField = _import_class("SortedListField")
 
-        changed_fields = list(getattr(self, "_changed_fields", []))
-        unset_fields = list(getattr(self, "_unset_fields", []))
+        changed_fields = list(self._changed_fields)
+        unset_fields = list(self._unset_fields)
 
         for field_name in self._fields_ordered:
             db_field_name = self._db_field_map.get(field_name, field_name)
@@ -783,7 +792,7 @@ class BaseDocument:
         doc = self.to_mongo()
 
         set_fields, unset_fields = self._get_updated_fields()
-        if hasattr(self, "_changed_fields"):
+        if self._has_change_tracking_baseline:
             set_data = {}
             unset_data = {path: 1 for path in unset_fields}
             # Fetch each set item from its path
@@ -895,8 +904,7 @@ class BaseDocument:
             data = {k: v for k, v in data.items() if k in cls._fields}
 
         obj = cls(__auto_convert=False, _created=created, **data)
-        obj._changed_fields = []
-        obj._unset_fields = []
+        obj._has_change_tracking_baseline = True
         if not _auto_dereference:
             obj._fields = fields
 

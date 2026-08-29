@@ -27,6 +27,74 @@ class TestDelta(MongoDBTestCase):
         self.delta(Document)
         self.delta(DynamicDocument)
 
+    def test_updated_fields__new_documents__initializes_empty_tracking_lists(self):
+        class Embedded(EmbeddedDocument):
+            value = StringField()
+
+        class Doc(Document):
+            value = StringField()
+
+        class Dynamic(DynamicDocument):
+            pass
+
+        for document in (
+            Embedded(value="value"),
+            Doc(value="value"),
+            Dynamic(value="value"),
+        ):
+            assert document._changed_fields == []
+            assert document._unset_fields == []
+
+    def test_delta__primary_key_assigned_to_new_document__uses_full_document(self):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = StringField()
+
+        doc = Doc(value="value")
+        doc.key = "key"
+
+        assert doc._created is False
+        # key is MongoDB's _id, which _delta() deliberately excludes.
+        assert doc._delta() == ({"value": "value"}, {})
+
+    def test_save__post_init_primary_key_and_deleted_field__keeps_historical_noop(
+        self,
+    ):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = StringField()
+
+        doc = Doc(value="value")
+        doc.key = "key"
+        del doc.value
+
+        assert doc._delta() == ({}, {})
+
+        doc.save()
+
+        # This silent no-op is a historical bug. Fixing it is worth considering
+        # separately because persisting this document would be a breaking change.
+        assert Doc.objects(pk=doc.pk).count() == 0
+
+    def test_save__post_init_primary_key_and_deleted_default__preserves_default(self):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = IntField(default=4)
+
+        doc = Doc()
+        doc.key = "key"
+        del doc.value
+
+        assert doc.value == 4
+        assert doc._delta() == ({"value": 4}, {})
+
+        doc.save()
+
+        assert Doc._get_collection().find_one({"_id": doc.pk}) == {
+            "_id": doc.pk,
+            "value": 4,
+        }
+
     def test_delta__default_values_are_assigned__sets_values(self):
         class Doc(Document):
             empty_list = ListField()

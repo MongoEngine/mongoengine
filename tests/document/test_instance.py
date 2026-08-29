@@ -1221,6 +1221,24 @@ class TestDocumentInstance(MongoDBTestCase):
         p1.reload()
         assert p1.name == p.parent.name
 
+    def test_save__referenced_document_has_only_unset__cascade_saves_unset(self):
+        class Parent(Document):
+            value = StringField(default="default")
+
+        class Child(Document):
+            parent = ReferenceField(Parent)
+
+        parent = Parent(value="default").save()
+        child = Child(parent=parent).save()
+        child = Child.objects.get(id=child.id)
+
+        del child.parent.value
+
+        assert child.parent._get_updated_fields() == ([], ["value"])
+
+        child.save(cascade=True)
+        assert get_as_pymongo(parent) == {"_id": parent.id}
+
     def test_save_cascade_kwargs(self):
         class Person(Document):
             name = StringField()
@@ -2867,6 +2885,20 @@ class TestDocumentInstance(MongoDBTestCase):
         assert restored_from_raw_data.title == "parent"
         assert isinstance(restored_from_raw_data.child, PickleChild)
         assert restored_from_raw_data.child.value == "child"
+
+    def test_pickle__legacy_state_without_tracking_fields__initializes_tracking(self):
+        document = PickleTest(number=1)
+        legacy_state = document.__getstate__()
+        legacy_state.pop("_changed_fields")
+        legacy_state.pop("_unset_fields")
+        legacy_state.pop("_has_change_tracking_baseline")
+
+        restored = PickleTest.__new__(PickleTest)
+        restored.__setstate__(legacy_state)
+
+        assert restored._changed_fields == []
+        assert restored._unset_fields == []
+        assert restored._has_change_tracking_baseline is False
 
     def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(number=1, string="One", lists=["1", "2"])

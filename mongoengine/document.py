@@ -94,7 +94,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._instance = None
-        self._changed_fields = []
+        self._has_change_tracking_baseline = True
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -354,6 +354,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
 
         self._changed_fields = updated._changed_fields
         self._unset_fields = updated._unset_fields
+        self._has_change_tracking_baseline = updated._has_change_tracking_baseline
         self._created = False
 
         return True
@@ -613,7 +614,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if not ref or isinstance(ref, DBRef):
                 continue
 
-            if not getattr(ref, "_changed_fields", True):
+            if ref._has_change_tracking_baseline and not (
+                ref._changed_fields or ref._unset_fields
+            ):
                 continue
 
             ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
@@ -820,6 +823,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         self._unset_fields = (
             list(set(self._unset_fields) - set(fields)) if fields else obj._unset_fields
         )
+        self._has_change_tracking_baseline = True
         self._created = False
         return self
 
