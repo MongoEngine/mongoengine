@@ -186,4 +186,5 @@ class QuerySetNoCache(BaseQuerySet):
         if queryset._iter:
             queryset = self.clone()
         queryset.rewind()
+        queryset._iter = True
         return queryset
