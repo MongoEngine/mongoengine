@@ -650,6 +650,31 @@ class TestDocumentInstance(MongoDBTestCase):
         assert user.phone == "01234"
         assert user.vital_signs.blood_pressure == 0.99
 
+    def test_reload__field_with_db_field_was_unset__clears_updated_fields(self):
+        class User(Document):
+            display_name = StringField(db_field="displayName")
+
+        User.drop_collection()
+
+        user = User(display_name="Alice").save()
+        del user.display_name
+
+        assert user._get_updated_fields() == ([], ["displayName"])
+
+        user.reload("display_name")
+
+        assert user.display_name == "Alice"
+        assert user._get_updated_fields() == ([], [])
+        assert user._delta() == ({}, {})
+
+        User.objects(id=user.id).update_one(set__display_name="Bob")
+        user.save()
+
+        assert get_as_pymongo(user) == {
+            "_id": user.id,
+            "displayName": "Bob",
+        }
+
     def test_save__reference_and_embedded_fields_are_deleted__unsets_whole_fields(
         self,
     ):
