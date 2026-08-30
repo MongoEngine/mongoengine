@@ -36,6 +36,7 @@ Changes in 1.0.0
   ``(changed_fields, unset_fields)`` tuple containing two disjoint lists of
   database paths. ``_clear_changed_fields()`` was renamed to
   ``_clear_updated_fields()``.
+- BREAKING CHANGE: Remove ``QuerySet.values_list()`` as it was just an alias to scalar. Use ``QuerySet.scalar()`` instead. #2931
 - Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
   project and appears to be an expired domain takeover.
 - Bug Fix - Fix querying GenericReferenceField with __in operator #2886
@@ -67,6 +68,7 @@ Changes in 1.0.0
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
 - BugFix - Fix inc/dec atomic updates rejecting deltas outside a field's min_value/max_value #2339
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
+- BugFix: null embedded scalar values raises AttributeError #2896
 
 Changes in 0.29.3
 =================

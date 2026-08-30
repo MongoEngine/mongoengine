@@ -1296,10 +1296,6 @@ class BaseQuerySet:
 
         return queryset
 
-    def values_list(self, *fields):
-        """An alias for scalar"""
-        return self.scalar(*fields)
-
     def as_pymongo(self):
         """Instead of returning Document instances, return raw values from
         pymongo.
@@ -2023,6 +2019,8 @@ class BaseQuerySet:
             chunks = name.split("__")
             for chunk in chunks:
                 obj = getattr(obj, chunk)
+                if obj is None:
+                    break
             return obj
 
         data = [lookup(doc, n) for n in self._scalar]
