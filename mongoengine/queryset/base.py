@@ -1296,10 +1296,6 @@ class BaseQuerySet:
 
         return queryset
 
-    def values_list(self, *fields):
-        """An alias for scalar"""
-        return self.scalar(*fields)
-
     def as_pymongo(self):
         """Instead of returning Document instances, return raw values from
         pymongo.

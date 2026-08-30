@@ -4749,7 +4749,7 @@ class TestQueryset(unittest.TestCase):
 
         queryset = Container.objects.filter(
             Q(source__designator="value1") | Q(target__designator="value2")
-        ).values_list("source__designator", "target__designator")
+        ).scalar("source__designator", "target__designator")
         # This should not raise an AttributeError on NoneType for the second Container's target__designator
         values = list(queryset)
         assert values == [("value1", "value2"), ("value1", None)]
