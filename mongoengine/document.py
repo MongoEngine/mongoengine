@@ -624,7 +624,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
                 ref.save(**kwargs)
-                ref._changed_fields = []
 
     @property
     def _qs(self):

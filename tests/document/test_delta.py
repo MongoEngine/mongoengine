@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
 from tests.utils import MongoDBTestCase, get_as_pymongo
@@ -207,6 +209,43 @@ class TestDelta(MongoDBTestCase):
         assert get_as_pymongo(account) == {
             "_id": account.id,
             "settings": {"level": 7},
+        }
+
+    @pytest.mark.xfail(
+        reason=(
+            "A child unset is lost when its deleted embedded parent is restored "
+            "and promoted to a whole-field set"
+        ),
+        strict=True,
+    )
+    def test_save__deleted_embedded_default_is_modified_and_child_deleted__omits_deleted_child(
+        self,
+    ):
+        class Settings(EmbeddedDocument):
+            theme = StringField(default="system")
+            language = StringField(default="en")
+
+        class Account(Document):
+            settings = EmbeddedDocumentField(Settings, default=Settings)
+
+        account = Account(settings=Settings(theme="dark", language="fr")).save()
+
+        del account.settings
+        account.settings.language = "de"
+        del account.settings.theme
+
+        assert account.settings._get_updated_fields() == (
+            ["language"],
+            ["theme"],
+        )
+
+        delta = account._delta()
+        account.save()
+
+        assert delta == ({"settings": {"language": "de"}}, {})
+        assert get_as_pymongo(account) == {
+            "_id": account.id,
+            "settings": {"language": "de"},
         }
 
     def test_get_updated_fields__dict_key_is_deleted__reports_unset(self):

@@ -476,6 +476,26 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.name == "Mr Test User"
         assert person.age == 21
 
+    def test_reload__field_with_db_field_has_pending_unset__clears_pending_unset(
+        self,
+    ):
+        class Person(Document):
+            name = StringField(db_field="db_name")
+
+        person = Person(name="stored").save()
+        del person.name
+
+        assert person._get_updated_fields() == ([], ["db_name"])
+
+        person.reload("name")
+
+        assert person.name == "stored"
+        assert person._get_updated_fields()[1] == []
+        assert person._delta()[1] == {}
+
+        person.save()
+        assert get_as_pymongo(person) == {"_id": person.id, "db_name": "stored"}
+
     def test_reload_sharded(self):
         class Animal(Document):
             superphylum = StringField()
