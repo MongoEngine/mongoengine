@@ -814,14 +814,13 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                         # i.e. obj.update(unset__field=1) followed by obj.reload()
                         delattr(self, field)
 
-        self._changed_fields = (
-            list(set(self._changed_fields) - set(fields))
-            if fields
-            else obj._changed_fields
-        )
-        self._unset_fields = (
-            list(set(self._unset_fields) - set(fields)) if fields else obj._unset_fields
-        )
+        if fields:
+            reloaded_fields = {self._translate_field_name(field) for field in fields}
+            self._changed_fields = list(set(self._changed_fields) - reloaded_fields)
+            self._unset_fields = list(set(self._unset_fields) - reloaded_fields)
+        else:
+            self._changed_fields = obj._changed_fields
+            self._unset_fields = obj._unset_fields
         self._has_change_tracking_baseline = True
         self._created = False
         return self

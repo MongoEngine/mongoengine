@@ -7,6 +7,7 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
+- Fix partial ``Document.reload()`` leaving custom ``db_field`` values marked as changed.
 
 Changes in 1.0.0
 ================
