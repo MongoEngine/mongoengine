@@ -174,7 +174,7 @@ class DeReference:
                 refs = [
                     dbref for dbref in dbrefs if (col_name, dbref) not in object_map
                 ]
-                references = collection.objects.in_bulk(refs)
+                references = collection.objects().in_bulk(refs)
                 for key, doc in references.items():
                     object_map[(col_name, key)] = doc
             else:  # Generic reference: use the refs data to convert to document

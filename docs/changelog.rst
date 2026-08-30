@@ -69,6 +69,7 @@ Changes in 1.0.0
 - BugFix - Fix inc/dec atomic updates rejecting deltas outside a field's min_value/max_value #2339
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
 - BugFix: null embedded scalar values raises AttributeError #2896
+- Bug Fix - Allow ``select_related()`` to dereference documents whose custom queryset managers accept optional arguments #2889
 
 Changes in 0.29.3
 =================
