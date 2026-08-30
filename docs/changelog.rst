@@ -35,7 +35,7 @@ Changes in 1.0.0
   ``(changed_fields, unset_fields)`` tuple containing two disjoint lists of
   database paths. ``_clear_changed_fields()`` was renamed to
   ``_clear_updated_fields()``.
-- BREAKING CHANGE: Remove ``QuerySet.values_list()`` as it was just an alias to scalar. Use ``QuerySet.scalar()`` instead.
+- BREAKING CHANGE: Remove ``QuerySet.values_list()`` as it was just an alias to scalar. Use ``QuerySet.scalar()`` instead. #2931
 - Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
   project and appears to be an expired domain takeover.
 - Bug Fix - Fix querying GenericReferenceField with __in operator #2886
