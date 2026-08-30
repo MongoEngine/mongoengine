@@ -17,6 +17,24 @@ Changes in 1.0.0
     - make sure to read https://www.mongodb.com/docs/manual/core/transactions-in-applications/#callback-api-vs-core-api
     - run_in_transaction context manager relies on Pymongo coreAPI, it will retry automatically in case of ``UnknownTransactionCommitResult`` but not ``TransientTransactionError`` exceptions
     - Using .count() in a transaction will always use Collection.count_document (as estimated_document_count is not supported in transactions)
+- BREAKING CHANGE (#2928): Assigning a field value and deleting a field now
+  have distinct persistence semantics:
+
+  - Assigning empty default values, such as ``""``, ``[]``, or ``{}``, now
+    stores those values. Previous versions implicitly unset the field.  #267
+  - Assigning falsy values to dynamic fields now stores those values instead
+    of implicitly unsetting the field.
+
+  Existing documents with missing default-valued fields are not migrated
+  automatically. They must be migrated if queries for the default value need
+  to match them.
+
+- BREAKING CHANGE (internal API, supporting #2928):
+  ``_get_changed_fields()`` was removed and replaced by
+  ``_get_updated_fields()``, which returns a
+  ``(changed_fields, unset_fields)`` tuple containing two disjoint lists of
+  database paths. ``_clear_changed_fields()`` was renamed to
+  ``_clear_updated_fields()``.
 - Add a warning that ``mongoengine.org`` is no longer controlled by the MongoEngine
   project and appears to be an expired domain takeover.
 - Bug Fix - Fix querying GenericReferenceField with __in operator #2886

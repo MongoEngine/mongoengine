@@ -94,7 +94,7 @@ class EmbeddedDocument(BaseDocument, metaclass=DocumentMetaclass):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._instance = None
-        self._changed_fields = []
+        self._has_change_tracking_baseline = True
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -353,6 +353,8 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             setattr(self, field, self._reload(field, updated[field]))
 
         self._changed_fields = updated._changed_fields
+        self._unset_fields = updated._unset_fields
+        self._has_change_tracking_baseline = updated._has_change_tracking_baseline
         self._created = False
 
         return True
@@ -494,7 +496,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             self.__class__, document=self, created=created, **signal_kwargs
         )
 
-        self._clear_changed_fields()
+        self._clear_updated_fields()
         self._created = False
 
         return self
@@ -612,7 +614,9 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if not ref or isinstance(ref, DBRef):
                 continue
 
-            if not getattr(ref, "_changed_fields", True):
+            if ref._has_change_tracking_baseline and not (
+                ref._changed_fields or ref._unset_fields
+            ):
                 continue
 
             ref_id = f"{ref.__class__.__name__},{str(ref._data)}"
@@ -620,7 +624,6 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
                 _refs.append(ref_id)
                 kwargs["_refs"] = _refs
                 ref.save(**kwargs)
-                ref._changed_fields = []
 
     @property
     def _qs(self):
@@ -816,6 +819,10 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
             if fields
             else obj._changed_fields
         )
+        self._unset_fields = (
+            list(set(self._unset_fields) - set(fields)) if fields else obj._unset_fields
+        )
+        self._has_change_tracking_baseline = True
         self._created = False
         return self
 
@@ -835,6 +842,7 @@ class Document(BaseDocument, metaclass=TopLevelDocumentMetaclass):
         elif isinstance(value, (EmbeddedDocument, DynamicEmbeddedDocument)):
             value._instance = None
             value._changed_fields = []
+            value._unset_fields = []
         return value
 
     def to_dbref(self):
@@ -1087,13 +1095,11 @@ class DynamicDocument(Document, metaclass=TopLevelDocumentMetaclass):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Delete the attribute by setting to None and allowing _delta
-        to unset it.
-        """
+        """Delete a dynamic field."""
         field_name = args[0]
         if field_name in self._dynamic_fields:
             setattr(self, field_name, None)
-            self._dynamic_fields[field_name].null = False
+            self._mark_as_unset(field_name)
         else:
             super().__delattr__(*args, **kwargs)
 
@@ -1110,17 +1116,13 @@ class DynamicEmbeddedDocument(EmbeddedDocument, metaclass=DocumentMetaclass):
     _dynamic = True
 
     def __delattr__(self, *args, **kwargs):
-        """Delete the attribute by setting to None and allowing _delta
-        to unset it.
-        """
+        """Delete a dynamic embedded field."""
         field_name = args[0]
         if field_name in self._fields:
-            default = self._fields[field_name].default
-            if callable(default):
-                default = default()
-            setattr(self, field_name, default)
+            super().__delattr__(*args, **kwargs)
         else:
             setattr(self, field_name, None)
+            self._mark_as_unset(field_name)
 
 
 class MapReduceDocument:

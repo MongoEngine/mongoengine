@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from mongoengine import *
 from mongoengine.pymongo_support import list_collection_names
 from tests.utils import MongoDBTestCase, get_as_pymongo
@@ -27,6 +29,317 @@ class TestDelta(MongoDBTestCase):
         self.delta(Document)
         self.delta(DynamicDocument)
 
+    def test_updated_fields__new_documents__initializes_empty_tracking_lists(self):
+        class Embedded(EmbeddedDocument):
+            value = StringField()
+
+        class Doc(Document):
+            value = StringField()
+
+        class Dynamic(DynamicDocument):
+            pass
+
+        for document in (
+            Embedded(value="value"),
+            Doc(value="value"),
+            Dynamic(value="value"),
+        ):
+            assert document._changed_fields == []
+            assert document._unset_fields == []
+
+    def test_delta__primary_key_assigned_to_new_document__uses_full_document(self):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = StringField()
+
+        doc = Doc(value="value")
+        doc.key = "key"
+
+        assert doc._created is False
+        # key is MongoDB's _id, which _delta() deliberately excludes.
+        assert doc._delta() == ({"value": "value"}, {})
+
+    def test_save__post_init_primary_key_and_deleted_field__keeps_historical_noop(
+        self,
+    ):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = StringField()
+
+        doc = Doc(value="value")
+        doc.key = "key"
+        del doc.value
+
+        assert doc._delta() == ({}, {})
+
+        doc.save()
+
+        # This silent no-op is a historical bug. Fixing it is worth considering
+        # separately because persisting this document would be a breaking change.
+        assert Doc.objects(pk=doc.pk).count() == 0
+
+    def test_save__post_init_primary_key_and_deleted_default__preserves_default(self):
+        class Doc(Document):
+            key = StringField(primary_key=True)
+            value = IntField(default=4)
+
+        doc = Doc()
+        doc.key = "key"
+        del doc.value
+
+        assert doc.value == 4
+        assert doc._delta() == ({"value": 4}, {})
+
+        doc.save()
+
+        assert Doc._get_collection().find_one({"_id": doc.pk}) == {
+            "_id": doc.pk,
+            "value": 4,
+        }
+
+    def test_delta__default_values_are_assigned__sets_values(self):
+        class Doc(Document):
+            empty_list = ListField()
+            empty_dict = DictField()
+            empty_string = StringField(default="")
+            false_value = BooleanField(default=False)
+            zero_value = IntField(default=0)
+            callable_value = StringField(default=lambda: "default", db_field="value")
+
+        doc = Doc(
+            empty_list=[1],
+            empty_dict={"key": "value"},
+            empty_string="value",
+            false_value=True,
+            zero_value=1,
+            callable_value="value",
+        ).save()
+
+        doc.empty_list = []
+        doc.empty_dict = {}
+        doc.empty_string = ""
+        doc.false_value = False
+        doc.zero_value = 0
+        doc.callable_value = "default"
+
+        assert doc._delta() == (
+            {
+                "empty_list": [],
+                "empty_dict": {},
+                "empty_string": "",
+                "false_value": False,
+                "zero_value": 0,
+                "value": "default",
+            },
+            {},
+        )
+
+        doc.save()
+        assert get_as_pymongo(doc) == {
+            "_id": doc.id,
+            "empty_list": [],
+            "empty_dict": {},
+            "empty_string": "",
+            "false_value": False,
+            "zero_value": 0,
+            "value": "default",
+        }
+
+    def test_save__default_values_are_assigned__stores_queryable_values(self):
+        class Doc(Document):
+            items = ListField()
+            enabled = BooleanField(default=False)
+
+        doc = Doc(items=[1], enabled=True).save()
+        doc.items = []
+        doc.enabled = False
+        doc.save()
+
+        assert get_as_pymongo(doc) == {
+            "_id": doc.id,
+            "items": [],
+            "enabled": False,
+        }
+        assert Doc.objects(items=[], enabled=False).count() == 1
+
+    def test_delta__field_is_deleted_then_assigned_default__sets_default(self):
+        class Doc(Document):
+            values = ListField()
+
+        doc = Doc(values=[1]).save()
+
+        del doc.values
+        doc.values = []
+
+        assert doc._delta() == ({"values": []}, {})
+
+    def test_delta__deleted_list_is_mutated__sets_list(self):
+        class Doc(Document):
+            values = ListField(db_field="db_values")
+            db_values = StringField(db_field="other_value")
+
+        doc = Doc(values=[1], db_values="preserved").save()
+
+        del doc.values
+        doc.values.append(2)
+
+        assert doc._delta() == ({"db_values": [2]}, {})
+
+    def test_delta__deleted_embedded_default_is_modified__sets_whole_embedded(self):
+        class Settings(EmbeddedDocument):
+            level = IntField(default=4)
+
+        class Account(Document):
+            settings = EmbeddedDocumentField(Settings, default=Settings)
+
+        account = Account(settings=Settings(level=10)).save()
+
+        del account.settings
+
+        assert account.settings.level == 4
+        assert account._get_updated_fields() == ([], ["settings"])
+        assert account._delta() == ({}, {"settings": 1})
+
+        account.settings.level = 7
+
+        assert account._get_updated_fields() == (["settings"], [])
+        assert account._delta() == ({"settings": {"level": 7}}, {})
+
+        account.save()
+        assert get_as_pymongo(account) == {
+            "_id": account.id,
+            "settings": {"level": 7},
+        }
+
+    @pytest.mark.xfail(
+        reason=(
+            "A child unset is lost when its deleted embedded parent is restored "
+            "and promoted to a whole-field set"
+        ),
+        strict=True,
+    )
+    def test_save__deleted_embedded_default_is_modified_and_child_deleted__omits_deleted_child(
+        self,
+    ):
+        class Settings(EmbeddedDocument):
+            theme = StringField(default="system")
+            language = StringField(default="en")
+
+        class Account(Document):
+            settings = EmbeddedDocumentField(Settings, default=Settings)
+
+        account = Account(settings=Settings(theme="dark", language="fr")).save()
+
+        del account.settings
+        account.settings.language = "de"
+        del account.settings.theme
+
+        assert account.settings._get_updated_fields() == (
+            ["language"],
+            ["theme"],
+        )
+
+        delta = account._delta()
+        account.save()
+
+        assert delta == ({"settings": {"language": "de"}}, {})
+        assert get_as_pymongo(account) == {
+            "_id": account.id,
+            "settings": {"language": "de"},
+        }
+
+    def test_get_updated_fields__dict_key_is_deleted__reports_unset(self):
+        class Doc(Document):
+            mapping = DictField()
+
+        doc = Doc(mapping={"key": "value"}).save()
+
+        del doc.mapping["key"]
+
+        assert doc._get_updated_fields() == ([], ["mapping.key"])
+        assert doc._delta() == ({}, {"mapping.key": 1})
+
+    def test_delta__dict_is_assigned_then_key_is_deleted__sets_whole_dict(self):
+        class Doc(Document):
+            mapping = DictField()
+
+        doc = Doc(mapping={"old": "value"}).save()
+
+        doc.mapping = {"kept": "value", "removed": "value"}
+        del doc.mapping["removed"]
+
+        assert doc._get_updated_fields() == (["mapping"], [])
+        assert doc._delta() == ({"mapping": {"kept": "value"}}, {})
+
+        doc.save()
+        assert get_as_pymongo(doc) == {
+            "_id": doc.id,
+            "mapping": {"kept": "value"},
+        }
+
+    def test_delta__dict_key_is_modified_then_field_is_deleted__unsets_dict(self):
+        class Doc(Document):
+            mapping = DictField()
+
+        doc = Doc(mapping={"key": "value"}).save()
+
+        doc.mapping["key"] = "changed"
+        del doc.mapping
+
+        assert doc._get_updated_fields() == ([], ["mapping"])
+        assert doc._delta() == ({}, {"mapping": 1})
+
+        doc.save()
+        assert get_as_pymongo(doc) == {"_id": doc.id}
+
+    def test_delta__nested_field_is_deleted_on_new_document__omits_field(self):
+        class Settings(EmbeddedDocument):
+            number = IntField(default=4)
+
+        class Doc(Document):
+            settings = EmbeddedDocumentField(Settings, default=Settings)
+
+        doc = Doc()
+        del doc.settings.number
+
+        assert doc.settings.number == 4
+        assert doc._get_updated_fields() == ([], ["settings.number"])
+        assert doc._delta() == ({"settings": {}}, {})
+
+    def test_delta__field_with_truthy_default_is_deleted__unsets_field(self):
+        class Doc(Document):
+            value = StringField(default="default", db_field="db_value")
+            db_value = StringField(db_field="other_value")
+
+        doc = Doc(value="other", db_value="preserved").save()
+
+        del doc.value
+
+        assert doc.value == "default"
+        assert doc._get_updated_fields() == ([], ["db_value"])
+        assert doc._delta() == ({}, {"db_value": 1})
+
+        doc.save()
+
+        assert get_as_pymongo(doc) == {
+            "_id": doc.id,
+            "other_value": "preserved",
+        }
+
+        doc.reload()
+        assert doc.value == "default"
+
+    def test_delta__dynamic_field_is_deleted_then_assigned_none__sets_none(self):
+        class Doc(DynamicDocument):
+            pass
+
+        doc = Doc(value="other").save()
+
+        del doc.value
+        doc.value = None
+
+        assert doc._delta() == ({"value": None}, {})
+
     @staticmethod
     def delta(DocClass):
         class Doc(DocClass):
@@ -40,40 +353,50 @@ class TestDelta(MongoDBTestCase):
         doc.save()
 
         doc = Doc.objects.first()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert doc._delta() == ({}, {})
 
         doc.string_field = "hello"
-        assert doc._get_changed_fields() == ["string_field"]
+        assert doc._get_updated_fields() == (["string_field"], [])
         assert doc._delta() == ({"string_field": "hello"}, {})
 
         doc._changed_fields = []
         doc.int_field = 1
-        assert doc._get_changed_fields() == ["int_field"]
+        assert doc._get_updated_fields() == (["int_field"], [])
         assert doc._delta() == ({"int_field": 1}, {})
 
         doc._changed_fields = []
         dict_value = {"hello": "world", "ping": "pong"}
         doc.dict_field = dict_value
-        assert doc._get_changed_fields() == ["dict_field"]
+        assert doc._get_updated_fields() == (["dict_field"], [])
         assert doc._delta() == ({"dict_field": dict_value}, {})
 
         doc._changed_fields = []
         list_value = ["1", 2, {"hello": "world"}]
         doc.list_field = list_value
-        assert doc._get_changed_fields() == ["list_field"]
+        assert doc._get_updated_fields() == (["list_field"], [])
         assert doc._delta() == ({"list_field": list_value}, {})
 
-        # Test unsetting
+        # Test assigning empty defaults
         doc._changed_fields = []
         doc.dict_field = {}
-        assert doc._get_changed_fields() == ["dict_field"]
-        assert doc._delta() == ({}, {"dict_field": 1})
+        assert doc._get_updated_fields() == (["dict_field"], [])
+        assert doc._delta() == ({"dict_field": {}}, {})
 
         doc._changed_fields = []
         doc.list_field = []
-        assert doc._get_changed_fields() == ["list_field"]
-        assert doc._delta() == ({}, {"list_field": 1})
+        assert doc._get_updated_fields() == (["list_field"], [])
+        assert doc._delta() == ({"list_field": []}, {})
+
+        # Test explicit unsetting
+        for field_name in ("int_field", "string_field", "list_field", "dict_field"):
+            doc._changed_fields = []
+            doc._unset_fields = []
+
+            delattr(doc, field_name)
+
+            assert doc._get_updated_fields() == ([], [field_name])
+            assert doc._delta() == ({}, {field_name: 1})
 
     def test_delta_recursive(self):
         self.delta_recursive(Document, EmbeddedDocument)
@@ -101,7 +424,7 @@ class TestDelta(MongoDBTestCase):
         doc.save()
 
         doc = Doc.objects.first()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert doc._delta() == ({}, {})
 
         embedded_1 = Embedded()
@@ -112,7 +435,7 @@ class TestDelta(MongoDBTestCase):
         embedded_1.list_field = ["1", 2, {"hello": "world"}]
         doc.embedded_field = embedded_1
 
-        assert doc._get_changed_fields() == ["embedded_field"]
+        assert doc._get_updated_fields() == (["embedded_field"], [])
 
         embedded_delta = {
             "id": "010101",
@@ -128,17 +451,17 @@ class TestDelta(MongoDBTestCase):
         doc = doc.reload(10)
 
         doc.embedded_field.dict_field = {}
-        assert doc._get_changed_fields() == ["embedded_field.dict_field"]
-        assert doc.embedded_field._delta() == ({}, {"dict_field": 1})
-        assert doc._delta() == ({}, {"embedded_field.dict_field": 1})
+        assert doc._get_updated_fields() == (["embedded_field.dict_field"], [])
+        assert doc.embedded_field._delta() == ({"dict_field": {}}, {})
+        assert doc._delta() == ({"embedded_field.dict_field": {}}, {})
         doc.save()
         doc = doc.reload(10)
         assert doc.embedded_field.dict_field == {}
 
         doc.embedded_field.list_field = []
-        assert doc._get_changed_fields() == ["embedded_field.list_field"]
-        assert doc.embedded_field._delta() == ({}, {"list_field": 1})
-        assert doc._delta() == ({}, {"embedded_field.list_field": 1})
+        assert doc._get_updated_fields() == (["embedded_field.list_field"], [])
+        assert doc.embedded_field._delta() == ({"list_field": []}, {})
+        assert doc._delta() == ({"embedded_field.list_field": []}, {})
         doc.save()
         doc = doc.reload(10)
         assert doc.embedded_field.list_field == []
@@ -150,7 +473,7 @@ class TestDelta(MongoDBTestCase):
         embedded_2.list_field = ["1", 2, {"hello": "world"}]
 
         doc.embedded_field.list_field = ["1", 2, embedded_2]
-        assert doc._get_changed_fields() == ["embedded_field.list_field"]
+        assert doc._get_updated_fields() == (["embedded_field.list_field"], [])
 
         assert doc.embedded_field._delta() == (
             {
@@ -194,7 +517,10 @@ class TestDelta(MongoDBTestCase):
             assert doc.embedded_field.list_field[2][k] == embedded_2[k]
 
         doc.embedded_field.list_field[2].string_field = "world"
-        assert doc._get_changed_fields() == ["embedded_field.list_field.2.string_field"]
+        assert doc._get_updated_fields() == (
+            ["embedded_field.list_field.2.string_field"],
+            [],
+        )
         assert doc.embedded_field._delta() == (
             {"list_field.2.string_field": "world"},
             {},
@@ -210,7 +536,7 @@ class TestDelta(MongoDBTestCase):
         # Test multiple assignments
         doc.embedded_field.list_field[2].string_field = "hello world"
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
-        assert doc._get_changed_fields() == ["embedded_field.list_field.2"]
+        assert doc._get_updated_fields() == (["embedded_field.list_field.2"], [])
         assert doc.embedded_field._delta() == (
             {
                 "list_field.2": {
@@ -281,7 +607,7 @@ class TestDelta(MongoDBTestCase):
         doc = doc.reload(10)
 
         doc.dict_field["Embedded"].string_field = "Hello World"
-        assert doc._get_changed_fields() == ["dict_field.Embedded.string_field"]
+        assert doc._get_updated_fields() == (["dict_field.Embedded.string_field"], [])
         assert doc._delta() == ({"dict_field.Embedded.string_field": "Hello World"}, {})
 
     def test_circular_reference_deltas(self):
@@ -376,40 +702,51 @@ class TestDelta(MongoDBTestCase):
         doc.save()
 
         doc = Doc.objects.first()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert doc._delta() == ({}, {})
 
         doc.string_field = "hello"
-        assert doc._get_changed_fields() == ["db_string_field"]
+        assert doc._get_updated_fields() == (["db_string_field"], [])
         assert doc._delta() == ({"db_string_field": "hello"}, {})
 
         doc._changed_fields = []
         doc.int_field = 1
-        assert doc._get_changed_fields() == ["db_int_field"]
+        assert doc._get_updated_fields() == (["db_int_field"], [])
         assert doc._delta() == ({"db_int_field": 1}, {})
 
         doc._changed_fields = []
         dict_value = {"hello": "world", "ping": "pong"}
         doc.dict_field = dict_value
-        assert doc._get_changed_fields() == ["db_dict_field"]
+        assert doc._get_updated_fields() == (["db_dict_field"], [])
         assert doc._delta() == ({"db_dict_field": dict_value}, {})
 
         doc._changed_fields = []
         list_value = ["1", 2, {"hello": "world"}]
         doc.list_field = list_value
-        assert doc._get_changed_fields() == ["db_list_field"]
+        assert doc._get_updated_fields() == (["db_list_field"], [])
         assert doc._delta() == ({"db_list_field": list_value}, {})
 
-        # Test unsetting
+        # Test assigning empty defaults
         doc._changed_fields = []
         doc.dict_field = {}
-        assert doc._get_changed_fields() == ["db_dict_field"]
-        assert doc._delta() == ({}, {"db_dict_field": 1})
+        assert doc._get_updated_fields() == (["db_dict_field"], [])
+        assert doc._delta() == ({"db_dict_field": {}}, {})
 
         doc._changed_fields = []
         doc.list_field = []
-        assert doc._get_changed_fields() == ["db_list_field"]
-        assert doc._delta() == ({}, {"db_list_field": 1})
+        assert doc._get_updated_fields() == (["db_list_field"], [])
+        assert doc._delta() == ({"db_list_field": []}, {})
+
+        # Test explicit unsetting
+        for field_name in ("int_field", "string_field", "list_field", "dict_field"):
+            db_field_name = f"db_{field_name}"
+            doc._changed_fields = []
+            doc._unset_fields = []
+
+            delattr(doc, field_name)
+
+            assert doc._get_updated_fields() == ([], [db_field_name])
+            assert doc._delta() == ({}, {db_field_name: 1})
 
         # Test it saves that data
         doc = Doc()
@@ -461,7 +798,7 @@ class TestDelta(MongoDBTestCase):
         doc.save()
 
         doc = Doc.objects.first()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert doc._delta() == ({}, {})
 
         embedded_1 = Embedded()
@@ -471,7 +808,7 @@ class TestDelta(MongoDBTestCase):
         embedded_1.list_field = ["1", 2, {"hello": "world"}]
         doc.embedded_field = embedded_1
 
-        assert doc._get_changed_fields() == ["db_embedded_field"]
+        assert doc._get_updated_fields() == (["db_embedded_field"], [])
 
         embedded_delta = {
             "db_string_field": "hello",
@@ -486,18 +823,18 @@ class TestDelta(MongoDBTestCase):
         doc = doc.reload(10)
 
         doc.embedded_field.dict_field = {}
-        assert doc._get_changed_fields() == ["db_embedded_field.db_dict_field"]
-        assert doc.embedded_field._delta() == ({}, {"db_dict_field": 1})
-        assert doc._delta() == ({}, {"db_embedded_field.db_dict_field": 1})
+        assert doc._get_updated_fields() == (["db_embedded_field.db_dict_field"], [])
+        assert doc.embedded_field._delta() == ({"db_dict_field": {}}, {})
+        assert doc._delta() == ({"db_embedded_field.db_dict_field": {}}, {})
         doc.save()
         doc = doc.reload(10)
         assert doc.embedded_field.dict_field == {}
 
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         doc.embedded_field.list_field = []
-        assert doc._get_changed_fields() == ["db_embedded_field.db_list_field"]
-        assert doc.embedded_field._delta() == ({}, {"db_list_field": 1})
-        assert doc._delta() == ({}, {"db_embedded_field.db_list_field": 1})
+        assert doc._get_updated_fields() == (["db_embedded_field.db_list_field"], [])
+        assert doc.embedded_field._delta() == ({"db_list_field": []}, {})
+        assert doc._delta() == ({"db_embedded_field.db_list_field": []}, {})
         doc.save()
         doc = doc.reload(10)
         assert doc.embedded_field.list_field == []
@@ -509,7 +846,7 @@ class TestDelta(MongoDBTestCase):
         embedded_2.list_field = ["1", 2, {"hello": "world"}]
 
         doc.embedded_field.list_field = ["1", 2, embedded_2]
-        assert doc._get_changed_fields() == ["db_embedded_field.db_list_field"]
+        assert doc._get_updated_fields() == (["db_embedded_field.db_list_field"], [])
         assert doc.embedded_field._delta() == (
             {
                 "db_list_field": [
@@ -544,7 +881,7 @@ class TestDelta(MongoDBTestCase):
             {},
         )
         doc.save()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         doc = doc.reload(10)
 
         assert doc.embedded_field.list_field[0] == "1"
@@ -553,9 +890,10 @@ class TestDelta(MongoDBTestCase):
             assert doc.embedded_field.list_field[2][k] == embedded_2[k]
 
         doc.embedded_field.list_field[2].string_field = "world"
-        assert doc._get_changed_fields() == [
-            "db_embedded_field.db_list_field.2.db_string_field"
-        ]
+        assert doc._get_updated_fields() == (
+            ["db_embedded_field.db_list_field.2.db_string_field"],
+            [],
+        )
         assert doc.embedded_field._delta() == (
             {"db_list_field.2.db_string_field": "world"},
             {},
@@ -571,7 +909,7 @@ class TestDelta(MongoDBTestCase):
         # Test multiple assignments
         doc.embedded_field.list_field[2].string_field = "hello world"
         doc.embedded_field.list_field[2] = doc.embedded_field.list_field[2]
-        assert doc._get_changed_fields() == ["db_embedded_field.db_list_field.2"]
+        assert doc._get_updated_fields() == (["db_embedded_field.db_list_field.2"], [])
         assert doc.embedded_field._delta() == (
             {
                 "db_list_field.2": {
@@ -679,13 +1017,13 @@ class TestDelta(MongoDBTestCase):
 
         p.age = 24
         assert p.age == 24
-        assert p._get_changed_fields() == ["age"]
+        assert p._get_updated_fields() == (["age"], [])
         assert p._delta() == ({"age": 24}, {})
 
         p = Person.objects(age=22).get()
         p.age = 24
         assert p.age == 24
-        assert p._get_changed_fields() == ["age"]
+        assert p._get_updated_fields() == (["age"], [])
         assert p._delta() == ({"age": 24}, {})
 
         p.save()
@@ -700,40 +1038,40 @@ class TestDelta(MongoDBTestCase):
         doc.save()
 
         doc = Doc.objects.first()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert doc._delta() == ({}, {})
 
         doc.string_field = "hello"
-        assert doc._get_changed_fields() == ["string_field"]
+        assert doc._get_updated_fields() == (["string_field"], [])
         assert doc._delta() == ({"string_field": "hello"}, {})
 
         doc._changed_fields = []
         doc.int_field = 1
-        assert doc._get_changed_fields() == ["int_field"]
+        assert doc._get_updated_fields() == (["int_field"], [])
         assert doc._delta() == ({"int_field": 1}, {})
 
         doc._changed_fields = []
         dict_value = {"hello": "world", "ping": "pong"}
         doc.dict_field = dict_value
-        assert doc._get_changed_fields() == ["dict_field"]
+        assert doc._get_updated_fields() == (["dict_field"], [])
         assert doc._delta() == ({"dict_field": dict_value}, {})
 
         doc._changed_fields = []
         list_value = ["1", 2, {"hello": "world"}]
         doc.list_field = list_value
-        assert doc._get_changed_fields() == ["list_field"]
+        assert doc._get_updated_fields() == (["list_field"], [])
         assert doc._delta() == ({"list_field": list_value}, {})
 
-        # Test unsetting
+        # Test assigning empty defaults
         doc._changed_fields = []
         doc.dict_field = {}
-        assert doc._get_changed_fields() == ["dict_field"]
-        assert doc._delta() == ({}, {"dict_field": 1})
+        assert doc._get_updated_fields() == (["dict_field"], [])
+        assert doc._delta() == ({"dict_field": {}}, {})
 
         doc._changed_fields = []
         doc.list_field = []
-        assert doc._get_changed_fields() == ["list_field"]
-        assert doc._delta() == ({}, {"list_field": 1})
+        assert doc._get_updated_fields() == (["list_field"], [])
+        assert doc._delta() == ({"list_field": []}, {})
 
     def test_delta_with_dbref_true(self):
         person, organization, employee = self.circular_reference_deltas_2(
@@ -741,7 +1079,7 @@ class TestDelta(MongoDBTestCase):
         )
         employee.name = "test"
 
-        assert organization._get_changed_fields() == []
+        assert organization._get_updated_fields() == ([], [])
 
         updates, removals = organization._delta()
         assert removals == {}
@@ -758,7 +1096,7 @@ class TestDelta(MongoDBTestCase):
         )
         employee.name = "test"
 
-        assert organization._get_changed_fields() == []
+        assert organization._get_updated_fields() == ([], [])
 
         updates, removals = organization._delta()
         assert removals == {}
@@ -785,11 +1123,11 @@ class TestDelta(MongoDBTestCase):
         subdoc = mydoc.subs["a"]["b"]
         subdoc.name = "bar"
 
-        assert subdoc._get_changed_fields() == ["name"]
-        assert mydoc._get_changed_fields() == ["subs.a.b.name"]
+        assert subdoc._get_updated_fields() == (["name"], [])
+        assert mydoc._get_updated_fields() == (["subs.a.b.name"], [])
 
-        mydoc._clear_changed_fields()
-        assert mydoc._get_changed_fields() == []
+        mydoc._clear_updated_fields()
+        assert mydoc._get_updated_fields() == ([], [])
 
     def test_nested_nested_fields_db_field_set__gets_mark_as_changed_and_cleaned(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -806,19 +1144,19 @@ class TestDelta(MongoDBTestCase):
         mydoc = MyDoc.objects.first()
         mydoc.embed.name = "foo1"
 
-        assert mydoc.embed._get_changed_fields() == ["db_name"]
-        assert mydoc._get_changed_fields() == ["db_embed.db_name"]
+        assert mydoc.embed._get_updated_fields() == (["db_name"], [])
+        assert mydoc._get_updated_fields() == (["db_embed.db_name"], [])
 
         mydoc = MyDoc.objects.first()
         embed = EmbeddedDoc(name="foo2")
         embed.name = "bar"
         mydoc.embed = embed
 
-        assert embed._get_changed_fields() == ["db_name"]
-        assert mydoc._get_changed_fields() == ["db_embed"]
+        assert embed._get_updated_fields() == (["db_name"], [])
+        assert mydoc._get_updated_fields() == (["db_embed"], [])
 
-        mydoc._clear_changed_fields()
-        assert mydoc._get_changed_fields() == []
+        mydoc._clear_updated_fields()
+        assert mydoc._get_updated_fields() == ([], [])
 
     def test_lower_level_mark_as_changed(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -833,17 +1171,17 @@ class TestDelta(MongoDBTestCase):
 
         mydoc = MyDoc.objects.first()
         mydoc.subs["a"] = EmbeddedDoc()
-        assert mydoc._get_changed_fields() == ["subs.a"]
+        assert mydoc._get_updated_fields() == (["subs.a"], [])
 
         subdoc = mydoc.subs["a"]
         subdoc.name = "bar"
 
-        assert subdoc._get_changed_fields() == ["name"]
-        assert mydoc._get_changed_fields() == ["subs.a"]
+        assert subdoc._get_updated_fields() == (["name"], [])
+        assert mydoc._get_updated_fields() == (["subs.a"], [])
         mydoc.save()
 
-        mydoc._clear_changed_fields()
-        assert mydoc._get_changed_fields() == []
+        mydoc._clear_updated_fields()
+        assert mydoc._get_updated_fields() == ([], [])
 
     def test_upper_level_mark_as_changed(self):
         class EmbeddedDoc(EmbeddedDocument):
@@ -860,15 +1198,15 @@ class TestDelta(MongoDBTestCase):
         subdoc = mydoc.subs["a"]
         subdoc.name = "bar"
 
-        assert subdoc._get_changed_fields() == ["name"]
-        assert mydoc._get_changed_fields() == ["subs.a.name"]
+        assert subdoc._get_updated_fields() == (["name"], [])
+        assert mydoc._get_updated_fields() == (["subs.a.name"], [])
 
         mydoc.subs["a"] = EmbeddedDoc()
-        assert mydoc._get_changed_fields() == ["subs.a"]
+        assert mydoc._get_updated_fields() == (["subs.a"], [])
         mydoc.save()
 
-        mydoc._clear_changed_fields()
-        assert mydoc._get_changed_fields() == []
+        mydoc._clear_updated_fields()
+        assert mydoc._get_updated_fields() == ([], [])
 
     def test_referenced_object_changed_attributes(self):
         """Ensures that when you save a new reference to a field, the referenced object isn't altered"""
@@ -959,21 +1297,21 @@ class TestDelta(MongoDBTestCase):
         MyDoc(dico={"a": {"b": 0}}).save()
 
         mydoc = MyDoc.objects.first()
-        assert mydoc._get_changed_fields() == []
+        assert mydoc._get_updated_fields() == ([], [])
         mydoc.dico["a"]["b"] = 0
-        assert mydoc._get_changed_fields() == []
+        assert mydoc._get_updated_fields() == ([], [])
         mydoc.dico["a"] = {"b": 0}
-        assert mydoc._get_changed_fields() == []
+        assert mydoc._get_updated_fields() == ([], [])
         mydoc.dico = {"a": {"b": 0}}
-        assert mydoc._get_changed_fields() == []
+        assert mydoc._get_updated_fields() == ([], [])
         mydoc.dico["a"]["c"] = 1
-        assert mydoc._get_changed_fields() == ["dico.a.c"]
+        assert mydoc._get_updated_fields() == (["dico.a.c"], [])
         mydoc.dico["a"]["b"] = 2
         mydoc.dico["d"] = 3
-        assert mydoc._get_changed_fields() == ["dico.a.c", "dico.a.b", "dico.d"]
+        assert mydoc._get_updated_fields() == (["dico.a.c", "dico.a.b", "dico.d"], [])
 
-        mydoc._clear_changed_fields()
-        assert mydoc._get_changed_fields() == []
+        mydoc._clear_updated_fields()
+        assert mydoc._get_updated_fields() == ([], [])
 
     def test_delta_on_dict_empty_key_triggers_full_change(self):
         """more of a bug (harmless) but empty key changes aren't managed perfectly"""
@@ -986,9 +1324,9 @@ class TestDelta(MongoDBTestCase):
         MyDoc(dico={"a": {"b": 0}}).save()
 
         mydoc = MyDoc.objects.first()
-        assert mydoc._get_changed_fields() == []
+        assert mydoc._get_updated_fields() == ([], [])
         mydoc.dico[""] = 3
-        assert mydoc._get_changed_fields() == ["dico"]
+        assert mydoc._get_updated_fields() == (["dico"], [])
         mydoc.save()
         raw_doc = get_as_pymongo(mydoc)
         assert raw_doc == {"_id": mydoc.id, "dico": {"": 3, "a": {"b": 0}}}

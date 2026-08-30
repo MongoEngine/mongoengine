@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import bson
 import pytest
 from bson import SON, DBRef, ObjectId
+from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from mongoengine import *
@@ -475,6 +476,26 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.name == "Mr Test User"
         assert person.age == 21
 
+    def test_reload__field_with_db_field_has_pending_unset__clears_pending_unset(
+        self,
+    ):
+        class Person(Document):
+            name = StringField(db_field="db_name")
+
+        person = Person(name="stored").save()
+        del person.name
+
+        assert person._get_updated_fields() == ([], ["db_name"])
+
+        person.reload("name")
+
+        assert person.name == "stored"
+        assert person._get_updated_fields()[1] == []
+        assert person._delta()[1] == {}
+
+        person.save()
+        assert get_as_pymongo(person) == {"_id": person.id, "db_name": "stored"}
+
     def test_reload_sharded(self):
         class Animal(Document):
             superphylum = StringField()
@@ -571,22 +592,93 @@ class TestDocumentInstance(MongoDBTestCase):
     def test_reload_with_changed_fields(self):
         """Ensures reloading will not affect changed fields"""
 
+        class VitalSigns(EmbeddedDocument):
+            blood_pressure = FloatField()
+
         class User(Document):
             name = StringField()
             number = IntField()
+            phone = StringField()
+            vital_signs = EmbeddedDocumentField(VitalSigns)
 
         User.drop_collection()
 
-        user = User(name="Bob", number=1).save()
+        user = User(
+            name="Bob",
+            number=1,
+            phone="01234",
+            vital_signs=VitalSigns(blood_pressure=0.99),
+        ).save()
         user.name = "John"
         user.number = 2
+        user.vital_signs.blood_pressure = 0.11
+        del user.phone
 
-        assert user._get_changed_fields() == ["name", "number"]
+        assert user._delta() == (
+            {"name": "John", "number": 2, "vital_signs.blood_pressure": 0.11},
+            {"phone": 1},
+        )
         user.reload("number")
-        assert user._get_changed_fields() == ["name"]
+        assert user._delta() == (
+            {"name": "John", "vital_signs.blood_pressure": 0.11},
+            {"phone": 1},
+        )
+        user.reload("vital_signs")
+        assert user._delta() == ({"name": "John"}, {"phone": 1})
+        user.reload("phone")
+        assert user._delta() == ({"name": "John"}, {})
         user.save()
+
+        assert get_as_pymongo(user) == {
+            "_id": user.id,
+            "name": "John",
+            "number": 1,
+            "phone": "01234",
+            "vital_signs": {"blood_pressure": 0.99},
+        }
+
+        del user.phone
+        del user.vital_signs.blood_pressure
+        assert user._delta() == (
+            {},
+            {"phone": 1, "vital_signs.blood_pressure": 1},
+        )
         user.reload()
+        assert user._delta() == ({}, {})
         assert user.name == "John"
+        assert user.number == 1
+        assert user.phone == "01234"
+        assert user.vital_signs.blood_pressure == 0.99
+
+    def test_save__reference_and_embedded_fields_are_deleted__unsets_whole_fields(
+        self,
+    ):
+        class VitalSigns(EmbeddedDocument):
+            blood_pressure = FloatField()
+
+        class Car(Document):
+            brand = StringField()
+
+        car = Car(brand="Lamborghini").save()
+
+        class User(Document):
+            car = ReferenceField(Car, default=lambda: car)
+            vital_signs = EmbeddedDocumentField(
+                VitalSigns,
+                default=lambda: VitalSigns(blood_pressure=0.99),
+            )
+
+        user = User().save()
+
+        del user.car
+        del user.vital_signs
+
+        assert user.car == car
+        assert user.vital_signs.blood_pressure == 0.99
+        assert user._delta() == ({}, {"car": 1, "vital_signs": 1})
+
+        user.save()
+        assert get_as_pymongo(user) == {"_id": user.id}
 
     def test_reload_referencing(self):
         """Ensures reloading updates weakrefs correctly."""
@@ -617,18 +709,20 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.embedded_field.list_field.append(1)
         doc.embedded_field.dict_field["woot"] = "woot"
 
-        changed = doc._get_changed_fields()
-        assert changed == [
-            "list_field",
-            "dict_field.woot",
-            "embedded_field.list_field",
-            "embedded_field.dict_field.woot",
-        ]
+        assert doc._get_updated_fields() == (
+            [
+                "list_field",
+                "dict_field.woot",
+                "embedded_field.list_field",
+                "embedded_field.dict_field.woot",
+            ],
+            [],
+        )
         doc.save()
 
         assert len(doc.list_field) == 4
         doc = doc.reload(10)
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
         assert len(doc.list_field) == 4
         assert len(doc.dict_field) == 2
         assert len(doc.embedded_field.list_field) == 4
@@ -638,7 +732,7 @@ class TestDocumentInstance(MongoDBTestCase):
         doc.save()
         doc.dict_field["extra"] = 1
         doc = doc.reload(10, "list_field")
-        assert doc._get_changed_fields() == ["dict_field.extra"]
+        assert doc._get_updated_fields() == (["dict_field.extra"], [])
         assert len(doc.list_field) == 5
         assert len(doc.dict_field) == 3
         assert len(doc.embedded_field.list_field) == 4
@@ -976,7 +1070,7 @@ class TestDocumentInstance(MongoDBTestCase):
         del doc_copy.job.years
 
         assert doc.to_json() == doc_copy.to_json()
-        assert doc._get_changed_fields() == []
+        assert doc._get_updated_fields() == ([], [])
 
         self._assert_db_equal([dict(other_doc.to_mongo()), dict(doc.to_mongo())])
 
@@ -1146,6 +1240,24 @@ class TestDocumentInstance(MongoDBTestCase):
 
         p1.reload()
         assert p1.name == p.parent.name
+
+    def test_save__referenced_document_has_only_unset__cascade_saves_unset(self):
+        class Parent(Document):
+            value = StringField(default="default")
+
+        class Child(Document):
+            parent = ReferenceField(Parent)
+
+        parent = Parent(value="default").save()
+        child = Child(parent=parent).save()
+        child = Child.objects.get(id=child.id)
+
+        del child.parent.value
+
+        assert child.parent._get_updated_fields() == ([], ["value"])
+
+        child.save(cascade=True)
+        assert get_as_pymongo(parent) == {"_id": parent.id}
 
     def test_save_cascade_kwargs(self):
         class Person(Document):
@@ -1647,7 +1759,7 @@ class TestDocumentInstance(MongoDBTestCase):
         assert person.age == 21
         assert person.active is False
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
+    def test__get_updated_fields_same_ids_reference_field_does_not_enters_infinite_loop_embedded_doc(
         self,
     ):
         # Refers to Issue #1685
@@ -1658,10 +1770,9 @@ class TestDocumentInstance(MongoDBTestCase):
             child = EmbeddedDocumentField(EmbeddedChildModel)
 
         emb = EmbeddedChildModel(id={"1": [1]})
-        changed_fields = ParentModel(child=emb)._get_changed_fields()
-        assert changed_fields == []
+        assert ParentModel(child=emb)._get_updated_fields() == ([], [])
 
-    def test__get_changed_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
+    def test__get_updated_fields_same_ids_reference_field_does_not_enters_infinite_loop_different_doc(
         self,
     ):
         # Refers to Issue #1685
@@ -1680,10 +1791,10 @@ class TestDocumentInstance(MongoDBTestCase):
         message = Message(id=1, author=user).save()
 
         message.author.name = "tutu"
-        assert message._get_changed_fields() == []
-        assert user._get_changed_fields() == ["name"]
+        assert message._get_updated_fields() == ([], [])
+        assert user._get_updated_fields() == (["name"], [])
 
-    def test__get_changed_fields_same_ids_embedded(self):
+    def test__get_updated_fields_same_ids_embedded(self):
         # Refers to Issue #1768
         class User(EmbeddedDocument):
             id = IntField()
@@ -1700,7 +1811,7 @@ class TestDocumentInstance(MongoDBTestCase):
         message = Message(id=1, author=user).save()
 
         message.author.name = "tutu"
-        assert message._get_changed_fields() == ["author.name"]
+        assert message._get_updated_fields() == (["author.name"], [])
         message.save()
 
         message_fetched = Message.objects.with_id(message.id)
@@ -2795,6 +2906,20 @@ class TestDocumentInstance(MongoDBTestCase):
         assert isinstance(restored_from_raw_data.child, PickleChild)
         assert restored_from_raw_data.child.value == "child"
 
+    def test_pickle__legacy_state_without_tracking_fields__initializes_tracking(self):
+        document = PickleTest(number=1)
+        legacy_state = document.__getstate__()
+        legacy_state.pop("_changed_fields")
+        legacy_state.pop("_unset_fields")
+        legacy_state.pop("_has_change_tracking_baseline")
+
+        restored = PickleTest.__new__(PickleTest)
+        restored.__setstate__(legacy_state)
+
+        assert restored._changed_fields == []
+        assert restored._unset_fields == []
+        assert restored._has_change_tracking_baseline is False
+
     def test_picklable_on_signals(self):
         pickle_doc = PickleSignalsTest(number=1, string="One", lists=["1", "2"])
         pickle_doc.embedded = PickleEmbedded()
@@ -2891,8 +3016,6 @@ class TestDocumentInstance(MongoDBTestCase):
         job.save()
 
         person = Person(name="name", age=10, job=job)
-
-        from pymongo.collection import Collection
 
         orig_update_one = Collection.update_one
         try:

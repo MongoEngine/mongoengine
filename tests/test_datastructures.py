@@ -73,10 +73,11 @@ class TestBaseDict:
         assert base_dict._instance._changed_fields == ["my_name"]
         assert base_dict == {}
 
-    def test___delitem___calls_mark_as_changed(self):
+    def test___delitem___calls_mark_as_unset(self):
         base_dict = self._get_basedict({"k": "v"})
         del base_dict["k"]
-        assert base_dict._instance._changed_fields == ["my_name.k"]
+        assert base_dict._instance._changed_fields == []
+        assert base_dict._instance._unset_fields == ["my_name.k"]
         assert base_dict == {}
 
     def test___getitem____KeyError(self):
@@ -148,14 +149,21 @@ class TestBaseDict:
         base_dict.a_new_attr = "test"
         assert base_dict._instance._changed_fields == []
 
-    def test___delattr____tracked_by_changes(self):
-        # This is probably a bug as __setattr__ is not tracked
-        # This is even bad because it could be that there is an attribute
-        # with the same name as a key
+    def test___delattr____does_not_track_changes(self):
         base_dict = self._get_basedict({})
         base_dict.a_new_attr = "test"
         del base_dict.a_new_attr
-        assert base_dict._instance._changed_fields == ["my_name.a_new_attr"]
+        assert base_dict._instance._changed_fields == []
+        assert base_dict._instance._unset_fields == []
+
+    def test___delattr____missing_attribute_does_not_track_changes(self):
+        base_dict = self._get_basedict({})
+
+        with pytest.raises(AttributeError):
+            del base_dict.missing
+
+        assert base_dict._instance._changed_fields == []
+        assert base_dict._instance._unset_fields == []
 
 
 class TestBaseList:

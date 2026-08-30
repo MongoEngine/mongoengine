@@ -21,6 +21,45 @@ class TestDictField(MongoDBTestCase):
         post = BlogPost(info=info).save()
         assert get_as_pymongo(post) == {"_id": post.id, "info": info}
 
+    def test_save__dict_key_is_assigned_none__stores_null(self):
+        """Regression test for issue #2051."""
+
+        class Test(Document):
+            args = DictField()
+
+        test = Test(args={"hello": None}).save()
+
+        test.args["count"] = None
+
+        assert test._delta() == ({"args.count": None}, {})
+
+        test.save()
+        assert get_as_pymongo(test) == {
+            "_id": test.id,
+            "args": {"hello": None, "count": None},
+        }
+
+    def test_save__embedded_dict_key_is_assigned_none__stores_null(self):
+        """Regression test for issue #1378."""
+
+        class Item(EmbeddedDocument):
+            field = DictField()
+
+        class Doc(Document):
+            items = ListField(EmbeddedDocumentField(Item))
+
+        doc = Doc(items=[Item()]).save()
+
+        doc.items[0].field["key"] = None
+
+        assert doc._delta() == ({"items.0.field.key": None}, {})
+
+        doc.save()
+        assert get_as_pymongo(doc) == {
+            "_id": doc.id,
+            "items": [{"field": {"key": None}}],
+        }
+
     def test_validate_invalid_type(self):
         class BlogPost(Document):
             info = DictField()

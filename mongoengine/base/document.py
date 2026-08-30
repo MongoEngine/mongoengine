@@ -1,5 +1,4 @@
 import copy
-import numbers
 import warnings
 from functools import partial
 
@@ -12,7 +11,6 @@ from mongoengine.base.datastructures import (
     BaseDict,
     BaseList,
     EmbeddedDocumentList,
-    LazyReference,
     StrictDict,
 )
 from mongoengine.base.fields import ComplexBaseField
@@ -32,18 +30,10 @@ NON_FIELD_ERRORS = "__all__"
 
 
 class BaseDocument:
-    # TODO simplify how `_changed_fields` is used.
-    # Currently, handling of `_changed_fields` seems unnecessarily convoluted:
-    # 1. `BaseDocument` defines `_changed_fields` in its `__slots__`, yet it's
-    #    not setting it to `[]` (or any other value) in `__init__`.
-    # 2. `EmbeddedDocument` sets `_changed_fields` to `[]` it its overloaded
-    #    `__init__`.
-    # 3. `Document` does NOT set `_changed_fields` upon initialization. The
-    #    field is primarily set via `_from_son` or `_clear_changed_fields`,
-    #    though there are also other methods that manipulate it.
-    # 4. The codebase is littered with `hasattr` calls for `_changed_fields`.
     __slots__ = (
         "_changed_fields",
+        "_unset_fields",
+        "_has_change_tracking_baseline",
         "_initialised",
         "_created",
         "_data",
@@ -67,9 +57,18 @@ class BaseDocument:
             to Python-type values via each field's `to_python` method.
         :param _created: Indicates whether this is a brand new document
             or whether it's already been persisted before. Defaults to true.
+        :param _changed_fields: Database field paths changed since the tracking
+            baseline was established.
+        :param _unset_fields: Database field paths explicitly unset since the
+            tracking baseline was established.
+        :param _has_change_tracking_baseline: Whether the document has a known
+            state against which changes can be tracked.
         """
         self._initialised = False
         self._created = True
+        self._changed_fields = []
+        self._unset_fields = []
+        self._has_change_tracking_baseline = False
 
         if args:
             raise TypeError(
@@ -150,10 +149,17 @@ class BaseDocument:
             if callable(default):
                 default = default()
             setattr(self, field_name, default)
+            # Without a baseline, preserve historical full-document behavior
+            # and let serialization determine the delta.
+            if self._has_change_tracking_baseline:
+                self._mark_as_unset(field_name)
         else:
             super().__delattr__(*args, **kwargs)
 
     def __setattr__(self, name, value):
+        if not name.startswith("_") and self._unset_fields:
+            self._unmark_as_unset(name)
+
         # Handle dynamic data only if an initialised dynamic document
         if self._dynamic and not self._dynamic_lock:
             if name not in self._fields_ordered and not name.startswith("_"):
@@ -169,7 +175,7 @@ class BaseDocument:
             # Handle marking data as changed
             if name in self._dynamic_fields:
                 self._data[name] = value
-                if hasattr(self, "_changed_fields"):
+                if self._initialised:
                     self._mark_as_changed(name)
         try:
             self__created = self._created
@@ -207,6 +213,8 @@ class BaseDocument:
         data = {}
         for k in (
             "_changed_fields",
+            "_unset_fields",
+            "_has_change_tracking_baseline",
             "_initialised",
             "_created",
             "_dynamic_fields",
@@ -219,10 +227,19 @@ class BaseDocument:
         return data
 
     def __setstate__(self, data):
+        # __init__ is not called when unpickling, and legacy states may omit
+        # these tracking fields so it's important that we set them to maintain backward compatibility.
+        self._changed_fields = []
+        self._unset_fields = []
+        self._has_change_tracking_baseline = (
+            not self._is_document or "_changed_fields" in data
+        )
         if data.pop("_data_is_mongo", False) or isinstance(data["_data"], SON):
             data["_data"] = self.__class__._from_son(data["_data"])._data
         for k in (
             "_changed_fields",
+            "_unset_fields",
+            "_has_change_tracking_baseline",
             "_initialised",
             "_created",
             "_data",
@@ -517,17 +534,50 @@ class BaseDocument:
 
         return value
 
-    def _mark_as_changed(self, key):
-        """Mark a key as explicitly changed by the user."""
-        if not hasattr(self, "_changed_fields"):
-            return
-
+    def _resolve_key(self, key):
+        """Resolve a field name to its database path."""
         if "." in key:
             key, rest = key.split(".", 1)
             key = self._db_field_map.get(key, key)
-            key = f"{key}.{rest}"
-        else:
-            key = self._db_field_map.get(key, key)
+            return f"{key}.{rest}"
+        return self._db_field_map.get(key, key)
+
+    def _unmark_as_unset(self, key):
+        if not key or not self._unset_fields:
+            return
+
+        key = self._resolve_key(key)
+        self._unset_fields = [
+            path
+            for path in self._unset_fields
+            if not (
+                path == key or path.startswith(f"{key}.") or key.startswith(f"{path}.")
+            )
+        ]
+
+    def _mark_as_unset(self, key):
+        if not key:
+            return
+
+        key = self._resolve_key(key)
+        # An exact or ancestor unset already removes this path.
+        if key in self._unset_fields or any(
+            key.startswith(f"{path}.") for path in self._unset_fields
+        ):
+            return
+        # Unsetting an ancestor supersedes previously tracked descendant unsets.
+        self._unset_fields = [
+            path for path in self._unset_fields if not path.startswith(f"{key}.")
+        ]
+        self._unset_fields.append(key)
+
+    def _mark_as_changed(self, key):
+        """Mark a key as explicitly changed by the user."""
+        if not self._has_change_tracking_baseline:
+            return
+
+        self._unmark_as_unset(key)
+        key = self._resolve_key(key)
 
         if key not in self._changed_fields:
             levels, idx = key.split("."), 1
@@ -544,15 +594,16 @@ class BaseDocument:
                     if field.startswith(level):
                         remove(field)
 
-    def _clear_changed_fields(self):
-        """Using _get_changed_fields iterate and remove any fields that
+    def _clear_updated_fields(self):
+        """Using _get_updated_fields iterate and remove any fields that
         are marked as changed.
         """
         ReferenceField = _import_class("ReferenceField")
         GenericReferenceField = _import_class("GenericReferenceField")
 
-        for changed in self._get_changed_fields():
-            parts = changed.split(".")
+        changed_fields, unset_fields = self._get_updated_fields()
+        for updated_field in changed_fields + unset_fields:
+            parts = updated_field.split(".")
             data = self
             for part in parts:
                 if isinstance(data, list):
@@ -566,25 +617,26 @@ class BaseDocument:
                     field_name = data._reverse_db_field_map.get(part, part)
                     data = getattr(data, field_name, None)
 
-                if not isinstance(data, LazyReference) and hasattr(
-                    data, "_changed_fields"
-                ):
+                if isinstance(data, BaseDocument):
                     if getattr(data, "_is_document", False):
                         continue
 
                     data._changed_fields = []
+                    data._unset_fields = []
                 elif isinstance(data, (list, tuple, dict)):
                     if hasattr(data, "field") and isinstance(
                         data.field, (ReferenceField, GenericReferenceField)
                     ):
                         continue
-                    BaseDocument._nestable_types_clear_changed_fields(data)
+                    BaseDocument._nestable_types_clear_updated_fields(data)
 
         self._changed_fields = []
+        self._unset_fields = []
+        self._has_change_tracking_baseline = True
 
     @staticmethod
-    def _nestable_types_clear_changed_fields(data):
-        """Inspect nested data for changed fields
+    def _nestable_types_clear_updated_fields(data):
+        """Inspect nested data for updated fields
 
         :param data: data to inspect for changes
         """
@@ -598,18 +650,19 @@ class BaseDocument:
             iterator = data.items()
 
         for _index_or_key, value in iterator:
-            if hasattr(value, "_get_changed_fields") and not isinstance(
+            if hasattr(value, "_get_updated_fields") and not isinstance(
                 value, Document
             ):  # don't follow references
-                value._clear_changed_fields()
+                value._clear_updated_fields()
             elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_clear_changed_fields(value)
+                BaseDocument._nestable_types_clear_updated_fields(value)
 
     @staticmethod
-    def _nestable_types_changed_fields(changed_fields, base_key, data):
-        """Inspect nested data for changed fields
+    def _nestable_types_updated_fields(changed_fields, unset_fields, base_key, data):
+        """Inspect nested data for updated fields
 
         :param changed_fields: Previously collected changed fields
+        :param unset_fields: Previously collected unset fields
         :param base_key: The base key that must be used to prepend changes to this data
         :param data: data to inspect for changes
         """
@@ -623,20 +676,39 @@ class BaseDocument:
         for index_or_key, value in iterator:
             item_key = f"{base_key}{index_or_key}."
             # don't check anything lower if this key is already marked
-            # as changed.
-            if item_key[:-1] in changed_fields:
+            # as changed or unset.
+            if item_key[:-1] in changed_fields or item_key[:-1] in unset_fields:
                 continue
 
-            if hasattr(value, "_get_changed_fields"):
-                changed = value._get_changed_fields()
+            if hasattr(value, "_get_updated_fields"):
+                changed, unset = value._get_updated_fields()
                 changed_fields += [f"{item_key}{k}" for k in changed if k]
+                unset_fields += [f"{item_key}{k}" for k in unset if k]
             elif isinstance(value, (list, tuple, dict)):
-                BaseDocument._nestable_types_changed_fields(
-                    changed_fields, item_key, value
+                BaseDocument._nestable_types_updated_fields(
+                    changed_fields, unset_fields, item_key, value
                 )
 
-    def _get_changed_fields(self):
-        """Return a list of all fields that have explicitly been changed."""
+    @staticmethod
+    def _get_disjoint_updated_fields(changed_fields, unset_fields):
+        """Remove ancestor and descendant conflicts from updated field paths."""
+        unset_fields = [
+            field
+            for field in unset_fields
+            if not any(field.startswith(f"{changed}.") for changed in changed_fields)
+        ]
+        changed_fields = [
+            field
+            for field in changed_fields
+            if not any(
+                field == unset or field.startswith(f"{unset}.")
+                for unset in unset_fields
+            )
+        ]
+        return changed_fields, unset_fields
+
+    def _get_updated_fields(self):
+        """Return lists of fields that were explicitly changed or unset."""
         EmbeddedDocument = _import_class("EmbeddedDocument")
         LazyReferenceField = _import_class("LazyReferenceField")
         ReferenceField = _import_class("ReferenceField")
@@ -644,8 +716,8 @@ class BaseDocument:
         GenericReferenceField = _import_class("GenericReferenceField")
         SortedListField = _import_class("SortedListField")
 
-        changed_fields = []
-        changed_fields += getattr(self, "_changed_fields", [])
+        changed_fields = list(self._changed_fields)
+        unset_fields = list(self._unset_fields)
 
         for field_name in self._fields_ordered:
             db_field_name = self._db_field_map.get(field_name, field_name)
@@ -653,18 +725,24 @@ class BaseDocument:
             data = self._data.get(field_name, None)
             field = self._fields.get(field_name)
 
-            if db_field_name in changed_fields:
-                # Whole field already marked as changed, no need to go further
-                continue
-
             if isinstance(field, ReferenceField):  # Don't follow referenced documents
                 continue
 
             if isinstance(data, EmbeddedDocument):
-                # Find all embedded fields that have been changed
-                changed = data._get_changed_fields()
+                changed, unset = data._get_updated_fields()
+                if db_field_name in unset_fields:
+                    if changed:
+                        unset_fields.remove(db_field_name)
+                        if db_field_name not in changed_fields:
+                            changed_fields.append(db_field_name)
+                    continue
+                if db_field_name in changed_fields:
+                    continue
                 changed_fields += [f"{key}{k}" for k in changed if k]
+                unset_fields += [f"{key}{k}" for k in unset if k]
             elif isinstance(data, (list, tuple, dict)):
+                if db_field_name in changed_fields or db_field_name in unset_fields:
+                    continue
                 if hasattr(field, "field") and isinstance(
                     field.field,
                     (
@@ -681,8 +759,25 @@ class BaseDocument:
                         changed_fields.append(db_field_name)
                         continue
 
-                self._nestable_types_changed_fields(changed_fields, key, data)
-        return changed_fields
+                self._nestable_types_updated_fields(
+                    changed_fields, unset_fields, key, data
+                )
+
+        return self._get_disjoint_updated_fields(changed_fields, unset_fields)
+
+    @staticmethod
+    def _remove_path(data, path):
+        """Remove a database path from serialized document data."""
+        parts = path.split(".")
+        for part in parts[:-1]:
+            if isinstance(data, list) and part.isdigit():
+                data = data[int(part)]
+            elif hasattr(data, "get"):
+                data = data.get(part)
+            if data is None:
+                break
+        else:
+            data.pop(parts[-1], None)
 
     def _delta(self):
         """Returns the delta (set, unset) of the changes for a document.
@@ -691,80 +786,46 @@ class BaseDocument:
         # Handles cases where not loaded from_son but has _id
         doc = self.to_mongo()
 
-        set_fields = self._get_changed_fields()
-        unset_data = {}
-        if hasattr(self, "_changed_fields"):
+        set_fields, unset_fields = self._get_updated_fields()
+        if self._has_change_tracking_baseline:
             set_data = {}
+            unset_data = {path: 1 for path in unset_fields}
             # Fetch each set item from its path
             for path in set_fields:
                 parts = path.split(".")
                 d = doc
                 new_path = []
+                missing = False
                 for p in parts:
                     if isinstance(d, (ObjectId, DBRef)):
                         # Don't dig in the references
                         break
-                    elif isinstance(d, list) and p.isdigit():
+
+                    new_path.append(p)
+                    if missing:
+                        continue
+                    if isinstance(d, list) and p.isdigit():
                         # An item of a list (identified by its index) is updated
                         d = d[int(p)]
                     elif hasattr(d, "get"):
                         # dict-like (dict, embedded document)
-                        d = d.get(p)
-                    new_path.append(p)
+                        if p in d:
+                            d = d[p]
+                        else:
+                            missing = True
                 path = ".".join(new_path)
-                set_data[path] = d
+                if missing:
+                    unset_data[path] = 1
+                else:
+                    set_data[path] = d
         else:
             set_data = doc
+            unset_data = {}
             if "_id" in set_data:
                 del set_data["_id"]
+            for path in unset_fields:
+                self._remove_path(set_data, path)
 
-        # Determine if any changed items were actually unset.
-        for path, value in list(set_data.items()):
-            if value or isinstance(
-                value, (numbers.Number, bool)
-            ):  # Account for 0 and True that are truthy
-                continue
-
-            parts = path.split(".")
-
-            if self._dynamic and len(parts) and parts[0] in self._dynamic_fields:
-                del set_data[path]
-                unset_data[path] = 1
-                continue
-
-            # If we've set a value that ain't the default value don't unset it.
-            default = None
-            if path in self._fields:
-                default = self._fields[path].default
-            else:  # Perform a full lookup for lists / embedded lookups
-                d = self
-                db_field_name = parts.pop()
-                for p in parts:
-                    if isinstance(d, list) and p.isdigit():
-                        d = d[int(p)]
-                    elif hasattr(d, "__getattribute__") and not isinstance(d, dict):
-                        real_path = d._reverse_db_field_map.get(p, p)
-                        d = getattr(d, real_path)
-                    else:
-                        d = d.get(p)
-
-                if hasattr(d, "_fields"):
-                    field_name = d._reverse_db_field_map.get(
-                        db_field_name, db_field_name
-                    )
-                    if field_name in d._fields:
-                        default = d._fields.get(field_name).default
-                    else:
-                        default = None
-
-            if default is not None:
-                default = default() if callable(default) else default
-
-            if value != default:
-                continue
-
-            del set_data[path]
-            unset_data[path] = 1
         return set_data, unset_data
 
     @classmethod
@@ -838,7 +899,7 @@ class BaseDocument:
             data = {k: v for k, v in data.items() if k in cls._fields}
 
         obj = cls(__auto_convert=False, _created=created, **data)
-        obj._changed_fields = []
+        obj._has_change_tracking_baseline = True
         if not _auto_dereference:
             obj._fields = fields
 
