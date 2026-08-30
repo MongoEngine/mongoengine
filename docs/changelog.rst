@@ -66,6 +66,7 @@ Changes in 1.0.0
 - Improve error message in case a document assigned to a ReferenceField wasn't saved yet #1955
 - BugFix - Fix inc/dec atomic updates rejecting deltas outside a field's min_value/max_value #2339
 - BugFix - Take `where()` into account when using `.modify()`, as in MyDocument.objects().where("this[field] >= this[otherfield]").modify(field='new') #2044
+- fix: exception on null embedded scalar values
 
 Changes in 0.29.3
 =================
