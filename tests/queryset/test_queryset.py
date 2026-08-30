@@ -5590,6 +5590,37 @@ class TestQueryset(unittest.TestCase):
         qs = Person.objects.no_cache()
         assert repr(qs) == "[]"
 
+    def test_queryset_repr__not_iterated__lists_documents(self):
+        class Person(Document):
+            name = StringField()
+
+            def __repr__(self):
+                return f"<Person: {self.name}>"
+
+        Person.drop_collection()
+        Person.objects.insert([Person(name="a"), Person(name="b")])
+
+        querysets = (
+            Person.objects.order_by("name"),
+            Person.objects.order_by("name").no_cache(),
+        )
+        for queryset in querysets:
+            with self.subTest(queryset_type=type(queryset).__name__):
+                assert repr(queryset) == "[<Person: a>, <Person: b>]"
+
+    def test_no_cached_queryset_repr__during_iteration__reports_without_rewinding(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person.objects.insert([Person(name="a"), Person(name="b")])
+        qs = Person.objects.order_by("name").no_cache()
+        iterator = iter(qs)
+
+        assert next(iterator).name == "a"
+        assert repr(qs) == ".. queryset mid-iteration .."
+        assert next(iterator).name == "b"
+
     def test_no_cached_on_a_cached_queryset_raise_error(self):
         class Person(Document):
             name = StringField()
