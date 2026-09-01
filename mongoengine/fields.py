@@ -1025,6 +1025,11 @@ class SortedListField(ListField):
             )
         return sorted(value, reverse=self._order_reverse)
 
+    def validate(self, value):
+        super().validate(value)
+        if any(item is None for item in value):
+            self.error("SortedListField does not support None values")
+
 
 def key_not_string(d):
     """Helper function to recursively determine if any key in a

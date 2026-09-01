@@ -564,6 +564,53 @@ class TestField(MongoDBTestCase):
         post.generic_as_lazy = [user]
         post.validate()
 
+    def test_list_field__optional_string_items_are_none__retains_none(self):
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        post = BlogPost(tags=[None, "hello", None]).save()
+        post.reload()
+
+        assert post.tags == [None, "hello", None]
+
+    def test_list_field__nested_optional_string_item_is_none__retains_none(self):
+        class BlogPost(Document):
+            tags = ListField(ListField(StringField()))
+
+        post = BlogPost(tags=[[None]]).save()
+        post.reload()
+
+        assert post.tags == [[None]]
+
+    def test_list_field__optional_embedded_items_are_none__retains_none(self):
+        class Comment(EmbeddedDocument):
+            content = StringField()
+
+        class BlogPost(Document):
+            comments = ListField(EmbeddedDocumentField(Comment))
+
+        post = BlogPost(comments=[None, Comment(content="hello")]).save()
+        post.reload()
+
+        assert post.comments[0] is None
+        assert post.comments[1].content == "hello"
+
+    def test_list_field__required_item_is_none__raises_required_error(self):
+        class BlogPost(Document):
+            tags = ListField(StringField(required=True))
+
+        with pytest.raises(ValidationError, match="Field is required"):
+            BlogPost(tags=[None]).validate()
+
+    def test_sorted_list_field__item_is_none__raises_validation_error(self):
+        class BlogPost(Document):
+            tags = SortedListField(StringField())
+
+        with pytest.raises(
+            ValidationError, match="SortedListField does not support None values"
+        ):
+            BlogPost(tags=[None, "hello"]).validate()
+
     def test_sorted_list_sorting(self):
         """Ensure that a sorted list field properly sorts values."""
 

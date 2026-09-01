@@ -236,6 +236,11 @@ class BaseField:
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo."""
+        if value is None:
+            if self.required:
+                self.error("Field is required")
+            return value
+
         # Do not validate $inc/$mul operands against stored-value min/max bounds.
         # dec is normalized to inc with a negative value before this point.
         if op in UPDATE_OPERATORS and op not in ("inc", "mul"):
@@ -266,6 +271,11 @@ class BaseField:
                 self.error("Value must be one of %s" % str(choice_list))
 
     def _validate(self, value, **kwargs):
+        if value is None:
+            if self.required:
+                self.error("Field is required")
+            return
+
         # Check the Choices Constraint
         if self.choices:
             self._validate_choices(value)
@@ -427,7 +437,8 @@ class ComplexBaseField(BaseField):
         if self.field:
             self.field.set_auto_dereferencing(self._auto_dereference)
             value_dict = {
-                key: self.field.to_python(item) for key, item in value.items()
+                key: None if item is None else self.field.to_python(item)
+                for key, item in value.items()
             }
         else:
             Document = _import_class("Document")
@@ -482,7 +493,11 @@ class ComplexBaseField(BaseField):
 
         if self.field:
             value_dict = {
-                key: self.field._to_mongo_safe_call(item, use_db_field, fields)
+                key: (
+                    None
+                    if item is None
+                    else self.field._to_mongo_safe_call(item, use_db_field, fields)
+                )
                 for key, item in value.items()
             }
         else:
