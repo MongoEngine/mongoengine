@@ -1702,6 +1702,11 @@ class GridFSProxy:
             return getattr(obj, name)
         raise AttributeError
 
+    @property
+    def content_type(self):
+        # PyMongo deprecated content_type in favor of the GridFS contentType field.
+        return self.__getattr__("contentType")
+
     def __get__(self, instance, value):
         return self
 
