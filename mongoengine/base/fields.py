@@ -236,11 +236,6 @@ class BaseField:
 
     def prepare_query_value(self, op, value):
         """Prepare a value that is being used in a query for PyMongo."""
-        if value is None:
-            if self.required:
-                self.error("Field is required")
-            return value
-
         # Do not validate $inc/$mul operands against stored-value min/max bounds.
         # dec is normalized to inc with a negative value before this point.
         if op in UPDATE_OPERATORS and op not in ("inc", "mul"):
