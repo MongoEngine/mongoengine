@@ -2,6 +2,7 @@ import copy
 import os
 import tempfile
 import unittest
+import warnings
 from io import BytesIO
 
 import gridfs
@@ -69,7 +70,9 @@ class TestFileField(MongoDBTestCase):
             == "<GridFSProxy: hello (%s)>" % result.the_file.grid_id
         )
         assert result.the_file.read() == text
-        assert result.the_file.content_type == content_type
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            assert result.the_file.content_type == content_type
         result.the_file.delete()  # Remove file from GridFS
         PutFile.objects.delete()
 
