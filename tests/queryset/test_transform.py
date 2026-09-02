@@ -110,6 +110,19 @@ class TestTransform(MongoDBTestCase):
         update = transform.update(BlogPost, push_all__tags=["mongo", "db"])
         assert update == {"$push": {"tags": {"$each": ["mongo", "db"]}}}
 
+    def test_transform_update__list_items_are_none__retains_none(self):
+        class BlogPost(Document):
+            tags = ListField(StringField())
+
+        for operator in ("set", "push"):
+            update = transform.update(
+                BlogPost, **{f"{operator}__tags": [None, "hello", None]}
+            )
+
+            assert update == {
+                f"${operator}": {"tags": [None, "hello", None]},
+            }
+
     def test_transform_update_inc_dec_ignores_min_max(self):
         """inc/dec pass a delta; min_value/max_value apply to stored values (#2339)."""
 

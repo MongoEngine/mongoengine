@@ -975,7 +975,10 @@ class ListField(ComplexBaseField):
                 op in ("set", "unset", "gt", "gte", "lt", "lte", "ne", None)
                 and eligible_iter
             ):
-                return [self.field.prepare_query_value(op, v) for v in value]
+                return [
+                    None if v is None else self.field.prepare_query_value(op, v)
+                    for v in value
+                ]
 
             return self.field.prepare_query_value(op, value)
 
@@ -1024,6 +1027,11 @@ class SortedListField(ListField):
                 value, key=itemgetter(self._ordering), reverse=self._order_reverse
             )
         return sorted(value, reverse=self._order_reverse)
+
+    def validate(self, value):
+        super().validate(value)
+        if any(item is None for item in value):
+            self.error("SortedListField does not support None values")
 
 
 def key_not_string(d):
@@ -1091,7 +1099,8 @@ class DictField(ComplexBaseField):
         ):  # Used for instance when using DictField(ListField(IntField()))
             if op in ("set", "unset") and isinstance(value, dict):
                 return {
-                    k: self.field.prepare_query_value(op, v) for k, v in value.items()
+                    k: None if v is None else self.field.prepare_query_value(op, v)
+                    for k, v in value.items()
                 }
             return self.field.prepare_query_value(op, value)
 
