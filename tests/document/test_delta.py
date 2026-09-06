@@ -1073,6 +1073,21 @@ class TestDelta(MongoDBTestCase):
         assert doc._get_updated_fields() == (["list_field"], [])
         assert doc._delta() == ({"list_field": []}, {})
 
+    def test_save__nested_dict_mutated_after_initial_save__persists_change(self):
+        class Doc(DynamicDocument):
+            root_dict = DictField(default=None)
+
+        doc = Doc(root_dict={"inner_dict": {"key": "value"}}).save()
+        assert doc.root_dict["inner_dict"]["key"] == "value"
+
+        doc.root_dict["inner_dict"]["key"] = "new_value"
+
+        assert doc._get_updated_fields() == (["root_dict.inner_dict.key"], [])
+        assert doc._delta() == ({"root_dict.inner_dict.key": "new_value"}, {})
+
+        doc.save()
+        assert get_as_pymongo(doc)["root_dict"]["inner_dict"]["key"] == "new_value"
+
     def test_delta_with_dbref_true(self):
         person, organization, employee = self.circular_reference_deltas_2(
             Document, Document, True
