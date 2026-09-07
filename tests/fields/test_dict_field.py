@@ -1,5 +1,5 @@
 import pytest
-from bson import InvalidDocument
+from bson import DBRef, InvalidDocument, ObjectId
 
 from mongoengine import *
 from mongoengine.base import BaseDict
@@ -8,6 +8,135 @@ from mongoengine.mongodb_support import (
     get_mongodb_version,
 )
 from tests.utils import MongoDBTestCase, get_as_pymongo
+
+
+class TestDictFieldToPython:
+    def test_to_python__untyped_dict_contains_document__converts_to_dbref(self):
+        class Referenced(Document):
+            pass
+
+        referenced = Referenced(id=ObjectId())
+
+        converted = DictField().to_python(
+            {
+                "referenced": referenced,
+                "nested": [{"referenced": referenced}],
+            }
+        )
+
+        assert isinstance(converted["referenced"], DBRef)
+        assert converted["referenced"] == DBRef(
+            Referenced._get_collection_name(), referenced.id
+        )
+        assert isinstance(converted["nested"][0]["referenced"], DBRef)
+
+    def test_to_python__untyped_dict_contains_convertible_value__converts_value(self):
+        class Convertible:
+            def to_python(self):
+                return "converted"
+
+        converted = DictField().to_python({"value": Convertible()})
+
+        assert converted == {"value": "converted"}
+
+    def test_to_python__auto_dereferencing_disabled__propagates_to_nested_field(self):
+        class Referenced(Document):
+            pass
+
+        class Embedded(EmbeddedDocument):
+            referenced = ReferenceField(Referenced)
+
+        field = DictField(EmbeddedDocumentField(Embedded))
+        field.set_auto_dereferencing(False)
+
+        converted = field.to_python({"value": {"referenced": ObjectId()}})
+
+        assert converted["value"]._fields["referenced"]._auto_dereference is False
+
+    def test_to_python__typed_dict_receives_truthy_non_dict__raises_validation_error(
+        self,
+    ):
+        class Model(Document):
+            values = DictField(IntField())
+
+        with pytest.raises(
+            ValidationError, match="Only dictionaries may be used in a DictField"
+        ):
+            Model(values=[1]).validate()
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            pytest.param(DictField(null=True), {}, id="top-level-nullable"),
+            pytest.param(ListField(DictField()), [{}], id="nested-dict-field"),
+            pytest.param(ListField(MapField(IntField())), [{}], id="nested-map-field"),
+        ],
+    )
+    def test_to_python__value_contains_empty_dict__preserves_empty_dict(
+        self, field, value
+    ):
+        assert field.to_python(value) == value
+
+    def test_to_python__untyped_nested_primitives__preserves_shape(self):
+        field = DictField()
+        value = {
+            "numbers": [1, 2],
+            "nested": {"enabled": True, "name": "test"},
+        }
+
+        converted = field.to_python(value)
+
+        assert converted == value
+
+    def test_to_python__untyped_dict_contains_dbref__preserves_dbref(self):
+        oid = ObjectId()
+        dbref = DBRef("collection", oid)
+
+        converted = DictField().to_python({"ref": dbref})
+
+        assert converted == {"ref": dbref}
+        assert isinstance(converted["ref"], DBRef)
+
+    def test_to_python__dict_subclass_with_falsy_bool__preserves_entries(self):
+        """A dict subclass whose __bool__ is False must not be silently dropped."""
+
+        class FalsyDict(dict):
+            def __bool__(self):
+                return False
+
+        value = FalsyDict({"a": "1", "b": "2"})
+        assert not value  # sanity check
+
+        converted = DictField(IntField()).to_python(value)
+
+        assert type(converted) is dict
+        assert converted == {"a": 1, "b": 2}
+
+    def test_to_python__mapfield_typed_dict_of_primitives__preserves_shape(self):
+        """MapField inherits DictField.to_python; primitive dict must round-trip."""
+        converted = MapField(IntField()).to_python({"a": 1, "b": 2})
+
+        assert converted == {"a": 1, "b": 2}
+
+    def test_to_python__mapfield_delegates_to_nested_field(self):
+        class Doubling(IntField):
+            def to_python(self, value):
+                return value * 2
+
+        converted = MapField(Doubling()).to_python({"a": 1, "b": 2})
+
+        assert converted == {"a": 2, "b": 4}
+
+    def test_to_python__mapfield_receives_truthy_non_dict__raises_validation_error(
+        self,
+    ):
+        class Model(Document):
+            values = MapField(IntField())
+
+        with pytest.raises(
+            ValidationError, match="Only dictionaries may be used in a DictField"
+        ):
+            Model(values=[1]).validate()
 
 
 class TestDictField(MongoDBTestCase):
@@ -426,3 +555,42 @@ class TestDictField(MongoDBTestCase):
         assert isinstance(s.mapping7["someint"][0]["d"], Doc)
         assert isinstance(s.mapping8["someint"][0]["d"][0], Doc)
         assert isinstance(s.mapping9["someint"][0]["d"][0], Doc)
+
+    def test_dictfield_with_embeddeddocument_field_roundtrip(self):
+        """Ensure DictField(EmbeddedDocumentField) rebuilds the embedded instance."""
+
+        class Setting(EmbeddedDocument):
+            value = StringField()
+
+        class Simple(Document):
+            mapping = DictField(EmbeddedDocumentField(Setting))
+
+        Simple.drop_collection()
+
+        Simple(mapping={"a": Setting(value="foo"), "b": Setting(value="bar")}).save()
+
+        reloaded = Simple.objects.first()
+        assert isinstance(reloaded.mapping["a"], Setting)
+        assert isinstance(reloaded.mapping["b"], Setting)
+        assert reloaded.mapping["a"].value == "foo"
+        assert reloaded.mapping["b"].value == "bar"
+
+    def test_dictfield_reads_non_dict_stored_in_db_schema_drift(self):
+        """Reading a document whose DB value is not a dict must not blow up.
+
+        Data written by a different tool or an older schema may end up with a
+        non-dict value on a DictField. Preserving the current tolerant behavior
+        avoids breaking existing systems when the field's ``to_python`` is
+        optimized.
+        """
+
+        class Model(Document):
+            m = DictField(field=IntField())
+
+        Model.drop_collection()
+
+        Model._get_collection().insert_one({"_id": 1, "m": [{"a": 1}]})
+        Model._get_collection().insert_one({"_id": 2, "m": "some-string"})
+
+        loaded = {doc.id: doc.m for doc in Model.objects.order_by("id")}
+        assert loaded == {1: [{"a": 1}], 2: "some-string"}
