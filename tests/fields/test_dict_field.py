@@ -39,6 +39,22 @@ class TestDictField(MongoDBTestCase):
             "args": {"hello": None, "count": None},
         }
 
+    def test_save__typed_dict_value_is_none__retains_none(self):
+        class Test(Document):
+            values = DictField(IntField())
+
+        test = Test(values={"missing": None}).save()
+        test.reload()
+
+        assert test.values == {"missing": None}
+
+    def test_validate__typed_dict_required_value_is_none__raises_required_error(self):
+        class Test(Document):
+            values = DictField(IntField(required=True))
+
+        with pytest.raises(ValidationError, match="Field is required"):
+            Test(values={"missing": None}).validate()
+
     def test_save__embedded_dict_key_is_assigned_none__stores_null(self):
         """Regression test for issue #1378."""
 

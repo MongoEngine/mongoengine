@@ -7,7 +7,6 @@ Changelog
 Development
 ===========
 - (Fill this out as you fix issues and develop your features).
-- Fix partial ``Document.reload()`` leaving custom ``db_field`` values marked as changed.
 
 Changes in 1.0.0
 ================
@@ -42,6 +41,8 @@ Changes in 1.0.0
 - Bug Fix - Fix querying GenericReferenceField with __in operator #2886
 - Bug Fix - Fix Document.compare_indexes() not working correctly for text indexes on multiple fields #2612
 - BREAKING CHANGE: wrap _document_registry (normally not used by end users) with _DocumentRegistry which acts as a singleton to access the registry
+- Fix partial ``Document.reload()`` leaving custom ``db_field`` values marked as changed.
+- Fix ``ListField`` and ``DictField`` failing to retain ``None`` values for non-required inner fields. #2290 #913 #1904
 - Log a warning in case users creates multiple Document classes with the same name as it can lead to unexpected behavior #1778
 - Fix use of $search, $searchMeta, or $vectorSearch in aggregate #2878
 - BugFix - Fix use of $geoNear or $collStats in aggregate #2493

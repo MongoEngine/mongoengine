@@ -2394,7 +2394,7 @@ class TestDocumentInstance(MongoDBTestCase):
                     "stem": [1, 2, 3],
                     "forms": 1,
                     "count": "one",
-                    "occurs": {"hello": None},
+                    "occurs": {"hello": "not_a_dict"},
                 }
             )
 
