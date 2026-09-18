@@ -223,6 +223,60 @@ class TestDynamicDocument(MongoDBTestCase):
         with pytest.raises(ValidationError):
             doc.validate()
 
+    def test_complex_embedded_document_query(self):
+        """Ensure embedded dynamic documents can be queried"""
+
+        class EmbeddedDoc1(DynamicEmbeddedDocument):
+            email = StringField()
+
+        class EmbeddedDoc2(DynamicEmbeddedDocument):
+            name = StringField()
+
+        class Doc(DynamicDocument):
+            embedded = EmbeddedDocumentField(EmbeddedDoc1)
+            generic_embedded = GenericEmbeddedDocumentField(choices=(EmbeddedDoc1, EmbeddedDoc2))
+
+        Doc.drop_collection()
+
+        doc1 = Doc(content='doc1')
+        doc1.embedded = EmbeddedDoc1(email='doc1@te.st')
+        doc1.embedded.dynamic_field = 'dynamic value 1'
+        doc1.generic_embedded = EmbeddedDoc1(email='doc1@te.st')
+        doc1.generic_embedded.another_dynamic_field = 'generic dynamic value 1'
+        doc1.save()
+
+        doc2 = Doc(content='doc2')
+        doc2.embedded = EmbeddedDoc1(email='doc2@te.st')
+        doc2.embedded.dynamic_field = 'dynamic value 2'
+        doc2.generic_embedded = EmbeddedDoc2(name='doc2 name')
+        doc2.generic_embedded.another_dynamic_field = 'generic dynamic value 2'
+        doc2.save()
+
+        assert Doc.objects(embedded__dynamic_field='dynamic value 1').first().id == doc1.id
+        assert Doc.objects(embedded__dynamic_field='dynamic value 2').first().id == doc2.id
+
+        assert Doc.objects(generic_embedded__another_dynamic_field='generic dynamic value 1').first().id == doc1.id
+        assert Doc.objects(generic_embedded__another_dynamic_field='generic dynamic value 2').first().id == doc2.id
+
+    def test_complex_embedded_document_with_aliased_field_query(self):
+        class EmbeddedDoc(DynamicEmbeddedDocument):
+            first_name = StringField(db_field='firstName')
+
+        class Doc(DynamicDocument):
+            embedded_doc = EmbeddedDocumentField(EmbeddedDoc, db_field='embeddedDoc')
+
+        Doc.drop_collection()
+
+        doc1 = Doc(content='doc1')
+        doc1.embedded_doc = EmbeddedDoc(first_name='Alice')
+        doc1.save()
+
+        doc2 = Doc(content='doc1')
+        doc2.embedded_doc = EmbeddedDoc(first_name='John')
+        doc2.save()
+
+        assert Doc.objects(embedded_doc__first_name='John').first().id == doc2.id
+
     def test_inheritance(self):
         """Ensure that dynamic document plays nice with inheritance"""
 
