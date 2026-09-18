@@ -206,6 +206,10 @@ class BaseField:
             for v in value:
                 if isinstance(v, EmbeddedDocument):
                     v._instance = weakref.proxy(instance)
+        elif isinstance(value, dict):
+            for v in value.values():
+                if isinstance(v, EmbeddedDocument):
+                    v._instance = weakref.proxy(instance)
 
         instance._data[self.name] = value
 
