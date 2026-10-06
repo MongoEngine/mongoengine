@@ -8,6 +8,7 @@ Development
 ===========
 - (Fill this out as you fix issues and develop your features).
 - Fix partial ``Document.reload()`` leaving custom ``db_field`` values marked as changed.
+- Fix ``__startswith``, ``__exact`` and the other string query operators not using indexes: they no longer send the ``u`` regex option that Python adds to every compiled ``str`` pattern #965
 
 Changes in 1.0.0
 ================

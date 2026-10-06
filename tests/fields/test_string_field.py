@@ -41,3 +41,28 @@ class TestStringField(MongoDBTestCase):
 
         person = Person(name="a friendl name", userid="7a757668sqjdkqlsdkq")
         person.validate()
+
+    def test_string_operators_use_an_index(self):
+        class Person(Document):
+            name = StringField()
+            meta = {"indexes": ["name"]}
+
+        Person.drop_collection()
+        Person.ensure_indexes()
+        Person.objects.insert([Person(name=f"person{i}") for i in range(100)])
+
+        stats = Person.objects(name__startswith="person7").explain()["executionStats"]
+
+        assert stats["nReturned"] == 11
+        assert stats["totalKeysExamined"] <= 12
+
+    def test_string_operators_keep_case_insensitive_flag(self):
+        class Person(Document):
+            name = StringField()
+
+        Person.drop_collection()
+        Person(name="Guido").save()
+
+        assert Person.objects(name__istartswith="gui").count() == 1
+        assert Person.objects(name__startswith="gui").count() == 0
+        assert Person.objects(name__not__istartswith="gui").count() == 0
