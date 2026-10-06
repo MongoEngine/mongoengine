@@ -12,7 +12,7 @@ from operator import itemgetter
 
 import gridfs
 import pymongo
-from bson import Binary, DBRef, ObjectId
+from bson import Binary, DBRef, ObjectId, Regex
 from bson.decimal128 import Decimal128, create_decimal128_context
 from pymongo import ReturnDocument
 
@@ -182,11 +182,13 @@ class StringField(BaseField):
                 regex = value
 
             if op == "regex":
-                value = re.compile(regex, flags)
+                re.compile(regex, flags)  # raise re.error early on an invalid pattern
             else:
                 # escape unsafe characters which could lead to a re.error
-                value = re.escape(value)
-                value = re.compile(regex % value, flags)
+                regex = regex % re.escape(value)
+            # Not re.compile: a str pattern always gets re.UNICODE, sent as the `u` option,
+            # which stops MongoDB from using an index for a prefix regex (#965).
+            value = Regex(regex, flags)
         return super().prepare_query_value(op, value)
 
 
