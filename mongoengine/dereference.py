@@ -39,7 +39,7 @@ class DeReference:
         # cheapest way to convert a queryset to a list
         # list(queryset) uses a count() query to determine length
         if isinstance(items, QuerySet):
-            items = [i for i in items]
+            items = [*items]
 
         self.max_depth = max_depth
         doc_type = None

@@ -1254,13 +1254,13 @@ class TestQueryset(unittest.TestCase):
         self.Person(name="Person 2").save()
 
         queryset = self.Person.objects
-        people1 = [person for person in queryset]
-        people2 = [person for person in queryset]
+        people1 = [*queryset]
+        people2 = [*queryset]
 
         # Check that it still works even if iteration is interrupted.
         for _person in queryset:
             break
-        people3 = [person for person in queryset]
+        people3 = [*queryset]
 
         assert people1 == people2
         assert people1 == people3
@@ -5593,7 +5593,7 @@ class TestQueryset(unittest.TestCase):
             assert q == 0
             people = Person.objects
 
-            [x for x in people]
+            [*people]
             assert 100 == len(people._result_cache)
 
             import platform
@@ -5625,7 +5625,7 @@ class TestQueryset(unittest.TestCase):
             assert q == 0
             people = Person.objects.no_cache()
 
-            [x for x in people]
+            [*people]
             assert q == 1
 
             list(people)
