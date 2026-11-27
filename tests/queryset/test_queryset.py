@@ -4341,7 +4341,7 @@ class TestQueryset(unittest.TestCase):
             pass
 
         MyDoc.drop_collection()
-        for i in range(0, 10):
+        for i in range(10):
             MyDoc().save()
 
         assert MyDoc.objects.count() == 10
