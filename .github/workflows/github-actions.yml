@@ -19,6 +19,7 @@ env:
   MONGODB_7_0: "7.0.19"
   MONGODB_8_0: "8.0.9"
 
+  PYMONGO_4_0:  "4.0.0"
   PYMONGO_4_8:  "4.8.0"
   PYMONGO_4_10: "4.10.1"
   PYMONGO_4_14: "4.14.1"
@@ -55,6 +56,9 @@ jobs:
         MONGODB: [$MONGODB_4_4]
         PYMONGO: [$PYMONGO_4_8]
         include:
+          - python-version: "3.11"
+            MONGODB: $MONGODB_4_4
+            PYMONGO: $PYMONGO_4_0
           - python-version: "3.11"
             MONGODB: $MONGODB_5_0
             PYMONGO: $PYMONGO_4_10
