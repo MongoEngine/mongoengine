@@ -89,9 +89,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(
-                default=lambda: datetime.datetime.now(datetime.timezone.utc)
-            )
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
             day = DateField(default=datetime.date.today)
 
         person = Person(name="Ross")
@@ -171,9 +169,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(
-                default=lambda: datetime.datetime.now(datetime.timezone.utc)
-            )
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         # Trying setting values to None
         person = Person(name=None, age=None, userid=None, created=None)
@@ -207,9 +203,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(
-                default=lambda: datetime.datetime.now(datetime.timezone.utc)
-            )
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         person = Person()
         person.name = None
@@ -277,9 +271,7 @@ class TestField(MongoDBTestCase):
             name = StringField()
             age = IntField(default=30, required=False)
             userid = StringField(default=lambda: "test", required=True)
-            created = DateTimeField(
-                default=lambda: datetime.datetime.now(datetime.timezone.utc)
-            )
+            created = DateTimeField(default=lambda: datetime.datetime.now(datetime.UTC))
 
         person = Person(
             name="Ross",

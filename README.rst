@@ -49,7 +49,7 @@ experience any problems with more recent MongoDB versions.
 
 Installation
 ============
-MongoEngine requires Python 3.10 or newer. Install it from PyPI with:
+MongoEngine requires Python 3.11 or newer. Install it from PyPI with:
 
 .. code-block:: console
 
