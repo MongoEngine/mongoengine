@@ -30,10 +30,7 @@ from mongoengine.mongodb_support import (
     MONGODB_36,
     get_mongodb_version,
 )
-from mongoengine.pymongo_support import (
-    PYMONGO_VERSION,
-    list_collection_names,
-)
+from mongoengine.pymongo_support import list_collection_names
 from mongoengine.queryset import NULLIFY, Q
 from tests import fixtures
 from tests.fixtures import (
@@ -2019,16 +2016,13 @@ class TestDocumentInstance(MongoDBTestCase):
 
         comment = "test_comment"
 
-        if PYMONGO_VERSION >= (4, 1):
-            with db_ops_tracker() as q:
-                _ = AggPerson.objects.comment(comment).update_one(name="something")
-                query_op = q.db.system.profile.find(
-                    {"ns": "mongoenginetest.agg_person"}
-                )[0]
-                CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-                assert "hint" not in query_op[CMD_QUERY_KEY]
-                assert query_op[CMD_QUERY_KEY]["comment"] == comment
-                assert "collation" not in query_op[CMD_QUERY_KEY]
+        with db_ops_tracker() as q:
+            _ = AggPerson.objects.comment(comment).update_one(name="something")
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+            assert "collation" not in query_op[CMD_QUERY_KEY]
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).update_one(name="something")
@@ -2074,16 +2068,13 @@ class TestDocumentInstance(MongoDBTestCase):
 
         comment = "test_comment"
 
-        if PYMONGO_VERSION >= (4, 1):
-            with db_ops_tracker() as q:
-                _ = AggPerson.objects().comment(comment).delete()
-                query_op = q.db.system.profile.find(
-                    {"ns": "mongoenginetest.agg_person"}
-                )[0]
-                CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
-                assert "hint" not in query_op[CMD_QUERY_KEY]
-                assert query_op[CMD_QUERY_KEY]["comment"] == comment
-                assert "collation" not in query_op[CMD_QUERY_KEY]
+        with db_ops_tracker() as q:
+            _ = AggPerson.objects().comment(comment).delete()
+            query_op = q.db.system.profile.find({"ns": "mongoenginetest.agg_person"})[0]
+            CMD_QUERY_KEY = "command" if mongo_ver >= MONGODB_36 else "query"
+            assert "hint" not in query_op[CMD_QUERY_KEY]
+            assert query_op[CMD_QUERY_KEY]["comment"] == comment
+            assert "collation" not in query_op[CMD_QUERY_KEY]
 
         with db_ops_tracker() as q:
             _ = AggPerson.objects.hint(index_name).delete()

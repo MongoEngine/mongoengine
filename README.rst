@@ -62,7 +62,7 @@ Dependencies
 ============
 MongoEngine requires:
 
-- PyMongo >=4.0, <5.0
+- PyMongo >=4.2, <5.0
 
 The following optional packages enable additional functionality:
 

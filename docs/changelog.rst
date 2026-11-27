@@ -47,9 +47,9 @@ Changes in 1.0.0
 - Fix use of $search, $searchMeta, or $vectorSearch in aggregate #2878
 - BugFix - Fix use of $geoNear or $collStats in aggregate #2493
 - BREAKING CHANGE: Further to the deprecation warning, remove ability to use an unpacked list to `Queryset.aggregate(*pipeline)`, a plain list must be provided instead `Queryset.aggregate(pipeline)`, as it's closer to pymongo interface
-- BREAKING CHANGE: PyMongo 3.x is no longer supported. As PyMongo 3.x is now
-  quite old, this is unlikely to affect most users. The consequences below
-  concern functionality that already did not work with PyMongo 4.x:
+- BREAKING CHANGE: PyMongo versions older than 4.2 are no longer supported.
+  The consequences below concern functionality that already did not work with
+  PyMongo 4.x:
     - ``QuerySet.count()`` no longer supports queries using ``$near``, ``$nearSphere``, ``$geoNear``, or ``$where``.
       PyMongo's``count_documents()`` rejects these operators and raises ``OperationFailure``; the removed ``Cursor.count()`` fallback is no longer available.
       Use ``$geoWithin`` with ``$center`` or ``$centerSphere`` for countable geospatial filters, and ``$expr`` instead of ``$where``.
